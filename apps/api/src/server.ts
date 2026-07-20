@@ -1,0 +1,79 @@
+import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
+import { createDb, type Db } from "@hc/db";
+import { sql } from "drizzle-orm";
+import Fastify from "fastify";
+import { ZodError } from "zod";
+import type { Config } from "./config.js";
+import { AppError } from "./lib/errors.js";
+import { authRoutes } from "./modules/auth.js";
+import { gameRoutes } from "./modules/game/routes.js";
+import { marketRoutes } from "./modules/market.js";
+import { meRoutes } from "./modules/me.js";
+import { moderationRoutes } from "./modules/moderation.js";
+import { authPlugin } from "./plugins/auth.js";
+
+declare module "fastify" {
+  interface FastifyInstance {
+    db: Db;
+    config: Config;
+  }
+}
+
+export async function buildServer(config: Config, options: { logger?: boolean } = {}) {
+  const app = Fastify({
+    logger:
+      options.logger === false
+        ? false
+        : {
+            level: config.LOG_LEVEL,
+            // Never log credentials or session cookies.
+            redact: ["req.headers.cookie", "req.headers.authorization", "res.headers['set-cookie']"],
+          },
+    trustProxy: true,
+    bodyLimit: 64 * 1024,
+  });
+
+  const { db, client } = createDb(config.DATABASE_URL);
+  app.decorate("db", db);
+  app.decorate("config", config);
+  app.addHook("onClose", async () => {
+    await client.end();
+  });
+
+  await app.register(cookie);
+  await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
+  await app.register(authPlugin);
+
+  app.setErrorHandler((err, request, reply) => {
+    if (err instanceof AppError) {
+      return reply.code(err.statusCode).send({ error: err.code, message: err.message });
+    }
+    if (err instanceof ZodError) {
+      const first = err.issues[0];
+      return reply.code(400).send({
+        error: "validation_error",
+        message: first ? `${first.path.join(".") || "body"}: ${first.message}` : "Invalid request.",
+      });
+    }
+    const status = (err as { statusCode?: number }).statusCode;
+    if (status && status < 500) {
+      return reply.code(status).send({ error: "request_error", message: (err as Error).message });
+    }
+    request.log.error(err);
+    return reply.code(500).send({ error: "internal_error", message: "Something went wrong." });
+  });
+
+  app.get("/api/health", async () => {
+    await db.execute(sql`select 1`);
+    return { ok: true };
+  });
+
+  await app.register(authRoutes);
+  await app.register(meRoutes);
+  await app.register(gameRoutes);
+  await app.register(marketRoutes);
+  await app.register(moderationRoutes);
+
+  return app;
+}
