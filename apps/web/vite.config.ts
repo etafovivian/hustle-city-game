@@ -7,6 +7,6 @@ export default defineConfig({
   server: {
     port: 5190,
     strictPort: true,
-    proxy: { "/api": `http://127.0.0.1:${process.env.API_PORT ?? 4190}` },
+    proxy: { "/api": `http://127.0.0.1:${process.env.API_PORT ?? 4180}` },
   },
 });

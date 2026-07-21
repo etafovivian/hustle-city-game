@@ -34,7 +34,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Web: http://localhost:5190 · API: http://localhost:4190 (proxied under `/api`).
+Web: http://localhost:5190 · API: http://localhost:4180 (proxied under `/api`).
 
 Postgres listens on `localhost:5433`, Redis on `6380` and MinIO on `9000` (console on `9001`). All are bound to 127.0.0.1.
 

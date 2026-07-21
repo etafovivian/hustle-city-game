@@ -7,3 +7,11 @@ dist/
 .DS_Store
 coverage/
 .vite/
+
+# Impeccable binary is downloaded by its launcher on first run
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
+
+# Impeccable review captures (regenerated per review round)
+apps/web/.impeccable/review/
+.impeccable/questions/

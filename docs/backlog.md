@@ -1,6 +1,6 @@
 # Build backlog
 
-Rows follow the PRD's "Backlog validation and build sequence". Implement one row at a time; review money flows,
+Rows follow the PRD's "Backlog validation and build sequence", with Stage B split into B1/B2 (decided 2026-10-11). Implement one row at a time; review money flows,
 access control and deployment changes before merging.
 
 | # | Deliverable | Status | Notes |
@@ -8,9 +8,10 @@ access control and deployment changes before merging.
 | 1 | Repository and platform foundation | **Done (initial)** | pnpm monorepo, Compose (Postgres/Redis/MinIO), Drizzle migrations, seed, sessions, roles, audit log, release switches, CI |
 | 2 | Playable city slice (Stage A) | **In progress** | Map, avatar, three hotspots, sim shop, NPC demand + customer orders, daily + intro quests, weekly standings, mock catalogue |
 | 3 | Merchant space engine | Not started | 3 free templates, 2 premium previews, catalogue upload, owner dashboard, moderation, **admin MFA** |
-| 4 | Commerce and work journeys | Not started | Suggest B1 = artisan quotes first; then pickup reservations, jobs/submissions/reviews |
-| 5 | Social features | Not started | Friend requests, block/remove, clubs (one per player), weekly club standings |
-| 6 | Homelab beta operations | Not started | Dockerfiles, versioned images, Dell VM, restricted access (Tailscale / tunnel), off-host encrypted backups, restore drill |
+| 4a | **B1** — artisan quote journey | Not started | Search by category + service area → request (description + optional photo) → itemised, versioned quote → accept → schedule → completion → review. Business onboarding + admin review for artisans. No live payment. |
+| 4b | **B2** — retail, work and social | Not started | Pickup reservations (merchant confirm/expiry), jobs/applications/versioned submissions/reviews, plus row 5 social features |
+| 5 | Social features (ships with B2) | Not started | Friend requests, block/remove, clubs (one per player), weekly club standings |
+| 6 | **VPS** beta operations | Not started | Decided 2026-10-11: private beta runs on the VPS (cloud/prod), not the Dell homelab. Dockerfiles, versioned images, Compose on VPS, TLS via reverse proxy on the blackfortzcapital-style domain setup, invite-only access, Postgres/MinIO ports never public, off-host encrypted backups, restore drill. Homelab stays dev/staging. |
 | 7 | Payment sandbox and ledger | Not started | Paystack adapter (candidate), NGN double-entry ledger, webhooks, payouts, required money tests |
 | 8 | Live money pilot | Blocked | Needs partner approval, legal review, entity, verified-adult flow |
 | 9 | Multiplayer and 3D | Not started | Three.js client, rooms, server-validated movement |

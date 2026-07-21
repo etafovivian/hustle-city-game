@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const schema = z.object({
   DATABASE_URL: z.string().min(1),
-  API_PORT: z.coerce.number().int().default(4190),
+  API_PORT: z.coerce.number().int().default(4180),
   API_HOST: z.string().default("127.0.0.1"),
   WEB_ORIGIN: z.string().default("http://localhost:5190"),
   COOKIE_SECURE: z

@@ -46,11 +46,11 @@ function Hair({ style }: { style: string }) {
   }
 }
 
-export function Avatar({ avatar, size = 40 }: { avatar: AvatarConfig; size?: number }) {
+export function Avatar({ avatar, size = 40, className }: { avatar: AvatarConfig; size?: number; className?: string }) {
   const outfit = OUTFIT_COLORS[avatar.outfit] ?? OUTFIT_COLORS.ankara_green!;
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Avatar">
-      <circle cx="50" cy="50" r="50" fill="var(--surface-2)" />
+    <svg className={className} width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Your avatar">
+      <circle cx="50" cy="50" r="50" fill="var(--sheet-2)" />
       <path d="M18 100c2-20 15-32 32-32s30 12 32 32z" fill={outfit.base} />
       <path d="M42 70l8 10 8-10" fill="none" stroke={outfit.trim} strokeWidth="3" />
       <rect x="44" y="56" width="12" height="12" rx="4" fill={avatar.skinTone} />
@@ -70,7 +70,7 @@ export function AvatarPicker({ value, onChange }: { value: AvatarConfig; onChang
     <div className="avatar-picker">
       <div className="row">
         <Avatar avatar={value} size={84} />
-        <p className="muted small">Pick a look. You can change it later.</p>
+        <p className="muted small">Pick a look. You can change it any time.</p>
       </div>
       <div>
         <div className="small muted">Skin tone</div>

@@ -9,6 +9,12 @@ Review of `docs/Hustle-City-PRD.pdf` (v1.0, 11 Oct 2026). Notes are input for v1
 - **Release switches** for checkout, withdrawals, sponsored rewards, multiplayer and trading, so City Coins keep working while cash is paused.
 - **Explicit exclusions:** no coin cash-out, crypto, land speculation, wagering or P2P cash.
 
+## Decisions taken (2026-10-11)
+
+- **Private beta hosting: the VPS**, not the Dell homelab. The homelab remains dev/staging. A public HTTPS endpoint on the VPS also gives Paystack sandbox webhooks a reachable URL, with no tunnel needed.
+- **Stage B is split.** B1 is the artisan quote journey, with business onboarding and admin review. B2 is retail pickup reservations, jobs and submissions, and social features.
+- **UI** is designed through the Impeccable skill (`.claude/skills/impeccable`). Product truth is in `PRODUCT.md`.
+
 ## Concerns
 
 1. **Stage B is too large for a part-time solo build.** It bundles spaces, premium previews, catalogues, search, reservations, quotes, jobs, reviews, friends, clubs, leaderboards and admin into 4–6 weeks. Proposal: split it.

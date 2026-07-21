@@ -1,0 +1,982 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T15:10:30+00:00",
+  "title": "Design System: Naija Hustle City",
+  "extensions": {
+    "colorMeta": {
+      "indigo": {
+        "role": "primary",
+        "displayName": "Indigo Dye",
+        "canonical": "#1f2a6b",
+        "purpose": "Shell bar, primary buttons, selected tabs/chips, timed-state fill, toast, welcome plate. Constant across modes.",
+        "tonalRamp": [
+          "oklch(15% 0.068 271.2)",
+          "oklch(26% 0.096 271.2)",
+          "oklch(37% 0.113 271.2)",
+          "oklch(48% 0.113 271.2)",
+          "oklch(60% 0.113 271.2)",
+          "oklch(71% 0.096 271.2)",
+          "oklch(83% 0.062 271.2)",
+          "oklch(95% 0.028 271.2)"
+        ]
+      },
+      "indigo-deep": {
+        "role": "primary",
+        "displayName": "Deep Indigo",
+        "canonical": "#141c4d",
+        "purpose": "Selvedge strip, map name plates and junction sign.",
+        "tonalRamp": [
+          "oklch(15% 0.054 271.4)",
+          "oklch(26% 0.077 271.4)",
+          "oklch(37% 0.090 271.4)",
+          "oklch(48% 0.090 271.4)",
+          "oklch(60% 0.090 271.4)",
+          "oklch(71% 0.077 271.4)",
+          "oklch(83% 0.050 271.4)",
+          "oklch(95% 0.023 271.4)"
+        ]
+      },
+      "indigo-ink": {
+        "role": "primary",
+        "displayName": "Indigo Ink",
+        "canonical": "#e9ecfb",
+        "purpose": "Text and icons on the indigo shell.",
+        "tonalRamp": [
+          "oklch(15% 0.012 277.0)",
+          "oklch(26% 0.017 277.0)",
+          "oklch(37% 0.020 277.0)",
+          "oklch(48% 0.020 277.0)",
+          "oklch(60% 0.020 277.0)",
+          "oklch(71% 0.017 277.0)",
+          "oklch(83% 0.011 277.0)",
+          "oklch(95% 0.005 277.0)"
+        ]
+      },
+      "cadmium-yellow": {
+        "role": "secondary",
+        "displayName": "Cadmium Yellow",
+        "canonical": "#f2b705",
+        "purpose": "Coin balance, go buttons, selvedge lettering, demo tag, current stage, focus ring, selection; night accent.",
+        "tonalRamp": [
+          "oklch(15% 0.099 85.0)",
+          "oklch(26% 0.141 85.0)",
+          "oklch(37% 0.166 85.0)",
+          "oklch(48% 0.166 85.0)",
+          "oklch(60% 0.166 85.0)",
+          "oklch(71% 0.141 85.0)",
+          "oklch(83% 0.091 85.0)",
+          "oklch(95% 0.041 85.0)"
+        ]
+      },
+      "yellow-ink": {
+        "role": "secondary",
+        "displayName": "Yellow Ink",
+        "canonical": "#2a1f00",
+        "purpose": "Text on cadmium yellow.",
+        "tonalRamp": [
+          "oklch(15% 0.030 89.5)",
+          "oklch(26% 0.043 89.5)",
+          "oklch(37% 0.050 89.5)",
+          "oklch(48% 0.050 89.5)",
+          "oklch(60% 0.050 89.5)",
+          "oklch(71% 0.043 89.5)",
+          "oklch(83% 0.028 89.5)",
+          "oklch(95% 0.013 89.5)"
+        ]
+      },
+      "madder-red": {
+        "role": "tertiary",
+        "displayName": "Madder Red",
+        "canonical": "#c8321e",
+        "purpose": "Inside prints and map stalls; text caret. Not an error colour.",
+        "tonalRamp": [
+          "oklch(15% 0.114 31.0)",
+          "oklch(26% 0.161 31.0)",
+          "oklch(37% 0.190 31.0)",
+          "oklch(48% 0.190 31.0)",
+          "oklch(60% 0.190 31.0)",
+          "oklch(71% 0.161 31.0)",
+          "oklch(83% 0.104 31.0)",
+          "oklch(95% 0.047 31.0)"
+        ]
+      },
+      "leaf-green": {
+        "role": "tertiary",
+        "displayName": "Leaf Green",
+        "canonical": "#1e7a46",
+        "purpose": "Quest progress fill, completed stages, palms. Not a success colour.",
+        "tonalRamp": [
+          "oklch(15% 0.070 153.6)",
+          "oklch(26% 0.100 153.6)",
+          "oklch(37% 0.117 153.6)",
+          "oklch(48% 0.117 153.6)",
+          "oklch(60% 0.117 153.6)",
+          "oklch(71% 0.100 153.6)",
+          "oklch(83% 0.065 153.6)",
+          "oklch(95% 0.029 153.6)"
+        ]
+      },
+      "cotton": {
+        "role": "tertiary",
+        "displayName": "Cotton",
+        "canonical": "#f7f4ea",
+        "purpose": "Undyed cloth in prints and map stalls.",
+        "tonalRamp": [
+          "oklch(15% 0.008 93.0)",
+          "oklch(26% 0.012 93.0)",
+          "oklch(37% 0.014 93.0)",
+          "oklch(48% 0.014 93.0)",
+          "oklch(60% 0.014 93.0)",
+          "oklch(71% 0.012 93.0)",
+          "oklch(83% 0.007 93.0)",
+          "oklch(95% 0.003 93.0)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Indigo-White Ground",
+        "canonical": "#f2f3f9",
+        "purpose": "Page background; resting quest plate.",
+        "tonalRamp": [
+          "oklch(15% 0.005 278.6)",
+          "oklch(26% 0.007 278.6)",
+          "oklch(37% 0.008 278.6)",
+          "oklch(48% 0.008 278.6)",
+          "oklch(60% 0.008 278.6)",
+          "oklch(71% 0.007 278.6)",
+          "oklch(83% 0.004 278.6)",
+          "oklch(95% 0.002 278.6)"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "canonical": "#ffffff",
+        "purpose": "Control surfaces and plates.",
+        "tonalRamp": [
+          "oklch(15% 0.000 89.9)",
+          "oklch(26% 0.000 89.9)",
+          "oklch(37% 0.000 89.9)",
+          "oklch(48% 0.000 89.9)",
+          "oklch(60% 0.000 89.9)",
+          "oklch(71% 0.000 89.9)",
+          "oklch(83% 0.000 89.9)",
+          "oklch(95% 0.000 89.9)"
+        ]
+      },
+      "sheet-2": {
+        "role": "neutral",
+        "displayName": "Sheet Two",
+        "canonical": "#e8eaf4",
+        "purpose": "Hover, disabled, bar tracks, takings band.",
+        "tonalRamp": [
+          "oklch(15% 0.008 277.1)",
+          "oklch(26% 0.012 277.1)",
+          "oklch(37% 0.014 277.1)",
+          "oklch(48% 0.014 277.1)",
+          "oklch(60% 0.014 277.1)",
+          "oklch(71% 0.012 277.1)",
+          "oklch(83% 0.007 277.1)",
+          "oklch(95% 0.003 277.1)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink Text",
+        "canonical": "#141833",
+        "purpose": "Body text.",
+        "tonalRamp": [
+          "oklch(15% 0.032 274.9)",
+          "oklch(26% 0.045 274.9)",
+          "oklch(37% 0.053 274.9)",
+          "oklch(48% 0.053 274.9)",
+          "oklch(60% 0.053 274.9)",
+          "oklch(71% 0.045 274.9)",
+          "oklch(83% 0.029 274.9)",
+          "oklch(95% 0.013 274.9)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#4c5275",
+        "purpose": "Secondary text, captions, column heads.",
+        "tonalRamp": [
+          "oklch(15% 0.035 276.3)",
+          "oklch(26% 0.049 276.3)",
+          "oklch(37% 0.058 276.3)",
+          "oklch(48% 0.058 276.3)",
+          "oklch(60% 0.058 276.3)",
+          "oklch(71% 0.049 276.3)",
+          "oklch(83% 0.032 276.3)",
+          "oklch(95% 0.014 276.3)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d3d7ea",
+        "purpose": "Row dividers.",
+        "tonalRamp": [
+          "oklch(15% 0.016 276.4)",
+          "oklch(26% 0.022 276.4)",
+          "oklch(37% 0.026 276.4)",
+          "oklch(48% 0.026 276.4)",
+          "oklch(60% 0.026 276.4)",
+          "oklch(71% 0.022 276.4)",
+          "oklch(83% 0.015 276.4)",
+          "oklch(95% 0.007 276.4)"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#b4bad6",
+        "purpose": "Section top rules, control borders.",
+        "tonalRamp": [
+          "oklch(15% 0.024 275.9)",
+          "oklch(26% 0.034 275.9)",
+          "oklch(37% 0.040 275.9)",
+          "oklch(48% 0.040 275.9)",
+          "oklch(60% 0.040 275.9)",
+          "oklch(71% 0.034 275.9)",
+          "oklch(83% 0.022 275.9)",
+          "oklch(95% 0.010 275.9)"
+        ]
+      },
+      "ok": {
+        "role": "neutral",
+        "displayName": "Status OK",
+        "canonical": "#17663a",
+        "purpose": "Success notices and claimed state.",
+        "tonalRamp": [
+          "oklch(15% 0.062 153.8)",
+          "oklch(26% 0.088 153.8)",
+          "oklch(37% 0.103 153.8)",
+          "oklch(48% 0.103 153.8)",
+          "oklch(60% 0.103 153.8)",
+          "oklch(71% 0.088 153.8)",
+          "oklch(83% 0.057 153.8)",
+          "oklch(95% 0.026 153.8)"
+        ]
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "Status Danger",
+        "canonical": "#b0281a",
+        "purpose": "Errors, zero stock, negative margin.",
+        "tonalRamp": [
+          "oklch(15% 0.105 30.2)",
+          "oklch(26% 0.148 30.2)",
+          "oklch(37% 0.174 30.2)",
+          "oklch(48% 0.174 30.2)",
+          "oklch(60% 0.174 30.2)",
+          "oklch(71% 0.148 30.2)",
+          "oklch(83% 0.096 30.2)",
+          "oklch(95% 0.044 30.2)"
+        ]
+      },
+      "coin": {
+        "role": "neutral",
+        "displayName": "Coin Ochre",
+        "canonical": "#8a6400",
+        "purpose": "Reward amounts on light ground.",
+        "tonalRamp": [
+          "oklch(15% 0.065 82.4)",
+          "oklch(26% 0.092 82.4)",
+          "oklch(37% 0.109 82.4)",
+          "oklch(48% 0.109 82.4)",
+          "oklch(60% 0.109 82.4)",
+          "oklch(71% 0.092 82.4)",
+          "oklch(83% 0.060 82.4)",
+          "oklch(95% 0.027 82.4)"
+        ]
+      },
+      "map-ground": {
+        "role": "neutral",
+        "displayName": "Laterite",
+        "canonical": "#e6e2d3",
+        "purpose": "Map ground.",
+        "tonalRamp": [
+          "oklch(15% 0.012 94.5)",
+          "oklch(26% 0.017 94.5)",
+          "oklch(37% 0.021 94.5)",
+          "oklch(48% 0.021 94.5)",
+          "oklch(60% 0.021 94.5)",
+          "oklch(71% 0.017 94.5)",
+          "oklch(83% 0.011 94.5)",
+          "oklch(95% 0.005 94.5)"
+        ]
+      },
+      "map-road": {
+        "role": "neutral",
+        "displayName": "Road",
+        "canonical": "#b9b4a3",
+        "purpose": "Map roads.",
+        "tonalRamp": [
+          "oklch(15% 0.015 93.4)",
+          "oklch(26% 0.021 93.4)",
+          "oklch(37% 0.024 93.4)",
+          "oklch(48% 0.024 93.4)",
+          "oklch(60% 0.024 93.4)",
+          "oklch(71% 0.021 93.4)",
+          "oklch(83% 0.013 93.4)",
+          "oklch(95% 0.006 93.4)"
+        ]
+      },
+      "map-lane": {
+        "role": "neutral",
+        "displayName": "Lane Cotton",
+        "canonical": "#f7f4ea",
+        "purpose": "Map lane dashes and roundabout ring.",
+        "tonalRamp": [
+          "oklch(15% 0.008 93.0)",
+          "oklch(26% 0.012 93.0)",
+          "oklch(37% 0.014 93.0)",
+          "oklch(48% 0.014 93.0)",
+          "oklch(60% 0.014 93.0)",
+          "oklch(71% 0.012 93.0)",
+          "oklch(83% 0.007 93.0)",
+          "oklch(95% 0.003 93.0)"
+        ]
+      },
+      "map-grass": {
+        "role": "neutral",
+        "displayName": "Grass",
+        "canonical": "#a9c98f",
+        "purpose": "Map grass patches.",
+        "tonalRamp": [
+          "oklch(15% 0.052 131.6)",
+          "oklch(26% 0.073 131.6)",
+          "oklch(37% 0.086 131.6)",
+          "oklch(48% 0.086 131.6)",
+          "oklch(60% 0.086 131.6)",
+          "oklch(71% 0.073 131.6)",
+          "oklch(83% 0.047 131.6)",
+          "oklch(95% 0.022 131.6)"
+        ]
+      },
+      "night-ground": {
+        "role": "neutral",
+        "displayName": "Night Indigo-White Ground",
+        "canonical": "#0d1233",
+        "purpose": "Night-mode value of --ground.",
+        "tonalRamp": [
+          "oklch(15% 0.039 272.6)",
+          "oklch(26% 0.055 272.6)",
+          "oklch(37% 0.065 272.6)",
+          "oklch(48% 0.065 272.6)",
+          "oklch(60% 0.065 272.6)",
+          "oklch(71% 0.055 272.6)",
+          "oklch(83% 0.036 272.6)",
+          "oklch(95% 0.016 272.6)"
+        ]
+      },
+      "night-sheet": {
+        "role": "neutral",
+        "displayName": "Night Sheet",
+        "canonical": "#151b45",
+        "purpose": "Night-mode value of --sheet.",
+        "tonalRamp": [
+          "oklch(15% 0.047 273.0)",
+          "oklch(26% 0.067 273.0)",
+          "oklch(37% 0.079 273.0)",
+          "oklch(48% 0.079 273.0)",
+          "oklch(60% 0.079 273.0)",
+          "oklch(71% 0.067 273.0)",
+          "oklch(83% 0.043 273.0)",
+          "oklch(95% 0.020 273.0)"
+        ]
+      },
+      "night-sheet-2": {
+        "role": "neutral",
+        "displayName": "Night Sheet Two",
+        "canonical": "#1d2456",
+        "purpose": "Night-mode value of --sheet-2.",
+        "tonalRamp": [
+          "oklch(15% 0.054 273.3)",
+          "oklch(26% 0.077 273.3)",
+          "oklch(37% 0.090 273.3)",
+          "oklch(48% 0.090 273.3)",
+          "oklch(60% 0.090 273.3)",
+          "oklch(71% 0.077 273.3)",
+          "oklch(83% 0.050 273.3)",
+          "oklch(95% 0.023 273.3)"
+        ]
+      },
+      "night-text": {
+        "role": "neutral",
+        "displayName": "Night Ink Text",
+        "canonical": "#eef0fb",
+        "purpose": "Night-mode value of --text.",
+        "tonalRamp": [
+          "oklch(15% 0.009 277.9)",
+          "oklch(26% 0.013 277.9)",
+          "oklch(37% 0.015 277.9)",
+          "oklch(48% 0.015 277.9)",
+          "oklch(60% 0.015 277.9)",
+          "oklch(71% 0.013 277.9)",
+          "oklch(83% 0.008 277.9)",
+          "oklch(95% 0.004 277.9)"
+        ]
+      },
+      "night-muted": {
+        "role": "neutral",
+        "displayName": "Night Muted Ink",
+        "canonical": "#aab0d6",
+        "purpose": "Night-mode value of --muted.",
+        "tonalRamp": [
+          "oklch(15% 0.033 278.0)",
+          "oklch(26% 0.047 278.0)",
+          "oklch(37% 0.055 278.0)",
+          "oklch(48% 0.055 278.0)",
+          "oklch(60% 0.055 278.0)",
+          "oklch(71% 0.047 278.0)",
+          "oklch(83% 0.030 278.0)",
+          "oklch(95% 0.014 278.0)"
+        ]
+      },
+      "night-rule": {
+        "role": "neutral",
+        "displayName": "Night Hairline",
+        "canonical": "#2a3268",
+        "purpose": "Night-mode value of --rule.",
+        "tonalRamp": [
+          "oklch(15% 0.056 274.0)",
+          "oklch(26% 0.080 274.0)",
+          "oklch(37% 0.094 274.0)",
+          "oklch(48% 0.094 274.0)",
+          "oklch(60% 0.094 274.0)",
+          "oklch(71% 0.080 274.0)",
+          "oklch(83% 0.052 274.0)",
+          "oklch(95% 0.024 274.0)"
+        ]
+      },
+      "night-rule-strong": {
+        "role": "neutral",
+        "displayName": "Night Strong Hairline",
+        "canonical": "#3b447e",
+        "purpose": "Night-mode value of --rule-strong.",
+        "tonalRamp": [
+          "oklch(15% 0.058 274.6)",
+          "oklch(26% 0.083 274.6)",
+          "oklch(37% 0.097 274.6)",
+          "oklch(48% 0.097 274.6)",
+          "oklch(60% 0.097 274.6)",
+          "oklch(71% 0.083 274.6)",
+          "oklch(83% 0.053 274.6)",
+          "oklch(95% 0.024 274.6)"
+        ]
+      },
+      "night-accent-ink": {
+        "role": "neutral",
+        "displayName": "Night Accent Ink",
+        "canonical": "#1b1400",
+        "purpose": "Night-mode value of --accent-ink.",
+        "tonalRamp": [
+          "oklch(15% 0.024 92.7)",
+          "oklch(26% 0.034 92.7)",
+          "oklch(37% 0.040 92.7)",
+          "oklch(48% 0.040 92.7)",
+          "oklch(60% 0.040 92.7)",
+          "oklch(71% 0.034 92.7)",
+          "oklch(83% 0.022 92.7)",
+          "oklch(95% 0.010 92.7)"
+        ]
+      },
+      "night-ok": {
+        "role": "neutral",
+        "displayName": "Night Status OK",
+        "canonical": "#6fd69a",
+        "purpose": "Night-mode value of --ok.",
+        "tonalRamp": [
+          "oklch(15% 0.078 156.3)",
+          "oklch(26% 0.111 156.3)",
+          "oklch(37% 0.130 156.3)",
+          "oklch(48% 0.130 156.3)",
+          "oklch(60% 0.130 156.3)",
+          "oklch(71% 0.111 156.3)",
+          "oklch(83% 0.072 156.3)",
+          "oklch(95% 0.033 156.3)"
+        ]
+      },
+      "night-danger": {
+        "role": "neutral",
+        "displayName": "Night Status Danger",
+        "canonical": "#ff8f80",
+        "purpose": "Night-mode value of --danger.",
+        "tonalRamp": [
+          "oklch(15% 0.083 28.7)",
+          "oklch(26% 0.117 28.7)",
+          "oklch(37% 0.138 28.7)",
+          "oklch(48% 0.138 28.7)",
+          "oklch(60% 0.138 28.7)",
+          "oklch(71% 0.117 28.7)",
+          "oklch(83% 0.076 28.7)",
+          "oklch(95% 0.035 28.7)"
+        ]
+      },
+      "night-coin": {
+        "role": "neutral",
+        "displayName": "Night Coin Ochre",
+        "canonical": "#f2c443",
+        "purpose": "Night-mode value of --coin.",
+        "tonalRamp": [
+          "oklch(15% 0.090 88.5)",
+          "oklch(26% 0.127 88.5)",
+          "oklch(37% 0.149 88.5)",
+          "oklch(48% 0.149 88.5)",
+          "oklch(60% 0.149 88.5)",
+          "oklch(71% 0.127 88.5)",
+          "oklch(83% 0.082 88.5)",
+          "oklch(95% 0.037 88.5)"
+        ]
+      },
+      "night-map-ground": {
+        "role": "neutral",
+        "displayName": "Night Laterite",
+        "canonical": "#1b2150",
+        "purpose": "Night-mode value of --map-ground.",
+        "tonalRamp": [
+          "oklch(15% 0.051 273.8)",
+          "oklch(26% 0.073 273.8)",
+          "oklch(37% 0.086 273.8)",
+          "oklch(48% 0.086 273.8)",
+          "oklch(60% 0.086 273.8)",
+          "oklch(71% 0.073 273.8)",
+          "oklch(83% 0.047 273.8)",
+          "oklch(95% 0.021 273.8)"
+        ]
+      },
+      "night-map-road": {
+        "role": "neutral",
+        "displayName": "Night Road",
+        "canonical": "#2c3470",
+        "purpose": "Night-mode value of --map-road.",
+        "tonalRamp": [
+          "oklch(15% 0.062 274.2)",
+          "oklch(26% 0.088 274.2)",
+          "oklch(37% 0.103 274.2)",
+          "oklch(48% 0.103 274.2)",
+          "oklch(60% 0.103 274.2)",
+          "oklch(71% 0.088 274.2)",
+          "oklch(83% 0.057 274.2)",
+          "oklch(95% 0.026 274.2)"
+        ]
+      },
+      "night-map-lane": {
+        "role": "neutral",
+        "displayName": "Night Lane Cotton",
+        "canonical": "#4a5394",
+        "purpose": "Night-mode value of --map-lane.",
+        "tonalRamp": [
+          "oklch(15% 0.063 275.6)",
+          "oklch(26% 0.090 275.6)",
+          "oklch(37% 0.105 275.6)",
+          "oklch(48% 0.105 275.6)",
+          "oklch(60% 0.105 275.6)",
+          "oklch(71% 0.090 275.6)",
+          "oklch(83% 0.058 275.6)",
+          "oklch(95% 0.026 275.6)"
+        ]
+      },
+      "night-map-grass": {
+        "role": "neutral",
+        "displayName": "Night Grass",
+        "canonical": "#24493a",
+        "purpose": "Night-mode value of --map-grass.",
+        "tonalRamp": [
+          "oklch(15% 0.030 165.5)",
+          "oklch(26% 0.043 165.5)",
+          "oklch(37% 0.050 165.5)",
+          "oklch(48% 0.050 165.5)",
+          "oklch(60% 0.050 165.5)",
+          "oklch(71% 0.043 165.5)",
+          "oklch(83% 0.028 165.5)",
+          "oklch(95% 0.013 165.5)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Welcome plate name only; uppercase."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles."
+      },
+      "place-title": {
+        "displayName": "Place Title",
+        "purpose": "Place name on the place plate."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings."
+      },
+      "section-title": {
+        "displayName": "Section Title",
+        "purpose": "Side-column and list headings; bolt titles at 16px."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Money amounts that are the point of a section."
+      },
+      "lockup": {
+        "displayName": "Lockup",
+        "purpose": "Shell-bar name; uppercase; 17px under 560px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running copy, tabular numerals on."
+      },
+      "body-small": {
+        "displayName": "Small",
+        "purpose": "Hints, metadata."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Buttons, tabs, field labels."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column heads, tags, stage names; uppercase."
+      },
+      "selvedge": {
+        "displayName": "Selvedge",
+        "purpose": "The selvedge strip only; uppercase."
+      }
+    },
+    "fontVariation": {
+      "axis": "wdth",
+      "source": "@fontsource-variable/archivo/wdth.css",
+      "uses": [
+        {
+          "role": "display",
+          "value": "70%"
+        },
+        {
+          "role": "lockup",
+          "value": "75%"
+        },
+        {
+          "role": "figure / map name plates",
+          "value": "85%"
+        },
+        {
+          "role": "headline / title / place-title",
+          "value": "88%"
+        },
+        {
+          "role": "order line",
+          "value": "90%"
+        },
+        {
+          "role": "body",
+          "value": "100%"
+        }
+      ]
+    },
+    "shadows": [
+      {
+        "name": "cloth-lift",
+        "value": "0 1px 2px rgb(20 24 51 / 8%), 0 8px 24px -8px rgb(20 24 51 / 18%)",
+        "night": "0 1px 2px rgb(0 0 0 / 40%), 0 10px 28px -10px rgb(0 0 0 / 60%)",
+        "purpose": "Map frame, place-header frame, place plate, ready quest plate."
+      },
+      {
+        "name": "plate-over-cloth",
+        "value": "0 20px 40px -20px rgb(20 28 77 / 70%)",
+        "purpose": "Welcome plate."
+      },
+      {
+        "name": "toast",
+        "value": "0 16px 32px -12px rgb(20 28 77 / 60%)",
+        "purpose": "Toast."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All arrivals and lifts."
+      },
+      {
+        "name": "press",
+        "value": "transform 0.15s ease-out; translateY(1px)",
+        "purpose": "Button press."
+      },
+      {
+        "name": "building-lift",
+        "value": "transform 0.25s ease-out; translateY(-4px)",
+        "purpose": "Map hotspot hover/focus."
+      },
+      {
+        "name": "quest-progress",
+        "value": "transform 0.5s ease-out",
+        "purpose": "Bolt progress bar."
+      },
+      {
+        "name": "cloth-unroll",
+        "value": "clip-path 0.9s ease-out",
+        "purpose": "Quest bolt cloth when claimable."
+      },
+      {
+        "name": "toast-in",
+        "value": "0.4s ease-out, translateY(12px) + fade",
+        "purpose": "Toast arrival."
+      },
+      {
+        "name": "timebar",
+        "value": "transform 1s linear",
+        "purpose": "Timed-state bars track the clock."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all transitions/animations 0.01ms",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm-max",
+        "value": "559px",
+        "purpose": "Selvedge wraps, secondary shell items hide, map plates scale 1.5x."
+      },
+      {
+        "name": "two-column",
+        "value": "900px",
+        "purpose": "Main + 340px sticky quest column; welcome splits."
+      }
+    ],
+    "focus": {
+      "value": "outline: 3px solid var(--focus); outline-offset: 2px",
+      "inputs": "outline-offset: 0",
+      "mapHotspot": "4px yellow ring stroke"
+    },
+    "prints": [
+      {
+        "key": "market",
+        "name": "Market Square — record circles",
+        "ground": "cadmium-yellow",
+        "inks": [
+          "indigo",
+          "madder-red"
+        ],
+        "tile": "48px",
+        "usedOn": [
+          "Market Square place header (48px)",
+          "map umbrellas and roundabout (SVG pattern, 0.6 scale)",
+          "welcome cloth (64px)",
+          "lockup swatch (28px)",
+          "default and First-steps quest bolts (32px)"
+        ]
+      },
+      {
+        "key": "work",
+        "name": "Work Hub — ladder-brick",
+        "ground": "indigo",
+        "inks": [
+          "leaf-green",
+          "cadmium-yellow"
+        ],
+        "tile": "48px",
+        "usedOn": [
+          "Work Hub place header",
+          "Work Hub fascia on map",
+          "tour quest bolt"
+        ]
+      },
+      {
+        "key": "hangout",
+        "name": "The Hangout — fan-and-dot",
+        "ground": "madder-red",
+        "inks": [
+          "cadmium-yellow",
+          "indigo"
+        ],
+        "tile": "48px",
+        "usedOn": [
+          "Hangout place header",
+          "Hangout canopy on map",
+          "standings quest bolt"
+        ]
+      }
+    ],
+    "darkMode": {
+      "trigger": "@media (prefers-color-scheme: dark) on :root:not([data-theme=light])",
+      "accentFlip": "accent indigo -> cadmium-yellow; accent-ink -> night-accent-ink",
+      "constant": [
+        "shell indigo",
+        "selvedge",
+        "prints",
+        "map buildings and plates"
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default action: sheet with strong hairline, 44px, 650 weight.",
+      "html": "<button class=\"ds-btn\">Find a business</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Committing actions (Sign in, Collect, Buy). Indigo by day, yellow at night.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Collect</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-primary{background:var(--accent,#1f2a6b);border-color:var(--accent,#1f2a6b);color:var(--accent-ink,#fff)}.ds-btn-primary:hover{background:var(--accent,#1f2a6b);filter:brightness(1.12)}"
+    },
+    {
+      "name": "Go Button",
+      "kind": "button",
+      "refersTo": "button-go",
+      "description": "The action that earns coins or leaves for real merchants: Serve, Claim (when ready), Browse merchants.",
+      "html": "<button class=\"ds-btn ds-btn-go\">Serve for 450</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-go{background:#f2b705;border-color:#f2b705;color:#2a1f00}.ds-btn-go:hover{background:#f2b705;filter:brightness(1.05)}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, 44px input with strong hairline, flush yellow focus, muted hint.",
+      "html": "<label class=\"ds-field\">Nickname<input class=\"ds-input\" value=\"Tunde_01\"><span class=\"ds-hint\">This is how other players see you.</span></label>",
+      "css": ".ds-field{display:grid;gap:6px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-weight:650;font-size:14px;color:var(--text,#141833)}.ds-input{font:inherit;font-weight:400;font-size:16px;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:inherit}.ds-input:focus-visible{outline:3px solid #f2b705;outline-offset:0}.ds-hint{font-weight:400;font-size:13px;color:var(--muted,#4c5275)}"
+    },
+    {
+      "name": "Shell Bar",
+      "kind": "nav",
+      "refersTo": "shellbar",
+      "description": "Sticky indigo shell: print-swatch lockup, yellow coin pill, sign-out pill.",
+      "html": "<header class=\"ds-shell\"><span class=\"ds-lockup\"><span class=\"ds-swatch\"></span><span class=\"ds-name\">Naija <span>Hustle City</span></span></span><span class=\"ds-balance\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M18.09 10.37A6 6 0 1 1 10.34 18\"/></svg>2,000 <small>City Coins</small></span><button class=\"ds-shell-btn\">Sign out</button></header>",
+      "css": ".ds-shell{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1f2a6b;color:#e9ecfb;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif}.ds-lockup{display:flex;align-items:center;gap:10px;flex:1}.ds-swatch{width:28px;height:28px;border-radius:6px;background-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2248%22%20height%3D%2248%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%23f2b705%22/%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%231f2a6b%22%20stroke-width%3D%223%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%229%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%224.5%22/%3E%3C/g%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.8%22%20fill%3D%22%23c8321e%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%221.8%22%20fill%3D%22%23c8321e%22/%3E%3Cpath%20d%3D%22M30%206l6%206-6%206-6-6zM6%2030l6%206-6%206-6-6zM54%2030l-6%206%206%206z%22%20fill%3D%22%23c8321e%22/%3E%3C/svg%3E\");background-size:28px 28px;box-shadow:inset 0 0 0 2px rgb(255 255 255/25%)}.ds-name{font-weight:850;font-stretch:75%;font-size:20px;letter-spacing:.01em;text-transform:uppercase}.ds-name span{color:#f2b705}.ds-balance{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#f2b705;color:#2a1f00;font-weight:750;font-variant-numeric:tabular-nums}.ds-balance small{font-weight:500;font-size:13px}.ds-shell-btn{font:inherit;background:transparent;color:#e9ecfb;border:1px solid rgb(233 236 251/30%);border-radius:999px;padding:6px 10px;min-height:36px;cursor:pointer}.ds-shell-btn:hover{background:rgb(255 255 255/10%)}.ds-shell-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "segmented",
+      "description": "Pill track with accent selected tab; Market Square and auth.",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">My shop</button><button role=\"tab\" aria-selected=\"false\">Real businesses</button></div>",
+      "css": ".ds-seg{display:inline-grid;grid-auto-flow:column;gap:4px;padding:4px;border-radius:999px;background:var(--sheet-2,#e8eaf4);font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif}.ds-seg button{font:inherit;font-weight:650;border:0;background:transparent;border-radius:999px;padding:8px 16px;min-height:40px;color:var(--muted,#4c5275);cursor:pointer}.ds-seg button[aria-selected=true]{background:var(--accent,#1f2a6b);color:var(--accent-ink,#fff);box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%)}.ds-seg button:focus-visible{outline:3px solid #f2b705;outline-offset:2px}"
+    },
+    {
+      "name": "Tags",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Near-square uppercase labels; yellow marks demo listings.",
+      "html": "<span class=\"ds-tag\">Food</span> <span class=\"ds-tag ds-tag-demo\">Demo listing</span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--sheet-2,#e8eaf4);color:var(--muted,#4c5275)}.ds-tag-demo{background:#f2b705;color:#2a1f00}"
+    },
+    {
+      "name": "Selvedge",
+      "kind": "custom",
+      "refersTo": "selvedge",
+      "description": "The printed edge of the cloth: one rule per surface, repeats decorative.",
+      "html": "<div class=\"ds-selvedge\"><span>City Coins are game money — no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money — no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money — no cash value</span></div>",
+      "css": ".ds-selvedge{display:flex;gap:28px;overflow:hidden;white-space:nowrap;padding:5px 16px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#141c4d;color:#f2b705}.ds-selvedge span{flex:none}.ds-selvedge i{display:inline-block;width:6px;height:6px;background:currentColor;transform:rotate(45deg) translateY(-2px);margin-right:22px;opacity:.7}"
+    },
+    {
+      "name": "Place Header",
+      "kind": "card",
+      "refersTo": "place-plate",
+      "description": "The place's print in a raised cloth frame, plate with the name, selvedge along the edge.",
+      "html": "<div class=\"ds-cloth\"><div class=\"ds-head\"><button class=\"ds-back\">← Map</button><div class=\"ds-plate\"><h1>Work Hub</h1><p>Paid digital tasks from funded businesses.</p></div></div><div class=\"ds-selvedge2\">Jobs pay only when a business has funded them — nothing here pays yet</div></div>",
+      "css": ".ds-cloth{border-radius:14px;overflow:hidden;border:1px solid var(--rule,#d3d7ea);box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%);font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif}.ds-head{min-height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:16px;padding:12px 16px 16px;background-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2248%22%20height%3D%2248%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231f2a6b%22/%3E%3Cg%20fill%3D%22%231e7a46%22%3E%3Crect%20x%3D%222%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%2226%22%20y%3D%2216%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%222%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%2226%22%20y%3D%2240%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3C/g%3E%3Cg%20stroke%3D%22%23f2b705%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M30%206v4M36%206v4M42%206v4M6%2018v4M12%2018v4M18%2018v4M30%2030v4M36%2030v4M42%2030v4M6%2042v4M12%2042v4M18%2042v4%22/%3E%3C/g%3E%3C/svg%3E\");background-size:48px 48px}.ds-back{font:inherit;font-size:14px;font-weight:650;min-height:36px;padding:6px 10px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer}.ds-back:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-plate{background:var(--sheet,#fff);color:var(--text,#141833);border-radius:10px;padding:10px 14px;box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%)}.ds-plate h1{margin:0;font-size:28px;font-weight:800;font-stretch:88%;letter-spacing:-.01em;line-height:1.15}.ds-plate p{margin:0;font-size:14px;color:var(--muted,#4c5275)}.ds-selvedge2{padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#141c4d;color:#f2b705;white-space:nowrap;overflow:hidden}"
+    },
+    {
+      "name": "Timed-State Bar",
+      "kind": "custom",
+      "refersTo": "timebar",
+      "description": "Exact remaining time as a shrinking bar plus tabular countdown.",
+      "html": "<div class=\"ds-time\"><div class=\"ds-cap\"><span>Customer waits for</span><span>4:32 left</span></div><div class=\"ds-track\"><div class=\"ds-fill\"></div></div></div>",
+      "css": ".ds-time{display:grid;gap:4px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;max-width:320px}.ds-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted,#4c5275);font-variant-numeric:tabular-nums}.ds-track{height:6px;border-radius:3px;background:var(--sheet-2,#e8eaf4);overflow:hidden}.ds-fill{height:100%;width:100%;background:#1f2a6b;border-radius:3px;transform-origin:left;transform:scaleX(.62);transition:transform 1s linear}"
+    },
+    {
+      "name": "Quest Bolt (ready)",
+      "kind": "custom",
+      "refersTo": "bolt-plate-ready",
+      "description": "Quest plate over its place's print; the cloth unrolls and the plate lifts when claimable.",
+      "html": "<div class=\"ds-bolt\"><div class=\"ds-bolt-cloth\"></div><div class=\"ds-bolt-plate\"><div class=\"ds-row\"><strong>Serve 3 customers</strong><span class=\"ds-reward\">+150</span></div><div class=\"ds-bar\"><span></span></div><div class=\"ds-row\"><span>3 / 3</span><button class=\"ds-claim\">Claim</button></div></div></div>",
+      "css": ".ds-bolt{position:relative;padding:8px;isolation:isolate;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;max-width:340px}.ds-bolt-cloth{position:absolute;inset:0;z-index:-1;border-radius:12px;background-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2248%22%20height%3D%2248%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%23f2b705%22/%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%231f2a6b%22%20stroke-width%3D%223%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%229%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%224.5%22/%3E%3C/g%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.8%22%20fill%3D%22%23c8321e%22/%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2236%22%20r%3D%221.8%22%20fill%3D%22%23c8321e%22/%3E%3Cpath%20d%3D%22M30%206l6%206-6%206-6-6zM6%2030l6%206-6%206-6-6zM54%2030l-6%206%206%206z%22%20fill%3D%22%23c8321e%22/%3E%3C/svg%3E\");background-size:32px 32px;clip-path:inset(0 100% 0 0);transition:clip-path .9s cubic-bezier(.16,1,.3,1)}.ds-bolt:hover .ds-bolt-cloth,.ds-bolt:focus-within .ds-bolt-cloth{clip-path:inset(0 0 0 0)}.ds-bolt-plate{display:grid;gap:8px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%);color:var(--text,#141833)}.ds-row{display:flex;justify-content:space-between;align-items:center;font-variant-numeric:tabular-nums}.ds-reward{font-weight:750;color:var(--coin,#8a6400)}.ds-bar{height:8px;border-radius:4px;background:var(--sheet-2,#e8eaf4);overflow:hidden}.ds-bar span{display:block;height:100%;background:#1e7a46}.ds-claim{font:inherit;font-size:14px;font-weight:650;min-height:36px;padding:6px 10px;border-radius:10px;border:1px solid #f2b705;background:#f2b705;color:#2a1f00;cursor:pointer}.ds-claim:hover{filter:brightness(1.05)}.ds-claim:focus-visible{outline:3px solid #f2b705;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Wax-Print Selvedge",
+    "overview": "Every place in Junction 101 is its own bolt of wax-print cloth, and the selvedge, the printed edge of the cloth, prints the truth. The shell is indigo-dyed; three authored two-colour repeats in cadmium yellow, madder red, leaf green and indigo give Market Square, Work Hub and The Hangout their own cloth. Everything that is not cloth sits flat on a pale indigo-white ground, divided by hairlines. The world refuses the fintech default of white cards on grey with one green accent.\n\nThe type is one variable grotesque, Archivo, used for display and data alike; its width axis does the expressive work (condensed and uppercase for the name and the welcome, slightly narrowed for headings, full width for reading). Numbers are tabular and right-aligned so coin amounts, stock and countdowns read like a ledger. Light mode is the default because the player holds a mid-range Android outdoors in Lagos daylight; an indigo-dyed night mode follows the system preference.\n\nTruth is carried by structure, not decoration: a single printed rule on each surface's selvedge says what is real (coins have no cash value; jobs pay only when funded), timed states are bars of exact remaining time, and quest bolts unroll their cloth only when there is something to claim.",
+    "keyCharacteristics": [
+      "Indigo shell, yellow coin balance, cloth only where a place is.",
+      "Three authored wax-print tiles, one per place, reused as CSS backgrounds and SVG pattern fills.",
+      "One selvedge per surface, stating that surface's one rule.",
+      "Hairlines on the ground; only the cloth (map, place header, welcome cloth) is raised.",
+      "Archivo Variable with the `wdth` axis as the display voice; tabular numerals throughout.",
+      "Bars, not spinners or badges, for time and progress."
+    ],
+    "rules": [
+      {
+        "name": "The Dye Lot Rule",
+        "body": "Saturated colour comes from the cloth: indigo, yellow, red and green appear in the shell, the prints, the coin and the one \"go\" action per moment. Everything else is ground, sheet, ink and hairline.",
+        "section": "colors"
+      },
+      {
+        "name": "The Coins-Are-Yellow Rule",
+        "body": "Cadmium yellow marks City Coins and the action that earns them. Real-money prices (naira, merchants) are set in plain ink, never yellow.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Hand Rule",
+        "body": "Archivo Variable is the only family. Hierarchy comes from weight (400–900) and the `wdth` axis (70–100%), never a second face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ledger Rule",
+        "body": "Numbers are tabular everywhere and right-aligned in columns (stock, cost, price, coins, standings, countdowns).",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline-on-Ground Rule",
+        "body": "Sections sit directly on the ground and are divided by 1px hairlines (rule between rows, rule-strong above a section). There are no cards: if something needs a box, it is either cloth or a plate on cloth.",
+        "section": "layout"
+      },
+      {
+        "name": "The Only-Cloth-Is-Raised Rule",
+        "body": "A section, list, table or form never gets a shadow. Lift is reserved for cloth and the plates set on it.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Print Tile Rule",
+        "body": "The three prints are authored 48×48 tiles in the cloth palette, rendered as CSS backgrounds (place header at 48px, welcome cloth at 64px, quest bolts at 32px, lockup swatch at 28px) and as SVG patterns at 0.6 scale on the map. New places get a new authored tile, not a recolour of an existing one.",
+        "section": "shapes"
+      },
+      {
+        "name": "The One Selvedge Rule",
+        "body": "One rule per surface, on the cloth's edge. The map view, the browse page and the welcome cloth carry one each; inside a place, the place header's selvedge replaces the shell's. The rule is a true constraint of that surface (coins have no cash value; customers walk if the price is too high; jobs pay only when funded; standings count coins), never a slogan.",
+        "section": "components"
+      },
+      {
+        "name": "The Exact Time Rule",
+        "body": "Anything that expires is shown as a bar of the real remaining time plus the countdown in figures, never as a vague badge.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** give every new place its own authored wax-print tile in the cloth palette and use it on its header, its map building and its quests.",
+      "**Do** put exactly one selvedge on each surface, stating one true rule of that surface.",
+      "**Do** keep sections flat on the ground, divided by hairlines; raise only cloth and the plates set on it.",
+      "**Do** show anything that expires as a timed-state bar with an exact tabular countdown.",
+      "**Do** reserve cadmium yellow for coins, the \"go\" action and the focus ring; set real-money prices in plain ink.",
+      "**Do** set every number in tabular figures, right-aligned in columns.",
+      "**Do** use Archivo's width axis and weight for hierarchy instead of another typeface."
+    ],
+    "donts": [
+      "**Don't** build white cards on grey with one green accent; this world's surfaces are cloth or hairline-divided ground.",
+      "**Don't** add a second selvedge, or use the selvedge for marketing copy.",
+      "**Don't** use madder red or leaf green as error and success colours; status uses the ok and danger tokens.",
+      "**Don't** show a spinner or vague badge where a remaining time is known.",
+      "**Don't** recolour an existing print to make a new place."
+    ]
+  }
+}
