@@ -2,7 +2,7 @@
 // Hotspots are real buttons for keyboard and screen-reader access; tap works on mobile.
 // Each place wears its own wax-print cloth (prints.ts).
 import type { LocationKey } from "@hc/shared";
-import type { KeyboardEvent, ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { INK, PRINT_TILES, type PrintKey } from "../prints.js";
 
 function PrintPattern({ id, print, scale = 0.6 }: { id: string; print: PrintKey; scale?: number }) {
@@ -95,7 +95,33 @@ function Danfo({ x, y }: { x: number; y: number }) {
   );
 }
 
+/**
+ * Optional artwork slots. Drop files in public/art/ and list them in public/art/manifest.json,
+ * e.g. {"market_square": "market-square.webp"}. Any slot without art keeps its vector drawing.
+ * See docs/art-prompts.md for the generation brief.
+ */
+type ArtKey = "market_square" | "work_hub" | "hangout" | "danfo";
+type ArtManifest = Partial<Record<ArtKey, string>>;
+
+function useArt(): ArtManifest {
+  const [art, setArt] = useState<ArtManifest>({});
+  useEffect(() => {
+    fetch("/art/manifest.json")
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((m: ArtManifest) => setArt(m ?? {}))
+      .catch(() => setArt({}));
+  }, []);
+  return art;
+}
+
+/** A building plate: the art image when provided, otherwise the vector fallback. */
+function Plate({ file, fallback }: { file?: string; fallback: ReactNode }) {
+  if (!file) return <>{fallback}</>;
+  return <image href={`/art/${file}`} x="-10" y="-14" width="220" height="172" preserveAspectRatio="xMidYMax meet" />;
+}
+
 export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void; visited: Set<string> }) {
+  const art = useArt();
   return (
     <div className="map map-frame">
       <svg viewBox="0 0 800 520" role="group" aria-label="Junction 101 map. Choose a place to go in.">
@@ -124,10 +150,11 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
         <Palm x={112} y={108} />
         <Palm x={710} y={488} />
         <Palm x={762} y={476} />
-        <Danfo x={470} y={242} />
+        {art.danfo ? <image href={`/art/${art.danfo}`} x="456" y="214" width="104" height="64" preserveAspectRatio="xMidYMid meet" /> : <Danfo x={470} y={242} />}
 
         {/* Market Square — stalls under printed umbrellas */}
         <Hotspot id="market_square" label="Market Square" x={70} y={300} visited={visited.has("market_square")} onOpen={onOpen}>
+          <Plate file={art.market_square} fallback={<>
           <rect x="10" y="72" width="180" height="80" rx="8" fill={INK.red} />
           <rect x="10" y="72" width="180" height="12" fill="#8f2314" />
           {[30, 80, 130].map((sx) => (
@@ -137,25 +164,30 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
               <rect x={sx} y="98" width="44" height="32" rx="4" fill={INK.cotton} stroke="#8f2314" />
             </g>
           ))}
+          </>} />
         </Hotspot>
 
         {/* Work Hub — office block with printed fascia */}
         <Hotspot id="work_hub" label="Work Hub" x={500} y={22} visited={visited.has("work_hub")} onOpen={onOpen}>
+          <Plate file={art.work_hub} fallback={<>
           <rect x="30" y="8" width="140" height="146" rx="6" fill={INK.indigo} />
           <rect x="30" y="8" width="140" height="22" fill="url(#p-work)" />
           {[0, 1, 2, 3].map((r) =>
             [0, 1, 2, 3].map((c) => <rect key={`${r}-${c}`} x={44 + c * 30} y={40 + r * 24} width="20" height="14" rx="2" fill={(r + c) % 3 === 0 ? INK.yellow : "#d7dcf5"} />),
           )}
           <rect x="88" y="130" width="24" height="24" fill={INK.indigoDeep} />
+          </>} />
         </Hotspot>
 
         {/* The Hangout — printed canopy */}
         <Hotspot id="hangout" label="The Hangout" x={500} y={300} visited={visited.has("hangout")} onOpen={onOpen}>
+          <Plate file={art.hangout} fallback={<>
           <rect x="20" y="62" width="160" height="90" rx="10" fill={INK.green} />
           <path d="M8 66h184l-14-30H22z" fill="url(#p-hangout)" stroke={INK.indigoDeep} strokeWidth="2" />
           <rect x="40" y="88" width="40" height="30" rx="4" fill={INK.yellow} />
           <rect x="120" y="88" width="40" height="30" rx="4" fill={INK.yellow} />
           <rect x="88" y="114" width="24" height="38" fill="#124d2c" />
+          </>} />
         </Hotspot>
       </svg>
     </div>

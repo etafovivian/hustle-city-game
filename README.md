@@ -69,3 +69,9 @@ Never edit an applied migration; add a new one. Use `drizzle-kit generate --cust
 - `game_ledger_entries` and `audit_events` are append-only (enforced by triggers). Corrections are new entries.
 - NGN amounts are always integer kobo.
 - Keep secrets out of source control and logs.
+
+## Credits
+
+- Avatar art: "Personas" by Draftbit, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), rendered with [DiceBear](https://www.dicebear.com/) (MIT).
+- Typeface: Archivo (SIL Open Font License) via Fontsource.
+- Icons: Lucide (ISC).

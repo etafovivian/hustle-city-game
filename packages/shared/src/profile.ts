@@ -10,10 +10,13 @@ export type LocationKey = (typeof LOCATIONS)[number]["key"];
 export const LOCATION_KEYS: readonly string[] = LOCATIONS.map((l) => l.key);
 
 export const AVATAR_OPTIONS = {
-  skinTone: ["#5a3825", "#7a4a2a", "#8d5524", "#a86b3c", "#c68642", "#e0ac69"],
-  hairStyle: ["low_cut", "afro", "braids", "locs", "bald", "headwrap"],
+  skinTone: ["#3b2219", "#5a3825", "#6b4226", "#8d5524", "#a86b3c", "#c68642"],
+  hairStyle: ["low_cut", "buzzcut", "high_top", "curly", "puff", "locs", "bald", "cap"],
   outfit: ["ankara_green", "agbada_white", "jersey_red", "tee_blue", "kaftan_gold", "hoodie_black"],
 } as const;
+
+/** Earlier hair keys still stored on some profiles, mapped to their current equivalent. */
+export const LEGACY_HAIR: Record<string, string> = { afro: "high_top", braids: "puff", headwrap: "cap" };
 
 export interface AvatarConfig {
   skinTone: string;

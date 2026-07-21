@@ -15,7 +15,9 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "@fontsource-variable/archivo": "5.3.0",
-    "lucide-react": "1.55.0"
+    "lucide-react": "1.55.0",
+    "@dicebear/core": "9.4.3",
+    "@dicebear/personas": "9.4.3"
   },
   "devDependencies": {
     "vite": "8.3.4",
