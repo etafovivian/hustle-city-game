@@ -1,5 +1,5 @@
 import { LOCATIONS, type LocationKey, type Me, type QuestBoard, type ShopView } from "@hc/shared";
-import { ArrowLeft, Coins, LogOut, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Coins, ListChecks, LogOut, Map as MapIcon, Search, ShoppingBag, Smartphone, Sparkles, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, formatCoins } from "./api.js";
 import { AuthScreen } from "./components/AuthScreen.js";
@@ -7,12 +7,14 @@ import { Avatar } from "./components/Avatar.js";
 import { CityMap } from "./components/CityMap.js";
 import { Hangout, WorkHub } from "./components/Locations.js";
 import { Merchants } from "./components/Merchants.js";
+import { Phone, type PhoneApp } from "./components/Phone.js";
 import { Quests } from "./components/Quests.js";
 import { ShopPanel } from "./components/ShopPanel.js";
 import { PlaceHeader, Selvedge } from "./components/ui.js";
 import { LOCATION_PRINT } from "./prints.js";
 
-type View = { kind: "map" } | { kind: "location"; id: LocationKey } | { kind: "browse" };
+type View = { kind: "map" } | { kind: "location"; id: LocationKey } | { kind: "browse" } | { kind: "market" };
+type Tab = "map" | "shop" | "market";
 
 const PLACE_RULE: Record<LocationKey, string> = {
   market_square: "Customers pay the price you set — too high and they walk",
@@ -45,6 +47,7 @@ export function App() {
   const [marketTab, setMarketTab] = useState<"shop" | "merchants">("shop");
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [phone, setPhone] = useState<PhoneApp | null>(null);
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -126,6 +129,17 @@ export function App() {
 
   const location = view.kind === "location" ? LOCATIONS.find((l) => l.key === view.id) : undefined;
   const onChanged = () => void refresh();
+  const tab: Tab = view.kind === "market" ? "market" : view.kind === "location" && view.id === "market_square" && marketTab === "shop" ? "shop" : "map";
+  const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
+  const openShop = () => {
+    setMarketTab("shop");
+    void openLocation("market_square");
+  };
+  const openMarket = () => {
+    setPhone(null);
+    setView({ kind: "market" });
+    window.scrollTo({ top: 0 });
+  };
 
   return (
     <>
@@ -152,17 +166,31 @@ export function App() {
       <div className="page">
         <div className="layout">
           <main className="stack-lg">
-            {view.kind === "map" || !location ? (
+            {view.kind === "market" ? (
+              <>
+                <div className="stack" style={{ gap: 4 }}>
+                  <h1>Real businesses</h1>
+                  <p className="muted">Shops and artisans that serve your area. Prices are in naira and set by each business.</p>
+                </div>
+                <Merchants onViewed={onChanged} />
+              </>
+            ) : view.kind === "map" || !location ? (
               <>
                 <div className="spread">
                   <div className="stack" style={{ gap: 4 }}>
                     <h1>Junction 101</h1>
-                    <p className="muted">Welcome back, {me.nickname}. Tap a place to go in.</p>
+                    <p className="muted">Oya, {me.nickname}! Tap a place to go in.</p>
                   </div>
                   <button className="btn" onClick={() => setView({ kind: "browse" })}>
                     <Search size={18} aria-hidden="true" /> Find a business
                   </button>
                 </div>
+                {board && (
+                  <button type="button" className="quest-pill show-md-down" onClick={() => setPhone("quests")}>
+                    <ListChecks size={18} aria-hidden="true" /> Today's quests
+                    {readyQuests > 0 && <span className="quest-pill-badge">{readyQuests} ready</span>}
+                  </button>
+                )}
                 <CityMap onOpen={(id) => void openLocation(id)} visited={visited} />
               </>
             ) : (
@@ -203,9 +231,48 @@ export function App() {
             )}
           </main>
 
-          {board && <Quests board={board} onBoard={setBoard} onChanged={onChanged} notify={notify} />}
+          {board && (
+            <div className="hide-md-down">
+              <Quests board={board} onBoard={setBoard} onChanged={onChanged} notify={notify} />
+            </div>
+          )}
         </div>
       </div>
+
+      <nav className="dock" aria-label="Main">
+        <button type="button" className="dock-item" aria-current={tab === "map" && !phone ? "page" : undefined} onClick={goMap}>
+          <MapIcon size={22} aria-hidden="true" />
+          <span>Map</span>
+        </button>
+        <button type="button" className="dock-item" aria-current={tab === "shop" && !phone ? "page" : undefined} onClick={openShop}>
+          <ShoppingBag size={22} aria-hidden="true" />
+          <span>My shop</span>
+        </button>
+        <button type="button" className="dock-item" aria-current={tab === "market" && !phone ? "page" : undefined} onClick={openMarket}>
+          <Store size={22} aria-hidden="true" />
+          <span>Market</span>
+        </button>
+        <button type="button" className="dock-item" aria-current={phone ? "page" : undefined} onClick={() => setPhone("home")}>
+          <span className="dock-icon-wrap">
+            <Smartphone size={22} aria-hidden="true" />
+            {readyQuests > 0 && <span className="dock-dot" aria-label={`${readyQuests} quests ready`} />}
+          </span>
+          <span>Phone</span>
+        </button>
+      </nav>
+
+      {phone && (
+        <Phone
+          app={phone}
+          setApp={setPhone}
+          onClose={() => setPhone(null)}
+          onMarket={openMarket}
+          board={board}
+          onBoard={setBoard}
+          onChanged={onChanged}
+          notify={notify}
+        />
+      )}
 
       {toast && (
         <div className="toast" role="status">

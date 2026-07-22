@@ -65,12 +65,21 @@ export function Avatar({ avatar, size = 40, className }: { avatar: AvatarConfig;
   );
 }
 
-export function AvatarPicker({ value, onChange }: { value: AvatarConfig; onChange: (v: AvatarConfig) => void }) {
+export function AvatarPicker({
+  value,
+  onChange,
+  preview = true,
+}: {
+  value: AvatarConfig;
+  onChange: (v: AvatarConfig) => void;
+  preview?: boolean;
+}) {
   return (
     <fieldset className="avatar-picker">
       <legend className="field-label" style={{ padding: 0, marginBottom: 10 }}>
         Your look
       </legend>
+      {preview && (
       <div className="look-card">
         <span className="look-avatar">
           <Avatar avatar={value} size={64} />
@@ -78,6 +87,7 @@ export function AvatarPicker({ value, onChange }: { value: AvatarConfig; onChang
         </span>
         <p className="muted small">Pick a look now. You can change it any time inside Junction 101.</p>
       </div>
+      )}
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Skin tone</span>
         <div className="swatches">
