@@ -21,12 +21,45 @@ const coins = async (p: { call: (m: "GET", u: string) => Promise<{ json: () => {
   (await p.call("GET", "/api/me")).json().coins;
 
 describe("registration and profile", () => {
-  it("grants 2,000 starting City Coins and creates a shop", async () => {
+  it("grants 2,000 starting City Coins and opens the shop with the hustle's free starter stock", async () => {
     const p = await registerPlayer(app);
     expect(await coins(p)).toBe(2000);
     const shop = (await p.call("GET", "/api/game/shop")).json() as ShopView;
-    expect(shop.lines.length).toBeGreaterThan(0);
-    expect(shop.lines.every((l) => l.quantity === 0)).toBe(true);
+    expect(shop.lines.find((l) => l.itemKey === "phone_case")!.quantity).toBe(1);
+    expect(shop.lines.filter((l) => l.itemKey !== "phone_case").every((l) => l.quantity === 0)).toBe(true);
+    const me = (await p.call("GET", "/api/me")).json();
+    expect(me.hustle).toBe("artisan");
+    expect(me.dream).toBe("market_royalty");
+  });
+
+  it("stores onboarding choices and names the shop", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: {
+        email: "chop@example.test",
+        password: "correct-horse-battery",
+        nickname: "chop_queen",
+        hustle: "chop",
+        dream: "showroom",
+        shopName: "Mama Put Deluxe",
+        confirmAdult: true,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ hustle: "chop", dream: "showroom", coins: 2000 });
+    const cookie = String(res.headers["set-cookie"]).split(";")[0]!;
+    const shop = (await app.inject({ method: "GET", url: "/api/game/shop", headers: { cookie } })).json() as ShopView;
+    expect(shop.name).toBe("Mama Put Deluxe");
+    expect(shop.lines.find((l) => l.itemKey === "puff_puff")!.quantity).toBe(10);
+  });
+
+  it("rejects unknown hustles, dreams and bad shop names", async () => {
+    const base = { email: "x@example.test", password: "correct-horse-battery", nickname: "xplayer", confirmAdult: true };
+    for (const extra of [{ hustle: "oil_baron" }, { dream: "lottery" }, { shopName: "<script>" }]) {
+      const res = await app.inject({ method: "POST", url: "/api/auth/register", payload: { ...base, ...extra } });
+      expect(res.statusCode).toBe(400);
+    }
   });
 
   it("rejects duplicate nicknames case-insensitively and requires adult confirmation", async () => {

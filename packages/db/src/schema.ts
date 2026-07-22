@@ -60,6 +60,9 @@ export const profiles = pgTable(
     nicknameHidden: boolean("nickname_hidden").notNull().default(false),
     avatar: jsonb("avatar").notNull(),
     xp: integer("xp").notNull().default(0),
+    // Onboarding choices (see @hc/shared onboarding.ts).
+    hustle: text("hustle").notNull().default("trader"),
+    dream: text("dream").notNull().default("market_royalty"),
     // Cached City Coin balance; every change is mirrored by a game_ledger_entries row.
     coinBalance: bigint("coin_balance", { mode: "number" }).notNull().default(0),
     introClaimedAt: timestamp("intro_claimed_at", { withTimezone: true }),

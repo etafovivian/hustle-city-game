@@ -15,6 +15,8 @@ export interface Me {
   /** City Coins — game currency, no cash value. */
   coins: number;
   xp: number;
+  hustle: string;
+  dream: string;
 }
 
 export interface QuestView {

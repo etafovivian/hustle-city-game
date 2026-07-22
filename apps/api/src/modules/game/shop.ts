@@ -23,14 +23,27 @@ import { recordEvents } from "./quests.js";
 
 type ShopRow = typeof simShops.$inferSelect;
 
-export async function createShop(tx: Tx, userId: string, nickname: string, now: Date) {
+export async function createShop(
+  tx: Tx,
+  userId: string,
+  shopName: string,
+  now: Date,
+  starter?: { itemKey: string; units: number },
+) {
   const [shop] = await tx
     .insert(simShops)
-    .values({ ownerId: userId, name: `${nickname}'s Shop`, settledStep: stepIndex(now) })
+    .values({ ownerId: userId, name: shopName, settledStep: stepIndex(now) })
     .returning();
   await tx
     .insert(simInventory)
-    .values(STOCK_ITEMS.map((i) => ({ shopId: shop!.id, itemKey: i.key, quantity: 0, price: i.referencePrice })));
+    .values(
+      STOCK_ITEMS.map((i) => ({
+        shopId: shop!.id,
+        itemKey: i.key,
+        quantity: starter?.itemKey === i.key ? starter.units : 0,
+        price: i.referencePrice,
+      })),
+    );
   return shop!;
 }
 

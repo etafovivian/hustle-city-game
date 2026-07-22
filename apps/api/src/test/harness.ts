@@ -60,7 +60,7 @@ export async function registerPlayer(app: App, nickname = `player_${++counter}`)
     method: "POST",
     url: "/api/auth/register",
     headers: { origin: ORIGIN },
-    payload: { email: `${nickname}@example.test`, password: "correct-horse-battery", nickname, avatar: DEFAULT_AVATAR, confirmAdult: true },
+    payload: { email: `${nickname}@example.test`, password: "correct-horse-battery", nickname, avatar: DEFAULT_AVATAR, hustle: "artisan", confirmAdult: true },
   });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.statusCode} ${res.body}`);
   const setCookie = res.headers["set-cookie"];

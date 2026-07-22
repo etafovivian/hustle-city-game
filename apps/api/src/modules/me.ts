@@ -17,6 +17,8 @@ export async function loadMe(db: Db, userId: string): Promise<Me> {
       avatar: profiles.avatar,
       coins: profiles.coinBalance,
       xp: profiles.xp,
+      hustle: profiles.hustle,
+      dream: profiles.dream,
     })
     .from(users)
     .innerJoin(profiles, eq(profiles.userId, users.id))

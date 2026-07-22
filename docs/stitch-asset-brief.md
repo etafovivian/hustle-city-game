@@ -110,3 +110,36 @@ Each one alone on magenta, 512 × 512:
   - place every asset on the map and wire it into the zoom levels;
   - draw simple geometry myself in code: the map ground, roads, plot outlines, lamp glows.
 - **I can't:** generate painted art in this environment. That has to come from Stitch, ChatGPT or Gemini, or from an image API key added to the project.
+
+---
+
+## Request batch 2 — more buildings for the map (send to Stitch)
+
+Use the same style block, attach `market-square.webp` as the style reference, and use a **flat magenta background**. Each building sits on the same square isometric plot.
+
+**Daily-life places**
+1. Mama Put buka: an open-front food spot with a pot stand, wooden benches, a smoky grill and a blank signboard.
+2. Pharmacy: a small chemist with a green cross sign (no brand) and shelves visible through glass.
+3. Barbershop: a salon chair visible inside, a striped pole, a hand-painted sign reading "BARBER".
+4. Tailor / fashion shop: Ankara bolts on display, a sewing machine at the window.
+5. Phone repair kiosk: a small booth with a phone sign (no logos), a glass counter and tools.
+6. Provision store: a supermarket front with a crate stack and a cooler outside.
+7. Fuel station: two pumps and a canopy, with no brand.
+8. Bank-style "City Vault" building: columns, an ATM-style wall slot, no real bank name. For a later stage.
+
+**Homes (where players live)**
+9. Face-me-I-face-you compound: a long bungalow with many doors and a shared courtyard.
+10. Mini-flat block: two storeys, balconies, a water tank on the roof.
+11. Duplex with a gate: a fenced compound with a small generator house.
+
+**Civic and fun**
+12. Community school.
+13. Viewing centre: a football screening hall with plastic chairs and a projector glow.
+14. Church/mosque-neutral "Town Hall": a civic building with a flag pole and an empty flag.
+15. Beach front / Bar Beach style kiosk with umbrellas, for the Marina Wharf district.
+
+**People and avatars (onboarding preview, better than flat avatars)**
+16. A full-body character turnaround sheet in the same art style. Six presets: a market woman in gele, a male trader in kaftan, a tech sis with a laptop bag, an artisan in overalls, a chop seller with an apron, and a student. Each is front-facing, full body, on magenta.
+17. Hustle card illustrations (four, 1024 × 768): Market trader, Chop seller, Gadget plug, Fix-it artisan.
+18. Dream card illustrations (four): Market Royalty (a crowned stall), Showroom Owner (a glass showroom), Junction Legend (a trophy over the roundabout), Everybody's Padi (friends at The Hangout).
+19. Phone app icons (rounded squares, 512 × 512): Jobs, Quests, Standings, Messages, Market.
