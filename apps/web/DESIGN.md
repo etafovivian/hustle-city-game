@@ -1,438 +1,351 @@
 ---
 name: Naija Hustle City
-description: Wax-Print Selvedge — every place in Junction 101 is its own bolt of wax-print cloth, and the selvedge prints the truth.
+description: Lagos Street Arcade — Junction 101 at night, gold-lit stalls on midnight navy, where every surface still prints its one plain rule.
 colors:
-  indigo: "#1f2a6b"
-  indigo-deep: "#141c4d"
-  indigo-ink: "#e9ecfb"
-  cadmium-yellow: "#f2b705"
-  yellow-ink: "#2a1f00"
-  madder-red: "#c8321e"
-  leaf-green: "#1e7a46"
-  cotton: "#f7f4ea"
-  ground: "#f2f3f9"
-  sheet: "#ffffff"
-  sheet-2: "#e8eaf4"
-  text: "#141833"
-  muted: "#4c5275"
-  rule: "#d3d7ea"
-  rule-strong: "#b4bad6"
-  ok: "#17663a"
-  danger: "#b0281a"
-  coin: "#8a6400"
-  map-ground: "#e6e2d3"
-  map-road: "#b9b4a3"
-  map-lane: "#f7f4ea"
-  map-grass: "#a9c98f"
-  night-ground: "#0d1233"
-  night-sheet: "#151b45"
-  night-sheet-2: "#1d2456"
-  night-text: "#eef0fb"
-  night-muted: "#aab0d6"
-  night-rule: "#2a3268"
-  night-rule-strong: "#3b447e"
-  night-accent-ink: "#1b1400"
-  night-ok: "#6fd69a"
-  night-danger: "#ff8f80"
-  night-coin: "#f2c443"
-  night-map-ground: "#1b2150"
-  night-map-road: "#2c3470"
-  night-map-lane: "#4a5394"
-  night-map-grass: "#24493a"
+  midnight-navy: "#0a0f24"
+  navy-panel: "#121835"
+  navy-well: "#182042"
+  shell-indigo: "#1e2a5e"
+  shell-ink: "#e9ecfb"
+  street-light: "#f1f4ff"
+  haze: "#9aa6c8"
+  hairline: "#27325c"
+  hairline-strong: "#34406f"
+  arcade-gold: "#ffc72c"
+  arcade-gold-pressed: "#e6b020"
+  gold-ink: "#0a0f24"
+  ankara-red: "#df382b"
+  naija-green: "#00a859"
+  ok-mint: "#4ade80"
+  danger-coral: "#ff8f80"
+  map-night: "#1a2350"
+  map-night-edge: "#0d1333"
+  map-road: "#232c5a"
+  map-lane: "#3d4886"
 typography:
   display:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
-    fontSize: "clamp(34px, 7vw, 60px)"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
+    fontSize: "clamp(30px, 3.4vw, 42px)"
     fontWeight: 900
     lineHeight: 0.95
-    letterSpacing: "0"
-    fontVariation: "'wdth' 70"
+    letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "clamp(28px, 5vw, 40px)"
     fontWeight: 800
     lineHeight: 1.15
     letterSpacing: "-0.01em"
-    fontVariation: "'wdth' 88"
-  place-title:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
-    fontSize: "clamp(24px, 5vw, 32px)"
-    fontWeight: 800
-    lineHeight: 1.15
-    letterSpacing: "-0.01em"
-    fontVariation: "'wdth' 88"
   title:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "24px"
     fontWeight: 750
     lineHeight: 1.15
     letterSpacing: "-0.01em"
-    fontVariation: "'wdth' 88"
-  section-title:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+  title-sm:
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "18px"
-    fontWeight: 750
+    fontWeight: 700
     lineHeight: 1.15
-    fontVariation: "'wdth' 88"
-  figure:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
-    fontSize: "28px"
-    fontWeight: 800
-    lineHeight: 1.15
-    fontFeature: "'tnum'"
-    fontVariation: "'wdth' 85"
-  lockup:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
-    fontSize: "20px"
-    fontWeight: 850
-    letterSpacing: "0.01em"
-    fontVariation: "'wdth' 75"
   body:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.5
-    fontFeature: "'tnum'"
-  body-small:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFeature: "tnum"
+  body-sm:
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: 1.5
-  control:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
-    fontSize: "16px"
-    fontWeight: 650
+  cta:
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
+    fontSize: "clamp(14px, 3.6vw, 17px)"
+    fontWeight: 800
+    letterSpacing: "0.04em"
   label:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 700
-    letterSpacing: "0.06em"
+    letterSpacing: "0.08em"
   selvedge:
-    fontFamily: "Archivo Variable, Archivo, system-ui, sans-serif"
+    fontFamily: "Outfit Variable, Outfit, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 700
     letterSpacing: "0.16em"
 rounded:
-  bar: "3px"
   tag: "4px"
-  control: "12px"
   plate: "10px"
-  toast: "12px"
-  cloth: "14px"
-  map-frame: "16px"
+  md: "12px"
+  well: "14px"
+  frame: "16px"
+  cta: "18px"
+  card: "24px"
   pill: "999px"
 spacing:
-  hair: "4px"
-  xs: "6px"
+  xs: "4px"
   sm: "8px"
   md: "12px"
   lg: "16px"
-  xl: "20px"
-  xxl: "24px"
+  xl: "24px"
+  gutter: "16px"
+  page-max: "1160px"
+  rail: "340px"
 components:
-  button:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.text}"
-    typography: "{typography.control}"
+  button-primary:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
     rounded: "{rounded.pill}"
     padding: "10px 18px"
     height: "46px"
-  button-hover:
-    backgroundColor: "{colors.sheet-2}"
-  button-primary:
-    backgroundColor: "{colors.indigo}"
-    textColor: "{colors.sheet}"
-    typography: "{typography.control}"
+  button-primary-hover:
+    backgroundColor: "{colors.arcade-gold-pressed}"
+    textColor: "{colors.gold-ink}"
+  button-primary-disabled:
+    backgroundColor: "{colors.navy-well}"
+    textColor: "{colors.haze}"
+  button-cta-xl:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
+    typography: "{typography.cta}"
+    rounded: "{rounded.cta}"
+    height: "58px"
+    width: "100%"
+  button-secondary:
+    backgroundColor: "{colors.navy-panel}"
+    textColor: "{colors.street-light}"
     rounded: "{rounded.pill}"
-    padding: "9px 14px"
-    height: "44px"
-  button-go:
-    backgroundColor: "{colors.cadmium-yellow}"
-    textColor: "{colors.yellow-ink}"
-    typography: "{typography.control}"
+    padding: "10px 18px"
+    height: "46px"
+  button-secondary-hover:
+    backgroundColor: "{colors.navy-well}"
+  button-small:
     rounded: "{rounded.pill}"
-    padding: "9px 14px"
-    height: "44px"
-  button-disabled:
-    backgroundColor: "{colors.sheet-2}"
-    textColor: "{colors.muted}"
-  button-quiet:
-    textColor: "{colors.text}"
-    rounded: "{rounded.pill}"
-  button-sm:
-    padding: "6px 10px"
-    height: "36px"
-  shell-button:
-    textColor: "{colors.indigo-ink}"
-    rounded: "{rounded.pill}"
-    padding: "6px 10px"
-    height: "36px"
+    padding: "6px 14px"
+    height: "38px"
   input:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.control}"
+    backgroundColor: "{colors.navy-panel}"
+    textColor: "{colors.street-light}"
+    rounded: "{rounded.md}"
     padding: "10px 12px"
     height: "44px"
-  segmented:
-    backgroundColor: "{colors.sheet-2}"
-    textColor: "{colors.muted}"
-    rounded: "{rounded.pill}"
-    padding: "4px"
-  segmented-selected:
-    backgroundColor: "{colors.indigo}"
-    textColor: "{colors.sheet}"
-    rounded: "{rounded.pill}"
-    padding: "8px 16px"
-    height: "40px"
+  input-well:
+    backgroundColor: "{colors.navy-well}"
+    textColor: "{colors.street-light}"
+    rounded: "{rounded.well}"
+    padding: "10px 12px"
+    height: "50px"
   chip:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.text}"
+    backgroundColor: "{colors.navy-panel}"
+    textColor: "{colors.street-light}"
     rounded: "{rounded.pill}"
     padding: "4px 10px"
     height: "32px"
-  chip-pressed:
-    backgroundColor: "{colors.indigo}"
-    textColor: "{colors.sheet}"
+  chip-selected:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
+  segmented:
+    backgroundColor: "{colors.navy-well}"
+    textColor: "{colors.haze}"
+    rounded: "{rounded.pill}"
+    padding: "4px"
+  segmented-selected:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
+    rounded: "{rounded.pill}"
+    padding: "8px 16px"
+    height: "40px"
+  coin-balance:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
+    rounded: "{rounded.pill}"
+    padding: "6px 12px"
   tag:
-    backgroundColor: "{colors.sheet-2}"
-    textColor: "{colors.muted}"
-    typography: "{typography.label}"
+    backgroundColor: "{colors.navy-well}"
+    textColor: "{colors.haze}"
     rounded: "{rounded.tag}"
     padding: "2px 8px"
   tag-demo:
-    backgroundColor: "{colors.cadmium-yellow}"
-    textColor: "{colors.yellow-ink}"
-  balance:
-    backgroundColor: "{colors.cadmium-yellow}"
-    textColor: "{colors.yellow-ink}"
-    rounded: "{rounded.pill}"
-    padding: "6px 12px"
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
   shellbar:
-    backgroundColor: "{colors.indigo}"
-    textColor: "{colors.indigo-ink}"
+    backgroundColor: "{colors.shell-indigo}"
+    textColor: "{colors.shell-ink}"
     padding: "10px 16px"
   selvedge:
-    backgroundColor: "{colors.indigo-deep}"
-    textColor: "{colors.cadmium-yellow}"
+    backgroundColor: "{colors.midnight-navy}"
+    textColor: "{colors.arcade-gold}"
     typography: "{typography.selvedge}"
     padding: "5px 16px"
+  selvedge-band:
+    backgroundColor: "{colors.arcade-gold}"
+    textColor: "{colors.gold-ink}"
+    padding: "10px 16px"
   place-plate:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.text}"
+    backgroundColor: "{colors.navy-panel}"
+    textColor: "{colors.street-light}"
     rounded: "{rounded.plate}"
     padding: "10px 14px"
-  timebar:
-    backgroundColor: "{colors.sheet-2}"
-    rounded: "{rounded.bar}"
-    height: "6px"
-  timebar-fill:
-    backgroundColor: "{colors.indigo}"
-    rounded: "{rounded.bar}"
-  bolt-plate:
-    backgroundColor: "{colors.ground}"
-    rounded: "{rounded.plate}"
-    padding: "10px 12px"
-  bolt-plate-ready:
-    backgroundColor: "{colors.sheet}"
-  bolt-bar:
-    backgroundColor: "{colors.sheet-2}"
-    rounded: "{rounded.tag}"
-    height: "8px"
-  bolt-bar-fill:
-    backgroundColor: "{colors.leaf-green}"
-  toast:
-    backgroundColor: "{colors.indigo}"
-    textColor: "{colors.sheet}"
-    rounded: "{rounded.toast}"
-    padding: "12px 16px"
   map-name-plate:
-    backgroundColor: "{colors.indigo-deep}"
-    textColor: "{colors.sheet}"
-    rounded: "{rounded.plate}"
-    height: "40px"
+    backgroundColor: "{colors.midnight-navy}"
+    textColor: "{colors.street-light}"
+    rounded: "{rounded.pill}"
+    height: "38px"
 ---
 
 # Design System: Naija Hustle City
 
 ## Overview
 
-**Creative North Star: "Wax-Print Selvedge"**
+**Creative North Star: "Lagos Street Arcade"**
 
-Every place in Junction 101 is its own bolt of wax-print cloth, and the selvedge, the printed edge of the cloth, prints the truth. The shell is indigo-dyed; three authored two-colour repeats in cadmium yellow, madder red, leaf green and indigo give Market Square, Work Hub and The Hangout their own cloth. Everything that is not cloth sits flat on a pale indigo-white ground, divided by hairlines. The world refuses the fintech default of white cards on grey with one green accent.
+Junction 101 is a Lagos street at night seen as an arcade: midnight navy ground, gold light pooling under lamps and on the one thing you should press, danfo yellow and Ankara cloth as the city's own colour. The look is user-pinned: the owner designed the welcome and sign-in in Google Stitch ("Lagos Street Arcade") and approved its palette, Outfit, the logo and the isometric building art. That pin supersedes the earlier Wax-Print Selvedge world for type, palette and imagery. Dark is the product's own look, not a theme setting; there is no light mode to fall back to.
 
-The type is one variable grotesque, Archivo, used for display and data alike; its width axis does the expressive work (condensed and uppercase for the name and the welcome, slightly narrowed for headings, full width for reading). Numbers are tabular and right-aligned so coin amounts, stock and countdowns read like a ledger. Light mode is the default because the player holds a mid-range Android outdoors in Lagos daylight; an indigo-dyed night mode follows the system preference.
+The arcade is a game skin over a working shop and a real merchant directory, so it stays legible and operational. Sections sit flat on the navy ground divided by hairlines; only the city itself (the map frame, place headers, the welcome brand card) is raised. Three pieces carry over from the previous world and still define it: the market wax-print circle repeat as cloth (welcome panel, place headers), the selvedge truth strip that prints each surface's one plain rule, and exact-time bars. Players wear DiceBear Personas avatars.
 
-Truth is carried by structure, not decoration: a single printed rule on each surface's selvedge says what is real (coins have no cash value; jobs pay only when funded), timed states are bars of exact remaining time, and quest bolts unroll their cloth only when there is something to claim.
+The world refuses the fintech white-card default and the generic neon-cyber game skin. Gold glows softly; nothing is neon, nothing is chrome.
 
 **Key Characteristics:**
-- Indigo shell, yellow coin balance, cloth only where a place is.
-- Three authored wax-print tiles, one per place, reused as CSS backgrounds and SVG pattern fills.
-- One selvedge per surface, stating that surface's one rule.
-- Hairlines on the ground; only the cloth (map, place header, welcome cloth) is raised.
-- Archivo Variable with the `wdth` axis as the display voice; tabular numerals throughout.
-- Bars, not spinners or badges, for time and progress.
+- Midnight navy ground with two navy panel steps; gold is the one action and the coin colour.
+- Outfit throughout, heavy and uppercase for calls to action and the brand lockup; tabular figures everywhere.
+- Raster isometric Lagos art from Stitch on a 2:1 isometric road ground; name plates on every place.
+- Pill-shaped controls; plates and frames with moderate rounding.
+- A selvedge strip on every surface stating its one rule (gold on navy; solid gold band on the mobile welcome).
+- Coins are game money: shown as a number with a coin icon and the words "City Coins", never with a currency symbol.
 
 ## Colors
 
-A dyer's palette: indigo for the shell and primary actions, cadmium yellow for coins and "go", madder red and leaf green living mostly inside the prints, on an indigo-tinted white ground.
+A night palette: three navy depths, one gold, two cloth accents used sparingly.
 
 ### Primary
-- **Indigo Dye** (indigo): the shell bar, primary buttons, selected segmented tabs and chips, pressed swatch ring, timed-state bar fill, toast and the welcome plate. The colour of the cloth itself; it never changes between modes (the shell stays indigo at night).
-- **Deep Indigo** (indigo-deep): the selvedge strip and the map's name plates and junction sign. One step darker than the shell so the printed edge reads as the cloth's border.
-- **Indigo Ink** (indigo-ink): text and icons on the indigo shell.
+- **Arcade Gold** (arcade-gold): the single action colour and the coin colour. Primary and "go" buttons (with the soft gold glow), the coin balance pill, quest rewards, the selected chip and segmented tab, focus outlines, the selvedge text, the Hustle in the lockup, the unvisited-place badge and lamp light on the map. Its pressed step **Arcade Gold Pressed** (arcade-gold-pressed) is the hover fill. Text on gold is always **Gold Ink** (gold-ink), the ground navy.
 
 ### Secondary
-- **Cadmium Yellow** (cadmium-yellow): the coin balance pill, the "go" button (serve, claim, browse merchants), the selvedge lettering, the demo-listing tag, the current stage in an order strip, text selection and the focus ring. Always paired with **Yellow Ink** (yellow-ink) for text on it.
+- **Naija Green** (naija-green): progress that is done or filling. Quest progress bars, completed order stages, the strong end of the password strength meter, the live status dot.
 
 ### Tertiary
-- **Madder Red** (madder-red): lives in the prints (Hangout ground, Market Square centres) and the Market Square stalls on the map; in the UI only as the text caret. Not an error colour.
-- **Leaf Green** (leaf-green): quest-progress fill, completed order stages, palms and the Hangout building. Not a success-message colour.
-- **Cotton** (cotton): the undyed cloth in prints and map stalls.
+- **Ankara Red** (ankara-red): the text caret and the red centres of the market print. An accent of the cloth, not a UI state colour.
 
 ### Neutral
-- **Indigo-White Ground** (ground): the page background everything sits on; also the resting fill of a quest bolt plate.
-- **Sheet** (sheet) / **Sheet Two** (sheet-2): control surfaces and plates; sheet-2 for hover, disabled, bar tracks and the takings band.
-- **Ink Text** (text) / **Muted** (muted): body copy and secondary copy (both indigo-tinted, never neutral grey).
-- **Hairline** (rule) / **Strong Hairline** (rule-strong): dividers between sections and rows; control borders use rule-strong.
-- **Status:** ok and danger are their own deeper tones (not leaf-green or madder-red) so status text holds contrast; coin is a darkened yellow for reward amounts on light ground.
-- **Map tones** (map-ground, map-road, map-lane, map-grass): a warm laterite-and-grass ground so the indigo-and-yellow cloth on the buildings pops.
+- **Midnight Navy** (midnight-navy): the page ground, the selvedge strip, the map name plates, and the browser `theme-color`.
+- **Navy Panel** (navy-panel): raised surfaces and default controls (secondary buttons, inputs, chips, plates, the mobile intro card).
+- **Navy Well** (navy-well): one step deeper inside a panel: hover fills, welcome input wells, segmented track, bar tracks, the takings strip.
+- **Shell Indigo** (shell-indigo) with **Shell Ink** (shell-ink): the sticky top bar and the toast.
+- **Street Light** (street-light): body text. **Haze** (haze): secondary text, placeholders, table heads.
+- **Hairline** (hairline) and **Hairline Strong** (hairline-strong): dividers between sections and control borders.
+- **Ok Mint** (ok-mint) and **Danger Coral** (danger-coral): state text (claimed, done steps, errors, zero stock, negative margin), brightened for contrast on navy rather than reusing the cloth green and red.
+- **Map Night** (map-night radiating to map-night-edge), **Map Road** (map-road), **Map Lane** (map-lane): the map's own ground; roads and dashed lane marks.
 
-### Night (prefers-color-scheme: dark)
-The ground becomes indigo-dyed (night-ground, night-sheet, night-sheet-2), text and rules shift to the night-* tokens, and the **accent flips from indigo to cadmium yellow** (primary buttons, selected tabs, chips, checkbox, timed-state fill, pressed swatch ring) with night-accent-ink on it. Shell, selvedge, prints and map buildings keep their dye colours.
+### Named Rules
+**The One Gold Rule.** Gold marks what to press and what you earn. One gold-filled action per region; everything else is a navy pill.
 
-**The Dye Lot Rule.** Saturated colour comes from the cloth: indigo, yellow, red and green appear in the shell, the prints, the coin and the one "go" action per moment. Everything else is ground, sheet, ink and hairline.
+**The Coins Are Not Cash Rule.** Coin amounts show a number, a coin icon, and "City Coins" where space allows; never ₦, $ or any currency symbol in UI chrome. Naira (₦) appears only on real merchant prices in the directory.
 
-**The Coins-Are-Yellow Rule.** Cadmium yellow marks City Coins and the action that earns them. Real-money prices (naira, merchants) are set in plain ink, never yellow.
+**The Dark-First Rule.** Navy is the product's ground by the owner's pin. Do not add a light theme or white cards.
 
 ## Typography
 
-**Display Font:** Archivo Variable (with Archivo, system-ui, sans-serif), loaded with the width axis.
-**Body Font:** the same family.
+**Display Font:** Outfit Variable (self-hosted via @fontsource-variable/outfit), falling back to Outfit, system-ui
+**Body Font:** the same Outfit
+**Label/Mono Font:** none; labels are Outfit, uppercase and tracked
 
-**Character:** One sturdy grotesque doing everything, the way signwriting and ledger books share one hand at a market stall. Width is the expressive axis: condensed caps for the name, narrowed headings, full-width reading text.
+**Character:** One geometric sans, run from regular body to black uppercase display. Outfit is user-pinned with the Stitch design. Weights are used finely (650, 750 and 850 occur alongside 400, 700, 800 and 900); figures are tabular site-wide so coin counts and timers do not jitter.
 
 ### Hierarchy
-- **Display** (900, clamp 34–60px, 0.95, width 70%, uppercase): the welcome plate's "Naija Hustle City" only.
-- **Lockup** (850, 20px, 17px under 560px, width 75%, uppercase, 0.01em): the shell-bar name, second line in yellow.
-- **Headline** (800, clamp 28–40px, 1.15, width 88%, -0.01em): page titles (Junction 101, Find a business). Inside a place-plate it drops to clamp 24–32px.
-- **Title** (750, 24px): section headings (Customer at your counter, shop name).
-- **Section title** (750, 18px): side-column and list headings (Today's quests, Example jobs); bolt titles at 16px.
-- **Figure** (800, 28px, width 85%, tabular): money amounts that are the point of a section (takings to collect). The order line uses 750/20px/width 90%.
-- **Body** (400, 16px, 1.5, tabular numerals on): running copy, capped near 44–62ch where it is prose.
-- **Small / Tiny** (14px / 12px): hints, metadata, bar captions.
-- **Control** (650): every button, tab, field label and stepper value.
-- **Label** (700, 12px, 0.06em, uppercase): table and inventory column heads, tags, order stage names.
-- **Selvedge** (700, 11px, 0.16em, uppercase): only the selvedge strip.
+- **Display** (display): the brand lockup on the welcome card, uppercase, Hustle in gold. The shell lockup is its smaller sibling (850, 20px, uppercase).
+- **Headline** (headline): page titles such as Junction 101 and Find a business; place names on plates step down to clamp(24px, 5vw, 32px).
+- **Title** (title): section headings; the welcome form heading runs larger, clamp(26px, 4vw, 38px) at 800, with its key phrase in gold.
+- **Title small** (title-sm): side-rail and section titles (Today's quests, Standings); quest titles at 16px.
+- **Body** (body): reading text, 16px/1.5; long copy capped near 62ch. **Body small** (body-sm) for hints, notes and directory detail.
+- **Call to action** (cta): uppercase, 800, tracked 0.04em, on CTA buttons only.
+- **Label** (label): uppercase tracked field labels; table heads, tags and order stages use the same treatment at 0.06em.
+- **Selvedge** (selvedge): uppercase at 0.16em for the truth strip; 800 on the mobile gold band.
 
-**The One Hand Rule.** Archivo Variable is the only family. Hierarchy comes from weight (400–900) and the `wdth` axis (70–100%), never a second face.
+### Named Rules
+**The Shout Only to Act Rule.** Heavy uppercase belongs to the brand lockup, calls to action, labels and the selvedge. Headings stay sentence case.
 
-**The Ledger Rule.** Numbers are tabular everywhere and right-aligned in columns (stock, cost, price, coins, standings, countdowns).
+**The Tabular Rule.** Every number is set with tabular figures and right-aligned in tables.
 
 ## Layout
 
-A centred column (max 1160px; 820px for the merchant browse page) with 16px gutters and generous bottom space (96px) for the toast. From 900px the page becomes two columns: the main column and a 340px quest column, sticky under the shell bar at 72px and separated by a vertical hairline; below 900px quests follow beneath the main column after a top hairline. The welcome screen splits 1.05fr / 1fr at 900px with the cloth sticky at full viewport height; below, the cloth stacks above the form (min 220px).
+A single centred column (max 1160px, 16px gutter) under a sticky shell bar. At 900px and up, signed-in pages split into the main column and a 340px quest rail that sticks below the bar, divided by a hairline; below that the rail follows the content. Rhythm runs on 4/8/12/16/24px steps: 12px inside stacks, 24px between sections, 16px row padding.
 
-Spacing runs 4 / 6 / 8 / 12 / 16 / 20 / 24px: 12px between items in a stack, 24px between sections, 16px internal padding on sections and rows. Breakpoints are 560px (selvedge wraps to one line, secondary shell items hide, map name plates scale 1.5×) and 900px (two columns).
+The welcome is its own layout. Desktop (900px+): a 46/54 split, the left wax-print cloth panel sticky at full viewport height fading to navy, carrying the brand card and the selvedge at its foot; the form is centred on the right (max 560px). Mobile: a 300px street-scene hero with the logo and account tabs, the solid gold selvedge band, then the form with its intro in a navy panel card. Below 560px the shell drops the wordmark and secondary items, the selvedge wraps to one statement, and map name plates scale up 1.5x to stay readable.
 
-**The Hairline-on-Ground Rule.** Sections sit directly on the ground and are divided by 1px hairlines (rule between rows, rule-strong above a section). There are no cards: if something needs a box, it is either cloth or a plate on cloth.
+The map is an 800×640 isometric scene in a framed panel: two 2:1 roads crossing at the Junction 101 roundabout, lamp pools on the ground, decorative scenery (city park, danfo park, signpost) at reduced opacity, and three place hotspots each with art, a ground shadow and a name plate.
 
 ## Elevation & Depth
 
-Flat by default. Depth belongs to the cloth: the map frame, the place-header cloth frame and the welcome plate lift off the ground with one soft two-layer shadow; plates set on cloth (place plate, a claimable quest's plate) take the same shadow so they read as name boards pinned to fabric. The toast and welcome plate use a deeper indigo-tinted drop because they sit over cloth or content. Night mode deepens the shadow to black.
+Mostly flat: content sections sit on the ground and are separated by hairlines, not cards. Depth is reserved for the city and for the primary action. Raised pieces (map frame, place header frame, plates, mobile intro card) share one dark ambient shadow. Gold elements emit light instead of casting shadow: the primary CTA, the ready quest and the logo carry a soft gold glow, and map buildings gain a gold halo on hover or focus while lifting 4px.
 
 ### Shadow Vocabulary
-- **Cloth lift** (`0 1px 2px rgb(20 24 51 / 8%), 0 8px 24px -8px rgb(20 24 51 / 18%)`; night `0 1px 2px rgb(0 0 0 / 40%), 0 10px 28px -10px rgb(0 0 0 / 60%)`): map frame, place-header frame, place plate, ready bolt plate.
-- **Plate over cloth** (`0 20px 40px -20px rgb(20 28 77 / 70%)`): the welcome plate.
-- **Toast** (`0 16px 32px -12px rgb(20 28 77 / 60%)`): the toast.
+- **Ambient** (`0 1px 2px rgb(0 0 0 / 40%), 0 14px 32px -12px rgb(0 0 0 / 65%)`): raised frames and plates, the selected segmented tab.
+- **Gold glow** (`0 10px 28px -8px rgb(255 199 44 / 45%)`): primary and go buttons, ready quest plates.
+- **Brand card** (`0 30px 60px -20px rgb(0 0 0 / 70%)`): the welcome brand card over the cloth.
+- **Art drop** (`drop-shadow(0 10px 18px rgb(0 0 0 / 55%))`): place art on headers; the logo instead takes a gold drop-shadow at 35%.
 
-**The Only-Cloth-Is-Raised Rule.** A section, list, table or form never gets a shadow. Lift is reserved for cloth and the plates set on it.
+### Named Rules
+**The Light Not Lift Rule.** Gold glows; navy casts shadow. A gold element never gets a black drop shadow, and a navy panel never glows.
+
+**The No Card Soup Rule.** Lists and sections sit on the ground divided by hairlines. Only the city's own pieces are framed.
 
 ## Shapes
 
-Soft, never sharp. Every button, stepper and price input is a pill (999px), matching the coin balance, segmented tabs and filter chips, so all actions share one rounded silhouette. Text fields use a 12px corner; plates use 10px; cloth frames 14px; the map frame 16px; the toast 12px. Bars and tags are almost square (3–4px). The selvedge is square-edged and full-bleed; its separator is a 6px yellow diamond (a rotated square), the one ornament outside the prints.
-
-**The Print Tile Rule.** The three prints are authored 48×48 tiles in the cloth palette, rendered as CSS backgrounds (place header at 48px, welcome cloth at 64px, quest bolts at 32px, lockup swatch at 28px) and as SVG patterns at 0.6 scale on the map. New places get a new authored tile, not a recolour of an existing one.
-
-- **Market Square, "record" circles:** indigo concentric rings in half-drop with madder centres and diamonds, on cadmium ground. Used for Market Square's place header, its map umbrellas and the junction roundabout, the welcome cloth, the lockup swatch, and every quest without a place of its own (including First steps).
-- **Work Hub, ladder-brick:** leaf-green stepped bricks with yellow ticks on indigo. Used for the Work Hub header, its building fascia on the map, and the tour quest.
-- **The Hangout, fan-and-dot:** yellow quarter-fans with red rays and indigo dots on madder. Used for the Hangout header, its canopy on the map, and the standings quest.
+Pills for anything you press or toggle: buttons, chips, segmented tabs, the coin balance, steppers, price inputs, shell buttons, map name plates. Moderately rounded rectangles for things you read: plates (10px), inputs (12px; 14px wells on the welcome), map and place frames (14 to 16px), the big CTA (18px), the welcome brand card (24px). Tags are the one near-square form (4px). Bars are 5 to 8px tall with half-height rounding. Avatars are circles ringed in gold.
 
 ## Components
 
 ### Buttons
-- **Shape:** gently curved (10px), 44px minimum height (36px for small), 650 weight, 8px icon gap.
-- **Default:** sheet with a strong-hairline border; hover to sheet-2; press nudges down 1px.
-- **Primary:** indigo (yellow at night) for committing actions: Open my shop / Sign in, Collect, Buy. Hover brightens.
-- **Go:** cadmium yellow with yellow ink for the action that earns coins or leaves the game for real merchants: Serve, Claim (only when ready), Browse merchants.
-- **Quiet:** transparent until hover.
-- **Disabled:** all variants collapse to sheet-2 with muted text and a plain hairline; no filter.
-- **Shell button:** transparent pill with a 30% indigo-ink border on the shell bar.
+- **Shape:** pill, 46px tall; small 38px.
+- **Primary / Go:** gold fill, navy ink, gold glow; hover to the pressed gold; disabled drops to the navy well with haze text and no glow. Press moves 1px down.
+- **Call to action:** primary plus uppercase 800 tracked type; the full-width welcome submit is 58px with 18px corners and lifts 1px on hover.
+- **Secondary:** navy panel with a strong hairline; hover to navy well. **Quiet:** transparent until hover.
+- **Focus:** 3px gold outline, 2px offset, everywhere.
 
-### Chips, Tags and the Balance
-- **Chip:** pill, sheet with strong hairline, 13px/600; pressed becomes accent.
-- **Tag:** near-square label (4px), sheet-2 with muted label type; the demo-listing tag is yellow so mock data is never mistaken for a real business.
-- **Coin balance:** yellow pill on the indigo shell with a coin icon, tabular amount, and "City Coins" unit (hidden under 560px); its title states that coins have no cash value.
+### Chips and Tabs
+- **Chips:** navy pill with hairline, 13px/600; the pressed state fills gold.
+- **Segmented tabs:** a navy-well pill track; the selected tab fills gold with ambient shadow.
+- **Tags:** small uppercase on navy well with 4px corners; the demo tag is gold.
 
 ### Inputs / Fields
-- **Style:** sheet, strong hairline, 12px corner, 44px tall, 10px 12px padding; label above in control weight (14px), hint in muted 13px, error in danger 13px.
-- **Focus:** the global 3px cadmium outline, flush (offset 0) on inputs.
-- **Stepper and price input:** inline groups with a shared border; values centred or right-aligned in tabular figures, native spinners removed.
-- **Checkbox:** custom 22px square, 5px corner, filled accent with a white tick when checked.
+- **Style:** navy panel, strong hairline, 12px corners, 44px. Welcome wells: navy well, 14px corners, 50px, uppercase tracked labels above, an @ prefix for the nickname and an eye toggle for the password.
+- **Focus:** gold outline at zero offset.
+- **Error:** coral text below the field; a four-segment strength meter (gold, then green when strong).
 
 ### Navigation
-- **Shell bar:** sticky indigo bar: lockup (print swatch + condensed name) that returns to the map, coin balance, XP, avatar ringed in yellow, sign-out. Under 560px only the lockup, balance and an icon sign-out remain.
-- **Segmented tabs:** pill track in sheet-2, selected tab in accent with cloth lift. Used for Market Square (My shop / Real businesses) and the auth form (New here / Sign in).
-- **Back:** a small default button labelled "Map" with a left arrow, set on the place cloth.
+- **Shell bar:** sticky shell indigo; logo plus uppercase lockup (a button back to the map), the gold coin balance pill, XP, the avatar ringed in gold, and a ghost pill Sign out. Below 560px only the logo, balance and an icon sign-out remain.
 
 ### Selvedge (signature)
-A full-width strip in deep indigo with yellow 11px uppercase lettering at 0.16em, 5px 16px padding. It states the surface's one rule once; further repeats are `aria-hidden` and separated by yellow diamonds, clipped by the edge like a printed selvedge. Under 560px the repeats hide and the rule wraps.
+A narrow uppercase strip stating the surface's one rule ("City Coins are game money — no cash value", or the place rule). Gold on midnight navy, the statement repeated decoratively with small diamond separators (repeats are hidden from assistive tech). On the mobile welcome it becomes a solid gold band with navy text, centred, one statement.
 
-**The One Selvedge Rule.** One rule per surface, on the cloth's edge. The map view, the browse page and the welcome cloth carry one each; inside a place, the place header's selvedge replaces the shell's. The rule is a true constraint of that surface (coins have no cash value; customers walk if the price is too high; jobs pay only when funded; standings count coins), never a slogan.
+### Junction 101 Map (signature)
+An isometric 2:1 night ground drawn as SVG geometry (roads, kerbs, dashed lanes, a gold-ringed roundabout plate) with gold lamp pools, and raster place art placed as SVG images. Each place is a keyboard-focusable button: ground shadow, art that lifts and glows gold on hover or focus, a midnight pill name plate with a faint gold stroke, and a gold star badge until first visited.
 
-### Place Header
-The place's print fills a cloth frame (min 132px tall, 14px corner, cloth lift) with a back button and a sheet plate carrying the place name and blurb; the place's selvedge runs along the bottom edge.
+### Place Header (signature)
+A framed band filled with the place's wax-print repeat, the place name on a navy plate, the place art at the right, a Map back button, and the place's selvedge at its foot.
 
-### Timed-State Bars
-A 6px bar (3px corner) on a sheet-2 track whose indigo fill (yellow at night) shrinks linearly with the exact time left, captioned with a muted label on the left and a tabular countdown ("4:32 left", or "3h 05m left") on the right. Used for the customer waiting at the counter and the daily quest reset (Lagos midnight). Order progress uses a sibling three-stage strip of 6px bars: done in leaf green, now in yellow, todo in sheet-2.
+### Quest Bolt
+A rail item on the ground with title, gold coin reward, green progress bar, count and Claim. When ready it rises onto a navy panel ringed 1.5px in gold with the gold glow, and Claim becomes the gold go button.
 
-**The Exact Time Rule.** Anything that expires is shown as a bar of the real remaining time plus the countdown in figures, never as a vague badge.
+### Exact-Time Bar
+A label, a tabular countdown ("4h 12m left"), and a 6px bar whose length is exactly the time remaining (gold fill on navy well).
 
-### Quest Bolts
-Each quest is a plate on the ground (10px corner, 10px 12px padding) over a hidden strip of the print of the place it belongs to. Progress is an 8px leaf-green bar with `progressbar` semantics and a tabular "n / target" count. When the quest becomes claimable the cloth unrolls left-to-right behind the plate (clip-path over 0.9s on the out-expo curve), the plate lifts to sheet with cloth lift, and the Claim button turns yellow. Claimed quests show a green "Claimed" notice instead of the button.
-
-### Tables and Inventory
-Full-width rows divided by hairlines with 12px 16px cells; column heads in the label style; numeric columns right-aligned. The player's own leaderboard row is tinted with 18% cadmium yellow and set in 750. The takings band is sheet-2 with the figure style. Negative margins and zero stock turn danger.
-
-### Map (Junction 101)
-An 800×520 SVG inside a sheet frame (16px corner, 6px padding, cloth lift). Laterite ground, grass ellipses, two crossing roads with dashed cotton lanes, and a roundabout filled with the Market Square print. Each place is a building wearing its own print, a hotspot that is a real keyboard button (Enter/Space) with a descriptive label. Name plates are deep-indigo 10px-corner boards with white 750 text at 85% width; unvisited places carry a yellow star medallion. Hover or focus lifts the building 4px; focus also draws a 4px yellow ring. Decorative palms and a yellow danfo are `aria-hidden`.
-
-### Toast
-Indigo, 12px corner, white 650 text with a yellow coin icon, centred above the safe area, sliding up 12px over 0.4s; it announces with `role="status"` and clears after 2.6s.
-
-### Motion
-One curve, `cubic-bezier(0.16, 1, 0.3, 1)`, for everything that arrives or lifts (button press, building lift 0.25s, quest bar 0.5s, cloth unroll 0.9s, toast 0.4s). Time bars run linear over 1s so the shrink matches the clock. `prefers-reduced-motion` reduces every transition and animation to effectively instant.
-
-### Accessibility conventions
-- Focus is always a 3px cadmium-yellow outline offset 2px (flush on inputs).
-- Touch targets are 44px for primary controls, at least 32–40px for chips, tabs and steppers.
-- Icons are decorative (`aria-hidden`) next to text; icon-only controls carry `aria-label`.
-- Errors are `role="alert"` with an icon; the toast is `role="status"`; countdowns are `aria-live="off"` so they do not chatter.
-- The coin balance and the selvedge both say coins are game-only; the yellow demo tag marks mock merchants.
+### Art Set
+Raster isometric Lagos art from Stitch in `public/art/*.webp` (logo, market-square, work-hub, hangout, city-park, danfo-park, signpost, street-scene). Each file has a `.webp.json` provenance sidecar recording its origin in the owner's Stitch export, its processing (background cutout, WebP) and the owner's approval.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give every new place its own authored wax-print tile in the cloth palette and use it on its header, its map building and its quests.
-- **Do** put exactly one selvedge on each surface, stating one true rule of that surface.
-- **Do** keep sections flat on the ground, divided by hairlines; raise only cloth and the plates set on it.
-- **Do** show anything that expires as a timed-state bar with an exact tabular countdown.
-- **Do** reserve cadmium yellow for coins, the "go" action and the focus ring; set real-money prices in plain ink.
-- **Do** set every number in tabular figures, right-aligned in columns.
-- **Do** use Archivo's width axis and weight for hierarchy instead of another typeface.
+- **Do** keep midnight navy as the ground and Outfit as the only face; both are owner-pinned.
+- **Do** use arcade gold for exactly one primary action per region and for coins; text on gold is gold ink.
+- **Do** give every new surface a selvedge strip that states its one plain rule.
+- **Do** show coin amounts as a tabular number with the coin icon and "City Coins"; keep ₦ for real merchant prices only.
+- **Do** add new places and scenery as raster isometric art from the Stitch set, shipped as WebP with a provenance sidecar, sharing the 2:1 projection of the map ground.
+- **Do** use exact-time bars wherever something resets or expires.
+- **Do** give every map place a name plate and a real button role.
 
 ### Don't:
-- **Don't** build white cards on grey with one green accent; this world's surfaces are cloth or hairline-divided ground.
-- **Don't** add a second selvedge, or use the selvedge for marketing copy.
-- **Don't** use madder red or leaf green as error and success colours; status uses the ok and danger tokens.
-- **Don't** show a spinner or vague badge where a remaining time is known.
-- **Don't** recolour an existing print to make a new place.
+- **Don't** put a currency symbol on coins anywhere in UI chrome.
+- **Don't** draw illustration in inline SVG; place, building and scene art is raster from the Stitch set. Inline SVG is for map ground geometry, the wax-print tiles and icons only.
+- **Don't** add a light theme, white cards or neon-cyber effects; gold glows softly and nothing else glows.
+- **Don't** set headings in uppercase; uppercase is for the lockup, calls to action, labels and the selvedge.
+- **Don't** wrap content sections in cards; divide them with hairlines.

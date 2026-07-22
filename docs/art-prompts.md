@@ -1,4 +1,6 @@
-# Art brief — Naija Hustle City (ChatGPT / Gemini)
+# Art brief — Naija Hustle City (ChatGPT / Gemini / Stitch)
+
+> **Status (2026-10-11):** the current art set came from the owner's Google Stitch exports and is live in `apps/web/public/art/`: logo, street scene, market stall, The Hangout, The Hive (Work Hub), danfo park, city park and signpost. Each file has a `*.webp.json` provenance sidecar. The bus-stop kiosk was rejected because it showed real MTN/Glo logos and "MUSLIMS ONLY" text on the danfo. Use the brief below for new or replacement assets.
 
 The goal is one consistent set of game-quality art for Junction 101. Generate each asset in the **same chat**, so the model keeps the style. Paste the **style block** first, then one asset prompt at a time.
 
@@ -7,7 +9,7 @@ The goal is one consistent set of game-quality art for Junction 101. Generate ea
 1. Paste the style block below, then the asset prompt.
 2. Ask for a **transparent background, PNG**. If the tool can't do transparency, ask for a plain flat `#FF00FF` background and I'll cut it out.
 3. If a result drifts in style, reply: *"Match the exact style, lighting, camera angle and palette of the first image."*
-4. Save the files with the names below and send them to me, or drop them in `apps/web/public/art/`. I'll optimise them to WebP, wire them into `public/art/manifest.json`, and check them on desktop and phone.
+4. Save the files with the names below and send them to me, or drop them in `apps/web/public/art/`. I'll cut them out, optimise them to WebP, and check them on desktop and phone.
 
 Check the tool's terms. Images you generate in ChatGPT or Gemini are yours to use commercially under their current terms, but keep the prompts in this file as provenance.
 
@@ -47,17 +49,9 @@ Check the tool's terms. Images you generate in ChatGPT or Gemini are yours to us
 
 ---
 
-## Wiring (for me, once files arrive)
+## Adding new art
 
-`apps/web/public/art/manifest.json` maps each slot to a file:
-
-```json
-{
-  "market_square": "market-square.webp",
-  "work_hub": "work-hub.webp",
-  "hangout": "hangout.webp",
-  "danfo": "danfo.webp"
-}
-```
-
-Any slot left out keeps its current vector drawing, so assets can arrive one at a time.
+1. Get a transparent PNG, or a flat background that the cutout script can remove.
+2. Cut it out, convert it to WebP (720px max width) and save it in `apps/web/public/art/`.
+3. Record provenance with `impeccable embed-prompt <file> --prompt-file <origin.txt>`.
+4. Reference the file from the component that uses it (for example `CityMap.tsx` or `App.tsx`).

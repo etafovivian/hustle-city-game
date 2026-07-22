@@ -1,41 +1,30 @@
-// Junction 101 — lightweight 2D map (PRD: lightweight 2D map first; Three.js later).
+// Junction 101 — 2D isometric map built from the Stitch art set (public/art, provenance in *.json sidecars).
 // Hotspots are real buttons for keyboard and screen-reader access; tap works on mobile.
-// Each place wears its own wax-print cloth (prints.ts).
 import type { LocationKey } from "@hc/shared";
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
-import { INK, PRINT_TILES, type PrintKey } from "../prints.js";
-
-function PrintPattern({ id, print, scale = 0.6 }: { id: string; print: PrintKey; scale?: number }) {
-  const t = PRINT_TILES[print];
-  const s = t.size * scale;
-  return (
-    <pattern id={id} width={s} height={s} patternUnits="userSpaceOnUse">
-      <g transform={`scale(${scale})`}>
-        <rect width={t.size} height={t.size} fill={t.ground} />
-        <g dangerouslySetInnerHTML={{ __html: t.body }} />
-      </g>
-    </pattern>
-  );
-}
+import type { KeyboardEvent } from "react";
+import { INK } from "../prints.js";
 
 interface HotspotProps {
   id: LocationKey;
   label: string;
+  art: string;
+  /** Art box in map units (viewBox 800×640). */
   x: number;
   y: number;
+  w: number;
+  h: number;
   visited: boolean;
   onOpen: (id: LocationKey) => void;
-  children: ReactNode;
 }
 
-function Hotspot({ id, label, x, y, visited, onOpen, children }: HotspotProps) {
+function Hotspot({ id, label, art, x, y, w, h, visited, onOpen }: HotspotProps) {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onOpen(id);
     }
   };
-  const plateW = label.length * 13.5 + 36;
+  const plateW = label.length * 13 + 40;
   return (
     <g
       className="hotspot"
@@ -46,149 +35,95 @@ function Hotspot({ id, label, x, y, visited, onOpen, children }: HotspotProps) {
       onKeyDown={onKey}
       transform={`translate(${x} ${y})`}
     >
-      <rect className="ring" x="-8" y="-8" width="216" height="200" rx="16" fill="transparent" />
-      <g className="bld">{children}</g>
-      {/* Name plate */}
-      <g transform={`translate(${100 - plateW / 2} 156)`}>
+      <rect className="ring" x="-6" y="-6" width={w + 12} height={h + 54} rx="18" fill="transparent" />
+      <ellipse cx={w / 2} cy={h - 6} rx={w * 0.42} ry="14" fill="rgb(0 0 0 / 35%)" />
+      <g className="bld">
+        <image href={art} width={w} height={h} preserveAspectRatio="xMidYMax meet" />
+      </g>
+      <g transform={`translate(${w / 2 - plateW / 2} ${h + 6})`}>
         <g className="map-plate">
-          <rect width={plateW} height="40" rx="10" fill={INK.indigoDeep} />
-          <text x={plateW / 2} y="27" textAnchor="middle" fontSize="22" fontWeight="750" fill="#fff" style={{ fontStretch: "85%" }}>
+          <rect width={plateW} height="38" rx="19" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="1.5" />
+          <text x={plateW / 2} y="25" textAnchor="middle" fontSize="20" fontWeight="800" fill="#fff">
             {label}
           </text>
         </g>
       </g>
       {!visited && (
-        <g transform="translate(196 6)" aria-hidden="true">
-          <circle r="12" fill={INK.yellow} stroke={INK.indigoDeep} strokeWidth="2" />
-          <path d="M0-6l1.8 4.2L6-1.8 1.8 0 0 4.2-1.8 0-6-1.8l4.2-.4z" fill={INK.indigoDeep} />
+        <g transform={`translate(${w - 14} 18)`} aria-hidden="true">
+          <circle r="14" fill={INK.yellow} stroke={INK.indigoDeep} strokeWidth="2.5" />
+          <path d="M0-7l2.1 4.9L7-2.1 2.1 0 0 4.9-2.1 0-7-2.1l4.9-.5z" fill={INK.indigoDeep} />
         </g>
       )}
     </g>
   );
 }
 
-function Palm({ x, y }: { x: number; y: number }) {
-  return (
-    <g transform={`translate(${x} ${y})`} aria-hidden="true">
-      <path d="M0 0c2-14 1-26-2-38" stroke="#6b4a2a" strokeWidth="4" fill="none" />
-      <g fill={INK.green}>
-        <path d="M-2-38c-12-6-22-2-26 6 10-6 18-6 26-6z" />
-        <path d="M-2-38c12-6 22-2 26 6-10-6-18-6-26-6z" />
-        <path d="M-2-38c-6-10-16-12-22-8 9 0 15 3 22 8z" />
-        <path d="M-2-38c6-10 16-12 22-8-9 0-15 3-22 8z" />
-      </g>
-    </g>
-  );
-}
+// Isometric 2:1 roads crossing at the roundabout, so the ground shares the buildings' projection.
+const CX = 400;
+const CY = 300;
+const HALF = 34; // half road width, measured vertically
+const roadA = (x: number) => CY + 0.5 * (x - CX); // runs down-right
+const roadB = (x: number) => CY - 0.5 * (x - CX); // runs up-right
 
-function Danfo({ x, y }: { x: number; y: number }) {
-  return (
-    <g transform={`translate(${x} ${y})`} aria-hidden="true">
-      <rect x="0" y="0" width="74" height="30" rx="6" fill={INK.yellow} />
-      <rect x="0" y="13" width="74" height="4" fill="#111" />
-      <rect x="6" y="4" width="15" height="7" rx="2" fill="#cfe6f5" />
-      <rect x="25" y="4" width="15" height="7" rx="2" fill="#cfe6f5" />
-      <rect x="44" y="4" width="15" height="7" rx="2" fill="#cfe6f5" />
-      <circle cx="17" cy="31" r="6" fill="#111" />
-      <circle cx="57" cy="31" r="6" fill="#111" />
-    </g>
-  );
-}
-
-/**
- * Optional artwork slots. Drop files in public/art/ and list them in public/art/manifest.json,
- * e.g. {"market_square": "market-square.webp"}. Any slot without art keeps its vector drawing.
- * See docs/art-prompts.md for the generation brief.
- */
-type ArtKey = "market_square" | "work_hub" | "hangout" | "danfo";
-type ArtManifest = Partial<Record<ArtKey, string>>;
-
-function useArt(): ArtManifest {
-  const [art, setArt] = useState<ArtManifest>({});
-  useEffect(() => {
-    fetch("/art/manifest.json")
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((m: ArtManifest) => setArt(m ?? {}))
-      .catch(() => setArt({}));
-  }, []);
-  return art;
-}
-
-/** A building plate: the art image when provided, otherwise the vector fallback. */
-function Plate({ file, fallback }: { file?: string; fallback: ReactNode }) {
-  if (!file) return <>{fallback}</>;
-  return <image href={`/art/${file}`} x="-10" y="-14" width="220" height="172" preserveAspectRatio="xMidYMax meet" />;
+function band(f: (x: number) => number) {
+  return `M0 ${f(0) - HALF} L800 ${f(800) - HALF} L800 ${f(800) + HALF} L0 ${f(0) + HALF}Z`;
 }
 
 export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void; visited: Set<string> }) {
-  const art = useArt();
   return (
     <div className="map map-frame">
-      <svg viewBox="0 0 800 520" role="group" aria-label="Junction 101 map. Choose a place to go in.">
+      <svg viewBox="0 0 800 640" role="group" aria-label="Junction 101 map. Choose a place to go in.">
         <defs>
-          <PrintPattern id="p-market" print="market" />
-          <PrintPattern id="p-work" print="work" />
-          <PrintPattern id="p-hangout" print="hangout" />
+          <radialGradient id="night" cx="50%" cy="45%" r="75%">
+            <stop offset="0" stopColor="#1a2350" />
+            <stop offset="1" stopColor="#0d1333" />
+          </radialGradient>
+          <radialGradient id="lamp">
+            <stop offset="0" stopColor="#ffc72c" stopOpacity=".28" />
+            <stop offset="1" stopColor="#ffc72c" stopOpacity="0" />
+          </radialGradient>
         </defs>
-        <rect width="800" height="520" fill="var(--map-ground)" />
-        <ellipse cx="90" cy="70" rx="120" ry="64" fill="var(--map-grass)" />
-        <ellipse cx="730" cy="480" rx="130" ry="64" fill="var(--map-grass)" />
-        {/* Roads */}
-        <rect x="0" y="236" width="800" height="56" fill="var(--map-road)" />
-        <rect x="372" y="0" width="56" height="520" fill="var(--map-road)" />
-        <path d="M0 264H800M400 0V520" stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="18 14" />
-        <circle cx="400" cy="264" r="54" fill="var(--map-road)" />
-        <circle cx="400" cy="264" r="32" fill="url(#p-market)" stroke="var(--map-lane)" strokeWidth="4" />
-        <g transform="translate(400 330)">
-          <rect x="-62" y="-13" width="124" height="26" rx="6" fill={INK.indigoDeep} />
-          <text textAnchor="middle" y="5" fontSize="12" fontWeight="800" fill={INK.yellow} letterSpacing="1.5">
-            JUNCTION 101
-          </text>
+        <rect width="800" height="640" fill="url(#night)" />
+
+        {/* Ground: isometric road cross, kerbs, lane marks, roundabout */}
+        <path d={band(roadA)} fill="var(--map-road)" />
+        <path d={band(roadB)} fill="var(--map-road)" />
+        <path d={`M0 ${roadA(0) - HALF} L800 ${roadA(800) - HALF}M0 ${roadA(0) + HALF} L800 ${roadA(800) + HALF}`} stroke="#3a4682" strokeWidth="3" />
+        <path d={`M0 ${roadB(0) - HALF} L800 ${roadB(800) - HALF}M0 ${roadB(0) + HALF} L800 ${roadB(800) + HALF}`} stroke="#3a4682" strokeWidth="3" />
+        <path d={`M0 ${roadA(0)} L800 ${roadA(800)}M0 ${roadB(0)} L800 ${roadB(800)}`} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
+        <ellipse cx={CX} cy={CY} rx="96" ry="48" fill="var(--map-road)" />
+        <ellipse cx={CX} cy={CY} rx="62" ry="31" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
+        <text x={CX} y={CY + 5} textAnchor="middle" fontSize="13" fontWeight="900" fill={INK.yellow} letterSpacing="1.4">
+          JUNCTION 101
+        </text>
+
+        {/* Lamp light pooling on the ground */}
+        <g aria-hidden="true">
+          <ellipse cx="400" cy="180" rx="150" ry="70" fill="url(#lamp)" />
+          <ellipse cx="400" cy="500" rx="170" ry="70" fill="url(#lamp)" />
+          <ellipse cx="680" cy="300" rx="130" ry="60" fill="url(#lamp)" />
         </g>
 
-        <Palm x={60} y={120} />
-        <Palm x={112} y={108} />
-        <Palm x={710} y={488} />
-        <Palm x={762} y={476} />
-        {art.danfo ? <image href={`/art/${art.danfo}`} x="456" y="214" width="104" height="64" preserveAspectRatio="xMidYMid meet" /> : <Danfo x={470} y={242} />}
+        {/* Scenery — decorative, not a place */}
+        <g aria-hidden="true" className="map-scenery">
+          <image href="/art/city-park.webp" x="0" y="190" width="230" height="200" preserveAspectRatio="xMidYMid meet" />
+          <image href="/art/danfo-park.webp" x="8" y="455" width="150" height="130" preserveAspectRatio="xMidYMax meet" />
+          <image href="/art/signpost.webp" x="660" y="452" width="66" height="130" preserveAspectRatio="xMidYMax meet" />
+        </g>
 
-        {/* Market Square — stalls under printed umbrellas */}
-        <Hotspot id="market_square" label="Market Square" x={70} y={300} visited={visited.has("market_square")} onOpen={onOpen}>
-          <Plate file={art.market_square} fallback={<>
-          <rect x="10" y="72" width="180" height="80" rx="8" fill={INK.red} />
-          <rect x="10" y="72" width="180" height="12" fill="#8f2314" />
-          {[30, 80, 130].map((sx) => (
-            <g key={sx}>
-              <path d={`M${sx - 10} 62 q32 -46 64 0z`} fill="url(#p-market)" stroke={INK.indigoDeep} strokeWidth="2" />
-              <rect x={sx + 20} y="62" width="4" height="30" fill="#4a3522" />
-              <rect x={sx} y="98" width="44" height="32" rx="4" fill={INK.cotton} stroke="#8f2314" />
-            </g>
-          ))}
-          </>} />
-        </Hotspot>
-
-        {/* Work Hub — office block with printed fascia */}
-        <Hotspot id="work_hub" label="Work Hub" x={500} y={22} visited={visited.has("work_hub")} onOpen={onOpen}>
-          <Plate file={art.work_hub} fallback={<>
-          <rect x="30" y="8" width="140" height="146" rx="6" fill={INK.indigo} />
-          <rect x="30" y="8" width="140" height="22" fill="url(#p-work)" />
-          {[0, 1, 2, 3].map((r) =>
-            [0, 1, 2, 3].map((c) => <rect key={`${r}-${c}`} x={44 + c * 30} y={40 + r * 24} width="20" height="14" rx="2" fill={(r + c) % 3 === 0 ? INK.yellow : "#d7dcf5"} />),
-          )}
-          <rect x="88" y="130" width="24" height="24" fill={INK.indigoDeep} />
-          </>} />
-        </Hotspot>
-
-        {/* The Hangout — printed canopy */}
-        <Hotspot id="hangout" label="The Hangout" x={500} y={300} visited={visited.has("hangout")} onOpen={onOpen}>
-          <Plate file={art.hangout} fallback={<>
-          <rect x="20" y="62" width="160" height="90" rx="10" fill={INK.green} />
-          <path d="M8 66h184l-14-30H22z" fill="url(#p-hangout)" stroke={INK.indigoDeep} strokeWidth="2" />
-          <rect x="40" y="88" width="40" height="30" rx="4" fill={INK.yellow} />
-          <rect x="120" y="88" width="40" height="30" rx="4" fill={INK.yellow} />
-          <rect x="88" y="114" width="24" height="38" fill="#124d2c" />
-          </>} />
-        </Hotspot>
+        <Hotspot id="work_hub" label="Work Hub" art="/art/work-hub.webp" x={300} y={0} w={200} h={196} visited={visited.has("work_hub")} onOpen={onOpen} />
+        <Hotspot id="hangout" label="The Hangout" art="/art/hangout.webp" x={540} y={150} w={220} h={170} visited={visited.has("hangout")} onOpen={onOpen} />
+        <Hotspot
+          id="market_square"
+          label="Market Square"
+          art="/art/market-square.webp"
+          x={276}
+          y={372}
+          w={248}
+          h={176}
+          visited={visited.has("market_square")}
+          onOpen={onOpen}
+        />
       </svg>
     </div>
   );

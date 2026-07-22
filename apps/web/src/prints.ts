@@ -4,11 +4,11 @@
 export type PrintKey = "market" | "work" | "hangout";
 
 export const INK = {
-  indigo: "#1f2a6b",
-  indigoDeep: "#141c4d",
-  yellow: "#f2b705",
-  red: "#c8321e",
-  green: "#1e7a46",
+  indigo: "#1e2a5e",
+  indigoDeep: "#0a0f24",
+  yellow: "#ffc72c",
+  red: "#df382b",
+  green: "#00a859",
   cotton: "#f7f4ea",
 } as const;
 

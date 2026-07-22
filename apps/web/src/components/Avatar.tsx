@@ -68,12 +68,15 @@ export function Avatar({ avatar, size = 40, className }: { avatar: AvatarConfig;
 export function AvatarPicker({ value, onChange }: { value: AvatarConfig; onChange: (v: AvatarConfig) => void }) {
   return (
     <fieldset className="avatar-picker">
-      <legend className="field" style={{ padding: 0 }}>
+      <legend className="field-label" style={{ padding: 0, marginBottom: 10 }}>
         Your look
       </legend>
-      <div className="row" style={{ gap: 14 }}>
-        <Avatar avatar={value} size={88} />
-        <p className="muted small">You can change it any time.</p>
+      <div className="look-card">
+        <span className="look-avatar">
+          <Avatar avatar={value} size={64} />
+          <span className="level-badge">Lvl 1</span>
+        </span>
+        <p className="muted small">Pick a look now. You can change it any time inside Junction 101.</p>
       </div>
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Skin tone</span>

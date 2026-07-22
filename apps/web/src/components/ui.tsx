@@ -22,12 +22,14 @@ export function PlaceHeader({
   title,
   blurb,
   rule,
+  art,
   onBack,
 }: {
   print: PrintKey;
   title: string;
   blurb: string;
   rule: string;
+  art?: string;
   onBack: () => void;
 }) {
   return (
@@ -40,6 +42,7 @@ export function PlaceHeader({
           <h1>{title}</h1>
           <p className="small muted">{blurb}</p>
         </div>
+        {art && <img className="place-art" src={art} alt="" />}
       </div>
       <Selvedge rule={rule} />
     </div>

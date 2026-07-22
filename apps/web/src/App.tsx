@@ -10,7 +10,7 @@ import { Merchants } from "./components/Merchants.js";
 import { Quests } from "./components/Quests.js";
 import { ShopPanel } from "./components/ShopPanel.js";
 import { PlaceHeader, Selvedge } from "./components/ui.js";
-import { LOCATION_PRINT, printUrl } from "./prints.js";
+import { LOCATION_PRINT } from "./prints.js";
 
 type View = { kind: "map" } | { kind: "location"; id: LocationKey } | { kind: "browse" };
 
@@ -20,10 +20,16 @@ const PLACE_RULE: Record<LocationKey, string> = {
   hangout: "Standings count City Coins, never real money",
 };
 
+const PLACE_ART: Record<LocationKey, string> = {
+  market_square: "/art/market-square.webp",
+  work_hub: "/art/work-hub.webp",
+  hangout: "/art/hangout.webp",
+};
+
 function Lockup({ onClick }: { onClick?: () => void }) {
   return (
-    <button className="lockup" onClick={onClick} style={{ background: "none", border: 0, padding: 0, cursor: onClick ? "pointer" : "default" }}>
-      <span className="lockup-swatch" style={{ backgroundImage: printUrl("market"), backgroundSize: "28px 28px" }} aria-hidden="true" />
+    <button className="lockup" aria-label="Naija Hustle City, back to the map" onClick={onClick} style={{ background: "none", border: 0, padding: 0, cursor: onClick ? "pointer" : "default" }}>
+      <img className="lockup-logo" src="/art/logo.webp" alt="" width={42} height={42} />
       <span className="lockup-name">
         Naija <span>Hustle City</span>
       </span>
@@ -166,6 +172,7 @@ export function App() {
                   title={location.name}
                   blurb={location.blurb}
                   rule={PLACE_RULE[location.key]}
+                  art={PLACE_ART[location.key]}
                   onBack={goMap}
                 />
 
