@@ -757,7 +757,7 @@
     "prints": [
       {
         "key": "market",
-        "name": "Market Square — record circles",
+        "name": "Market Square \u2014 record circles",
         "ground": "cadmium-yellow",
         "inks": [
           "indigo",
@@ -774,7 +774,7 @@
       },
       {
         "key": "work",
-        "name": "Work Hub — ladder-brick",
+        "name": "Work Hub \u2014 ladder-brick",
         "ground": "indigo",
         "inks": [
           "leaf-green",
@@ -789,7 +789,7 @@
       },
       {
         "key": "hangout",
-        "name": "The Hangout — fan-and-dot",
+        "name": "The Hangout \u2014 fan-and-dot",
         "ground": "madder-red",
         "inks": [
           "cadmium-yellow",
@@ -821,7 +821,7 @@
       "refersTo": "button",
       "description": "Default action: sheet with strong hairline, 44px, 650 weight.",
       "html": "<button class=\"ds-btn\">Find a business</button>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}"
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:999px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}"
     },
     {
       "name": "Primary Button",
@@ -829,7 +829,7 @@
       "refersTo": "button-primary",
       "description": "Committing actions (Sign in, Collect, Buy). Indigo by day, yellow at night.",
       "html": "<button class=\"ds-btn ds-btn-primary\">Collect</button>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-primary{background:var(--accent,#1f2a6b);border-color:var(--accent,#1f2a6b);color:var(--accent-ink,#fff)}.ds-btn-primary:hover{background:var(--accent,#1f2a6b);filter:brightness(1.12)}"
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:999px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-primary{background:var(--accent,#1f2a6b);border-color:var(--accent,#1f2a6b);color:var(--accent-ink,#fff)}.ds-btn-primary:hover{background:var(--accent,#1f2a6b);filter:brightness(1.12)}"
     },
     {
       "name": "Go Button",
@@ -837,7 +837,7 @@
       "refersTo": "button-go",
       "description": "The action that earns coins or leaves for real merchants: Serve, Claim (when ready), Browse merchants.",
       "html": "<button class=\"ds-btn ds-btn-go\">Serve for 450</button>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-go{background:#f2b705;border-color:#f2b705;color:#2a1f00}.ds-btn-go:hover{background:#f2b705;filter:brightness(1.05)}"
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:16px;font-weight:650;min-height:44px;padding:9px 14px;border-radius:999px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sheet-2,#e8eaf4)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-btn:disabled{cursor:not-allowed;color:var(--muted,#4c5275);background:var(--sheet-2,#e8eaf4);border-color:var(--rule,#d3d7ea);filter:none}.ds-btn-go{background:#f2b705;border-color:#f2b705;color:#2a1f00}.ds-btn-go:hover{background:#f2b705;filter:brightness(1.05)}"
     },
     {
       "name": "Field",
@@ -845,7 +845,7 @@
       "refersTo": "input",
       "description": "Label above, 44px input with strong hairline, flush yellow focus, muted hint.",
       "html": "<label class=\"ds-field\">Nickname<input class=\"ds-input\" value=\"Tunde_01\"><span class=\"ds-hint\">This is how other players see you.</span></label>",
-      "css": ".ds-field{display:grid;gap:6px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-weight:650;font-size:14px;color:var(--text,#141833)}.ds-input{font:inherit;font-weight:400;font-size:16px;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:inherit}.ds-input:focus-visible{outline:3px solid #f2b705;outline-offset:0}.ds-hint{font-weight:400;font-size:13px;color:var(--muted,#4c5275)}"
+      "css": ".ds-field{display:grid;gap:6px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-weight:650;font-size:14px;color:var(--text,#141833)}.ds-input{font:inherit;font-weight:400;font-size:16px;min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:inherit}.ds-input:focus-visible{outline:3px solid #f2b705;outline-offset:0}.ds-hint{font-weight:400;font-size:13px;color:var(--muted,#4c5275)}"
     },
     {
       "name": "Shell Bar",
@@ -876,7 +876,7 @@
       "kind": "custom",
       "refersTo": "selvedge",
       "description": "The printed edge of the cloth: one rule per surface, repeats decorative.",
-      "html": "<div class=\"ds-selvedge\"><span>City Coins are game money — no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money — no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money — no cash value</span></div>",
+      "html": "<div class=\"ds-selvedge\"><span>City Coins are game money \u2014 no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money \u2014 no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money \u2014 no cash value</span></div>",
       "css": ".ds-selvedge{display:flex;gap:28px;overflow:hidden;white-space:nowrap;padding:5px 16px;font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#141c4d;color:#f2b705}.ds-selvedge span{flex:none}.ds-selvedge i{display:inline-block;width:6px;height:6px;background:currentColor;transform:rotate(45deg) translateY(-2px);margin-right:22px;opacity:.7}"
     },
     {
@@ -884,7 +884,7 @@
       "kind": "card",
       "refersTo": "place-plate",
       "description": "The place's print in a raised cloth frame, plate with the name, selvedge along the edge.",
-      "html": "<div class=\"ds-cloth\"><div class=\"ds-head\"><button class=\"ds-back\">← Map</button><div class=\"ds-plate\"><h1>Work Hub</h1><p>Paid digital tasks from funded businesses.</p></div></div><div class=\"ds-selvedge2\">Jobs pay only when a business has funded them — nothing here pays yet</div></div>",
+      "html": "<div class=\"ds-cloth\"><div class=\"ds-head\"><button class=\"ds-back\">\u2190 Map</button><div class=\"ds-plate\"><h1>Work Hub</h1><p>Paid digital tasks from funded businesses.</p></div></div><div class=\"ds-selvedge2\">Jobs pay only when a business has funded them \u2014 nothing here pays yet</div></div>",
       "css": ".ds-cloth{border-radius:14px;overflow:hidden;border:1px solid var(--rule,#d3d7ea);box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%);font-family:\"Archivo Variable\",\"Archivo\",system-ui,sans-serif}.ds-head{min-height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:16px;padding:12px 16px 16px;background-image:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2248%22%20height%3D%2248%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231f2a6b%22/%3E%3Cg%20fill%3D%22%231e7a46%22%3E%3Crect%20x%3D%222%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%2226%22%20y%3D%2216%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%222%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3Crect%20x%3D%2226%22%20y%3D%2240%22%20width%3D%2220%22%20height%3D%228%22%20rx%3D%221%22/%3E%3C/g%3E%3Cg%20stroke%3D%22%23f2b705%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M30%206v4M36%206v4M42%206v4M6%2018v4M12%2018v4M18%2018v4M30%2030v4M36%2030v4M42%2030v4M6%2042v4M12%2042v4M18%2042v4%22/%3E%3C/g%3E%3C/svg%3E\");background-size:48px 48px}.ds-back{font:inherit;font-size:14px;font-weight:650;min-height:36px;padding:6px 10px;border-radius:10px;border:1px solid var(--rule-strong,#b4bad6);background:var(--sheet,#fff);color:var(--text,#141833);cursor:pointer}.ds-back:focus-visible{outline:3px solid #f2b705;outline-offset:2px}.ds-plate{background:var(--sheet,#fff);color:var(--text,#141833);border-radius:10px;padding:10px 14px;box-shadow:0 1px 2px rgb(20 24 51/8%),0 8px 24px -8px rgb(20 24 51/18%)}.ds-plate h1{margin:0;font-size:28px;font-weight:800;font-stretch:88%;letter-spacing:-.01em;line-height:1.15}.ds-plate p{margin:0;font-size:14px;color:var(--muted,#4c5275)}.ds-selvedge2{padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#141c4d;color:#f2b705;white-space:nowrap;overflow:hidden}"
     },
     {
@@ -928,7 +928,7 @@
       },
       {
         "name": "The One Hand Rule",
-        "body": "Archivo Variable is the only family. Hierarchy comes from weight (400–900) and the `wdth` axis (70–100%), never a second face.",
+        "body": "Archivo Variable is the only family. Hierarchy comes from weight (400\u2013900) and the `wdth` axis (70\u2013100%), never a second face.",
         "section": "typography"
       },
       {
@@ -948,7 +948,7 @@
       },
       {
         "name": "The Print Tile Rule",
-        "body": "The three prints are authored 48×48 tiles in the cloth palette, rendered as CSS backgrounds (place header at 48px, welcome cloth at 64px, quest bolts at 32px, lockup swatch at 28px) and as SVG patterns at 0.6 scale on the map. New places get a new authored tile, not a recolour of an existing one.",
+        "body": "The three prints are authored 48\u00d748 tiles in the cloth palette, rendered as CSS backgrounds (place header at 48px, welcome cloth at 64px, quest bolts at 32px, lockup swatch at 28px) and as SVG patterns at 0.6 scale on the map. New places get a new authored tile, not a recolour of an existing one.",
         "section": "shapes"
       },
       {

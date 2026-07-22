@@ -115,7 +115,7 @@ typography:
 rounded:
   bar: "3px"
   tag: "4px"
-  control: "10px"
+  control: "12px"
   plate: "10px"
   toast: "12px"
   cloth: "14px"
@@ -134,23 +134,23 @@ components:
     backgroundColor: "{colors.sheet}"
     textColor: "{colors.text}"
     typography: "{typography.control}"
-    rounded: "{rounded.control}"
-    padding: "9px 14px"
-    height: "44px"
+    rounded: "{rounded.pill}"
+    padding: "10px 18px"
+    height: "46px"
   button-hover:
     backgroundColor: "{colors.sheet-2}"
   button-primary:
     backgroundColor: "{colors.indigo}"
     textColor: "{colors.sheet}"
     typography: "{typography.control}"
-    rounded: "{rounded.control}"
+    rounded: "{rounded.pill}"
     padding: "9px 14px"
     height: "44px"
   button-go:
     backgroundColor: "{colors.cadmium-yellow}"
     textColor: "{colors.yellow-ink}"
     typography: "{typography.control}"
-    rounded: "{rounded.control}"
+    rounded: "{rounded.pill}"
     padding: "9px 14px"
     height: "44px"
   button-disabled:
@@ -158,7 +158,7 @@ components:
     textColor: "{colors.muted}"
   button-quiet:
     textColor: "{colors.text}"
-    rounded: "{rounded.control}"
+    rounded: "{rounded.pill}"
   button-sm:
     padding: "6px 10px"
     height: "36px"
@@ -349,7 +349,7 @@ Flat by default. Depth belongs to the cloth: the map frame, the place-header clo
 
 ## Shapes
 
-Gently rounded, never pill-shaped except where the object is a token or a toggle. Controls and plates use a 10px corner; cloth frames 14px; the map frame 16px; the toast 12px. Pills (999px) are reserved for the coin balance, shell buttons, segmented tabs and filter chips. Bars and tags are almost square (3–4px). The selvedge is square-edged and full-bleed; its separator is a 6px yellow diamond (a rotated square), the one ornament outside the prints.
+Soft, never sharp. Every button, stepper and price input is a pill (999px), matching the coin balance, segmented tabs and filter chips, so all actions share one rounded silhouette. Text fields use a 12px corner; plates use 10px; cloth frames 14px; the map frame 16px; the toast 12px. Bars and tags are almost square (3–4px). The selvedge is square-edged and full-bleed; its separator is a 6px yellow diamond (a rotated square), the one ornament outside the prints.
 
 **The Print Tile Rule.** The three prints are authored 48×48 tiles in the cloth palette, rendered as CSS backgrounds (place header at 48px, welcome cloth at 64px, quest bolts at 32px, lockup swatch at 28px) and as SVG patterns at 0.6 scale on the map. New places get a new authored tile, not a recolour of an existing one.
 
@@ -374,7 +374,7 @@ Gently rounded, never pill-shaped except where the object is a token or a toggle
 - **Coin balance:** yellow pill on the indigo shell with a coin icon, tabular amount, and "City Coins" unit (hidden under 560px); its title states that coins have no cash value.
 
 ### Inputs / Fields
-- **Style:** sheet, strong hairline, 10px corner, 44px tall, 10px 12px padding; label above in control weight (14px), hint in muted 13px, error in danger 13px.
+- **Style:** sheet, strong hairline, 12px corner, 44px tall, 10px 12px padding; label above in control weight (14px), hint in muted 13px, error in danger 13px.
 - **Focus:** the global 3px cadmium outline, flush (offset 0) on inputs.
 - **Stepper and price input:** inline groups with a shared border; values centred or right-aligned in tabular figures, native spinners removed.
 - **Checkbox:** custom 22px square, 5px corner, filled accent with a white tick when checked.
