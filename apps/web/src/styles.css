@@ -185,7 +185,15 @@ a { color: inherit; text-underline-offset: 3px; }
 .place-plate h1 { font-size: clamp(24px, 5vw, 32px); }
 
 /* ── Map ───────────────────────────────────────────── */
-.map svg { width: 100%; height: auto; display: block; border-radius: 14px; }
+.map svg { display: block; }
+.map-frame { position: relative; }
+.map-viewport { height: clamp(380px, 62vh, 640px); border-radius: 12px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; background: #0d1333; }
+.map-viewport:active { cursor: grabbing; }
+.map-viewport:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.map-controls { position: absolute; right: 16px; top: 16px; display: grid; gap: 6px; }
+.map-ctl { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--rule-strong); background: rgb(18 24 53 / 92%); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
+.map-ctl:hover { color: var(--yellow); border-color: var(--yellow); }
+.map-hint { position: absolute; left: 16px; bottom: 14px; margin: 0; padding: 4px 10px; border-radius: 999px; background: rgb(10 15 36 / 80%); color: var(--muted); pointer-events: none; }
 .map-frame { border-radius: 16px; border: 1px solid var(--rule); background: var(--sheet); padding: 6px; box-shadow: var(--shadow); }
 .hotspot { cursor: pointer; outline: none; }
 .hotspot .bld { transition: transform 0.25s var(--ease-out); transform-box: fill-box; transform-origin: 50% 100%; }
@@ -196,7 +204,6 @@ a { color: inherit; text-underline-offset: 3px; }
 .map-scenery { opacity: .78; pointer-events: none; }
 .hotspot .bld image { filter: drop-shadow(0 0 0 transparent); transition: filter 0.25s ease; }
 .hotspot:hover .bld image, .hotspot:focus-visible .bld image { filter: drop-shadow(0 0 14px rgb(255 199 44 / 45%)); }
-@media (max-width: 559px) { .map-plate { transform: scale(1.5); } }
 
 /* ── Shop ──────────────────────────────────────────── */
 .stage-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
