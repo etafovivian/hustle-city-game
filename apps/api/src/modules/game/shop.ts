@@ -2,11 +2,13 @@
 // The client never changes coins or inventory directly (FR02).
 
 import { randomUUID } from "node:crypto";
-import { simInventory, simOrders, simShops } from "@hc/db";
+import { shopDecor, simInventory, simOrders, simShops } from "@hc/db";
 import {
   ECONOMY,
   STOCK_ITEMS,
   STOCK_ITEMS_BY_KEY,
+  appealOf,
+  demandBoost,
   customerOrderFor,
   isValidPrice,
   orderSlotIndex,
@@ -58,7 +60,8 @@ async function openShop(tx: Tx, userId: string, now: Date, timeZone: string) {
 
 async function settle(tx: Tx, shop: ShopRow, now: Date, timeZone: string) {
   const lines = await tx.select().from(simInventory).where(eq(simInventory.shopId, shop.id));
-  const result = settleShop(shop.id, lines, shop.settledStep, stepIndex(now));
+  const decor = await tx.select().from(shopDecor).where(eq(shopDecor.shopId, shop.id));
+  const result = settleShop(shop.id, lines, shop.settledStep, stepIndex(now), demandBoost(appealOf(decor)));
 
   for (const sale of result.sales) {
     await tx

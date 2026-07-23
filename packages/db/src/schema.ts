@@ -164,6 +164,24 @@ export const questProgress = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.day, t.questKey] })],
 );
 
+/** Buy mode: furniture placed on a player's shop floor (see @hc/shared decor.ts). */
+export const shopDecor = pgTable(
+  "shop_decor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shopId: uuid("shop_id")
+      .notNull()
+      .references(() => simShops.id, { onDelete: "cascade" }),
+    itemKey: text("item_key").notNull(),
+    x: integer("x").notNull(),
+    y: integer("y").notNull(),
+    rotation: integer("rotation").notNull().default(0),
+    pricePaid: integer("price_paid").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("shop_decor_shop_idx").on(t.shopId), check("shop_decor_rotation_valid", sql`${t.rotation} between 0 and 3`)],
+);
+
 // --- Businesses and catalogue (mock merchants in Stage A) ------------------
 
 export const businesses = pgTable(

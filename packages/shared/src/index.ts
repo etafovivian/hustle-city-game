@@ -5,3 +5,4 @@ export * from "./quests.js";
 export * from "./profile.js";
 export * from "./api.js";
 export * from "./onboarding.js";
+export * from "./decor.js";

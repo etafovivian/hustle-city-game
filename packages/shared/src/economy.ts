@@ -103,6 +103,8 @@ export function settleShop(
   inventory: readonly InventoryLine[],
   fromStep: number,
   toStep: number,
+  /** Extra demand from shop appeal, e.g. 0.12 for +12% (see decor.ts). */
+  boost = 0,
 ): SettlementResult {
   const start = Math.max(fromStep, toStep - ECONOMY.maxStepsPerSettle);
   const remaining = new Map(inventory.map((l) => [l.itemKey, l.quantity]));
@@ -114,7 +116,7 @@ export function settleShop(
       const left = remaining.get(line.itemKey) ?? 0;
       if (!item || left <= 0 || line.price <= 0) continue;
 
-      const expected = expectedDemand(item, line.price);
+      const expected = expectedDemand(item, line.price) * (1 + Math.max(0, boost));
       const rand = seededRandom(shopId, step, line.itemKey);
       const whole = Math.floor(expected);
       const units = Math.min(left, whole + (rand() < expected - whole ? 1 : 0));

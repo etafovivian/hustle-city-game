@@ -97,6 +97,22 @@ export interface ProductSummary {
   photoUrl: string | null;
 }
 
+export interface DecorPlacementView {
+  id: string;
+  itemKey: string;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export interface DecorView {
+  floor: { cols: number; rows: number };
+  placements: DecorPlacementView[];
+  appeal: number;
+  /** Demand boost from appeal, e.g. 0.12 = +12%. */
+  boost: number;
+}
+
 export interface ApiError {
   error: string;
   message: string;

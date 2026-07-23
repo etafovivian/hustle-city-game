@@ -210,3 +210,48 @@ describe("roles and integrity", () => {
   });
 });
 
+
+describe("buy mode (decorate)", () => {
+  const buy = (p: Awaited<ReturnType<typeof registerPlayer>>, body: Record<string, unknown>) =>
+    p.call("POST", "/api/game/decor/buy", { rotation: 0, requestId: randomUUID(), ...body });
+
+  it("charges once per request id, places the item and raises appeal", async () => {
+    const p = await registerPlayer(app);
+    const requestId = randomUUID();
+    const first = await buy(p, { itemKey: "standing_fan", x: 0, y: 0, requestId });
+    expect(first.statusCode).toBe(200);
+    expect((await buy(p, { itemKey: "standing_fan", x: 0, y: 0, requestId })).statusCode).toBe(200);
+    expect(await coins(p)).toBe(2000 - 300);
+    const view = (await p.call("GET", "/api/game/decor")).json();
+    expect(view.placements).toHaveLength(1);
+    expect(view.appeal).toBe(2);
+    expect(view.boost).toBeCloseTo(0.02);
+  });
+
+  it("rejects overlaps, off-floor spots and unaffordable items", async () => {
+    const p = await registerPlayer(app);
+    await buy(p, { itemKey: "plastic_chair", x: 2, y: 2 });
+    expect((await buy(p, { itemKey: "plastic_chair", x: 2, y: 2 })).statusCode).toBe(400);
+    expect((await buy(p, { itemKey: "generator", x: 7, y: 0 })).statusCode).toBe(400);
+    expect((await buy(p, { itemKey: "adire_sofa_set", x: 4, y: 3 })).statusCode).toBe(422); // 2,500 > balance
+  });
+
+  it("lets only one of two concurrent buys take the same tile", async () => {
+    const p = await registerPlayer(app);
+    const results = await Promise.all([buy(p, { itemKey: "bucket_set", x: 5, y: 5 }), buy(p, { itemKey: "bucket_set", x: 5, y: 5 })]);
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 400]);
+    expect(await coins(p)).toBe(2000 - 80);
+  });
+
+  it("moves, rotates and sells for half price", async () => {
+    const p = await registerPlayer(app);
+    const placed = (await buy(p, { itemKey: "plastic_chair", x: 0, y: 0 })).json();
+    const id = placed.placements[0].id;
+    const moved = await p.call("POST", `/api/game/decor/${id}/move`, { x: 3, y: 1, rotation: 2 });
+    expect(moved.json().placements[0]).toMatchObject({ x: 3, y: 1, rotation: 2 });
+    const sold = await p.call("POST", `/api/game/decor/${id}/sell`);
+    expect(sold.json().placements).toHaveLength(0);
+    expect(await coins(p)).toBe(2000 - 150 + 75);
+    expect((await p.call("POST", `/api/game/decor/${id}/sell`)).statusCode).toBe(404);
+  });
+});

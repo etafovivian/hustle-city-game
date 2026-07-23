@@ -5,6 +5,7 @@ import { api, formatCoins } from "./api.js";
 import { AuthScreen } from "./components/AuthScreen.js";
 import { Avatar } from "./components/Avatar.js";
 import { CityMap } from "./components/CityMap.js";
+import { Decorate } from "./components/Decorate.js";
 import { Hangout, WorkHub } from "./components/Locations.js";
 import { Merchants } from "./components/Merchants.js";
 import { Phone, type PhoneApp } from "./components/Phone.js";
@@ -44,7 +45,7 @@ export function App() {
   const [view, setView] = useState<View>({ kind: "map" });
   const [board, setBoard] = useState<QuestBoard | null>(null);
   const [shop, setShop] = useState<ShopView | null>(null);
-  const [marketTab, setMarketTab] = useState<"shop" | "merchants">("shop");
+  const [marketTab, setMarketTab] = useState<"shop" | "decorate" | "merchants">("shop");
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [phone, setPhone] = useState<PhoneApp | null>(null);
@@ -129,7 +130,7 @@ export function App() {
 
   const location = view.kind === "location" ? LOCATIONS.find((l) => l.key === view.id) : undefined;
   const onChanged = () => void refresh();
-  const tab: Tab = view.kind === "market" ? "market" : view.kind === "location" && view.id === "market_square" && marketTab === "shop" ? "shop" : "map";
+  const tab: Tab = view.kind === "market" ? "market" : view.kind === "location" && view.id === "market_square" && marketTab !== "merchants" ? "shop" : "map";
   const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
   const openShop = () => {
     setMarketTab("shop");
@@ -208,13 +209,18 @@ export function App() {
                   <>
                     <div className="segmented" role="tablist" aria-label="Market Square">
                       <button role="tab" aria-selected={marketTab === "shop"} onClick={() => setMarketTab("shop")}>
-                        My shop
+                        Stock
+                      </button>
+                      <button role="tab" aria-selected={marketTab === "decorate"} onClick={() => setMarketTab("decorate")}>
+                        Decorate
                       </button>
                       <button role="tab" aria-selected={marketTab === "merchants"} onClick={() => setMarketTab("merchants")}>
                         Real businesses
                       </button>
                     </div>
-                    {marketTab === "shop" ? (
+                    {marketTab === "decorate" ? (
+                      <Decorate coins={me.coins} onChanged={onChanged} notify={notify} />
+                    ) : marketTab === "shop" ? (
                       shop ? (
                         <ShopPanel shop={shop} onShop={setShop} onChanged={onChanged} notify={notify} />
                       ) : (

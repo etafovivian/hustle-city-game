@@ -6,12 +6,21 @@ import { z } from "zod";
 import { lockProfile } from "../../lib/db.js";
 import { requireUser } from "../../plugins/auth.js";
 import { claimQuest, questBoard, recordEvents } from "./quests.js";
+import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
 const restockBody = z.object({ itemKey: z.string(), units: z.number().int(), requestId: z.uuid() });
 const priceBody = z.object({ itemKey: z.string(), price: z.number().int() });
 const orderBody = z.object({ slot: z.number().int() });
+const decorBuyBody = z.object({
+  itemKey: z.string(),
+  x: z.number().int(),
+  y: z.number().int(),
+  rotation: z.number().int(),
+  requestId: z.uuid(),
+});
+const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });
 
 export async function gameRoutes(app: FastifyInstance) {
   const tz = app.config.GAME_TIMEZONE;
@@ -69,6 +78,31 @@ export async function gameRoutes(app: FastifyInstance) {
     const user = requireUser(request);
     const { slot } = orderBody.parse(request.body);
     return inTx(user.id, (ctx) => fulfilOrder(ctx, slot));
+  });
+
+  // Buy mode: decorate the shop floor.
+  app.get("/api/game/decor", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, getDecor);
+  });
+
+  app.post("/api/game/decor/buy", async (request) => {
+    const user = requireUser(request);
+    const { requestId, ...p } = decorBuyBody.parse(request.body);
+    return inTx(user.id, (ctx) => buyDecor(ctx, p, requestId));
+  });
+
+  app.post<{ Params: { id: string } }>("/api/game/decor/:id/move", async (request) => {
+    const user = requireUser(request);
+    const id = z.uuid().parse(request.params.id);
+    const to = decorMoveBody.parse(request.body);
+    return inTx(user.id, (ctx) => moveDecor(ctx, id, to));
+  });
+
+  app.post<{ Params: { id: string } }>("/api/game/decor/:id/sell", async (request) => {
+    const user = requireUser(request);
+    const id = z.uuid().parse(request.params.id);
+    return inTx(user.id, (ctx) => sellDecor(ctx, id));
   });
 
   // Weekly gameplay standings: City Coins earned from sales this week (Lagos time).
