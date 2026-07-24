@@ -29,9 +29,20 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { Avatar, AvatarPicker } from "./Avatar.js";
+import type { AvatarAction } from "./Avatar3D.js";
+
+// Three.js loads only when onboarding is shown.
+const Avatar3D = lazy(() => import("./Avatar3D.js"));
+
+const HUSTLE_ACTION: Record<string, AvatarAction> = {
+  trader: "Interact",
+  chop: "PickUp_Table",
+  gadget: "Idle_Talking_Loop",
+  artisan: "Fixing_Kneeling",
+};
 
 const STEPS = ["Look", "Hustle", "Dream", "Shop", "Account"] as const;
 type Step = (typeof STEPS)[number];
@@ -95,6 +106,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
   const [adult, setAdult] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [no3d, setNo3d] = useState(false);
 
   const index = STEPS.indexOf(step);
   useEffect(() => {
@@ -196,7 +208,30 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
       {/* Live preview: who you are so far */}
       <div className="onboard-stage" style={{ backgroundImage: "url(/art/street-scene.webp)" }}>
         <div className="stage-card">
-          <Avatar avatar={avatar} size={step === "Look" ? 112 : 76} />
+          {no3d ? (
+            <Avatar avatar={avatar} size={step === "Look" ? 112 : 76} />
+          ) : (
+            <Suspense fallback={<Avatar avatar={avatar} size={96} />}>
+              <div className="stage-3d">
+                <Avatar3D
+                  avatar={avatar}
+                  height={250}
+                  onFail={() => setNo3d(true)}
+                  action={
+                    step === "Hustle"
+                      ? (HUSTLE_ACTION[hustle] ?? "Idle_Loop")
+                      : step === "Dream"
+                        ? "Dance_Loop"
+                        : step === "Shop"
+                          ? "PickUp_Table"
+                          : step === "Account"
+                            ? "Walk_Loop"
+                            : "Idle_Loop"
+                  }
+                />
+              </div>
+            </Suspense>
+          )}
           <div className="stage-meta">
             <strong>{nickname ? `@${nickname}` : "@your_name"}</strong>
             {index >= 1 && <span>{hustleDef.title}</span>}

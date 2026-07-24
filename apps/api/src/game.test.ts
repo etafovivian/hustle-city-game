@@ -142,6 +142,9 @@ describe("simulated shop economy", () => {
     const short = await p.call("POST", "/api/game/shop/order", { slot: order.slot });
     expect(short.statusCode).toBe(422); // no stock yet
 
+    // Price it at the maximum first so a 10-minute sales tick during the test can't sell the stock.
+    const item = STOCK_ITEMS_BY_KEY.get(order.itemKey)!;
+    await p.call("POST", "/api/game/shop/price", { itemKey: order.itemKey, price: Math.floor(item.referencePrice * 5) });
     await p.call("POST", "/api/game/shop/restock", { itemKey: order.itemKey, units: order.units, requestId: randomUUID() });
     const before = await coins(p);
     const done = await p.call("POST", "/api/game/shop/order", { slot: order.slot });
@@ -253,5 +256,19 @@ describe("buy mode (decorate)", () => {
     expect(sold.json().placements).toHaveLength(0);
     expect(await coins(p)).toBe(2000 - 150 + 75);
     expect((await p.call("POST", `/api/game/decor/${id}/sell`)).statusCode).toBe(404);
+  });
+});
+
+describe("map neighbours", () => {
+  it("returns my shop first and other players' shops, hiding moderated names", async () => {
+    const me = await registerPlayer(app, "map_me");
+    const other = await registerPlayer(app, "map_other");
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    await sql`update profiles set nickname_hidden = true where user_id = ${other.id}`;
+    await sql.end();
+    const list = (await me.call("GET", "/api/game/neighbours")).json();
+    expect(list[0]).toMatchObject({ nickname: "map_me", isMe: true });
+    const theirs = list.find((s: { isMe: boolean }) => !s.isMe);
+    expect(theirs).toMatchObject({ nickname: "A player", shopName: "A Junction 101 shop", isMe: false });
   });
 });

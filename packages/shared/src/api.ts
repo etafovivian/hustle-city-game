@@ -113,6 +113,15 @@ export interface DecorView {
   boost: number;
 }
 
+/** A player's shop shown on the city map. */
+export interface NeighbourShop {
+  shopName: string;
+  nickname: string;
+  hustle: string;
+  appeal: number;
+  isMe: boolean;
+}
+
 export interface ApiError {
   error: string;
   message: string;

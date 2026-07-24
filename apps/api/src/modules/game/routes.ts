@@ -1,5 +1,5 @@
-import { gameLedgerEntries, profiles } from "@hc/db";
-import { LOCATION_KEYS, type LeaderboardRow } from "@hc/shared";
+import { gameLedgerEntries, profiles, shopDecor, simShops, users } from "@hc/db";
+import { DECOR_BY_KEY, LOCATION_KEYS, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -103,6 +103,42 @@ export async function gameRoutes(app: FastifyInstance) {
     const user = requireUser(request);
     const id = z.uuid().parse(request.params.id);
     return inTx(user.id, (ctx) => sellDecor(ctx, id));
+  });
+
+  // Player shops for the map: the caller's own shop plus the most recently active others.
+  app.get("/api/game/neighbours", async (request): Promise<NeighbourShop[]> => {
+    const user = requireUser(request);
+    const rows = await app.db
+      .select({
+        shopId: simShops.id,
+        shopName: simShops.name,
+        userId: simShops.ownerId,
+        nickname: profiles.nickname,
+        hidden: profiles.nicknameHidden,
+        hustle: profiles.hustle,
+      })
+      .from(simShops)
+      .innerJoin(profiles, eq(profiles.userId, simShops.ownerId))
+      .innerJoin(users, eq(users.id, simShops.ownerId))
+      .where(eq(users.status, "active"))
+      .orderBy(desc(profiles.updatedAt))
+      .limit(40);
+    const mine = rows.filter((r) => r.userId === user.id);
+    const others = rows.filter((r) => r.userId !== user.id).slice(0, 9);
+    const picked = [...mine, ...others];
+    if (!picked.length) return [];
+    const decor = await app.db
+      .select({ shopId: shopDecor.shopId, itemKey: shopDecor.itemKey })
+      .from(shopDecor)
+      .where(inArray(shopDecor.shopId, picked.map((r) => r.shopId)));
+    return picked.map((r) => ({
+      // Hidden (moderated) names never reach other players.
+      shopName: r.hidden && r.userId !== user.id ? "A Junction 101 shop" : r.shopName,
+      nickname: r.hidden && r.userId !== user.id ? "A player" : r.nickname,
+      hustle: r.hustle,
+      appeal: decor.filter((d) => d.shopId === r.shopId).reduce((s, d) => s + (DECOR_BY_KEY.get(d.itemKey)?.appeal ?? 0), 0),
+      isMe: r.userId === user.id,
+    }));
   });
 
   // Weekly gameplay standings: City Coins earned from sales this week (Lagos time).

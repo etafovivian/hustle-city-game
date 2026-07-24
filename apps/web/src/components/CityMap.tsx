@@ -1,9 +1,10 @@
 // New Lagos — a pan-and-zoom isometric world with Junction 101 at its centre.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import type { LocationKey } from "@hc/shared";
-import { LocateFixed, Minus, Plus } from "lucide-react";
-import { useRef, type KeyboardEvent, type SVGProps } from "react";
+import { HUSTLES_BY_KEY, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { LocateFixed, Minus, Plus, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
+import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { usePanZoom } from "./usePanZoom.js";
 
@@ -27,12 +28,18 @@ const DISTRICTS = [
   { name: "Danfo Terminal", x: CX - 1250, y: CY + 640 },
 ];
 
-/** Open plots around the junction, for merchant spaces later. */
+/** Plots around the junction: players' shops fill them; the rest show as open plots. Clear of roads and places. */
 const PLOTS = [
-  { x: CX - 620, y: CY - 40 },
-  { x: CX + 620, y: CY - 40 },
-  { x: CX, y: CY - 470 },
-  { x: CX, y: CY + 520 },
+  { x: CX - 520, y: CY - 120 },
+  { x: CX + 520, y: CY - 150 },
+  { x: CX - 250, y: CY - 420 },
+  { x: CX + 250, y: CY - 420 },
+  { x: CX - 250, y: CY + 470 },
+  { x: CX + 250, y: CY + 470 },
+  { x: CX - 520, y: CY + 170 },
+  { x: CX + 520, y: CY + 150 },
+  { x: CX, y: CY - 680 },
+  { x: CX, y: CY + 700 },
 ];
 
 /** Screen size (px) a world-unit size renders at, kept readable at any zoom. */
@@ -97,7 +104,16 @@ function Diamond({ x, y, w, h, ...rest }: { x: number; y: number; w: number; h: 
 
 export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void; visited: Set<string> }) {
   const ref = useRef<HTMLDivElement>(null);
-  const pz = usePanZoom(ref, { minK: 0.08, maxK: 4, home: J, bounds: WORLD });
+  const [neighbours, setNeighbours] = useState<NeighbourShop[]>([]);
+  const [peek, setPeek] = useState<NeighbourShop | null>(null);
+  useEffect(() => {
+    api<NeighbourShop[]>("GET", "/api/game/neighbours")
+      .then(setNeighbours)
+      .catch(() => setNeighbours([]));
+  }, []);
+  // Home view: the junction plus the ring of player shops around it.
+  const HOME = { x: CX - 680, y: CY - 560, w: 1360, h: 1360 };
+  const pz = usePanZoom(ref, { minK: 0.08, maxK: 4, home: HOME, bounds: WORLD });
   const k = pz.view?.k ?? 1;
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
@@ -190,12 +206,12 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                     role="button"
                     tabIndex={0}
                     aria-label="Zoom in to Junction 101"
-                    onClick={() => !pz.wasDragged() && pz.flyTo(CX, CY + 20, 1)}
+                    onClick={() => !pz.wasDragged() && pz.flyTo(CX, CY + 60, 0.55)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         e.stopPropagation();
-                        pz.flyTo(CX, CY + 20, 1);
+                        pz.flyTo(CX, CY + 60, 0.55);
                       }
                     }}
                   >
@@ -227,16 +243,51 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                 )}
               </g>
 
-              {/* Open plots for merchant spaces */}
+              {/* Plots: player shops (yours first), then open plots */}
               {!far &&
-                PLOTS.map((p, i) => (
-                  <g key={i} aria-hidden="true">
-                    <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(0 168 89 / 6%)" stroke="#2f7a55" strokeWidth="2" strokeDasharray="10 8" />
-                    <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#7fd3a6" letterSpacing="2">
-                      OPEN PLOT
-                    </text>
-                  </g>
-                ))}
+                PLOTS.map((p, i) => {
+                  const shop = neighbours[i];
+                  if (!shop)
+                    return (
+                      <g key={i} aria-hidden="true">
+                        <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(0 168 89 / 6%)" stroke="#2f7a55" strokeWidth="2" strokeDasharray="10 8" />
+                        <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#7fd3a6" letterSpacing="2">
+                          OPEN PLOT
+                        </text>
+                      </g>
+                    );
+                  const label = shop.isMe ? "Your shop" : `@${shop.nickname}`;
+                  const plateW = label.length * 11 + 34;
+                  const open = () => !pz.wasDragged() && setPeek(shop);
+                  return (
+                    <g
+                      key={i}
+                      className="hotspot"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${shop.isMe ? "Your shop" : `${shop.nickname}'s shop`}: ${shop.shopName}`}
+                      onClick={open}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPeek(shop);
+                        }
+                      }}
+                    >
+                      <Diamond x={p.x} y={p.y + 40} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 14%)" : "rgb(255 255 255 / 4%)"} stroke={shop.isMe ? "#ffc72c" : "#3a4682"} strokeWidth="2" />
+                      <g className="bld">
+                        <image href="/art/market-square.webp" x={p.x - 85} y={p.y - 90} width="170" height="130" preserveAspectRatio="xMidYMax meet" />
+                      </g>
+                      <g transform={`translate(${p.x} ${p.y + 52}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
+                        <rect width={plateW} height="32" rx="16" fill={shop.isMe ? INK.yellow : INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".5" />
+                        <text x={plateW / 2} y="21" textAnchor="middle" fontSize="17" fontWeight="800" fill={shop.isMe ? INK.indigoDeep : "#fff"}>
+                          {label}
+                        </text>
+                      </g>
+                    </g>
+                  );
+                })}
             </g>
           )}
         </svg>
@@ -254,6 +305,21 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
         </button>
       </div>
       <p className="map-hint tiny">Drag to move · pinch or scroll to zoom</p>
+      {peek && (
+        <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
+          <button type="button" className="map-peek-close" onClick={() => setPeek(null)} aria-label="Close">
+            <X size={16} aria-hidden="true" />
+          </button>
+          <strong>{peek.shopName}</strong>
+          <span className="small muted">
+            {peek.isMe ? "Your shop" : `Run by @${peek.nickname}`} · {HUSTLES_BY_KEY.get(peek.hustle)?.title ?? "Trader"}
+          </span>
+          <span className="appeal-pill" style={{ justifySelf: "start" }}>
+            <Sparkles size={14} aria-hidden="true" /> Appeal {peek.appeal}
+          </span>
+          {!peek.isMe && <span className="tiny muted">Visiting other players' shops opens with friends in the private beta.</span>}
+        </div>
+      )}
     </div>
   );
 }
