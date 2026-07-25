@@ -194,6 +194,11 @@ a { color: inherit; text-underline-offset: 3px; }
 .map-ctl { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--rule-strong); background: rgb(18 24 53 / 92%); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
 .map-ctl:hover { color: var(--yellow); border-color: var(--yellow); }
 .map-hint { position: absolute; left: 16px; bottom: 14px; margin: 0; padding: 4px 10px; border-radius: 999px; background: rgb(10 15 36 / 80%); color: var(--muted); pointer-events: none; }
+.map-clock { position: absolute; left: 16px; top: 14px; margin: 0; padding: 4px 12px; border-radius: 999px; background: rgb(10 15 36 / 82%); color: var(--yellow); font-weight: 700; pointer-events: none; }
+/* Day and night: the tint multiplies the world, lights add on top, labels sit above both. */
+.map-tint { mix-blend-mode: multiply; pointer-events: none; transition: fill 2s ease; }
+.map-lights { mix-blend-mode: screen; pointer-events: none; transition: opacity 2s ease; }
+.map-labels { pointer-events: none; }
 .map-frame { border-radius: 16px; border: 1px solid var(--rule); background: var(--sheet); padding: 6px; box-shadow: var(--shadow); }
 .hotspot { cursor: pointer; outline: none; }
 .hotspot .bld { transition: transform 0.25s var(--ease-out); transform-box: fill-box; transform-origin: 50% 100%; }

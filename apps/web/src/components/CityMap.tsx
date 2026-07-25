@@ -6,6 +6,8 @@ import { LocateFixed, Minus, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
+import { clockLabel, useLagosLight } from "./lagosTime.js";
+import { StreetLife } from "./StreetLife.js";
 import { usePanZoom } from "./usePanZoom.js";
 
 // World units. Junction 101 occupies an 800×640 block at the centre.
@@ -90,10 +92,29 @@ const PLOTS = [
   { x: CX, y: CY + 700 },
 ];
 
+const STREET_ROADS = { a: { f: roadA, eastLane: HALF / 2 }, b: { f: roadB, eastLane: HALF / 2 } };
+
+/** The three Junction 101 places. */
+const PLACES: { id: LocationKey; label: string; art: string; x: number; y: number; w: number; h: number }[] = [
+  { id: "work_hub", label: "Work Hub", art: "/art/work-hub.webp", x: 300, y: 0, w: 200, h: 196 },
+  { id: "hangout", label: "The Hangout", art: "/art/hangout.webp", x: 540, y: 150, w: 220, h: 170 },
+  { id: "market_square", label: "Market Square", art: "/art/market-square.webp", x: 276, y: 372, w: 248, h: 176 },
+];
+
+/** Street lamps along the arterials, alternating kerbs and skipping the roundabout. */
+const LAMPS = [roadA, roadB].flatMap((f, r) =>
+  Array.from({ length: 19 }, (_, i) => 160 + i * 250)
+    .filter((x) => Math.abs(x - CX) > 160)
+    .map((x, i) => ({ x, y: f(x) + (i % 2 ? HALF + 14 : -HALF - 14), key: `${r}-${x}` })),
+);
+
+const PHASE_LABEL = { dawn: "Early morning", day: "Daytime", dusk: "Evening", night: "Night" } as const;
+
 /** Screen size (px) a world-unit size renders at, kept readable at any zoom. */
 const readable = (k: number, worldSize: number, minPx: number, max = 8) => Math.min(max, Math.max(1, minPx / (worldSize * k)));
 
 interface HotspotProps {
+  part: "body" | "label";
   id: LocationKey;
   label: string;
   art: string;
@@ -106,7 +127,7 @@ interface HotspotProps {
   onOpen: (id: LocationKey) => void;
 }
 
-function Hotspot({ id, label, art, x, y, w, h, visited, plateScale, onOpen }: HotspotProps) {
+function Hotspot({ part, id, label, art, x, y, w, h, visited, plateScale, onOpen }: HotspotProps) {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -115,6 +136,23 @@ function Hotspot({ id, label, art, x, y, w, h, visited, plateScale, onOpen }: Ho
     }
   };
   const plateW = label.length * 13 + 40;
+  if (part === "label")
+    return (
+      <g transform={`translate(${x} ${y})`} aria-hidden="true" className="map-label">
+        <g transform={`translate(${w / 2} ${h + 6}) scale(${plateScale}) translate(${-plateW / 2} 0)`}>
+          <rect width={plateW} height="38" rx="19" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="1.5" />
+          <text x={plateW / 2} y="25" textAnchor="middle" fontSize="20" fontWeight="800" fill="#fff">
+            {label}
+          </text>
+        </g>
+        {!visited && (
+          <g transform={`translate(${w - 14} 18) scale(${Math.min(plateScale, 3)})`}>
+            <circle r="14" fill={INK.yellow} stroke={INK.indigoDeep} strokeWidth="2.5" />
+            <path d="M0-7l2.1 4.9L7-2.1 2.1 0 0 4.9-2.1 0-7-2.1l4.9-.5z" fill={INK.indigoDeep} />
+          </g>
+        )}
+      </g>
+    );
   return (
     <g
       className="hotspot"
@@ -130,18 +168,6 @@ function Hotspot({ id, label, art, x, y, w, h, visited, plateScale, onOpen }: Ho
       <g className="bld">
         <image href={art} width={w} height={h} preserveAspectRatio="xMidYMax meet" />
       </g>
-      <g transform={`translate(${w / 2} ${h + 6}) scale(${plateScale}) translate(${-plateW / 2} 0)`}>
-        <rect width={plateW} height="38" rx="19" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="1.5" />
-        <text x={plateW / 2} y="25" textAnchor="middle" fontSize="20" fontWeight="800" fill="#fff">
-          {label}
-        </text>
-      </g>
-      {!visited && (
-        <g transform={`translate(${w - 14} 18) scale(${Math.min(plateScale, 3)})`} aria-hidden="true">
-          <circle r="14" fill={INK.yellow} stroke={INK.indigoDeep} strokeWidth="2.5" />
-          <path d="M0-7l2.1 4.9L7-2.1 2.1 0 0 4.9-2.1 0-7-2.1l4.9-.5z" fill={INK.indigoDeep} />
-        </g>
-      )}
     </g>
   );
 }
@@ -166,6 +192,7 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
   const far = k < 0.3;
+  const light = useLagosLight();
 
   const open = (id: LocationKey) => {
     if (!pz.wasDragged()) onOpen(id);
@@ -197,9 +224,15 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
               <stop offset="0.55" stopColor="#5a3d1c" stopOpacity="0" />
               <stop offset="1" stopColor="#5a3d1c" stopOpacity=".38" />
             </radialGradient>
-            <radialGradient id="lamp">
-              <stop offset="0" stopColor="#ffc72c" stopOpacity=".28" />
-              <stop offset="1" stopColor="#ffc72c" stopOpacity="0" />
+            <radialGradient id="lamp-pool">
+              <stop offset="0" stopColor="#ffd98a" stopOpacity=".75" />
+              <stop offset=".5" stopColor="#ffb547" stopOpacity=".28" />
+              <stop offset="1" stopColor="#ffb547" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="window-glow">
+              <stop offset="0" stopColor="#ffcf6e" stopOpacity=".55" />
+              <stop offset=".6" stopColor="#ff9f3a" stopOpacity=".16" />
+              <stop offset="1" stopColor="#ff9f3a" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="glow-centre" cx="50%" cy="50%" r="50%">
               <stop offset="0" stopColor="#e4c48e" />
@@ -223,6 +256,9 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
               />
               <path d={`M0 ${roadA(0)} L${WORLD.w} ${roadA(WORLD.w)}M0 ${roadB(0)} L${WORLD.w} ${roadB(WORLD.w)}`} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
 
+              {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
+              {!far && <StreetLife width={WORLD.w} roads={STREET_ROADS} kerb={HALF + 20} cx={CX} />}
+
               {/* Districts that open in later stages */}
               {DISTRICTS.map((d) => (
                 <g key={d.name} aria-hidden="true">
@@ -237,35 +273,10 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                 ))}
               </g>
 
-              {/* District names sit above their buildings */}
-              {DISTRICTS.map((d) => (
-                <g key={`${d.name}-label`} aria-hidden="true">
-                  <g transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
-                    <rect x={-(d.name.length * 17 + 50)} y="-62" width={d.name.length * 34 + 100} height="118" rx="26" fill={INK.indigoDeep} opacity=".9" />
-                    <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
-                      {d.name}
-                    </text>
-                    <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
-                      OPENS LATER
-                    </text>
-                  </g>
-                </g>
-              ))}
-
               {/* Junction 101 */}
               <g transform={`translate(${J.x} ${J.y})`}>
                 <ellipse cx="400" cy="300" rx="96" ry="48" fill="var(--map-road)" />
                 <ellipse cx="400" cy="300" rx="62" ry="31" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
-                <g transform={`translate(400 305) scale(${Math.min(districtScale, 6)})`}>
-                  <text textAnchor="middle" fontSize="13" fontWeight="900" fill={INK.yellow} letterSpacing="1.4">
-                    JUNCTION 101
-                  </text>
-                </g>
-                <g aria-hidden="true">
-                  <ellipse cx="400" cy="180" rx="150" ry="70" fill="url(#lamp)" />
-                  <ellipse cx="400" cy="500" rx="170" ry="70" fill="url(#lamp)" />
-                  <ellipse cx="680" cy="300" rx="130" ry="60" fill="url(#lamp)" />
-                </g>
                 {!far && (
                   <g aria-hidden="true" className="map-scenery">
                     <image href="/art/city-park.webp" x="0" y="190" width="230" height="200" preserveAspectRatio="xMidYMid meet" />
@@ -289,30 +300,9 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                     }}
                   >
                     <image href="/art/market-square.webp" x="200" y="150" width="400" height="300" preserveAspectRatio="xMidYMid meet" />
-                    <g transform={`translate(400 470) scale(${districtScale})`}>
-                      <rect x="-150" y="-34" width="300" height="60" rx="30" fill={INK.yellow} />
-                      <text textAnchor="middle" y="6" fontSize="30" fontWeight="900" fill={INK.indigoDeep}>
-                        Junction 101
-                      </text>
-                    </g>
                   </g>
                 ) : (
-                <>
-                <Hotspot id="work_hub" label="Work Hub" art="/art/work-hub.webp" x={300} y={0} w={200} h={196} visited={visited.has("work_hub")} plateScale={plateScale} onOpen={open} />
-                <Hotspot id="hangout" label="The Hangout" art="/art/hangout.webp" x={540} y={150} w={220} h={170} visited={visited.has("hangout")} plateScale={plateScale} onOpen={open} />
-                <Hotspot
-                  id="market_square"
-                  label="Market Square"
-                  art="/art/market-square.webp"
-                  x={276}
-                  y={372}
-                  w={248}
-                  h={176}
-                  visited={visited.has("market_square")}
-                  plateScale={plateScale}
-                  onOpen={open}
-                />
-                </>
+                  PLACES.map((pl) => <Hotspot key={pl.id} part="body" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />)
                 )}
               </g>
 
@@ -329,8 +319,6 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                         </text>
                       </g>
                     );
-                  const label = shop.isMe ? "Your shop" : `@${shop.nickname}`;
-                  const plateW = label.length * 11 + 34;
                   const open = () => !pz.wasDragged() && setPeek(shop);
                   return (
                     <g
@@ -352,15 +340,80 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                       <g className="bld">
                         <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y - 110} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
                       </g>
-                      <g transform={`translate(${p.x} ${p.y + 52}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
+                    </g>
+                  );
+                })}
+
+              {/* Lagos time of day: one multiply tint over the whole world */}
+              {light.phase !== "day" && <rect width={WORLD.w} height={WORLD.h} fill={light.tint} className="map-tint" />}
+
+              {/* Night lights: street lamps, lit windows, the roundabout */}
+              {light.lamps > 0 && (
+                <g aria-hidden="true" className="map-lights" opacity={light.lamps}>
+                  {LAMPS.map((l) => (
+                    <g key={l.key}>
+                      <ellipse cx={l.x} cy={l.y + 10} rx="110" ry="52" fill="url(#lamp-pool)" />
+                      <circle cx={l.x} cy={l.y - 30} r="5" fill="#fff4c8" />
+                    </g>
+                  ))}
+                  {ALL_SCENERY.map((b) => (
+                    <ellipse key={b.key} cx={b.x} cy={b.y - 90} rx="120" ry="95" fill="url(#window-glow)" />
+                  ))}
+                  {!far &&
+                    PLOTS.map((p, i) => neighbours[i] && <ellipse key={i} cx={p.x} cy={p.y - 30} rx="110" ry="80" fill="url(#window-glow)" />)}
+                  <g transform={`translate(${J.x} ${J.y})`}>
+                    <ellipse cx="400" cy="300" rx="260" ry="140" fill="url(#lamp-pool)" />
+                    {!far && PLACES.map((pl) => <ellipse key={pl.id} cx={pl.x + pl.w / 2} cy={pl.y + pl.h * 0.55} rx={pl.w * 0.6} ry={pl.h * 0.5} fill="url(#window-glow)" />)}
+                  </g>
+                </g>
+              )}
+
+              {/* Labels stay readable at every zoom and time of day */}
+              <g className="map-labels" aria-hidden="true">
+                {DISTRICTS.map((d) => (
+                  <g key={`${d.name}-label`} transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
+                    <rect x={-(d.name.length * 17 + 50)} y="-62" width={d.name.length * 34 + 100} height="118" rx="26" fill={INK.indigoDeep} opacity=".9" />
+                    <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
+                      {d.name}
+                    </text>
+                    <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
+                      OPENS LATER
+                    </text>
+                  </g>
+                ))}
+                <g transform={`translate(${J.x} ${J.y})`}>
+                  <g transform={`translate(400 305) scale(${Math.min(districtScale, 6)})`}>
+                    <text textAnchor="middle" fontSize="13" fontWeight="900" fill={INK.yellow} letterSpacing="1.4">
+                      JUNCTION 101
+                    </text>
+                  </g>
+                  {far ? (
+                    <g transform={`translate(400 470) scale(${districtScale})`}>
+                      <rect x="-150" y="-34" width="300" height="60" rx="30" fill={INK.yellow} />
+                      <text textAnchor="middle" y="6" fontSize="30" fontWeight="900" fill={INK.indigoDeep}>
+                        Junction 101
+                      </text>
+                    </g>
+                  ) : (
+                    PLACES.map((pl) => <Hotspot key={pl.id} part="label" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />)
+                  )}
+                </g>
+                {!far &&
+                  PLOTS.map((p, i) => {
+                    const shop = neighbours[i];
+                    if (!shop) return null;
+                    const label = shop.isMe ? "Your shop" : `@${shop.nickname}`;
+                    const plateW = label.length * 11 + 34;
+                    return (
+                      <g key={i} transform={`translate(${p.x} ${p.y + 52}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
                         <rect width={plateW} height="32" rx="16" fill={shop.isMe ? INK.yellow : INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".5" />
                         <text x={plateW / 2} y="21" textAnchor="middle" fontSize="17" fontWeight="800" fill={shop.isMe ? INK.indigoDeep : "#fff"}>
                           {label}
                         </text>
                       </g>
-                    </g>
-                  );
-                })}
+                    );
+                  })}
+              </g>
             </g>
           )}
         </svg>
@@ -377,6 +430,9 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
           <LocateFixed size={18} aria-hidden="true" />
         </button>
       </div>
+      <p className="map-clock tiny" aria-live="off">
+        Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]}
+      </p>
       <p className="map-hint tiny">Drag to move · pinch or scroll to zoom</p>
       {peek && (
         <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
