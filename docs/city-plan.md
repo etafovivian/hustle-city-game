@@ -30,17 +30,17 @@ The plan follows Lagos geography (OpenStreetMap, general knowledge), but is draw
 
 ## How the map grows
 
-1. **Now (phase 0):**
-   - Junction 101 on a 4800×3600 world;
-   - four placeholder districts around it;
-   - day and night by Lagos time;
-   - moving danfos, okadas, kekes and walkers.
-2. **Re-layout (before phase 1):**
-   - Grow the world to about 9600×7200, with Junction 101 in the north-middle.
-   - Move the four districts to the positions on the plan. Danfo Terminal goes north-west and Marina Wharf goes across the water.
-   - Draw the lagoon and ocean as water shapes, with the shoreline and Third Mainland Bridge.
-   - The level-of-detail rules still apply: far zoom shows district markers only, and close zoom shows buildings, traffic and people.
-3. **Phases 1–4:** each district opens with its stage. Until then it shows buildings with an "Opens later" plate, as today.
+1. **Done:**
+   - The map is laid out to this plan on a 9600×7600 world (`apps/web/src/components/cityLayout.ts`).
+   - Roads run on the isometric axes:
+     - **Road A:** Danfo Terminal → Junction 101 → Tech Mile → bridge head.
+     - **Road B:** Apapa Port → Owambe Gardens → Junction 101 → Airport Ridge.
+     - **Third Mainland Bridge:** on pillars over the lagoon, down to the Island road (Marina Wharf → Island Heights → Lekki Gardens).
+   - The lagoon, harbour and Atlantic are drawn as vector water, with the beach along the Island's south shore.
+   - Day and night by Lagos time. Danfos, okadas, kekes and walkers move on every road, including the bridge.
+   - In the game, Airport Ridge sits north-east and Danfo Terminal north-west, so that both are on the isometric roads. The plan image above is schematic.
+2. **Phases 1–4:** each district opens with its stage. Until then it shows buildings with an "Opens later" plate.
+3. **When the art arrives:** Stitch shoreline, bridge and boat art replaces the vector water and bridge.
 
 ## Art still needed (Stitch, same style, flat magenta background)
 

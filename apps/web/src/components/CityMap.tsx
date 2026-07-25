@@ -1,4 +1,4 @@
-// New Lagos — a pan-and-zoom isometric world with Junction 101 at its centre.
+// New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { HUSTLES_BY_KEY, type LocationKey, type NeighbourShop } from "@hc/shared";
@@ -8,27 +8,31 @@ import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
 import { StreetLife } from "./StreetLife.js";
+import {
+  ALL_SCENERY,
+  BEACH_PATH,
+  CX,
+  CY,
+  DISTRICTS,
+  HALF,
+  ISLAND_PATH,
+  LAMPS,
+  OCEAN_PATH,
+  PILLARS,
+  PLOTS,
+  ROAD_A,
+  ROAD_B,
+  ROADS,
+  SHORE_PATH,
+  WATER_PATH,
+  WORLD,
+  bandPath,
+  centrePath,
+  kerbPath,
+} from "./cityLayout.js";
 import { usePanZoom } from "./usePanZoom.js";
 
-// World units. Junction 101 occupies an 800×640 block at the centre.
-const WORLD = { w: 4800, h: 3600 };
-const CX = 2400;
-const CY = 1800;
 const J = { x: CX - 400, y: CY - 300, w: 800, h: 640 };
-const HALF = 34; // half road width, measured vertically
-const roadA = (x: number) => CY + 0.5 * (x - CX); // runs down-right
-const roadB = (x: number) => CY - 0.5 * (x - CX); // runs up-right
-
-const band = (f: (x: number) => number) =>
-  `M0 ${f(0) - HALF} L${WORLD.w} ${f(WORLD.w) - HALF} L${WORLD.w} ${f(WORLD.w) + HALF} L0 ${f(0) + HALF}Z`;
-
-/** Districts beyond Junction 101 — named for the game world, opening in later stages. */
-const DISTRICTS = [
-  { name: "Tech Mile", x: CX + 1250, y: CY - 640 },
-  { name: "Owambe Gardens", x: CX - 1250, y: CY - 640 },
-  { name: "Marina Wharf", x: CX + 1250, y: CY + 640 },
-  { name: "Danfo Terminal", x: CX - 1250, y: CY + 640 },
-];
 
 /** Each hustle's shop looks different on the map (Stitch art in public/art/buildings). */
 const HUSTLE_ART: Record<string, string> = {
@@ -38,75 +42,12 @@ const HUSTLE_ART: Record<string, string> = {
   artisan: "/art/buildings/tailor-shop.webp",
 };
 
-/** City buildings that make each district read as a real neighbourhood (decorative for now). */
-const DISTRICT_BUILDINGS: Record<string, string[]> = {
-  "Tech Mile": ["commercial-block", "mixed-use-block", "residential-block"],
-  "Owambe Gardens": ["bungalow", "suya-stand", "mixed-use-block"],
-  "Marina Wharf": ["residential-block", "bungalow", "commercial-block"],
-  "Danfo Terminal": ["mixed-use-block", "bungalow", "suya-stand"],
-};
-const OFFSETS = [
-  { x: -300, y: -150 },
-  { x: 300, y: -150 },
-  { x: -300, y: 190 },
-  { x: 300, y: 190 },
-  { x: 0, y: -300 },
-  { x: 0, y: 330 },
-];
-const clearOfRoads = (x: number, y: number) => Math.abs(y - roadA(x)) > 130 && Math.abs(y - roadB(x)) > 130;
-const SCENERY = DISTRICTS.flatMap((d) =>
-  (DISTRICT_BUILDINGS[d.name] ?? []).map((art, i) => {
-    const spot = OFFSETS.filter((o) => clearOfRoads(d.x + o.x, d.y + o.y))[i] ?? OFFSETS[i]!;
-    return { art: `/art/buildings/${art}.webp`, x: d.x + spot.x, y: d.y + spot.y, key: `${d.name}-${i}` };
-  }),
-);
-/** A ring of homes and blocks between the junction and the districts, so the city has no bare sand. */
-const RING = [
-  { x: CX - 820, y: CY, art: "bungalow" },
-  { x: CX + 820, y: CY, art: "residential-block" },
-  { x: CX - 620, y: CY - 560, art: "commercial-block" },
-  { x: CX + 620, y: CY - 560, art: "bungalow" },
-  { x: CX - 620, y: CY + 600, art: "residential-block" },
-  { x: CX + 620, y: CY + 600, art: "suya-stand" },
-  { x: CX, y: CY - 1000, art: "mixed-use-block" },
-  { x: CX, y: CY + 1040, art: "bungalow" },
-  { x: CX - 1080, y: CY - 260, art: "suya-stand" },
-  { x: CX + 1080, y: CY + 300, art: "commercial-block" },
-];
-const ALL_SCENERY = [
-  ...SCENERY,
-  ...RING.filter((r) => clearOfRoads(r.x, r.y)).map((r, i) => ({ art: `/art/buildings/${r.art}.webp`, x: r.x, y: r.y, key: `ring-${i}` })),
-].sort((a, b) => a.y - b.y);
-
-/** Plots around the junction: players' shops fill them; the rest show as open plots. Clear of roads and places. */
-const PLOTS = [
-  { x: CX - 520, y: CY - 120 },
-  { x: CX + 520, y: CY - 150 },
-  { x: CX - 250, y: CY - 420 },
-  { x: CX + 250, y: CY - 420 },
-  { x: CX - 250, y: CY + 470 },
-  { x: CX + 250, y: CY + 470 },
-  { x: CX - 520, y: CY + 170 },
-  { x: CX + 520, y: CY + 150 },
-  { x: CX, y: CY - 680 },
-  { x: CX, y: CY + 700 },
-];
-
-const STREET_ROADS = { a: { f: roadA, eastLane: HALF / 2 }, b: { f: roadB, eastLane: HALF / 2 } };
-
 /** The three Junction 101 places. */
 const PLACES: { id: LocationKey; label: string; art: string; x: number; y: number; w: number; h: number }[] = [
   { id: "work_hub", label: "Work Hub", art: "/art/work-hub.webp", x: 300, y: 0, w: 200, h: 196 },
   { id: "hangout", label: "The Hangout", art: "/art/hangout.webp", x: 540, y: 150, w: 220, h: 170 },
   { id: "market_square", label: "Market Square", art: "/art/market-square.webp", x: 276, y: 372, w: 248, h: 176 },
 ];
-
-/** Street lamps along the arterials, alternating kerbs and skipping the roundabout. */
-const LAMPS = [roadA, roadB].flatMap((f, r) =>
-  Array.from({ length: 19 }, (_, i) => 160 + i * 250)
-    .filter((x) => Math.abs(x - CX) > 160)
-    .map((x, i) => ({ x, y: f(x) + (i % 2 ? HALF + 14 : -HALF - 14), key: `${r}-${x}` })),
-);
 
 const PHASE_LABEL = { dawn: "Early morning", day: "Daytime", dusk: "Evening", night: "Night" } as const;
 
@@ -187,7 +128,7 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
   }, []);
   // Home view: the junction plus the ring of player shops around it.
   const HOME = { x: CX - 680, y: CY - 560, w: 1360, h: 1360 };
-  const pz = usePanZoom(ref, { minK: 0.08, maxK: 4, home: HOME, bounds: WORLD });
+  const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
   const k = pz.view?.k ?? 1;
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
@@ -220,6 +161,9 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
               <circle cx="22" cy="74" r="1.4" fill="#a97f4c" />
               <circle cx="70" cy="34" r="1.2" fill="#9c7444" />
             </pattern>
+            <pattern id="waves" width="160" height="56" patternUnits="userSpaceOnUse">
+              <path d="M0 28q40-22 80 0t80 0" fill="none" stroke="#9fd3e8" strokeOpacity=".3" strokeWidth="5" />
+            </pattern>
             <radialGradient id="sand-shade" cx="50%" cy="50%" r="60%">
               <stop offset="0.55" stopColor="#5a3d1c" stopOpacity="0" />
               <stop offset="1" stopColor="#5a3d1c" stopOpacity=".38" />
@@ -246,21 +190,45 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
               <ellipse cx={CX} cy={CY} rx="1400" ry="800" fill="url(#glow-centre)" />
               <rect width={WORLD.w} height={WORLD.h} fill="url(#sand-shade)" />
 
-              {/* Arterial roads crossing the whole city */}
-              <path d={band(roadA)} fill="var(--map-road)" />
-              <path d={band(roadB)} fill="var(--map-road)" />
-              <path
-                d={`M0 ${roadA(0) - HALF} L${WORLD.w} ${roadA(WORLD.w) - HALF}M0 ${roadA(0) + HALF} L${WORLD.w} ${roadA(WORLD.w) + HALF}M0 ${roadB(0) - HALF} L${WORLD.w} ${roadB(WORLD.w) - HALF}M0 ${roadB(0) + HALF} L${WORLD.w} ${roadB(WORLD.w) + HALF}`}
-                stroke="#e6d6b4"
-                strokeWidth="6"
-              />
-              <path d={`M0 ${roadA(0)} L${WORLD.w} ${roadA(WORLD.w)}M0 ${roadB(0)} L${WORLD.w} ${roadB(WORLD.w)}`} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
+              {/* Lagoon, harbour and sea, then the Island on top */}
+              <path d={WATER_PATH} fill="#2f7ea6" />
+              <path d={WATER_PATH} fill="url(#waves)" />
+              <path d={OCEAN_PATH} fill="#1f5a80" />
+              <path d={OCEAN_PATH} fill="url(#waves)" />
+              <path d={SHORE_PATH} fill="none" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" strokeLinecap="round" />
+              <path d={ISLAND_PATH} fill="#d6b27e" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" />
+              <path d={ISLAND_PATH} fill="url(#sand)" />
+              <path d={BEACH_PATH} fill="#f0dcae" />
+              {!far && (
+                <g aria-hidden="true">
+                  <text x="7800" y="4200" textAnchor="middle" fontSize="64" fontWeight="800" fontStyle="italic" fill="#cfe9f6" opacity=".8">
+                    Lagos Lagoon
+                  </text>
+                  <text x="3000" y="6500" textAnchor="middle" fontSize="72" fontWeight="800" fontStyle="italic" fill="#cfe9f6" opacity=".8">
+                    Atlantic Ocean
+                  </text>
+                </g>
+              )}
+
+              {/* Third Mainland Bridge pillars sit in the water under the deck */}
+              {PILLARS.map((p) => (
+                <rect key={p.x} x={p.x - 9} y={p.y + HALF - 4} width="18" height="70" rx="4" fill="#8a8f98" stroke="#5d626b" strokeWidth="2" />
+              ))}
+
+              {/* Roads: asphalt, kerbs (rails on the bridge), lane markings */}
+              {ROADS.map((r) => (
+                <g key={r.id}>
+                  <path d={bandPath(r)} fill={r.bridge ? "#55504a" : "var(--map-road)"} />
+                  <path d={`${kerbPath(r, -HALF)}${kerbPath(r, HALF)}`} stroke={r.bridge ? "#cfd3d8" : "#e6d6b4"} strokeWidth={r.bridge ? 9 : 6} />
+                  <path d={centrePath(r)} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
+                </g>
+              ))}
 
               {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
-              {!far && <StreetLife width={WORLD.w} roads={STREET_ROADS} kerb={HALF + 20} cx={CX} />}
+              {!far && <StreetLife roads={ROADS} walkRoads={{ a: ROAD_A, b: ROAD_B }} kerb={HALF + 20} cx={CX} />}
 
               {/* Districts that open in later stages */}
-              {DISTRICTS.map((d) => (
+              {DISTRICTS.filter((d) => !d.landmark).map((d) => (
                 <g key={d.name} aria-hidden="true">
                   <Diamond x={d.x} y={d.y} w={1100} h={550} fill="rgb(255 255 255 / 7%)" stroke="#8c6a3e" strokeWidth="4" strokeDasharray="18 14" />
                 </g>
@@ -370,7 +338,12 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
 
               {/* Labels stay readable at every zoom and time of day */}
               <g className="map-labels" aria-hidden="true">
-                {DISTRICTS.map((d) => (
+                {DISTRICTS.filter((d) => d.landmark).map((d) => (
+                  <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize="60" fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth="8" paintOrder="stroke">
+                    {d.name} · opens later
+                  </text>
+                ))}
+                {DISTRICTS.filter((d) => !d.landmark).map((d) => (
                   <g key={`${d.name}-label`} transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
                     <rect x={-(d.name.length * 17 + 50)} y="-62" width={d.name.length * 34 + 100} height="118" rx="26" fill={INK.indigoDeep} opacity=".9" />
                     <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">

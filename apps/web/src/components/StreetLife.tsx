@@ -2,20 +2,15 @@
 // Pure SVG animation (SMIL animateMotion), so nothing re-renders in React while it runs.
 // Art: Stitch export 9 (public/art/life, provenance in *.json sidecars).
 import { useEffect, useState } from "react";
-
-interface Road {
-  /** y for an x on the road's centre line. */
-  f: (x: number) => number;
-  /** Lane offset (world units) for traffic heading towards larger x. Nigeria drives on the right. */
-  eastLane: number;
-}
+import { HALF, yOn, type Segment } from "./cityLayout.js";
 
 interface Props {
-  width: number;
-  roads: { a: Road; b: Road };
+  roads: Segment[];
+  /** Roads the walkers stroll along, near the junction. */
+  walkRoads: { a: Segment; b: Segment };
   /** Kerb distance from the centre line for pedestrians. */
   kerb: number;
-  /** Junction centre: walkers stroll near it rather than across the whole city. */
+  /** Junction centre. */
   cx: number;
 }
 
@@ -30,21 +25,25 @@ const WALK = { away: "/art/life/kaftan-walk-away.webp", toward: "/art/life/kafta
 const WALK_H = 64;
 const WALK_FRAME_W = (266 / 4) * (WALK_H / 128);
 
-/** Vehicles per road and direction: sprite, speed (units/s) and a start offset so they are spread out. */
-const TRAFFIC: { road: "a" | "b"; east: boolean; sprite: Sprite; mirror: boolean; speed: number; offset: number }[] = [
-  // Road A runs down-right: eastbound traffic faces SE, westbound faces NW.
-  { road: "a", east: true, sprite: DANFO_SE, mirror: false, speed: 150, offset: 0 },
-  { road: "a", east: true, sprite: OKADA_SE, mirror: false, speed: 230, offset: 0.45 },
-  { road: "a", east: true, sprite: KEKE_SE, mirror: false, speed: 115, offset: 0.7 },
-  { road: "a", east: false, sprite: DANFO_NW, mirror: false, speed: 140, offset: 0.2 },
-  { road: "a", east: false, sprite: DANFO_NW, mirror: false, speed: 150, offset: 0.75 },
-  // Road B runs up-right: eastbound faces NE (mirrored NW art), westbound faces SW (mirrored SE art).
-  { road: "b", east: true, sprite: DANFO_NW, mirror: true, speed: 145, offset: 0.1 },
-  { road: "b", east: true, sprite: DANFO_NW, mirror: true, speed: 150, offset: 0.6 },
-  { road: "b", east: false, sprite: DANFO_SE, mirror: true, speed: 150, offset: 0.3 },
-  { road: "b", east: false, sprite: OKADA_SE, mirror: true, speed: 240, offset: 0.85 },
-  { road: "b", east: false, sprite: KEKE_SE, mirror: true, speed: 110, offset: 0.5 },
-];
+/**
+ * Vehicles for a road: about one per 1100 units each way, with art that faces the way it drives.
+ * Down-right roads use the SE/NW art; up-right roads mirror it (NE = mirrored NW, SW = mirrored SE).
+ */
+const MIX = [DANFO_SE, OKADA_SE, DANFO_SE, KEKE_SE];
+function trafficFor(s: Segment) {
+  const downRight = (s.y1 - s.y0) / (s.x1 - s.x0) > 0;
+  const length = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
+  const n = Math.max(2, Math.round(length / 1100));
+  return [true, false].flatMap((east) =>
+    Array.from({ length: n }, (_, i) => {
+      // Danfos only have rear art, so traffic heading up the screen is all danfos.
+      const facingDown = downRight === east;
+      const sprite = facingDown ? MIX[(i + (east ? 0 : 1)) % MIX.length]! : DANFO_NW;
+      const speed = sprite === OKADA_SE ? 230 : sprite === KEKE_SE ? 115 : 140 + (i % 3) * 8;
+      return { seg: s, east, sprite, mirror: !downRight, speed, offset: (i + (east ? 0 : 0.5)) / n };
+    }),
+  );
+}
 
 /** People strolling near the junction: which kerb, which way, and how far out. */
 const WALKERS: { road: "a" | "b"; side: 1 | -1; east: boolean; from: number; to: number; offset: number }[] = [
@@ -57,7 +56,6 @@ const WALK_SPEED = 34;
 
 /** Each vehicle and walker runs twice, half a loop apart, so the streets stay busy at close zoom. */
 const twice = <T extends { offset: number }>(list: T[]) => list.flatMap((v) => [v, { ...v, offset: (v.offset + 0.5) % 1 }]);
-const DENSE_TRAFFIC = twice(TRAFFIC);
 const DENSE_WALKERS = twice(WALKERS);
 
 function usePrefersReducedMotion() {
@@ -82,17 +80,19 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-export function StreetLife({ width, roads, kerb, cx }: Props) {
+export function StreetLife({ roads, walkRoads, kerb, cx }: Props) {
   const reduce = usePrefersReducedMotion();
   if (reduce) return null;
 
   return (
     <g aria-hidden="true" className="street-life">
-      {DENSE_TRAFFIC.map((t, i) => {
-        const r = roads[t.road];
-        const lane = t.east ? r.eastLane : -r.eastLane;
-        const [x0, x1] = t.east ? [-120, width + 120] : [width + 120, -120];
-        const length = Math.hypot(x1 - x0, r.f(x1) - r.f(x0));
+      {roads.flatMap(trafficFor).map((t, i) => {
+        const s = t.seg;
+        const lane = t.east ? HALF / 2 : -HALF / 2;
+        const [lo, hi] = [Math.min(s.x0, s.x1), Math.max(s.x0, s.x1)];
+        const [x0, x1] = t.east ? [lo, hi] : [hi, lo];
+        const f = (x: number) => yOn(s, x);
+        const length = Math.hypot(x1 - x0, f(x1) - f(x0));
         const dur = length / t.speed;
         const { href, w, h } = t.sprite;
         return (
@@ -101,8 +101,10 @@ export function StreetLife({ width, roads, kerb, cx }: Props) {
               dur={`${dur.toFixed(1)}s`}
               begin={`${(-dur * t.offset).toFixed(1)}s`}
               repeatCount="indefinite"
-              path={`M${x0} ${r.f(x0) + lane} L${x1} ${r.f(x1) + lane}`}
+              path={`M${x0} ${f(x0) + lane} L${x1} ${f(x1) + lane}`}
             />
+            {/* Fade in and out at the ends of a road instead of popping */}
+            <animate attributeName="opacity" dur={`${dur.toFixed(1)}s`} begin={`${(-dur * t.offset).toFixed(1)}s`} repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.03;0.97;1" />
             <ellipse cx="0" cy="-4" rx={w * 0.42} ry={h * 0.12} fill="rgb(0 0 0 / 28%)" />
             <g transform={t.mirror ? "scale(-1 1)" : undefined}>
               <image href={href} x={-w / 2} y={-h + 6} width={w} height={h} />
@@ -112,9 +114,9 @@ export function StreetLife({ width, roads, kerb, cx }: Props) {
       })}
 
       {DENSE_WALKERS.map((p, i) => {
-        const r = roads[p.road];
+        const r = walkRoads[p.road];
         const [a, b] = p.east ? [cx + p.from, cx + p.to] : [cx + p.to, cx + p.from];
-        const y = (x: number) => r.f(x) + p.side * kerb;
+        const y = (x: number) => yOn(r, x) + p.side * kerb;
         const length = Math.hypot(b - a, y(b) - y(a));
         const dur = length / WALK_SPEED;
         // Heading down the screen shows the face; heading up shows the back.
