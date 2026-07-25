@@ -16,19 +16,16 @@ import {
   ArrowRight,
   Briefcase,
   Coins,
-  Crown,
   Eye,
   EyeOff,
-  Gem,
-  HandHeart,
   Hammer,
   Shuffle,
   Smartphone,
   Store,
-  Trophy,
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
+import { dreamIcon } from "./dreamIcons.js";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { Avatar, AvatarPicker } from "./Avatar.js";
@@ -48,7 +45,6 @@ const STEPS = ["Look", "Hustle", "Dream", "Shop", "Account"] as const;
 type Step = (typeof STEPS)[number];
 
 const HUSTLE_ICON: Record<string, LucideIcon> = { trader: Store, chop: UtensilsCrossed, gadget: Smartphone, artisan: Hammer };
-const DREAM_ICON: Record<string, LucideIcon> = { market_royalty: Crown, showroom: Gem, junction_legend: Trophy, padi: HandHeart };
 
 /** Rough strength: length and variety. The server only requires 10+ characters. */
 function strength(pw: string): 0 | 1 | 2 | 3 | 4 {
@@ -282,7 +278,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
             <p className="muted">What's your big dream{nickname ? `, @${nickname}` : ""}? Chase it at your own pace.</p>
             <div className="choices">
               {DREAMS.map((d) => (
-                <ChoiceCard key={d.key} selected={dream === d.key} onSelect={() => setDream(d.key)} Icon={DREAM_ICON[d.key] ?? Trophy} title={d.title} body={d.goal} />
+                <ChoiceCard key={d.key} selected={dream === d.key} onSelect={() => setDream(d.key)} Icon={dreamIcon(d.key)} title={d.title} body={d.goal} />
               ))}
             </div>
           </>

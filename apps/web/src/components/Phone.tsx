@@ -1,11 +1,13 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
-import type { QuestBoard } from "@hc/shared";
+import type { DreamView, QuestBoard } from "@hc/shared";
 import { ArrowLeft, Briefcase, ListChecks, MessageCircle, Store, Trophy, X, type LucideIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../api.js";
+import { Dream, DreamCard } from "./Dream.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "jobs" | "quests" | "standings" | "messages";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "jobs", label: "Jobs", Icon: Briefcase, tint: "#1e2a5e" },
@@ -15,7 +17,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -37,6 +39,12 @@ export function Phone({
   notify: (msg: string) => void;
 }) {
   const sheet = useRef<HTMLDivElement>(null);
+  const [dream, setDream] = useState<DreamView | null>(null);
+  useEffect(() => {
+    api<DreamView>("GET", "/api/game/dream")
+      .then(setDream)
+      .catch(() => setDream(null));
+  }, []);
   const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
 
   useEffect(() => {
@@ -82,6 +90,7 @@ export function Phone({
                 <strong>{time}</strong>
                 <span>{date} · Lagos</span>
               </div>
+              {dream && <DreamCard dream={dream} onOpen={() => setApp("dream")} />}
               <div className="phone-apps">
                 {APPS.map(({ key, label, Icon, tint }) => (
                   <button
@@ -100,6 +109,7 @@ export function Phone({
               </div>
             </div>
           )}
+          {app === "dream" && dream && <Dream dream={dream} onDream={setDream} onChanged={onChanged} notify={notify} />}
           {app === "jobs" && <WorkHub />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}

@@ -7,6 +7,7 @@ import { lockProfile } from "../../lib/db.js";
 import { requireUser } from "../../plugins/auth.js";
 import { claimQuest, questBoard, recordEvents } from "./quests.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
+import { claimDreamStep, getDream } from "./dream.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -20,6 +21,7 @@ const decorBuyBody = z.object({
   rotation: z.number().int(),
   requestId: z.uuid(),
 });
+const dreamClaimBody = z.object({ at: z.number().int().positive() });
 const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });
 
 export async function gameRoutes(app: FastifyInstance) {
@@ -103,6 +105,18 @@ export async function gameRoutes(app: FastifyInstance) {
     const user = requireUser(request);
     const id = z.uuid().parse(request.params.id);
     return inTx(user.id, (ctx) => sellDecor(ctx, id));
+  });
+
+  // Dream progress: the long goal picked in onboarding, with step rewards.
+  app.get("/api/game/dream", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, getDream);
+  });
+
+  app.post("/api/game/dream/claim", async (request) => {
+    const user = requireUser(request);
+    const { at } = dreamClaimBody.parse(request.body);
+    return inTx(user.id, (ctx) => claimDreamStep(ctx, at));
   });
 
   // Player shops for the map: the caller's own shop plus the most recently active others.

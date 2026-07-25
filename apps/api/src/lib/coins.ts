@@ -16,6 +16,7 @@ export type CoinKind =
   | "intro_reward"
   | "decor"
   | "decor_refund"
+  | "dream_reward"
   | "admin_adjustment";
 
 export interface PostingResult {

@@ -86,7 +86,7 @@ export const gameLedgerEntries = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     amount: bigint("amount", { mode: "number" }).notNull(),
     balanceAfter: bigint("balance_after", { mode: "number" }).notNull(),
-    // signup_grant | restock | takings | order | quest_reward | intro_reward | admin_adjustment
+    // signup_grant | restock | takings | order | quest_reward | intro_reward | decor | decor_refund | dream_reward | admin_adjustment
     kind: text("kind").notNull(),
     // Unique per user: makes every credit/debit idempotent.
     reference: text("reference").notNull(),

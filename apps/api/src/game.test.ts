@@ -272,3 +272,52 @@ describe("map neighbours", () => {
     expect(theirs).toMatchObject({ nickname: "A player", shopName: "A Junction 101 shop", isMe: false });
   });
 });
+
+describe("dream progress", () => {
+  it("counts served customers and pays each step reward once", async () => {
+    const p = await registerPlayer(app);
+    const empty = (await p.call("GET", "/api/game/dream")).json();
+    expect(empty).toMatchObject({ key: "market_royalty", value: 0, target: 100 });
+    expect((await p.call("POST", "/api/game/dream/claim", { at: 10 })).statusCode).toBe(422);
+
+    // Serve 12 customers (seeded directly: one order per 30-minute slot).
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    const [shop] = await sql`select id from sim_shops where owner_id = ${p.id}`;
+    for (let slot = 1; slot <= 12; slot++) {
+      await sql`insert into sim_orders (shop_id, slot, item_key, units, offer) values (${shop!.id}, ${slot}, 'pure_water', 1, 10)`;
+    }
+    await sql.end();
+
+    const dream = (await p.call("GET", "/api/game/dream")).json();
+    expect(dream.value).toBe(12);
+    expect(dream.steps[0]).toMatchObject({ at: 10, reached: true, claimed: false });
+
+    const before = await coins(p);
+    const claim = await p.call("POST", "/api/game/dream/claim", { at: 10 });
+    expect(claim.statusCode).toBe(200);
+    expect(claim.json().dream.steps[0].claimed).toBe(true);
+    expect(await coins(p)).toBe(before + 100);
+    expect((await p.call("POST", "/api/game/dream/claim", { at: 10 })).statusCode).toBe(409);
+    expect((await p.call("POST", "/api/game/dream/claim", { at: 25 })).statusCode).toBe(422);
+    expect(await coins(p)).toBe(before + 100);
+  });
+
+  it("ranks Junction Legend on finished Lagos weeks only", async () => {
+    const me = await registerPlayer(app);
+    const rival = await registerPlayer(app);
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    await sql`update profiles set dream = 'junction_legend' where user_id = ${me.id}`;
+    const lastWeek = sql`now() - interval '8 days'`;
+    await sql`insert into game_ledger_entries (user_id, amount, balance_after, kind, reference, created_at) values
+      (${me.id}, 500, 2500, 'order', 'test:me', ${lastWeek}),
+      (${rival.id}, 300, 2300, 'order', 'test:rival', ${lastWeek}),
+      (${rival.id}, 900, 3200, 'order', 'test:rival-now', now())`;
+    await sql.end();
+
+    const dream = (await me.call("GET", "/api/game/dream")).json();
+    expect(dream.key).toBe("junction_legend");
+    expect(dream.steps.map((s: { reached: boolean }) => s.reached)).toEqual([true, true, true]);
+    const rivalView = (await rival.call("GET", "/api/game/dream")).json();
+    expect(rivalView.key).toBe("market_royalty");
+  });
+});
