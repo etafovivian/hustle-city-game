@@ -28,8 +28,8 @@
   --focus: #ffc72c;
   --glow: 0 10px 28px -8px rgb(255 199 44 / 45%);
   --map-ground: #10173a;
-  --map-road: #232c5a;
-  --map-lane: #3d4886;
+  --map-road: #4a4540;
+  --map-lane: #f2c14e;
   --map-grass: #1b4a35;
 
   --font: "Outfit Variable", "Outfit", system-ui, sans-serif;
@@ -187,7 +187,7 @@ a { color: inherit; text-underline-offset: 3px; }
 /* ── Map ───────────────────────────────────────────── */
 .map svg { display: block; }
 .map-frame { position: relative; }
-.map-viewport { height: clamp(380px, 62vh, 640px); border-radius: 12px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; background: #0d1333; }
+.map-viewport { height: clamp(380px, 62vh, 640px); border-radius: 12px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; background: #a4814f; }
 .map-viewport:active { cursor: grabbing; }
 .map-viewport:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .map-controls { position: absolute; right: 16px; top: 16px; display: grid; gap: 6px; }
@@ -201,7 +201,7 @@ a { color: inherit; text-underline-offset: 3px; }
 .hotspot .ring { stroke: transparent; stroke-width: 4; }
 .hotspot:focus-visible .ring { stroke: var(--focus); }
 .map-plate { transform-box: fill-box; transform-origin: 50% 0; }
-.map-scenery { opacity: .78; pointer-events: none; }
+.map-scenery { opacity: .95; pointer-events: none; }
 .hotspot .bld image { filter: drop-shadow(0 0 0 transparent); transition: filter 0.25s ease; }
 .hotspot:hover .bld image, .hotspot:focus-visible .bld image { filter: drop-shadow(0 0 14px rgb(255 199 44 / 45%)); }
 

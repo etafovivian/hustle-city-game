@@ -28,6 +28,54 @@ const DISTRICTS = [
   { name: "Danfo Terminal", x: CX - 1250, y: CY + 640 },
 ];
 
+/** Each hustle's shop looks different on the map (Stitch art in public/art/buildings). */
+const HUSTLE_ART: Record<string, string> = {
+  trader: "/art/market-square.webp",
+  chop: "/art/buildings/buka.webp",
+  gadget: "/art/buildings/gadget-kiosk.webp",
+  artisan: "/art/buildings/tailor-shop.webp",
+};
+
+/** City buildings that make each district read as a real neighbourhood (decorative for now). */
+const DISTRICT_BUILDINGS: Record<string, string[]> = {
+  "Tech Mile": ["commercial-block", "mixed-use-block", "residential-block"],
+  "Owambe Gardens": ["bungalow", "suya-stand", "mixed-use-block"],
+  "Marina Wharf": ["residential-block", "bungalow", "commercial-block"],
+  "Danfo Terminal": ["mixed-use-block", "bungalow", "suya-stand"],
+};
+const OFFSETS = [
+  { x: -300, y: -150 },
+  { x: 300, y: -150 },
+  { x: -300, y: 190 },
+  { x: 300, y: 190 },
+  { x: 0, y: -300 },
+  { x: 0, y: 330 },
+];
+const clearOfRoads = (x: number, y: number) => Math.abs(y - roadA(x)) > 130 && Math.abs(y - roadB(x)) > 130;
+const SCENERY = DISTRICTS.flatMap((d) =>
+  (DISTRICT_BUILDINGS[d.name] ?? []).map((art, i) => {
+    const spot = OFFSETS.filter((o) => clearOfRoads(d.x + o.x, d.y + o.y))[i] ?? OFFSETS[i]!;
+    return { art: `/art/buildings/${art}.webp`, x: d.x + spot.x, y: d.y + spot.y, key: `${d.name}-${i}` };
+  }),
+);
+/** A ring of homes and blocks between the junction and the districts, so the city has no bare sand. */
+const RING = [
+  { x: CX - 820, y: CY, art: "bungalow" },
+  { x: CX + 820, y: CY, art: "residential-block" },
+  { x: CX - 620, y: CY - 560, art: "commercial-block" },
+  { x: CX + 620, y: CY - 560, art: "bungalow" },
+  { x: CX - 620, y: CY + 600, art: "residential-block" },
+  { x: CX + 620, y: CY + 600, art: "suya-stand" },
+  { x: CX, y: CY - 1000, art: "mixed-use-block" },
+  { x: CX, y: CY + 1040, art: "bungalow" },
+  { x: CX - 1080, y: CY - 260, art: "suya-stand" },
+  { x: CX + 1080, y: CY + 300, art: "commercial-block" },
+];
+const ALL_SCENERY = [
+  ...SCENERY,
+  ...RING.filter((r) => clearOfRoads(r.x, r.y)).map((r, i) => ({ art: `/art/buildings/${r.art}.webp`, x: r.x, y: r.y, key: `ring-${i}` })),
+].sort((a, b) => a.y - b.y);
+
 /** Plots around the junction: players' shops fill them; the rest show as open plots. Clear of roads and places. */
 const PLOTS = [
   { x: CX - 520, y: CY - 120 },
@@ -136,43 +184,68 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
       >
         <svg width="100%" height="100%">
           <defs>
-            <pattern id="iso-grid" width="160" height="80" patternUnits="userSpaceOnUse">
-              <path d="M0 40 L80 0 L160 40 L80 80Z" fill="none" stroke="#1d2654" strokeWidth="1.5" />
+            {/* Laterite sand: speckles of lighter and darker grains. */}
+            <pattern id="sand" width="90" height="90" patternUnits="userSpaceOnUse">
+              <circle cx="12" cy="18" r="2.2" fill="#b98e58" />
+              <circle cx="58" cy="9" r="1.6" fill="#e3c590" />
+              <circle cx="40" cy="52" r="2.6" fill="#b48853" />
+              <circle cx="78" cy="66" r="1.8" fill="#e6caa0" />
+              <circle cx="22" cy="74" r="1.4" fill="#a97f4c" />
+              <circle cx="70" cy="34" r="1.2" fill="#9c7444" />
             </pattern>
+            <radialGradient id="sand-shade" cx="50%" cy="50%" r="60%">
+              <stop offset="0.55" stopColor="#5a3d1c" stopOpacity="0" />
+              <stop offset="1" stopColor="#5a3d1c" stopOpacity=".38" />
+            </radialGradient>
             <radialGradient id="lamp">
               <stop offset="0" stopColor="#ffc72c" stopOpacity=".28" />
               <stop offset="1" stopColor="#ffc72c" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="glow-centre" cx="50%" cy="50%" r="50%">
-              <stop offset="0" stopColor="#1c2658" />
-              <stop offset="1" stopColor="#0d1333" stopOpacity="0" />
+              <stop offset="0" stopColor="#e4c48e" />
+              <stop offset="1" stopColor="#cfa874" stopOpacity="0" />
             </radialGradient>
           </defs>
           {pz.view && (
             <g transform={`translate(${pz.view.x} ${pz.view.y}) scale(${k})`}>
-              <rect width={WORLD.w} height={WORLD.h} fill="#0d1333" />
-              <rect width={WORLD.w} height={WORLD.h} fill="url(#iso-grid)" />
+              <rect width={WORLD.w} height={WORLD.h} fill="#cfa874" />
+              <rect width={WORLD.w} height={WORLD.h} fill="url(#sand)" />
               <ellipse cx={CX} cy={CY} rx="1400" ry="800" fill="url(#glow-centre)" />
+              <rect width={WORLD.w} height={WORLD.h} fill="url(#sand-shade)" />
 
               {/* Arterial roads crossing the whole city */}
               <path d={band(roadA)} fill="var(--map-road)" />
               <path d={band(roadB)} fill="var(--map-road)" />
               <path
                 d={`M0 ${roadA(0) - HALF} L${WORLD.w} ${roadA(WORLD.w) - HALF}M0 ${roadA(0) + HALF} L${WORLD.w} ${roadA(WORLD.w) + HALF}M0 ${roadB(0) - HALF} L${WORLD.w} ${roadB(WORLD.w) - HALF}M0 ${roadB(0) + HALF} L${WORLD.w} ${roadB(WORLD.w) + HALF}`}
-                stroke="#3a4682"
-                strokeWidth="3"
+                stroke="#e6d6b4"
+                strokeWidth="6"
               />
               <path d={`M0 ${roadA(0)} L${WORLD.w} ${roadA(WORLD.w)}M0 ${roadB(0)} L${WORLD.w} ${roadB(WORLD.w)}`} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
 
               {/* Districts that open in later stages */}
               {DISTRICTS.map((d) => (
                 <g key={d.name} aria-hidden="true">
-                  <Diamond x={d.x} y={d.y} w={1100} h={550} fill="rgb(255 199 44 / 3%)" stroke="#2e3a75" strokeWidth="3" strokeDasharray="18 14" />
+                  <Diamond x={d.x} y={d.y} w={1100} h={550} fill="rgb(255 255 255 / 7%)" stroke="#8c6a3e" strokeWidth="4" strokeDasharray="18 14" />
+                </g>
+              ))}
+
+              {/* District and neighbourhood buildings (decorative until districts open) */}
+              <g aria-hidden="true" className="map-scenery">
+                {ALL_SCENERY.map((b) => (
+                  <image key={b.key} href={b.art} x={b.x - 120} y={b.y - 210} width="240" height="230" preserveAspectRatio="xMidYMax meet" />
+                ))}
+              </g>
+
+              {/* District names sit above their buildings */}
+              {DISTRICTS.map((d) => (
+                <g key={`${d.name}-label`} aria-hidden="true">
                   <g transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
-                    <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#c9d1ea" opacity=".85">
+                    <rect x={-(d.name.length * 17 + 50)} y="-62" width={d.name.length * 34 + 100} height="118" rx="26" fill={INK.indigoDeep} opacity=".9" />
+                    <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
                       {d.name}
                     </text>
-                    <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3" opacity=".8">
+                    <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
                       OPENS LATER
                     </text>
                   </g>
@@ -250,8 +323,8 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                   if (!shop)
                     return (
                       <g key={i} aria-hidden="true">
-                        <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(0 168 89 / 6%)" stroke="#2f7a55" strokeWidth="2" strokeDasharray="10 8" />
-                        <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#7fd3a6" letterSpacing="2">
+                        <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(30 110 60 / 14%)" stroke="#2f6b45" strokeWidth="3" strokeDasharray="10 8" />
+                        <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#24533a" letterSpacing="2">
                           OPEN PLOT
                         </text>
                       </g>
@@ -275,9 +348,9 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
                         }
                       }}
                     >
-                      <Diamond x={p.x} y={p.y + 40} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 14%)" : "rgb(255 255 255 / 4%)"} stroke={shop.isMe ? "#ffc72c" : "#3a4682"} strokeWidth="2" />
+                      <Diamond x={p.x} y={p.y + 40} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 16%)"} stroke={shop.isMe ? "#ffc72c" : "#8c6a3e"} strokeWidth="2" />
                       <g className="bld">
-                        <image href="/art/market-square.webp" x={p.x - 85} y={p.y - 90} width="170" height="130" preserveAspectRatio="xMidYMax meet" />
+                        <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y - 110} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
                       </g>
                       <g transform={`translate(${p.x} ${p.y + 52}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
                         <rect width={plateW} height="32" rx="16" fill={shop.isMe ? INK.yellow : INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".5" />
