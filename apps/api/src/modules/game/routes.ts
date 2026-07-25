@@ -8,6 +8,7 @@ import { requireUser } from "../../plugins/auth.js";
 import { claimQuest, questBoard, recordEvents } from "./quests.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { claimDreamStep, getDream } from "./dream.js";
+import { visitShop } from "./visit.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -119,6 +120,13 @@ export async function gameRoutes(app: FastifyInstance) {
     return inTx(user.id, (ctx) => claimDreamStep(ctx, at));
   });
 
+  // Visit a player's shop (read-only); counts towards the "Neighbourly" quest.
+  app.post<{ Params: { id: string } }>("/api/game/shops/:id/visit", async (request) => {
+    const user = requireUser(request);
+    const id = z.uuid().parse(request.params.id);
+    return inTx(user.id, (ctx) => visitShop(ctx, id));
+  });
+
   // Player shops for the map: the caller's own shop plus the most recently active others.
   app.get("/api/game/neighbours", async (request): Promise<NeighbourShop[]> => {
     const user = requireUser(request);
@@ -146,6 +154,7 @@ export async function gameRoutes(app: FastifyInstance) {
       .from(shopDecor)
       .where(inArray(shopDecor.shopId, picked.map((r) => r.shopId)));
     return picked.map((r) => ({
+      shopId: r.shopId,
       // Hidden (moderated) names never reach other players.
       shopName: r.hidden && r.userId !== user.id ? "A Junction 101 shop" : r.shopName,
       nickname: r.hidden && r.userId !== user.id ? "A player" : r.nickname,

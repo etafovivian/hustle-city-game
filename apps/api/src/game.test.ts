@@ -321,3 +321,40 @@ describe("dream progress", () => {
     expect(rivalView.key).toBe("market_royalty");
   });
 });
+
+describe("visiting shops", () => {
+  it("shows another player's room and price board, never their coins or stock counts", async () => {
+    const owner = await registerPlayer(app, "visit_owner");
+    const visitor = await registerPlayer(app, "visit_guest");
+    await owner.call("POST", "/api/game/decor/buy", { itemKey: "plastic_chair", x: 0, y: 0, rotation: 0, requestId: randomUUID() });
+    const list = (await visitor.call("GET", "/api/game/neighbours")).json();
+    const theirs = list.find((s: { nickname: string }) => s.nickname === "visit_owner");
+    expect(theirs.shopId).toBeTruthy();
+
+    const res = await visitor.call("POST", `/api/game/shops/${theirs.shopId}/visit`);
+    expect(res.statusCode).toBe(200);
+    const visit = res.json();
+    expect(visit).toMatchObject({ nickname: "visit_owner", isMe: false });
+    expect(visit.decor.placements).toHaveLength(1);
+    expect(visit.prices.length).toBeGreaterThan(0);
+    expect(visit.prices[0]).toEqual({ itemKey: expect.any(String), name: expect.any(String), price: expect.any(Number), inStock: expect.any(Boolean) });
+    const body = res.body;
+    for (const secret of ["coin", "balance", "uncollected", "quantity", "ownerId", "userId", "email"]) expect(body).not.toContain(secret);
+  });
+
+  it("hides moderated names, 404s unknown shops and accepts shop reports", async () => {
+    const owner = await registerPlayer(app);
+    const visitor = await registerPlayer(app);
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    const [shop] = await sql`select id from sim_shops where owner_id = ${owner.id}`;
+    await sql`update profiles set nickname_hidden = true where user_id = ${owner.id}`;
+    await sql.end();
+
+    const visit = (await visitor.call("POST", `/api/game/shops/${shop!.id}/visit`)).json();
+    expect(visit).toMatchObject({ nickname: "A player", shopName: "A Junction 101 shop" });
+    expect((await owner.call("POST", `/api/game/shops/${shop!.id}/visit`)).json().isMe).toBe(true);
+    expect((await visitor.call("POST", `/api/game/shops/${randomUUID()}/visit`)).statusCode).toBe(404);
+    const report = await visitor.call("POST", "/api/reports", { targetType: "shop", targetId: shop!.id, reason: "Offensive shop name" });
+    expect(report.statusCode).toBe(201);
+  });
+});

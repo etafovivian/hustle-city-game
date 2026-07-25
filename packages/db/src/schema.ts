@@ -249,7 +249,7 @@ export const reports = pgTable("reports", {
   reporterId: uuid("reporter_id")
     .notNull()
     .references(() => users.id),
-  targetType: text("target_type").notNull(), // user | business | product
+  targetType: text("target_type").notNull(), // user | business | product | shop
   targetId: text("target_id").notNull(),
   reason: text("reason").notNull(),
   status: text("status").notNull().default("open"), // open | actioned | dismissed

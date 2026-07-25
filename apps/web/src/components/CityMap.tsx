@@ -2,11 +2,12 @@
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { HUSTLES_BY_KEY, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { LocateFixed, Minus, Plus, Sparkles, X } from "lucide-react";
+import { LocateFixed, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
+import { ShopVisit } from "./ShopVisit.js";
 import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
@@ -117,10 +118,22 @@ function Diamond({ x, y, w, h, ...rest }: { x: number; y: number; w: number; h: 
   return <path d={`M${x} ${y - h / 2} L${x + w / 2} ${y} L${x} ${y + h / 2} L${x - w / 2} ${y}Z`} {...rest} />;
 }
 
-export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void; visited: Set<string> }) {
+export function CityMap({
+  onOpen,
+  visited,
+  onVisited,
+  notify,
+}: {
+  onOpen: (id: LocationKey) => void;
+  visited: Set<string>;
+  /** A shop visit happened (quest progress may have moved). */
+  onVisited: () => void;
+  notify: (msg: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [neighbours, setNeighbours] = useState<NeighbourShop[]>([]);
   const [peek, setPeek] = useState<NeighbourShop | null>(null);
+  const [visiting, setVisiting] = useState<string | null>(null);
   useEffect(() => {
     api<NeighbourShop[]>("GET", "/api/game/neighbours")
       .then(setNeighbours)
@@ -419,9 +432,18 @@ export function CityMap({ onOpen, visited }: { onOpen: (id: LocationKey) => void
           <span className="appeal-pill" style={{ justifySelf: "start" }}>
             <Sparkles size={14} aria-hidden="true" /> Appeal {peek.appeal}
           </span>
-          {!peek.isMe && <span className="tiny muted">Visiting other players' shops opens with friends in the private beta.</span>}
+          {peek.isMe ? (
+            <button type="button" className="btn sm go" onClick={() => onOpen("market_square")}>
+              Go to my shop
+            </button>
+          ) : (
+            <button type="button" className="btn sm go" onClick={() => setVisiting(peek.shopId)}>
+              <Store size={16} aria-hidden="true" /> Visit shop
+            </button>
+          )}
         </div>
       )}
+      {visiting && <ShopVisit shopId={visiting} onClose={() => setVisiting(null)} onVisited={onVisited} notify={notify} />}
     </div>
   );
 }

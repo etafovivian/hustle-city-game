@@ -9,7 +9,7 @@ import { notFound } from "../lib/errors.js";
 import { requireRole, requireUser } from "../plugins/auth.js";
 
 const reportBody = z.object({
-  targetType: z.enum(["user", "business", "product"]),
+  targetType: z.enum(["user", "business", "product", "shop"]),
   targetId: z.uuid(),
   reason: z.string().trim().min(3).max(500),
 });

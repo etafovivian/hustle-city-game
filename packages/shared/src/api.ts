@@ -115,11 +115,23 @@ export interface DecorView {
 
 /** A player's shop shown on the city map. */
 export interface NeighbourShop {
+  shopId: string;
   shopName: string;
   nickname: string;
   hustle: string;
   appeal: number;
   isMe: boolean;
+}
+
+/** Another player's shop as a visitor sees it: no balances, takings or exact stock counts. */
+export interface ShopVisit {
+  shopId: string;
+  shopName: string;
+  nickname: string;
+  hustle: string;
+  isMe: boolean;
+  decor: DecorView;
+  prices: { itemKey: string; name: string; price: number; inStock: boolean }[];
 }
 
 export interface ApiError {

@@ -509,6 +509,19 @@ fieldset.avatar-picker { border: 0; margin: 0; padding: 0; min-width: 0; }
 .decor-item:focus-visible { outline: none; }
 .decor-item.selected image { filter: drop-shadow(0 0 2px #ffc72c) drop-shadow(0 0 2px #ffc72c) drop-shadow(0 0 14px rgb(255 199 44 / 70%)); }
 .decor-item.ghost { opacity: 0.7; pointer-events: none; }
+.decor-item.static { cursor: default; }
+.decor-item.static:hover image { filter: none; }
+/* Shop visit */
+.visit-sheet { position: relative; width: min(720px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; display: grid; gap: 16px; padding: 20px; border-radius: 24px; background: var(--sheet); border: 1px solid var(--rule-strong); box-shadow: var(--shadow); animation: phone-up 0.3s var(--ease-out); outline: none; }
+.visit-close { position: absolute; top: 14px; right: 14px; }
+.visit-head { display: grid; gap: 4px; padding-right: 44px; }
+.visit-room { position: relative; }
+.visit-empty { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; color: var(--muted); }
+.price-board { list-style: none; margin: 0; padding: 0; display: grid; }
+.price-board li { display: grid; grid-template-columns: minmax(0, 1fr) auto 72px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); }
+.price-board .in-stock { color: var(--ok); font-weight: 700; }
+.visit-report { justify-self: start; }
+@media (prefers-reduced-motion: reduce) { .visit-sheet { animation: none; } }
 .decor-item.ghost.bad image { filter: grayscale(0.6) drop-shadow(0 0 10px rgb(223 56 43 / 70%)); }
 .decor-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--sheet); border: 1px solid var(--rule-strong); }
 .decor-active { display: flex; align-items: center; gap: 10px; min-width: 0; }

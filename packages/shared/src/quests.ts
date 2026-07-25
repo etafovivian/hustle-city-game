@@ -12,7 +12,8 @@ export type GameEventType =
   | "takings_collected"
   | "product_viewed"
   | "leaderboard_viewed"
-  | "decor_bought";
+  | "decor_bought"
+  | "shop_visited";
 
 export interface GameEvent {
   type: GameEventType;
@@ -46,6 +47,7 @@ export const DAILY_QUEST_POOL: readonly QuestDefinition[] = [
   { key: "browse_3", title: "Window shopping", description: "View 3 different real merchant products.", event: "product_viewed", target: 3, distinct: true, rewardCoins: 120, rewardXp: 15 },
   { key: "tour_3", title: "Around Junction 101", description: "Visit all three locations.", event: "location_visited", target: 3, distinct: true, rewardCoins: 100, rewardXp: 15 },
   { key: "decor_1", title: "Spruce up", description: "Buy one item for your shop in Decorate.", event: "decor_bought", target: 1, rewardCoins: 120, rewardXp: 15 },
+  { key: "neighbour_2", title: "Neighbourly", description: "Visit 2 other players' shops from the map.", event: "shop_visited", target: 2, distinct: true, rewardCoins: 100, rewardXp: 15 },
   { key: "standings_1", title: "Who's on top?", description: "Check the weekly standings at The Hangout.", event: "leaderboard_viewed", target: 1, rewardCoins: 60, rewardXp: 10 },
 ];
 
