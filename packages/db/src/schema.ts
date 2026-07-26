@@ -50,6 +50,25 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+/**
+ * One-time password reset links. Only the SHA-256 of the token is stored; the raw token is in the link.
+ * Issued by an admin while email delivery isn't set up; each link works once and expires.
+ */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    issuedBy: uuid("issued_by").references(() => users.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
 export const profiles = pgTable(
   "profiles",
   {

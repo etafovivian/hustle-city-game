@@ -10,6 +10,7 @@ import { Hangout, WorkHub } from "./components/Locations.js";
 import { Merchants } from "./components/Merchants.js";
 import { Phone, type PhoneApp } from "./components/Phone.js";
 import { Quests } from "./components/Quests.js";
+import { ResetPassword } from "./components/Password.js";
 import { ShopPanel } from "./components/ShopPanel.js";
 import { PlaceHeader, Selvedge } from "./components/ui.js";
 import { LOCATION_PRINT } from "./prints.js";
@@ -49,6 +50,9 @@ export function App() {
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [phone, setPhone] = useState<PhoneApp | null>(null);
+  // A one-time reset link opens straight into "choose a new password".
+  const [resetToken, setResetToken] = useState<string | null>(() => new URLSearchParams(window.location.search).get("reset"));
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -91,6 +95,20 @@ export function App() {
     setView({ kind: "map" });
   };
 
+  if (resetToken) {
+    return (
+      <ResetPassword
+        token={resetToken}
+        onDone={(msg) => {
+          window.history.replaceState(null, "", window.location.pathname);
+          setResetToken(null);
+          setMe(null);
+          setAuthNotice(msg);
+        }}
+      />
+    );
+  }
+
   if (me === undefined) return null;
 
   if (view.kind === "browse") {
@@ -124,6 +142,7 @@ export function App() {
           void refresh();
         }}
         onBrowse={() => setView({ kind: "browse" })}
+        notice={authNotice}
       />
     );
   }
@@ -277,6 +296,7 @@ export function App() {
           onBoard={setBoard}
           onChanged={onChanged}
           notify={notify}
+          email={me.email}
         />
       )}
 

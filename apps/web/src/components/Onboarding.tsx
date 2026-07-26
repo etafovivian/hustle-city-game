@@ -98,6 +98,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
   const [shopTouched, setShopTouched] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [reveal, setReveal] = useState(false);
   const [adult, setAdult] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +121,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
     if (step === "Account") {
       if (!email.includes("@")) return "Enter your email.";
       if (password.length < 10) return "Use a password of at least 10 characters.";
+      if (password !== confirm) return "The two passwords don't match. Type the same password in both boxes.";
       if (!adult) return "Tick to confirm you're 18 or older. Naija Hustle City is for adults.";
     }
     return null;
@@ -344,6 +346,20 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
                 ))}
               </span>
               <span className="hint">At least 10 characters{password ? ` · ${STRENGTH_LABEL[strength(password)]}` : ""}.</span>
+            </label>
+            <label className="field">
+              <span className="field-label">Type it again</span>
+              <span className="input-wrap">
+                <input
+                  className="input has-reveal"
+                  type={reveal ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  aria-invalid={confirm.length > 0 && confirm !== password}
+                />
+              </span>
+              {confirm.length > 0 && confirm !== password && <span className="hint warn">Doesn't match yet.</span>}
             </label>
             <label className="check">
               <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />

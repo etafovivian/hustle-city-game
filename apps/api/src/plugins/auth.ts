@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { Role } from "@hc/shared";
 import { sessions, users } from "@hc/db";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { forbidden, unauthorized } from "../lib/errors.js";
@@ -42,6 +42,14 @@ export async function endSession(app: FastifyInstance, request: FastifyRequest, 
   const token = request.cookies[SESSION_COOKIE];
   if (token) await app.db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
   reply.clearCookie(SESSION_COOKIE, { path: "/" });
+}
+
+/** Sign the user out of every session except the one making this request. */
+export async function endOtherSessions(app: FastifyInstance, request: FastifyRequest, userId: string) {
+  const token = request.cookies[SESSION_COOKIE];
+  await app.db
+    .delete(sessions)
+    .where(token ? and(eq(sessions.userId, userId), ne(sessions.tokenHash, hashToken(token))) : eq(sessions.userId, userId));
 }
 
 export function requireUser(request: FastifyRequest): SessionUser {

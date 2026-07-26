@@ -1,13 +1,14 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { DreamView, QuestBoard } from "@hc/shared";
-import { ArrowLeft, Briefcase, ListChecks, MessageCircle, Store, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, ListChecks, MessageCircle, Settings, Store, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { Dream, DreamCard } from "./Dream.js";
+import { ChangePassword } from "./Password.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "jobs", label: "Jobs", Icon: Briefcase, tint: "#1e2a5e" },
@@ -15,9 +16,10 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "standings", label: "Standings", Icon: Trophy, tint: "#df382b" },
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
+  { key: "account", label: "Account", Icon: Settings, tint: "#4b5563" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", account: "Account", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -28,6 +30,7 @@ export function Phone({
   onBoard,
   onChanged,
   notify,
+  email,
 }: {
   app: PhoneApp;
   setApp: (a: PhoneApp) => void;
@@ -37,6 +40,7 @@ export function Phone({
   onBoard: (b: QuestBoard) => void;
   onChanged: () => void;
   notify: (msg: string) => void;
+  email: string;
 }) {
   const sheet = useRef<HTMLDivElement>(null);
   const [dream, setDream] = useState<DreamView | null>(null);
@@ -111,6 +115,7 @@ export function Phone({
           )}
           {app === "dream" && dream && <Dream dream={dream} onDream={setDream} onChanged={onChanged} notify={notify} />}
           {app === "jobs" && <WorkHub />}
+          {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}
           {app === "messages" && (

@@ -13,3 +13,4 @@ export function createDb(url: string, options: { max?: number } = {}) {
   return { db, client };
 }
 export * from "./password.js";
+export * from "./resets.js";

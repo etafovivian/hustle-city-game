@@ -358,3 +358,47 @@ describe("visiting shops", () => {
     expect(report.statusCode).toBe(201);
   });
 });
+
+describe("passwords", () => {
+  const login = (email: string, password: string) =>
+    app.inject({ method: "POST", url: "/api/auth/login", headers: { origin: "http://localhost:5190" }, payload: { email, password } });
+
+  it("changes the password with the current one and signs out other devices", async () => {
+    const p = await registerPlayer(app, "pw_change");
+    const other = await login("pw_change@example.test", "correct-horse-battery");
+    const otherCookie = String(other.headers["set-cookie"]).split(";")[0]!;
+
+    const wrong = await p.call("POST", "/api/auth/password", { currentPassword: "nope-nope-nope", newPassword: "brand-new-password-1" });
+    expect(wrong.statusCode).toBe(401);
+    const ok = await p.call("POST", "/api/auth/password", { currentPassword: "correct-horse-battery", newPassword: "brand-new-password-1" });
+    expect(ok.statusCode).toBe(204);
+
+    expect((await p.call("GET", "/api/me")).statusCode).toBe(200); // this device stays in
+    const otherMe = await app.inject({ method: "GET", url: "/api/me", headers: { cookie: otherCookie } });
+    expect(otherMe.statusCode).toBe(401);
+    expect((await login("pw_change@example.test", "correct-horse-battery")).statusCode).toBe(401);
+    expect((await login("pw_change@example.test", "brand-new-password-1")).statusCode).toBe(200);
+  });
+
+  it("lets an admin issue a one-time reset link that sets a new password once", async () => {
+    const admin = await registerPlayer(app, "pw_mod");
+    const player = await registerPlayer(app, "pw_forgot");
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    await sql`update users set roles = array['player','admin'] where id = ${admin.id}`;
+    await sql.end();
+
+    expect((await player.call("POST", "/api/admin/reset-link", { email: "pw_mod@example.test" })).statusCode).toBe(403);
+    const res = await admin.call("POST", "/api/admin/reset-link", { email: "PW_Forgot@example.test" });
+    expect(res.statusCode).toBe(200);
+    const token = new URL(res.json().url).searchParams.get("reset")!;
+    expect(token.length).toBeGreaterThan(20);
+
+    const reset = (newPassword: string) =>
+      app.inject({ method: "POST", url: "/api/auth/reset", headers: { origin: "http://localhost:5190" }, payload: { token, newPassword } });
+    expect((await reset("short")).statusCode).toBe(400);
+    expect((await reset("reset-password-works")).statusCode).toBe(204);
+    expect((await reset("second-use-must-fail")).statusCode).toBe(410);
+    expect((await player.call("GET", "/api/me")).statusCode).toBe(401); // signed out everywhere
+    expect((await login("pw_forgot@example.test", "reset-password-works")).statusCode).toBe(200);
+  });
+});

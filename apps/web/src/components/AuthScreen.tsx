@@ -22,8 +22,9 @@ function Tabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
 }
 
 /** Welcome screen: "New here" runs the step-by-step onboarding; "Sign in" is a short form. */
-export function AuthScreen({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => void; onBrowse: () => void }) {
-  const [mode, setMode] = useState<Mode>("register");
+export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: Me) => void; onBrowse: () => void; notice?: string | null }) {
+  const [mode, setMode] = useState<Mode>(notice ? "login" : "register");
+  const [forgot, setForgot] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -160,6 +161,20 @@ export function AuthScreen({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
             {error && (
               <p className="alert" role="alert">
                 <AlertCircle size={18} aria-hidden="true" /> {error}
+              </p>
+            )}
+
+            {notice && !error && (
+              <p className="notice small" role="status">
+                {notice}
+              </p>
+            )}
+            <button type="button" className="link-btn small" onClick={() => setForgot((f) => !f)} aria-expanded={forgot}>
+              Forgot your password?
+            </button>
+            {forgot && (
+              <p className="small muted forgot-note">
+                During the private beta, ask the Naija Hustle City team for a reset link. It opens a page where you choose a new password. Reset by email comes before public launch.
               </p>
             )}
 
