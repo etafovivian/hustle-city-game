@@ -56,8 +56,13 @@ const HAIR_LINE: Record<string, number | null> = {
 
 function regionColors(a: AvatarConfig): THREE.Color[] {
   const o = OUTFITS[a.outfit] ?? OUTFITS.ankara_green!;
-  const skin = new THREE.Color(a.skinTone).convertSRGBToLinear();
-  const c = (v: string) => (v === "skin" ? skin.clone() : new THREE.Color(v).convertSRGBToLinear());
+  // THREE.Color already converts sRGB hex to linear, so no extra conversion (doing it twice
+  // turned skin orange-red and deep tones black). Very deep tones get a small lift so their form reads.
+  const skin = new THREE.Color(a.skinTone);
+  const hsl = { h: 0, s: 0, l: 0 };
+  skin.getHSL(hsl, THREE.SRGBColorSpace);
+  if (hsl.l < 0.2) skin.setHSL(hsl.h, hsl.s, 0.2, THREE.SRGBColorSpace);
+  const c = (v: string) => (v === "skin" ? skin.clone() : new THREE.Color(v));
   const out: THREE.Color[] = [];
   out[R.skin] = skin.clone();
   out[R.head] = skin.clone();
@@ -74,11 +79,11 @@ function regionColors(a: AvatarConfig): THREE.Color[] {
 function makeMaterial(a: AvatarConfig) {
   const uniforms = {
     uColors: { value: regionColors(a) },
-    uPattern: { value: new THREE.Color((OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ?? "#000000").convertSRGBToLinear() },
+    uPattern: { value: new THREE.Color((OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ?? "#000000") },
     uHasPattern: { value: (OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ? 1 : 0 },
     uHairLine: { value: HAIR_LINE[a.hairStyle] ?? 1.75 },
     uHasHair: { value: HAIR_LINE[a.hairStyle] === null ? 0 : 1 },
-    uHairColor: { value: new THREE.Color(a.hairStyle === "cap" ? "#df382b" : "#1b1410").convertSRGBToLinear() },
+    uHairColor: { value: new THREE.Color(a.hairStyle === "cap" ? "#df382b" : "#1b1410") },
   };
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.02 });
   mat.onBeforeCompile = (shader) => {
@@ -165,19 +170,24 @@ export default function Avatar3D({
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    // Neutral tone mapping keeps skin and fabric hues true (ACES pushed skin towards orange-red).
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1.0;
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
     camera.position.set(0, 1.0, 3.7);
     camera.lookAt(0, 0.9, 0);
-    scene.add(new THREE.HemisphereLight("#fff3d6", "#3a4a7b", 2.4));
-    const sun = new THREE.DirectionalLight("#ffe7b8", 3.2);
+    // White key and fill light so the chosen colours read as chosen; a soft gold rim for the brand.
+    scene.add(new THREE.HemisphereLight("#ffffff", "#4a5470", 1.6));
+    const sun = new THREE.DirectionalLight("#ffffff", 2.2);
     sun.position.set(2, 4, 3);
     scene.add(sun);
-    const rim = new THREE.DirectionalLight("#ffc72c", 1.1);
+    const front = new THREE.DirectionalLight("#ffffff", 0.9);
+    front.position.set(0, 1.5, 4);
+    scene.add(front);
+    const rim = new THREE.DirectionalLight("#ffc72c", 0.6);
     rim.position.set(-3, 2, -2);
     scene.add(rim);
     // Gold ring floor.
