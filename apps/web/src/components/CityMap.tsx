@@ -12,6 +12,10 @@ import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
   BEACH_PATH,
+  DRIVEWAYS,
+  STREETS,
+  STREET_HALF,
+  TREES,
   CX,
   CY,
   DISTRICTS,
@@ -34,6 +38,12 @@ import {
 import { usePanZoom } from "./usePanZoom.js";
 
 const J = { x: CX - 400, y: CY - 300, w: 800, h: 640 };
+
+/** Buildings and trees in one back-to-front list so nearer things cover farther ones. */
+const WORLD_OBJECTS = [
+  ...ALL_SCENERY.map((b) => ({ ...b, type: "building" as const, kind: undefined })),
+  ...TREES.map((t) => ({ ...t, type: "tree" as const, art: "" })),
+].sort((a, b) => a.y - b.y);
 
 /** Each hustle's shop looks different on the map (Stitch art in public/art/buildings). */
 const HUSTLE_ART: Record<string, string> = {
@@ -174,6 +184,31 @@ export function CityMap({
               <circle cx="22" cy="74" r="1.4" fill="#a97f4c" />
               <circle cx="70" cy="34" r="1.2" fill="#9c7444" />
             </pattern>
+            {/* Cartoon trees with dark outlines, to sit with the Stitch art (until tree art arrives). */}
+            <symbol id="tree" viewBox="0 0 120 145">
+              <path d="M55 92h10l3 50H52z" fill="#6b4423" stroke="#2a1a0c" strokeWidth="3" strokeLinejoin="round" />
+              <g stroke="#1d2a14" strokeWidth="3">
+                <circle cx="34" cy="78" r="26" fill="#2f7a34" />
+                <circle cx="86" cy="76" r="27" fill="#2f7a34" />
+                <circle cx="60" cy="62" r="36" fill="#3f8f3a" />
+                <circle cx="58" cy="34" r="25" fill="#4fa043" />
+              </g>
+              <circle cx="50" cy="28" r="9" fill="#7cc65a" />
+              <circle cx="78" cy="58" r="7" fill="#6db84f" />
+            </symbol>
+            <symbol id="palm" viewBox="0 0 120 170">
+              <path d="M54 168c2-40 4-80 10-118l9 2c-5 38-7 76-8 116z" fill="#8a5a2f" stroke="#2a1a0c" strokeWidth="3" strokeLinejoin="round" />
+              <path d="M57 140h9M58 115h9M60 90h9M62 66h8" stroke="#5a3a1c" strokeWidth="2.5" />
+              <g fill="#3f8f3a" stroke="#1d2a14" strokeWidth="3" strokeLinejoin="round">
+                <path d="M68 50C50 30 26 30 6 46c22-4 40 0 58 10z" />
+                <path d="M68 50c18-20 42-20 62-4-22-4-40 0-58 10z" />
+                <path d="M68 50C60 26 44 12 24 8c16 12 28 26 38 46z" />
+                <path d="M68 50c6-24 22-40 42-44-14 12-26 28-34 48z" />
+                <path d="M68 50C52 58 40 74 34 96c12-18 24-30 38-40z" fill="#2f7a34" />
+                <path d="M68 50c16 8 28 24 34 46-12-18-24-30-38-40z" fill="#2f7a34" />
+              </g>
+              <circle cx="66" cy="52" r="6" fill="#6b4423" stroke="#2a1a0c" strokeWidth="2" />
+            </symbol>
             <pattern id="waves" width="160" height="56" patternUnits="userSpaceOnUse">
               <path d="M0 28q40-22 80 0t80 0" fill="none" stroke="#9fd3e8" strokeOpacity=".3" strokeWidth="5" />
             </pattern>
@@ -228,6 +263,21 @@ export function CityMap({
                 <rect key={p.x} x={p.x - 9} y={p.y + HALF - 4} width="18" height="70" rx="4" fill="#8a8f98" stroke="#5d626b" strokeWidth="2" />
               ))}
 
+              {/* Residential streets and driveways, under the main roads so junctions read as T-junctions */}
+              {!far && (
+                <g aria-hidden="true">
+                  {DRIVEWAYS.map((d, i) => (
+                    <path key={i} d={`M${d.x0} ${d.y0} L${d.x1} ${d.y1}`} stroke="#9a8f7c" strokeWidth="26" />
+                  ))}
+                  {STREETS.map((r) => (
+                    <g key={r.id}>
+                      <path d={bandPath(r, STREET_HALF)} fill="#5c564f" />
+                      <path d={`${kerbPath(r, -STREET_HALF)}${kerbPath(r, STREET_HALF)}`} stroke="#d9c9a6" strokeWidth="4" />
+                    </g>
+                  ))}
+                </g>
+              )}
+
               {/* Roads: asphalt, kerbs (rails on the bridge), lane markings */}
               {ROADS.map((r) => (
                 <g key={r.id}>
@@ -249,15 +299,22 @@ export function CityMap({
 
               {/* District and neighbourhood buildings (decorative until districts open) */}
               <g aria-hidden="true" className="map-scenery">
-                {ALL_SCENERY.map((b) => (
-                  <image key={b.key} href={b.art} x={b.x - 120} y={b.y - 210} width="240" height="230" preserveAspectRatio="xMidYMax meet" />
-                ))}
+                {WORLD_OBJECTS.map((o) =>
+                  o.type === "building" ? (
+                    <image key={o.key} href={o.art} x={o.x - 120} y={o.y - 210} width="240" height="230" preserveAspectRatio="xMidYMax meet" />
+                  ) : far ? null : (
+                    <g key={o.key}>
+                      <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
+                      <use href={o.kind === "palm" ? "#palm" : "#tree"} x={o.x - 60} y={o.y - (o.kind === "palm" ? 165 : 140)} width="120" height={o.kind === "palm" ? 170 : 145} />
+                    </g>
+                  ),
+                )}
               </g>
 
               {/* Junction 101 */}
               <g transform={`translate(${J.x} ${J.y})`}>
-                <ellipse cx="400" cy="300" rx="96" ry="48" fill="var(--map-road)" />
-                <ellipse cx="400" cy="300" rx="62" ry="31" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
+                <ellipse cx="400" cy="300" rx="150" ry="75" fill="var(--map-road)" />
+                <ellipse cx="400" cy="300" rx="78" ry="39" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
                 {!far && (
                   <g aria-hidden="true" className="map-scenery">
                     <image href="/art/city-park.webp" x="0" y="190" width="230" height="200" preserveAspectRatio="xMidYMid meet" />

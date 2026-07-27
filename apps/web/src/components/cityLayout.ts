@@ -6,7 +6,8 @@ export const WORLD = { w: 9600, h: 7600 };
 /** Junction 101, the start of the game. */
 export const CX = 4800;
 export const CY = 2400;
-export const HALF = 34; // half road width, measured vertically
+export const HALF = 60; // half width of a main road (two lanes), measured vertically
+export const STREET_HALF = 24; // half width of a residential street
 
 export interface Segment {
   id: string;
@@ -89,7 +90,7 @@ const onIsland = (x: number, y: number) => x > TIP + 250 && y > island(x) + ISLA
 /** Dry land with room for a building (art is drawn up to ~210 units above its foot). */
 export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x, y);
 
-export const clearOfRoads = (x: number, y: number, gap = 130) =>
+export const clearOfRoads = (x: number, y: number, gap = 160) =>
   ROADS.every((s) => x < Math.min(s.x0, s.x1) - 60 || x > Math.max(s.x0, s.x1) + 60 || Math.abs(y - yOn(s, x)) > gap);
 
 export type Phase = 1 | 2 | 3 | 4;
@@ -133,31 +134,6 @@ const DISTRICT_SCENERY = DISTRICTS.flatMap((d) => {
   return d.buildings.slice(0, spots.length).map((art, i) => ({ art: `/art/buildings/${art}.webp`, x: spots[i]!.x, y: spots[i]!.y, key: `${d.name}-${i}` }));
 });
 
-/** Homes and blocks between the junction and the districts, so the mainland has no bare sand. */
-const RING = [
-  { x: CX - 820, y: CY, art: "bungalow" },
-  { x: CX + 820, y: CY, art: "residential-block" },
-  { x: CX - 620, y: CY - 560, art: "commercial-block" },
-  { x: CX + 620, y: CY - 560, art: "bungalow" },
-  { x: CX - 620, y: CY + 600, art: "residential-block" },
-  { x: CX + 620, y: CY + 600, art: "suya-stand" },
-  { x: CX, y: CY - 1000, art: "mixed-use-block" },
-  { x: CX, y: CY + 1040, art: "bungalow" },
-  { x: CX - 1080, y: CY - 260, art: "suya-stand" },
-  { x: CX + 1080, y: CY + 300, art: "commercial-block" },
-  { x: CX - 300, y: CY - 1500, art: "residential-block" },
-  { x: CX + 400, y: CY - 1600, art: "bungalow" },
-  { x: CX - 2700, y: CY - 300, art: "bungalow" },
-  { x: CX + 2700, y: CY - 100, art: "residential-block" },
-  { x: CX + 3300, y: CY - 1300, art: "mixed-use-block" },
-  { x: CX - 3300, y: CY - 1500, art: "commercial-block" },
-];
-
-export const ALL_SCENERY = [
-  ...DISTRICT_SCENERY,
-  ...RING.filter((r) => free(r.x, r.y)).map((r, i) => ({ art: `/art/buildings/${r.art}.webp`, x: r.x, y: r.y, key: `ring-${i}` })),
-].sort((a, b) => a.y - b.y);
-
 /** Plots around the junction: players' shops fill them; the rest show as open plots. Clear of roads and places. */
 export const PLOTS = [
   { x: CX - 520, y: CY - 120 },
@@ -168,9 +144,94 @@ export const PLOTS = [
   { x: CX + 250, y: CY + 470 },
   { x: CX - 520, y: CY + 170 },
   { x: CX + 520, y: CY + 150 },
-  { x: CX, y: CY - 680 },
-  { x: CX, y: CY + 700 },
+  { x: CX, y: CY - 600 },
+  { x: CX, y: CY + 620 },
 ];
+
+/** World point from isometric road coordinates: a runs along Road A (down-right), b along Road B (up-right). */
+const iso = (a: number, b: number) => ({ x: CX + a + b, y: CY + 0.5 * a - 0.5 * b });
+
+/**
+ * Residential streets: a block grid in each quarter around Junction 101. Each quarter gets one street
+ * parallel to Road A (starting at Road B) and one parallel to Road B (starting at Road A); they cross.
+ */
+const QUARTERS = [
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+] as const;
+const STREET_AT = 850;
+const STREET_LEN = 1350;
+export const STREETS: Segment[] = QUARTERS.flatMap(([sa, sb]) => {
+  const seg = (id: string, p: { x: number; y: number }, q: { x: number; y: number }): Segment =>
+    p.x < q.x ? { id, x0: p.x, y0: p.y, x1: q.x, y1: q.y } : { id, x0: q.x, y0: q.y, x1: p.x, y1: p.y };
+  return [
+    seg(`s1${sa}${sb}`, iso(0, sb * STREET_AT), iso(sa * STREET_LEN, sb * STREET_AT)),
+    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, 0), iso(sa * STREET_AT, sb * STREET_LEN)),
+  ];
+});
+
+const clearOfStreets = (x: number, y: number, gap = 110) =>
+  STREETS.every((s) => x < s.x0 - 40 || x > s.x1 + 40 || Math.abs(y - yOn(s, x)) > gap);
+const awayFromJunction = (x: number, y: number) => Math.abs(x - CX) / 700 + Math.abs(y - CY) / 520 > 1;
+const awayFromPlots = (x: number, y: number) => PLOTS.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.6) > 260);
+const buildable = (x: number, y: number) => free(x, y) && clearOfStreets(x, y) && awayFromJunction(x, y) && awayFromPlots(x, y);
+
+const HOUSE_ART = ["bungalow", "residential-block", "bungalow", "mixed-use-block"];
+
+/** Houses on both sides of every street, each with a driveway to the street; trees between them. */
+const STREET_LOTS = (() => {
+  const houses: { art: string; x: number; y: number; key: string }[] = [];
+  const driveways: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  const trees: { x: number; y: number; kind: "leafy" | "palm"; key: string }[] = [];
+  let n = 0;
+  for (const [sa, sb] of QUARTERS) {
+    for (const which of [1, 2] as const) {
+      for (let t = 280; t <= STREET_LEN - 120; t += 330) {
+        for (const side of [1, -1] as const) {
+          const off = side * 210;
+          const along = (tt: number, o: number) => (which === 1 ? iso(sa * tt, sb * STREET_AT + o) : iso(sa * STREET_AT + o, sb * tt));
+          const house = along(t, off);
+          if (!buildable(house.x, house.y)) continue;
+          houses.push({ art: `/art/buildings/${HOUSE_ART[n % HOUSE_ART.length]}.webp`, ...house, key: `house-${n}` });
+          // Houses above the street on screen get a driveway from their door; houses below it have the
+          // driveway beside them, so the building doesn't hide it.
+          const farSide = (which === 1 ? off : -off) > 0;
+          const dt = farSide ? 0 : 135;
+          const from = along(t + dt, off);
+          const to = along(t + dt, side * STREET_HALF);
+          driveways.push({ x0: from.x, y0: from.y, x1: to.x, y1: to.y });
+          const tree = along(t + 165, side * 250);
+          if (buildable(tree.x, tree.y)) trees.push({ ...tree, kind: n % 3 === 0 ? "palm" : "leafy", key: `tree-${n}` });
+          n++;
+        }
+      }
+    }
+  }
+  return { houses, driveways, trees };
+})();
+export const DRIVEWAYS = STREET_LOTS.driveways;
+
+/** Palms along the Island road (Lekki feel) and trees around the districts. */
+const EXTRA_TREES = [
+  ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
+    const y = island(x) + (i % 2 ? 150 : -150);
+    return onIsland(x, y) && clearOfRoads(x, y, 100) ? [{ x, y, kind: "palm" as const, key: `isle-${i}` }] : [];
+  }),
+  ...DISTRICTS.flatMap((d, i) =>
+    [
+      { x: d.x - 520, y: d.y - 260 },
+      { x: d.x + 520, y: d.y + 280 },
+      { x: d.x + 140, y: d.y - 420 },
+    ]
+      .filter((p) => free(p.x, p.y) && clearOfStreets(p.x, p.y))
+      .map((p, j) => ({ ...p, kind: (i + j) % 2 ? ("palm" as const) : ("leafy" as const), key: `dt-${i}-${j}` })),
+  ),
+];
+export const TREES = [...STREET_LOTS.trees, ...EXTRA_TREES].sort((a, b) => a.y - b.y);
+
+export const ALL_SCENERY = [...DISTRICT_SCENERY.filter((d) => clearOfStreets(d.x, d.y)), ...STREET_LOTS.houses].sort((a, b) => a.y - b.y);
 
 /** Bridge pillars: evenly spaced along the deck where it crosses water. */
 export const PILLARS = (() => {
@@ -196,7 +257,7 @@ export const LAMPS = ROADS.flatMap((s) => {
 });
 
 /** Polygon for a road's asphalt band. */
-export const bandPath = (s: Segment) =>
-  `M${s.x0} ${s.y0 - HALF} L${s.x1} ${s.y1 - HALF} L${s.x1} ${s.y1 + HALF} L${s.x0} ${s.y0 + HALF}Z`;
+export const bandPath = (s: Segment, half = HALF) =>
+  `M${s.x0} ${s.y0 - half} L${s.x1} ${s.y1 - half} L${s.x1} ${s.y1 + half} L${s.x0} ${s.y0 + half}Z`;
 export const kerbPath = (s: Segment, off: number) => `M${s.x0} ${s.y0 + off} L${s.x1} ${s.y1 + off}`;
 export const centrePath = (s: Segment) => `M${s.x0} ${s.y0} L${s.x1} ${s.y1}`;
