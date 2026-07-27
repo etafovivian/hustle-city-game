@@ -14,6 +14,8 @@ const schema = z.object({
   LOG_LEVEL: z.string().default("info"),
   /** Sign-in/registration attempts per IP per minute. */
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  /** Multiplier for per-hour limits on marketplace actions (raised in tests, which share one IP). */
+  ACTION_RATE_SCALE: z.coerce.number().positive().default(1),
 });
 
 export type Config = ReturnType<typeof loadConfig>;

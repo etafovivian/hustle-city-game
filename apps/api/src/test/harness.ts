@@ -42,7 +42,7 @@ export async function resetDatabase() {
 }
 
 export async function testServer() {
-  const config = loadConfig({ ...process.env, DATABASE_URL: TEST_DATABASE_URL, WEB_ORIGIN: ORIGIN, AUTH_RATE_LIMIT: "1000" });
+  const config = loadConfig({ ...process.env, DATABASE_URL: TEST_DATABASE_URL, WEB_ORIGIN: ORIGIN, AUTH_RATE_LIMIT: "1000", ACTION_RATE_SCALE: "100" });
   return buildServer(config, { logger: false });
 }
 

@@ -215,7 +215,9 @@ export const businesses = pgTable(
     pickupAddress: text("pickup_address"),
     description: text("description").notNull().default(""),
     templateKey: text("template_key").notNull().default("free_shop"),
-    status: text("status").notNull().default("draft"), // draft | pending_review | published | hidden
+    status: text("status").notNull().default("draft"), // draft | pending_review | published | hidden | rejected
+    // Shown to the owner when admin review rejects or hides the listing.
+    reviewNote: text("review_note"),
     isMock: boolean("is_mock").notNull().default(false),
     createdAt: createdAt(),
   },
@@ -262,6 +264,100 @@ export const products = pgTable(
 );
 
 // --- Trust, safety and operations ----------------------------------------
+
+// ── Stage B1: artisan quote journey ──────────────────────
+
+export const serviceRequests = pgTable(
+  "service_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id),
+    description: text("description").notNull(),
+    serviceArea: text("service_area").notNull(),
+    // requested | quoted | scheduled | completion_submitted | completed | declined | cancelled
+    status: text("status").notNull().default("requested"),
+    currentVersion: integer("current_version").notNull().default(0),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("service_requests_customer_idx").on(t.customerId, t.updatedAt),
+    index("service_requests_business_idx").on(t.businessId, t.updatedAt),
+    check(
+      "service_requests_status_valid",
+      sql`${t.status} in ('requested','quoted','scheduled','completion_submitted','completed','declined','cancelled')`,
+    ),
+  ],
+);
+
+/** Every quote and revision is kept (PRD: approved quote revisions are retained as versions). Append-only. */
+export const quoteVersions = pgTable(
+  "quote_versions",
+  {
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => serviceRequests.id),
+    version: integer("version").notNull(),
+    items: jsonb("items").notNull(), // [{ label, amountKobo }]
+    totalKobo: bigint("total_kobo", { mode: "number" }).notNull(),
+    note: text("note").notNull().default(""),
+    appointmentAt: timestamp("appointment_at", { withTimezone: true }).notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.requestId, t.version] }), check("quote_versions_total_nonneg", sql`${t.totalKobo} >= 0`)],
+);
+
+/** The request's history, shown to both parties (also the in-app notification feed). Append-only. */
+export const serviceEvents = pgTable(
+  "service_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => serviceRequests.id),
+    actorId: uuid("actor_id").references(() => users.id),
+    actorRole: text("actor_role").notNull(), // customer | artisan | system
+    type: text("type").notNull(),
+    version: integer("version"),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("service_events_request_idx").on(t.requestId, t.id)],
+);
+
+/** Transaction reviews: one per completed request, by its customer. */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => serviceRequests.id),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    reviewerId: uuid("reviewer_id")
+      .notNull()
+      .references(() => users.id),
+    rating: integer("rating").notNull(),
+    body: text("body").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("reviews_request_uq").on(t.requestId),
+    index("reviews_business_idx").on(t.businessId),
+    check("reviews_rating_range", sql`${t.rating} between 1 and 5`),
+  ],
+);
 
 export const reports = pgTable("reports", {
   id: uuid("id").primaryKey().defaultRandom(),

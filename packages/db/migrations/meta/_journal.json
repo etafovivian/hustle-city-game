@@ -36,6 +36,13 @@
       "when": 1791747789740,
       "tag": "0004_password_resets",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791748585061,
+      "tag": "0005_artisan_quotes",
+      "breakpoints": true
     }
   ]
 }

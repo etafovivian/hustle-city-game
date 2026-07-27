@@ -86,6 +86,8 @@ export interface BusinessSummary {
   description: string;
   isMock: boolean;
   products: ProductSummary[];
+  /** Reviews from completed quote requests only. */
+  rating: { average: number; count: number } | null;
 }
 
 export interface ProductSummary {

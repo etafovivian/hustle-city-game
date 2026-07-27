@@ -95,6 +95,11 @@ export function App() {
     setView({ kind: "map" });
   };
 
+  const onQuoteRequested = () => {
+    notify("Request sent. Replies land in Phone → Messages.");
+    setPhone("messages");
+  };
+
   if (resetToken) {
     return (
       <ResetPassword
@@ -128,7 +133,7 @@ export function App() {
             <h1>Find a business</h1>
             <p className="muted">Search shops and artisans that serve your area. No game needed.</p>
           </div>
-          <Merchants />
+          <Merchants signedIn={!!me} onRequested={() => notify("Request sent. Replies land in Phone → Messages.")} />
         </main>
       </>
     );
@@ -192,7 +197,7 @@ export function App() {
                   <h1>Real businesses</h1>
                   <p className="muted">Shops and artisans that serve your area. Prices are in naira and set by each business.</p>
                 </div>
-                <Merchants onViewed={onChanged} />
+                <Merchants onViewed={onChanged} signedIn onRequested={onQuoteRequested} />
               </>
             ) : view.kind === "map" || !location ? (
               <>
@@ -211,7 +216,7 @@ export function App() {
                     {readyQuests > 0 && <span className="quest-pill-badge">{readyQuests} ready</span>}
                   </button>
                 )}
-                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} />
+                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} />
               </>
             ) : (
               <>
@@ -246,7 +251,7 @@ export function App() {
                         <p className="muted">Opening your shop…</p>
                       )
                     ) : (
-                      <Merchants onViewed={onChanged} />
+                      <Merchants onViewed={onChanged} signedIn onRequested={onQuoteRequested} />
                     )}
                   </>
                 )}
@@ -297,6 +302,7 @@ export function App() {
           onChanged={onChanged}
           notify={notify}
           email={me.email}
+          isAdmin={me.roles.includes("admin")}
         />
       )}
 

@@ -199,6 +199,8 @@ a { color: inherit; text-underline-offset: 3px; }
 .map-tint { mix-blend-mode: multiply; pointer-events: none; transition: fill 2s ease; }
 .map-lights { mix-blend-mode: screen; pointer-events: none; transition: opacity 2s ease; }
 .map-labels { pointer-events: none; }
+.map-labels .district-open { pointer-events: auto; cursor: pointer; }
+.district-open:focus-visible rect { stroke: var(--focus); }
 .map-frame { border-radius: 16px; border: 1px solid var(--rule); background: var(--sheet); padding: 6px; box-shadow: var(--shadow); }
 .hotspot { cursor: pointer; outline: none; }
 .hotspot .bld { transition: transform 0.25s var(--ease-out); transform-box: fill-box; transform-origin: 50% 100%; }
@@ -518,6 +520,37 @@ fieldset.avatar-picker { border: 0; margin: 0; padding: 0; min-width: 0; }
 .link-btn { justify-self: start; border: 0; background: none; padding: 4px 0; color: var(--yellow); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .forgot-note { margin: 0; }
 .hint.warn { color: #fca5a5; }
+/* Artisan quotes (B1) */
+.req-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.req-row { position: relative; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--rule); background: var(--ground); color: inherit; text-align: left; cursor: pointer; }
+.req-row:hover, .req-row:focus-visible { border-color: var(--yellow); }
+.req-row-main { display: grid; gap: 2px; min-width: 0; }
+.req-row-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.req-turn { position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; min-width: 0; padding: 0; }
+.req-status { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; background: var(--sheet-2); color: var(--muted); white-space: nowrap; }
+.req-status.s-quoted, .req-status.s-completion_submitted { background: var(--yellow); color: var(--yellow-ink); }
+.req-status.s-scheduled { background: #1d4ed8; color: #fff; }
+.req-status.s-completed { background: #166534; color: #fff; }
+.req-thread { background: var(--ground); border-radius: 20px; padding: 14px; }
+.req-desc { margin: 0; padding: 10px 12px; border-left: 3px solid var(--yellow); background: var(--sheet); border-radius: 0 12px 12px 0; white-space: pre-wrap; }
+.quote-card { display: grid; gap: 8px; padding: 14px; border-radius: 16px; border: 1px solid var(--rule-strong); background: var(--sheet); }
+.quote-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.quote-items li, .quote-total { display: flex; justify-content: space-between; gap: 12px; }
+.quote-total { border-top: 1px solid var(--rule); padding-top: 6px; }
+.req-form { padding: 14px; border-radius: 16px; border: 1px solid var(--rule); background: var(--sheet); }
+.biz-request { margin-top: 6px; }
+.quote-line { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; }
+.naira-input { position: relative; display: block; }
+.naira-input > span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 700; }
+.naira-input .input { padding-left: 24px; width: 100%; }
+.req-note { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.req-events { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; border-top: 1px solid var(--rule); padding-top: 10px; }
+.req-events li { display: grid; gap: 2px; }
+.req-event-note { padding: 6px 10px; border-radius: 10px; background: var(--sheet-2); white-space: pre-wrap; }
+.stars { display: inline-flex; gap: 2px; color: var(--yellow); vertical-align: middle; }
+.stars button { border: 0; background: none; color: inherit; padding: 2px; cursor: pointer; }
+.gold { color: var(--yellow); }
+textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bottom: 10px; }
 /* Shop visit */
 .visit-sheet { position: relative; width: min(720px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; display: grid; gap: 16px; padding: 20px; border-radius: 24px; background: var(--sheet); border: 1px solid var(--rule-strong); box-shadow: var(--shadow); animation: phone-up 0.3s var(--ease-out); outline: none; }
 .visit-close { position: absolute; top: 14px; right: 14px; }

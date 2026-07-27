@@ -133,12 +133,15 @@ export function CityMap({
   visited,
   onVisited,
   notify,
+  onDistrict,
 }: {
   onOpen: (id: LocationKey) => void;
   visited: Set<string>;
   /** A shop visit happened (quest progress may have moved). */
   onVisited: () => void;
   notify: (msg: string) => void;
+  /** An open district was tapped. */
+  onDistrict: (name: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [neighbours, setNeighbours] = useState<NeighbourShop[]>([]);
@@ -413,17 +416,54 @@ export function CityMap({
                     {d.name} · opens later
                   </text>
                 ))}
-                {DISTRICTS.filter((d) => !d.landmark).map((d) => (
-                  <g key={`${d.name}-label`} transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
-                    <rect x={-(d.name.length * 17 + 50)} y="-62" width={d.name.length * 34 + 100} height="118" rx="26" fill={INK.indigoDeep} opacity=".9" />
-                    <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
-                      {d.name}
-                    </text>
-                    <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
-                      OPENS LATER
-                    </text>
-                  </g>
-                ))}
+                {DISTRICTS.filter((d) => !d.landmark).map((d) => {
+                  const plate = (
+                    <>
+                      <rect
+                        x={-(d.name.length * 17 + 50)}
+                        y="-62"
+                        width={d.name.length * 34 + 100}
+                        height="118"
+                        rx="26"
+                        fill={d.open ? "#166534" : INK.indigoDeep}
+                        stroke={d.open ? INK.yellow : "none"}
+                        strokeWidth="4"
+                        opacity={d.open ? 1 : 0.9}
+                      />
+                      <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
+                        {d.name}
+                      </text>
+                      <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
+                        {d.open ?? "OPENS LATER"}
+                      </text>
+                    </>
+                  );
+                  return d.open ? (
+                    // Open districts are real buttons: they take the player to what's there.
+                    <g
+                      key={`${d.name}-label`}
+                      className="hotspot district-open"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${d.name}: ${d.open.toLowerCase()}. Find artisans.`}
+                      transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}
+                      onClick={() => !pz.wasDragged() && onDistrict(d.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDistrict(d.name);
+                        }
+                      }}
+                    >
+                      {plate}
+                    </g>
+                  ) : (
+                    <g key={`${d.name}-label`} transform={`translate(${d.x} ${d.y}) scale(${districtScale})`}>
+                      {plate}
+                    </g>
+                  );
+                })}
                 <g transform={`translate(${J.x} ${J.y})`}>
                   <g transform={`translate(400 305) scale(${Math.min(districtScale, 6)})`}>
                     <text textAnchor="middle" fontSize="13" fontWeight="900" fill={INK.yellow} letterSpacing="1.4">

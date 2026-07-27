@@ -7,6 +7,8 @@ import { ZodError } from "zod";
 import type { Config } from "./config.js";
 import { AppError } from "./lib/errors.js";
 import { authRoutes } from "./modules/auth.js";
+import { businessRoutes } from "./modules/businesses.js";
+import { serviceRoutes } from "./modules/services.js";
 import { gameRoutes } from "./modules/game/routes.js";
 import { marketRoutes } from "./modules/market.js";
 import { meRoutes } from "./modules/me.js";
@@ -74,6 +76,8 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(gameRoutes);
   await app.register(marketRoutes);
   await app.register(moderationRoutes);
+  await app.register(businessRoutes);
+  await app.register(serviceRoutes);
 
   return app;
 }

@@ -1,8 +1,8 @@
 // Marketplace discovery. Browsing works without signing in or playing (PRD: onboarding).
 
-import { businesses, products } from "@hc/db";
+import { businesses, products, reviews } from "@hc/db";
 import type { BusinessSummary, ProductSummary } from "@hc/shared";
-import { and, asc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, asc, avg, count, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { lockProfile } from "../lib/db.js";
@@ -43,6 +43,12 @@ export async function marketRoutes(app: FastifyInstance) {
       .from(products)
       .where(and(inArray(products.businessId, bizRows.map((b) => b.id)), eq(products.status, "published")));
 
+    const ratings = await app.db
+      .select({ businessId: reviews.businessId, average: avg(reviews.rating), n: count() })
+      .from(reviews)
+      .where(inArray(reviews.businessId, bizRows.map((b) => b.id)))
+      .groupBy(reviews.businessId);
+
     return bizRows.map((b) => ({
       id: b.id,
       name: b.name,
@@ -53,6 +59,10 @@ export async function marketRoutes(app: FastifyInstance) {
       description: b.description,
       isMock: b.isMock,
       products: productRows.filter((p) => p.businessId === b.id).map(toProduct),
+      rating: (() => {
+        const r = ratings.find((x) => x.businessId === b.id);
+        return r && r.n > 0 ? { average: Math.round(Number(r.average) * 10) / 10, count: r.n } : null;
+      })(),
     }));
   });
 

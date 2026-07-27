@@ -1,14 +1,16 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
-import type { DreamView, QuestBoard } from "@hc/shared";
-import { ArrowLeft, Briefcase, ListChecks, MessageCircle, Settings, Store, Trophy, X, type LucideIcon } from "lucide-react";
+import type { DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
+import { ArrowLeft, Briefcase, Hammer, ListChecks, MessageCircle, Settings, ShieldCheck, Store, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { Dream, DreamCard } from "./Dream.js";
 import { ChangePassword } from "./Password.js";
+import { RequestList, RequestThread } from "./Requests.js";
+import { AdminReview, Workshop } from "./Workshop.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "jobs", label: "Jobs", Icon: Briefcase, tint: "#1e2a5e" },
@@ -16,10 +18,12 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "standings", label: "Standings", Icon: Trophy, tint: "#df382b" },
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
+  { key: "workshop", label: "Workshop", Icon: Hammer, tint: "#8a3fa0" },
   { key: "account", label: "Account", Icon: Settings, tint: "#4b5563" },
+  { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", account: "Account", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", account: "Account", workshop: "Workshop", admin: "Admin", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -31,6 +35,7 @@ export function Phone({
   onChanged,
   notify,
   email,
+  isAdmin = false,
 }: {
   app: PhoneApp;
   setApp: (a: PhoneApp) => void;
@@ -41,9 +46,21 @@ export function Phone({
   onChanged: () => void;
   notify: (msg: string) => void;
   email: string;
+  isAdmin?: boolean;
 }) {
   const sheet = useRef<HTMLDivElement>(null);
   const [dream, setDream] = useState<DreamView | null>(null);
+  const [thread, setThread] = useState<string | null>(null);
+  const [turns, setTurns] = useState(0);
+  const refreshTurns = () => {
+    api<ServiceRequestSummary[]>("GET", "/api/services/requests")
+      .then((rs) => setTurns(rs.filter((r) => r.yourTurn).length))
+      .catch(() => setTurns(0));
+  };
+  // Re-check whose turn it is whenever the home screen shows (quotes can arrive while the phone is open).
+  useEffect(() => {
+    if (app === "home") refreshTurns();
+  }, [app]);
   useEffect(() => {
     api<DreamView>("GET", "/api/game/dream")
       .then(setDream)
@@ -78,7 +95,14 @@ export function Phone({
           {app === "home" ? (
             <span className="phone-time">Lagos</span>
           ) : (
-            <button type="button" className="phone-back" onClick={() => setApp("home")}>
+            <button
+              type="button"
+              className="phone-back"
+              onClick={() => {
+                setThread(null);
+                setApp("home");
+              }}
+            >
               <ArrowLeft size={18} aria-hidden="true" /> {TITLES[app]}
             </button>
           )}
@@ -96,7 +120,7 @@ export function Phone({
               </div>
               {dream && <DreamCard dream={dream} onOpen={() => setApp("dream")} />}
               <div className="phone-apps">
-                {APPS.map(({ key, label, Icon, tint }) => (
+                {APPS.filter((a) => a.key !== "admin" || isAdmin).map(({ key, label, Icon, tint }) => (
                   <button
                     key={key}
                     type="button"
@@ -106,6 +130,7 @@ export function Phone({
                     <span className="phone-app-icon" style={{ background: tint }}>
                       <Icon size={26} aria-hidden="true" />
                       {key === "quests" && readyQuests > 0 && <span className="phone-badge">{readyQuests}</span>}
+                      {key === "messages" && turns > 0 && <span className="phone-badge">{turns}</span>}
                     </span>
                     <span>{label}</span>
                   </button>
@@ -118,13 +143,14 @@ export function Phone({
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}
-          {app === "messages" && (
-            <div className="phone-empty">
-              <MessageCircle size={32} aria-hidden="true" />
-              <strong>No messages yet</strong>
-              <p className="muted small">Merchant replies, quotes and friend messages will land here when the private beta opens them.</p>
-            </div>
-          )}
+          {app === "messages" &&
+            (thread ? (
+              <RequestThread id={thread} onBack={() => setThread(null)} notify={notify} onChanged={refreshTurns} />
+            ) : (
+              <RequestList onOpen={setThread} />
+            ))}
+          {app === "workshop" && <Workshop notify={notify} />}
+          {app === "admin" && isAdmin && <AdminReview notify={notify} />}
         </div>
       </div>
     </div>

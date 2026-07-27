@@ -102,12 +102,14 @@ export interface District {
   buildings: string[];
   /** A landmark strip (the beach): a name on the ground, no district plate. */
   landmark?: boolean;
+  /** Open now: what players can do there (shown instead of "Opens later"). */
+  open?: string;
 }
 
 /** Districts beyond Junction 101, named for the game world, opening in later stages. */
 export const DISTRICTS: District[] = [
   { name: "Tech Mile", x: CX + 1600, y: CY + 800, phase: 1, buildings: ["commercial-block", "mixed-use-block", "residential-block", "gadget-kiosk"] },
-  { name: "Owambe Gardens", x: CX - 1600, y: CY + 800, phase: 1, buildings: ["bungalow", "tailor-shop", "mixed-use-block", "suya-stand"] },
+  { name: "Owambe Gardens", x: CX - 1600, y: CY + 800, phase: 1, open: "ARTISANS · OPEN NOW", buildings: ["bungalow", "tailor-shop", "mixed-use-block", "suya-stand"] },
   { name: "Danfo Terminal", x: CX - 1800, y: CY - 900, phase: 2, buildings: ["mixed-use-block", "buka", "bungalow", "suya-stand"] },
   { name: "Apapa Port", x: 1800, y: CY - 0.5 * (1800 - CX), phase: 2, buildings: ["commercial-block", "residential-block"] },
   { name: "Airport Ridge", x: CX + 1600, y: CY - 800, phase: 4, buildings: ["commercial-block", "mixed-use-block"] },
