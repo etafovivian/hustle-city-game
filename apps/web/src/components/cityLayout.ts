@@ -140,7 +140,7 @@ const DISTRICT_SCENERY = DISTRICTS.flatMap((d) => {
 export const PLOTS = [
   { x: CX - 520, y: CY - 120 },
   { x: CX + 520, y: CY - 150 },
-  { x: CX - 250, y: CY - 420 },
+  { x: CX + 560, y: CY + 430 },
   { x: CX + 250, y: CY - 420 },
   { x: CX - 250, y: CY + 470 },
   { x: CX + 250, y: CY + 470 },
@@ -263,3 +263,19 @@ export const bandPath = (s: Segment, half = HALF) =>
   `M${s.x0} ${s.y0 - half} L${s.x1} ${s.y1 - half} L${s.x1} ${s.y1 + half} L${s.x0} ${s.y0 + half}Z`;
 export const kerbPath = (s: Segment, off: number) => `M${s.x0} ${s.y0 + off} L${s.x1} ${s.y1 + off}`;
 export const centrePath = (s: Segment) => `M${s.x0} ${s.y0} L${s.x1} ${s.y1}`;
+
+/** Billboard spots: on the north kerb of a road, at an x along it. Keys match the `billboards` table. */
+const BOARD_AT: { key: string; road: string; x: number }[] = [
+  { key: "junction-101", road: "a", x: CX - 400 },
+  { key: "third-mainland", road: "bridge", x: 6500 },
+  { key: "danfo-terminal", road: "a", x: CX - 1450 },
+  { key: "tech-mile", road: "a", x: CX + 1250 },
+  { key: "owambe-gardens", road: "b", x: CX - 1250 },
+  { key: "airport-ridge", road: "b", x: CX + 1250 },
+  { key: "island-heights", road: "island", x: 5650 },
+  { key: "lekki-gardens", road: "island", x: 7450 },
+];
+export const BILLBOARD_SPOTS = BOARD_AT.map((b) => {
+  const seg = ROADS.find((r) => r.id === b.road)!;
+  return { key: b.key, x: b.x, y: yOn(seg, b.x) - HALF - 26 };
+});

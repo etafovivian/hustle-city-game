@@ -3,7 +3,7 @@
 import { DEFAULT_AVATAR } from "@hc/shared";
 import { sql } from "drizzle-orm";
 import { createDb, hashPassword } from "./index.js";
-import { businesses, featureFlags, products, profiles, users } from "./schema.js";
+import { billboards, businesses, featureFlags, products, profiles, users } from "./schema.js";
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
@@ -17,6 +17,19 @@ const FLAGS = [
   { key: "trading", description: "Player-to-player virtual item trading" },
 ];
 await db.insert(featureFlags).values(FLAGS.map((f) => ({ ...f, enabled: false }))).onConflictDoNothing();
+
+// Billboards on the map. Prices are placeholder beta launch prices; change them in the table.
+const BOARDS = [
+  { key: "junction-101", name: "Junction 101 Roundabout", tier: "mega", priceKoboPerWeek: 60_000_00, capacity: 12 },
+  { key: "third-mainland", name: "Third Mainland Bridge", tier: "mega", priceKoboPerWeek: 60_000_00, capacity: 12 },
+  { key: "danfo-terminal", name: "Danfo Terminal", tier: "mega", priceKoboPerWeek: 45_000_00, capacity: 10 },
+  { key: "island-heights", name: "Island Heights", tier: "mega", priceKoboPerWeek: 45_000_00, capacity: 10 },
+  { key: "tech-mile", name: "Tech Mile", tier: "standard", priceKoboPerWeek: 25_000_00, capacity: 8 },
+  { key: "owambe-gardens", name: "Owambe Gardens", tier: "standard", priceKoboPerWeek: 25_000_00, capacity: 8 },
+  { key: "airport-ridge", name: "Airport Ridge", tier: "standard", priceKoboPerWeek: 25_000_00, capacity: 8 },
+  { key: "lekki-gardens", name: "Lekki Gardens", tier: "standard", priceKoboPerWeek: 25_000_00, capacity: 8 },
+];
+await db.insert(billboards).values(BOARDS).onConflictDoNothing();
 
 // Mock catalogue — electronics retail and repair artisans (initial recruiting hypothesis).
 type MockBusiness = {

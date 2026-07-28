@@ -1,17 +1,19 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { HUSTLES_BY_KEY, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { LocateFixed, Minus, Plus, Sparkles, Store, X } from "lucide-react";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
+import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
 import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
   BEACH_PATH,
+  BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
   STREET_HALF,
@@ -147,14 +149,61 @@ export function CityMap({
   const [neighbours, setNeighbours] = useState<NeighbourShop[]>([]);
   const [peek, setPeek] = useState<NeighbourShop | null>(null);
   const [visiting, setVisiting] = useState<string | null>(null);
+  const [boards, setBoards] = useState<BillboardView[]>([]);
+  const [boardSheet, setBoardSheet] = useState<{ key: string | null } | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    api<BillboardView[]>("GET", "/api/billboards")
+      .then(setBoards)
+      .catch(() => setBoards([]));
+  }, []);
   useEffect(() => {
     api<NeighbourShop[]>("GET", "/api/game/neighbours")
       .then(setNeighbours)
       .catch(() => setNeighbours([]));
   }, []);
   // Home view: the junction plus the ring of player shops around it.
-  const HOME = { x: CX - 680, y: CY - 560, w: 1360, h: 1360 };
+  const HOME = { x: CX - 680, y: CY - 620, w: 1360, h: 1420 };
   const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
+
+  // Banners take turns every 15 s. Each turn counts a view for boards actually on screen (close enough to
+  // read, tab visible); counts are sent in batches every minute for advertiser reports.
+  const viewsRef = useRef<Record<string, number>>({});
+  const viewRef = useRef(pz.view);
+  viewRef.current = pz.view;
+  const boardsRef = useRef(boards);
+  boardsRef.current = boards;
+  useEffect(() => {
+    let turn = 0;
+    const rotate = window.setInterval(() => {
+      const next = ++turn;
+      setTick(next);
+      {
+        const v = viewRef.current;
+        const el = ref.current;
+        if (v && el && v.k >= 0.3 && document.visibilityState === "visible") {
+          const [x0, y0] = [-v.x / v.k, -v.y / v.k];
+          const [x1, y1] = [(el.clientWidth - v.x) / v.k, (el.clientHeight - v.y) / v.k];
+          for (const spot of BILLBOARD_SPOTS) {
+            const b = boardsRef.current.find((bb) => bb.key === spot.key);
+            if (!b?.ads.length || spot.x < x0 || spot.x > x1 || spot.y < y0 || spot.y - 300 > y1) continue;
+            const ad = b.ads[next % b.ads.length]!;
+            viewsRef.current[ad.id] = (viewsRef.current[ad.id] ?? 0) + 1;
+          }
+        }
+      }
+    }, AD_ROTATE_SECONDS * 1000);
+    const flush = window.setInterval(() => {
+      const views = viewsRef.current;
+      if (!Object.keys(views).length) return;
+      viewsRef.current = {};
+      void api("POST", "/api/billboards/views", { views }).catch(() => undefined);
+    }, 60_000);
+    return () => {
+      window.clearInterval(rotate);
+      window.clearInterval(flush);
+    };
+  }, []);
   const k = pz.view?.k ?? 1;
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
@@ -388,9 +437,18 @@ export function CityMap({
               {/* Lagos time of day: one multiply tint over the whole world */}
               {light.phase !== "day" && <rect width={WORLD.w} height={WORLD.h} fill={light.tint} className="map-tint" />}
 
+              {/* Billboards: paid ads from real businesses. Drawn above the night tint because their screens are lit. */}
+              {!far &&
+                BILLBOARD_SPOTS.map((spot) => {
+                  const b = boards.find((bb) => bb.key === spot.key);
+                  return b ? <BillboardOnMap key={spot.key} board={b} x={spot.x} y={spot.y} tick={tick} onOpen={() => !pz.wasDragged() && setBoardSheet({ key: b.key })} /> : null;
+                })}
+
               {/* Night lights: street lamps, lit windows, the roundabout */}
               {light.lamps > 0 && (
                 <g aria-hidden="true" className="map-lights" opacity={light.lamps}>
+                  {!far &&
+                    BILLBOARD_SPOTS.map((spot) => <ellipse key={`bb-${spot.key}`} cx={spot.x} cy={spot.y - 200} rx="220" ry="110" fill="url(#window-glow)" />)}
                   {LAMPS.map((l) => (
                     <g key={l.key}>
                       <ellipse cx={l.x} cy={l.y + 10} rx="110" ry="52" fill="url(#lamp-pool)" />
@@ -503,6 +561,9 @@ export function CityMap({
       </div>
 
       <div className="map-controls" role="group" aria-label="Map zoom">
+        <button type="button" className="map-ctl" onClick={() => setBoardSheet({ key: null })} aria-label="Billboards: advertise your business">
+          <Megaphone size={18} aria-hidden="true" />
+        </button>
         <button type="button" className="map-ctl" onClick={() => pz.zoomBy(1.4)} aria-label="Zoom in">
           <Plus size={18} aria-hidden="true" />
         </button>
@@ -541,6 +602,9 @@ export function CityMap({
         </div>
       )}
       {visiting && <ShopVisit shopId={visiting} onClose={() => setVisiting(null)} onVisited={onVisited} notify={notify} />}
+      {boardSheet && (
+        <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
+      )}
     </div>
   );
 }

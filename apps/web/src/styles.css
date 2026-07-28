@@ -551,6 +551,19 @@ fieldset.avatar-picker { border: 0; margin: 0; padding: 0; min-width: 0; }
 .stars button { border: 0; background: none; color: inherit; padding: 2px; cursor: pointer; }
 .gold { color: var(--yellow); }
 textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bottom: 10px; }
+/* Billboards */
+.billboard image { transition: opacity 0.4s ease; }
+.billboard:hover rect:nth-of-type(3), .billboard:focus-visible rect:nth-of-type(3) { stroke: var(--yellow); }
+.tag.mega { background: var(--yellow); color: var(--yellow-ink); }
+.board-ads { display: grid; gap: 12px; }
+.board-ad { margin: 0; display: grid; gap: 8px; }
+.board-ad img, .my-ad-img { width: 100%; aspect-ratio: 3 / 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--rule-strong); background: var(--sheet-2); }
+.banner-drop { display: grid; place-items: center; aspect-ratio: 3 / 1; border-radius: 12px; border: 2px dashed var(--rule-strong); background: var(--sheet-2); cursor: pointer; overflow: hidden; text-align: center; padding: 8px; }
+.banner-drop img { width: 100%; height: 100%; object-fit: cover; }
+.banner-drop:focus-within { outline: 2px solid var(--focus); }
+.req-status.ad-live { background: #166534; color: #fff; }
+.req-status.ad-awaiting_payment { background: var(--yellow); color: var(--yellow-ink); }
+.req-status.ad-rejected { background: #7f1d1d; color: #fff; }
 /* Shop visit */
 .visit-sheet { position: relative; width: min(720px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; display: grid; gap: 16px; padding: 20px; border-radius: 24px; background: var(--sheet); border: 1px solid var(--rule-strong); box-shadow: var(--shadow); animation: phone-up 0.3s var(--ease-out); outline: none; }
 .visit-close { position: absolute; top: 14px; right: 14px; }

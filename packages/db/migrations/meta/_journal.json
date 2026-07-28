@@ -43,6 +43,13 @@
       "when": 1791748585061,
       "tag": "0005_artisan_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791749433234,
+      "tag": "0006_billboards",
+      "breakpoints": true
     }
   ]
 }

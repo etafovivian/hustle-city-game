@@ -8,6 +8,7 @@ import {
   bigserial,
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -18,6 +19,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -357,6 +360,75 @@ export const reviews = pgTable(
     index("reviews_business_idx").on(t.businessId),
     check("reviews_rating_range", sql`${t.rating} between 1 and 5`),
   ],
+);
+
+// ── Billboards: paid ads from real businesses on in-game boards ──
+
+/** The boards on the map (positions live in the web layout, keyed by `key`). */
+export const billboards = pgTable("billboards", {
+  key: text("key").primaryKey(),
+  name: text("name").notNull(),
+  tier: text("tier").notNull().default("standard"), // standard | mega
+  priceKoboPerWeek: bigint("price_kobo_per_week", { mode: "number" }).notNull(),
+  // How many ads take turns on the board at once.
+  capacity: integer("capacity").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const adCampaigns = pgTable(
+  "ad_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    advertiserId: uuid("advertiser_id")
+      .notNull()
+      .references(() => users.id),
+    billboardKey: text("billboard_key")
+      .notNull()
+      .references(() => billboards.key),
+    headline: text("headline").notNull(), // also the banner's alt text
+    linkUrl: text("link_url").notNull(),
+    weeks: integer("weeks").notNull(),
+    // Price agreed at booking time (board prices can change later).
+    priceKobo: bigint("price_kobo", { mode: "number" }).notNull(),
+    reviewStatus: text("review_status").notNull().default("pending"), // pending | approved | rejected
+    paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid | paid
+    paymentReference: text("payment_reference"),
+    reviewNote: text("review_note"),
+    // Set when it's both approved and paid.
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("ad_campaigns_board_live_idx").on(t.billboardKey, t.endsAt),
+    index("ad_campaigns_advertiser_idx").on(t.advertiserId, t.createdAt),
+    check("ad_campaigns_weeks_range", sql`${t.weeks} between 1 and 4`),
+    check("ad_campaigns_review_valid", sql`${t.reviewStatus} in ('pending','approved','rejected')`),
+    check("ad_campaigns_payment_valid", sql`${t.paymentStatus} in ('unpaid','paid')`),
+  ],
+);
+
+/** Banner images (WebP, 3:1), kept apart so campaign lists stay light. */
+export const adCreatives = pgTable("ad_creatives", {
+  campaignId: uuid("campaign_id")
+    .primaryKey()
+    .references(() => adCampaigns.id),
+  contentType: text("content_type").notNull(),
+  bytes: bytea("bytes").notNull(),
+});
+
+/** Views and clicks per campaign per Lagos day, for advertiser reports. */
+export const adStats = pgTable(
+  "ad_stats",
+  {
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => adCampaigns.id),
+    day: text("day").notNull(),
+    views: integer("views").notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.day] })],
 );
 
 export const reports = pgTable("reports", {
