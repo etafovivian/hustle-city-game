@@ -275,7 +275,14 @@ const BOARD_AT: { key: string; road: string; x: number }[] = [
   { key: "island-heights", road: "island", x: 5650 },
   { key: "lekki-gardens", road: "island", x: 7450 },
 ];
+/** Width of the pavement (walkway) on each side of a main road. */
+export const PAVEMENT = 34;
+export const STREET_PAVEMENT = 16;
+
+// Both legs stand behind the pavement: roads run diagonally, so check the road under each leg.
+const LEG = 125;
 export const BILLBOARD_SPOTS = BOARD_AT.map((b) => {
   const seg = ROADS.find((r) => r.id === b.road)!;
-  return { key: b.key, x: b.x, y: yOn(seg, b.x) - HALF - 26 };
+  const roadTop = Math.min(yOn(seg, b.x - LEG), yOn(seg, b.x + LEG)) - HALF - PAVEMENT;
+  return { key: b.key, x: b.x, y: roadTop - 48 };
 });

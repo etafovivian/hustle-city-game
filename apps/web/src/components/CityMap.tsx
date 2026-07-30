@@ -25,6 +25,8 @@ import {
   ISLAND_PATH,
   LAMPS,
   OCEAN_PATH,
+  PAVEMENT,
+  STREET_PAVEMENT,
   PILLARS,
   PLOTS,
   ROAD_A,
@@ -323,6 +325,7 @@ export function CityMap({
                   ))}
                   {STREETS.map((r) => (
                     <g key={r.id}>
+                      <path d={bandPath(r, STREET_HALF + STREET_PAVEMENT)} fill="#cdbd9c" />
                       <path d={bandPath(r, STREET_HALF)} fill="#5c564f" />
                       <path d={`${kerbPath(r, -STREET_HALF)}${kerbPath(r, STREET_HALF)}`} stroke="#d9c9a6" strokeWidth="4" />
                     </g>
@@ -333,6 +336,9 @@ export function CityMap({
               {/* Roads: asphalt, kerbs (rails on the bridge), lane markings */}
               {ROADS.map((r) => (
                 <g key={r.id}>
+                  {/* Pavement on both sides (walkways); the bridge has a narrow footway behind its rails. */}
+                  <path d={bandPath(r, HALF + (r.bridge ? 12 : PAVEMENT))} fill={r.bridge ? "#9aa0a8" : "#d6c7a5"} />
+                  {!r.bridge && <path d={`${kerbPath(r, -HALF - PAVEMENT)}${kerbPath(r, HALF + PAVEMENT)}`} stroke="#b9a782" strokeWidth="3" />}
                   <path d={bandPath(r)} fill={r.bridge ? "#55504a" : "var(--map-road)"} />
                   <path d={`${kerbPath(r, -HALF)}${kerbPath(r, HALF)}`} stroke={r.bridge ? "#cfd3d8" : "#e6d6b4"} strokeWidth={r.bridge ? 9 : 6} />
                   <path d={centrePath(r)} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
@@ -340,7 +346,7 @@ export function CityMap({
               ))}
 
               {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
-              {!far && <StreetLife roads={ROADS} walkRoads={{ a: ROAD_A, b: ROAD_B }} kerb={HALF + 20} cx={CX} />}
+              {!far && <StreetLife roads={ROADS} walkRoads={{ a: ROAD_A, b: ROAD_B }} kerb={HALF + PAVEMENT / 2} cx={CX} />}
 
               {/* Districts that open in later stages */}
               {DISTRICTS.filter((d) => !d.landmark).map((d) => (
