@@ -10,19 +10,41 @@ export type LocationKey = (typeof LOCATIONS)[number]["key"];
 export const LOCATION_KEYS: readonly string[] = LOCATIONS.map((l) => l.key);
 
 export const AVATAR_OPTIONS = {
+  body: ["man", "woman"],
   skinTone: ["#3b2219", "#5a3825", "#6b4226", "#8d5524", "#a86b3c", "#c68642"],
-  hairStyle: ["low_cut", "buzzcut", "high_top", "curly", "puff", "locs", "bald", "cap"],
-  outfit: ["ankara_green", "agbada_white", "jersey_red", "tee_blue", "kaftan_gold", "hoodie_black"],
+  hairStyle: ["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "bald", "cap"],
+  outfit: ["ankara_green", "agbada_white", "kaftan_gold", "buba_wrapper", "peplum_coral", "jersey_red", "tee_blue", "hoodie_black"],
 } as const;
 
+export type BodyType = (typeof AVATAR_OPTIONS.body)[number];
+
+/**
+ * Every hair style and outfit works with both bodies; these orders just put the most common
+ * choices for each body first in the picker.
+ */
+export const LOOK_ORDER: Record<BodyType, { hair: string[]; outfit: string[] }> = {
+  man: {
+    hair: ["low_cut", "buzzcut", "high_top", "curly", "locs", "bald", "cap", "puff", "braids", "bob", "gele"],
+    outfit: ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black", "buba_wrapper", "peplum_coral"],
+  },
+  woman: {
+    hair: ["braids", "puff", "bob", "gele", "curly", "locs", "low_cut", "high_top", "buzzcut", "bald", "cap"],
+    outfit: ["buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black", "agbada_white"],
+  },
+};
+
 /** Earlier hair keys still stored on some profiles, mapped to their current equivalent. */
-export const LEGACY_HAIR: Record<string, string> = { afro: "high_top", braids: "puff", headwrap: "cap" };
+export const LEGACY_HAIR: Record<string, string> = { afro: "high_top", headwrap: "gele" };
 
 export interface AvatarConfig {
+  /** Missing on profiles made before body choice existed; treated as "man". */
+  body?: BodyType;
   skinTone: string;
   hairStyle: string;
   outfit: string;
 }
+
+export const bodyOf = (a: AvatarConfig): BodyType => (a.body === "woman" ? "woman" : "man");
 
 export const DEFAULT_AVATAR: AvatarConfig = {
   skinTone: AVATAR_OPTIONS.skinTone[2],
@@ -34,6 +56,7 @@ export function isValidAvatar(value: unknown): value is AvatarConfig {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
+    (v.body === undefined || (AVATAR_OPTIONS.body as readonly unknown[]).includes(v.body)) &&
     (AVATAR_OPTIONS.skinTone as readonly unknown[]).includes(v.skinTone) &&
     (AVATAR_OPTIONS.hairStyle as readonly unknown[]).includes(v.hairStyle) &&
     (AVATAR_OPTIONS.outfit as readonly unknown[]).includes(v.outfit)

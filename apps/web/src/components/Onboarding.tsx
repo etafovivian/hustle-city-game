@@ -2,6 +2,7 @@
 // with a live preview and a shuffle button. Only the last step talks to the server.
 import {
   AVATAR_OPTIONS,
+  LOOK_ORDER,
   DEFAULT_AVATAR,
   DREAMS,
   HUSTLES,
@@ -116,7 +117,10 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
   const dreamDef = DREAMS.find((d) => d.key === dream)!;
 
   const stepError = (): string | null => {
-    if (step === "Look") return !nickname ? "Pick a nickname." : nickCheck && !nickCheck.ok ? nickCheck.reason : null;
+    if (step === "Look") {
+      if (!avatar.body) return "Choose man or woman.";
+      return !nickname ? "Pick a nickname." : nickCheck && !nickCheck.ok ? nickCheck.reason : null;
+    }
     if (step === "Shop") return !shopCheck ? "Name your shop." : !shopCheck.ok ? shopCheck.reason : null;
     if (step === "Account") {
       if (!email.includes("@")) return "Enter your email.";
@@ -129,10 +133,13 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
 
   const shuffle = () => {
     if (step === "Look") {
+      const body = avatar.body ?? pick(AVATAR_OPTIONS.body);
       setAvatar({
+        body,
         skinTone: pick(AVATAR_OPTIONS.skinTone),
-        hairStyle: pick(AVATAR_OPTIONS.hairStyle),
-        outfit: pick(AVATAR_OPTIONS.outfit),
+        // Shuffle within the body's most common looks, so results feel natural.
+        hairStyle: pick(LOOK_ORDER[body].hair.slice(0, 5)),
+        outfit: pick(LOOK_ORDER[body].outfit.slice(0, 4)),
       });
       if (!nickname) setNickname(pick(NICK_SUGGESTIONS));
     } else if (step === "Hustle") setHustle(pick(HUSTLES).key);

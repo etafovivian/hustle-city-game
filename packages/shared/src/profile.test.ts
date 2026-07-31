@@ -15,5 +15,8 @@ describe("isValidAvatar", () => {
     expect(isValidAvatar(DEFAULT_AVATAR)).toBe(true);
     expect(isValidAvatar({ ...DEFAULT_AVATAR, outfit: "gold_crown" })).toBe(false);
     expect(isValidAvatar(null)).toBe(false);
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, body: "woman", hairStyle: "gele", outfit: "buba_wrapper" })).toBe(true);
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, body: "man", hairStyle: "braids" })).toBe(true); // any style, any body
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, body: "robot" })).toBe(false);
   });
 });

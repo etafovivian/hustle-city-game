@@ -40,6 +40,9 @@ const OUTFITS: Record<string, OutfitPaint> = {
   tee_blue: { top: "#1e2a5e", upperArm: "#1e2a5e", forearm: "skin", bottom: "#3b5b8a", shin: "#3b5b8a", feet: "#f2f2f2" },
   kaftan_gold: { top: "#d9a21f", upperArm: "#d9a21f", forearm: "#d9a21f", bottom: "#c9921a", shin: "#c9921a", feet: "#5a3a22", pattern: "#8a5a00" },
   hoodie_black: { top: "#25282b", upperArm: "#25282b", forearm: "#25282b", bottom: "#4a4f55", shin: "#4a4f55", feet: "#f2f2f2" },
+  // Buba blouse and a long wrapper in the same Ankara cloth.
+  buba_wrapper: { top: "#0f7b6c", upperArm: "#0f7b6c", forearm: "skin", bottom: "#0f7b6c", shin: "#0f7b6c", feet: "#c9921a", pattern: "#f2b705" },
+  peplum_coral: { top: "#e4572e", upperArm: "skin", forearm: "skin", bottom: "#e4572e", shin: "skin", feet: "#c9921a", pattern: "#f6c8a8" },
 };
 
 // How far down the head the hair colour reaches (model is ~1.83 m tall).
@@ -52,7 +55,13 @@ const HAIR_LINE: Record<string, number | null> = {
   locs: 1.68,
   bald: null,
   cap: 1.72,
+  braids: 1.62,
+  bob: 1.64,
+  gele: 1.69,
 };
+
+/** Fabric colours for wraps and caps; everything else is near-black hair. */
+const HAIR_TINT: Record<string, string> = { cap: "#df382b", gele: "#f2b705" };
 
 function regionColors(a: AvatarConfig): THREE.Color[] {
   const o = OUTFITS[a.outfit] ?? OUTFITS.ankara_green!;
@@ -83,7 +92,7 @@ function makeMaterial(a: AvatarConfig) {
     uHasPattern: { value: (OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ? 1 : 0 },
     uHairLine: { value: HAIR_LINE[a.hairStyle] ?? 1.75 },
     uHasHair: { value: HAIR_LINE[a.hairStyle] === null ? 0 : 1 },
-    uHairColor: { value: new THREE.Color(a.hairStyle === "cap" ? "#df382b" : "#1b1410") },
+    uHairColor: { value: new THREE.Color(HAIR_TINT[a.hairStyle] ?? "#1b1410") },
   };
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.02 });
   mat.onBeforeCompile = (shader) => {
