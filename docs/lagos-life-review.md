@@ -36,6 +36,57 @@ Reviewed 2026-10-11 on lagoslife.app, signed in as the project owner (about 92,0
 | Duplex | Ikoyi | ₦250,000 | ₦15m |
 | Mansion | Banana Island | ₦1,500,000 | ₦91m |
 
+## Their map, buildings and streets (second pass)
+
+### Areas have a character
+- **Mainland is everyday life:** amala joint, snooker spot, hair salon, viewing centre (football), the Shrine (music), wellness centre, tech hub, university, motor park, stadium, radio station.
+- **Lagoon:** boat cruise jetty.
+- **Island is the high life:** big market, High Court, gym, nightclub, pizza place, canopy walk, office towers, car dealer, five-star hotel, library, rooftop lounge, mall, casino, park, beach.
+- **Player shops** are listed by area ("Player shops in Victoria Island": restaurants, pharmacies, provision stores, "from ₦750").
+- **Fares rise with distance:** a cab costs ₦450 to Surulere and ₦550 to Victoria Island.
+
+### Every enterable building is marked
+- Each venue has a **round white icon badge floating above the roof** (pizza, saxophone, graduation cap, scales, car, bank…). A **Names** toggle adds a pill with the name next to each icon.
+- Decorative buildings have no icon, so you can see at a glance what's enterable.
+- Venues sit on their own plots with lawns, car parks, pools, courts and trees.
+- **Billboards are huge** compared with buildings and sit between blocks and along the lagoon. They're the most visible thing on the map.
+
+### Tapping a building opens a place card
+- **The card holds:** a story line ("Lagos' most famous hotel…"), a share link, the **activities**, "Player shops here", and the transport picker with Go.
+- **Activities are graded by luxury.** At the hotel: pool, poolside small chops, buffet, live band, shisha and gist, brunch, spa, lobby photo shoot, deluxe room, Presidential Suite. At the buka: amala and ewedu, jollof, pepper soup, efo riro, ofada, zobo, gist with Mama, learn the ewedu secret, help at the buka (work), wash hands, Whot with the regulars.
+- **Inside**, it's a room scene with NPCs and players, ambient lines ("Fuji music on the radio", "Somebody asked for 'plenty pepper'"), tap spots and local chat.
+
+### "Walk Yaba": a walkable street
+- A ride takes you to Herbert Macaulay Way. You walk in third person: "Tap where you want to go. Hold and drag to steer."
+- A **nearby bar** lists places with live distances: "Bus stop · 20 m, CcHub · 390 m, MindSpace · 460 m, Mallam Sani · 670 m, @Clarita48's house · 690 m". Tapping one walks you there. The location label updates as you go (Tejuosho Junction, then YabaTech Gate).
+- Other players walk the same pavement. Ads appear on building walls, and a bus stop offers a danfo onward ("Ojuelegba · Stadium").
+
+### The road, in detail (to copy the feel)
+- **Dual carriageway:** a central **median with black-and-yellow striped kerbs**, trees planted along it, and lamp posts on it.
+- **Markings:** white dashed lane lines, a double yellow centre line on undivided roads, and yellow danfos and BRT-style buses in the traffic.
+- **Shoulder:** a **strip of red laterite earth** between the road edge and the pavement, the way real Lagos roads look.
+- **Pavement:** wide, **grey stone or tile paving**, with lamp posts at the kerb.
+- **Street front:** shops open straight onto the pavement with roller shutters, big painted signboards ("Victory Phones & Laptops", "Mama Ngozi Kitchen"), striped awnings and umbrella kiosks.
+- **Street furniture:** a **bus stop shelter** with a bench, **power poles with sagging wires** across the street, and roadside traders under umbrellas.
+
+## What this means for us (interactive buildings)
+
+We can't enter buildings yet. The plan, in our 2.5D style:
+
+1. **Icons on enterable buildings.**
+   - A round badge with a category icon floats above each enterable building, with the name on a toggle or at close zoom.
+   - Decorative houses stay plain.
+   - Districts get named venues that fit them: an **event hall**, tailor and buka in Owambe Gardens; a **tech hub**, phone market and university gate in Tech Mile; a **motor park**, suya spot and market in Danfo Terminal; a **hotel**, rooftop lounge, mall and car dealer in Island Heights; a **jetty** and big market in Marina Wharf; a **beach club** in Lekki.
+2. **Place cards for every venue:** story, graded activities (cheap to luxury), who's here, player shops in the area, transport and fare.
+3. **Enter buildings: interior scenes.**
+   - Reuse our isometric room renderer (the shop and decorate floor) for venue interiors: furniture art, NPC sprites, tap spots for activities, and ambient lines.
+   - Every venue gets one room. Big venues (hotel, market) get 2–3 rooms.
+4. **Walk mode on our map.**
+   - At close zoom your avatar appears on the pavement. Tap a spot and it walks along the pavements, using our walk sprites and the road network.
+   - It reaches a building's door and enters.
+   - A "nearby" bar shows distances to venues, shops and friends' homes.
+5. **Road upgrade, matching the list above:** median with striped kerbs and trees on the main roads, laterite shoulder, tiled pavements, bus stop shelters on danfo routes, power poles and wires, roadside umbrella traders, and shopfronts with signboards along the busiest street (Tech Mile is our "Herbert Macaulay").
+
 ## Where we stand
 
 | Theirs | Ours today | Gap |
