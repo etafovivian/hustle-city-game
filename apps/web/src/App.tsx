@@ -216,7 +216,7 @@ export function App() {
                     {readyQuests > 0 && <span className="quest-pill-badge">{readyQuests} ready</span>}
                   </button>
                 )}
-                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} />
+                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} avatar={me.avatar} nickname={me.nickname} />
               </>
             ) : (
               <>

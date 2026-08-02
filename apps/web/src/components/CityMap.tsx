@@ -1,12 +1,13 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
+import { AvatarWalker } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
 import { StreetLife } from "./StreetLife.js";
@@ -138,6 +139,8 @@ export function CityMap({
   onVisited,
   notify,
   onDistrict,
+  avatar,
+  nickname,
 }: {
   onOpen: (id: LocationKey) => void;
   visited: Set<string>;
@@ -146,6 +149,8 @@ export function CityMap({
   notify: (msg: string) => void;
   /** An open district was tapped. */
   onDistrict: (name: string) => void;
+  avatar: AvatarConfig;
+  nickname: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [neighbours, setNeighbours] = useState<NeighbourShop[]>([]);
@@ -154,6 +159,7 @@ export function CityMap({
   const [boards, setBoards] = useState<BillboardView[]>([]);
   const [boardSheet, setBoardSheet] = useState<{ key: string | null } | null>(null);
   const [tick, setTick] = useState(0);
+  const [walkTo, setWalkTo] = useState<{ x: number; y: number; seq: number } | null>(null);
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -224,7 +230,7 @@ export function CityMap({
         tabIndex={0}
         role="application"
         aria-roledescription="map"
-        aria-label="New Lagos map. Drag or use arrow keys to move, plus and minus to zoom, 0 to recentre. Tab to the places."
+        aria-label="New Lagos map. Drag or use arrow keys to move, plus and minus to zoom, 0 to recentre. Tap the ground to walk there. Tab to the places."
         {...pz.handlers}
       >
         <svg width="100%" height="100%">
@@ -286,7 +292,16 @@ export function CityMap({
             </radialGradient>
           </defs>
           {pz.view && (
-            <g transform={`translate(${pz.view.x} ${pz.view.y}) scale(${k})`}>
+            <g
+              transform={`translate(${pz.view.x} ${pz.view.y}) scale(${k})`}
+              onClick={(e) => {
+                // Tap the ground to walk there. Places, shops and billboards handle their own taps.
+                if (far || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard")) return;
+                const box = ref.current!.getBoundingClientRect();
+                const v = pz.view!;
+                setWalkTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k, seq: Date.now() });
+              }}
+            >
               <rect width={WORLD.w} height={WORLD.h} fill="#cfa874" />
               <rect width={WORLD.w} height={WORLD.h} fill="url(#sand)" />
               <ellipse cx={CX} cy={CY} rx="1400" ry="800" fill="url(#glow-centre)" />
@@ -440,6 +455,18 @@ export function CityMap({
                   );
                 })}
 
+              {/* You: tap the ground to walk */}
+              {!far && (
+                <AvatarWalker
+                  avatar={avatar}
+                  nickname={nickname}
+                  start={{ x: CX - 120, y: CY + 150 }}
+                  target={walkTo}
+                  plateScale={plateScale}
+                  onBlocked={() => notify("You can't walk on water. Take the bridge to the Island.")}
+                />
+              )}
+
               {/* Lagos time of day: one multiply tint over the whole world */}
               {light.phase !== "day" && <rect width={WORLD.w} height={WORLD.h} fill={light.tint} className="map-tint" />}
 
@@ -583,7 +610,7 @@ export function CityMap({
       <p className="map-clock tiny" aria-live="off">
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]}
       </p>
-      <p className="map-hint tiny">Drag to move · pinch or scroll to zoom</p>
+      <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>
       {peek && (
         <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
           <button type="button" className="map-peek-close" onClick={() => setPeek(null)} aria-label="Close">

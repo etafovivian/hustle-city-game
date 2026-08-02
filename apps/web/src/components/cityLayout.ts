@@ -90,6 +90,43 @@ const onIsland = (x: number, y: number) => x > TIP + 250 && y > island(x) + ISLA
 /** Dry land with room for a building (art is drawn up to ~210 units above its foot). */
 export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x, y);
 
+// ── Walking ──
+export type Landmass = "mainland" | "island" | "bridge";
+const BRIDGE = ROADS.find((r) => r.bridge)!;
+/** Where a person can stand: mainland, the Island, or the bridge deck. Null means water or off the map. */
+export function landmassAt(x: number, y: number): Landmass | null {
+  if (x < 0 || y < 0 || x > WORLD.w || y > WORLD.h) return null;
+  if (x >= BRIDGE.x0 && x <= BRIDGE.x1 && Math.abs(y - yOn(BRIDGE, x)) < HALF + 14) return "bridge";
+  if (y < shoreY(x) - 12) return "mainland";
+  if (x > TIP + 120 && y > island(x) + ISLAND_N + 40 && y < island(x) + ISLAND_S - 10) return "island";
+  return null;
+}
+/** Bridge ends, just onto dry land on each side. */
+const BRIDGE_MAIN = { x: BRIDGE.x1 - 40, y: yOn(BRIDGE, BRIDGE.x1 - 40) };
+const BRIDGE_ISLAND = { x: BRIDGE.x0 + 40, y: yOn(BRIDGE, BRIDGE.x0 + 40) };
+const JUNCTION = { x: CX, y: CY + 110 };
+
+const clearLine = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 60);
+  for (let i = 1; i < n; i++) if (!landmassAt(a.x + ((b.x - a.x) * i) / n, a.y + ((b.y - a.y) * i) / n)) return false;
+  return true;
+};
+
+/**
+ * Waypoints from one point to another, staying on land: straight when the way is clear, through
+ * Junction 101 when a straight line would cross water, and over Third Mainland Bridge between
+ * the mainland and the Island. Returns null when the destination is water.
+ */
+export function walkRoute(from: { x: number; y: number }, to: { x: number; y: number }): { x: number; y: number }[] | null {
+  const end = landmassAt(to.x, to.y);
+  if (!end) return null;
+  const start = landmassAt(from.x, from.y) ?? "mainland";
+  const leg = (a: { x: number; y: number }, b: { x: number; y: number }) => (clearLine(a, b) ? [b] : [JUNCTION, b]);
+  const side = (m: Landmass) => (m === "bridge" ? "bridge" : m);
+  if (side(start) === side(end) || start === "bridge" || end === "bridge") return leg(from, to);
+  return start === "mainland" ? [...leg(from, BRIDGE_MAIN), BRIDGE_ISLAND, to] : [BRIDGE_ISLAND, BRIDGE_MAIN, ...leg(BRIDGE_MAIN, to)];
+}
+
 export const clearOfRoads = (x: number, y: number, gap = 160) =>
   ROADS.every((s) => x < Math.min(s.x0, s.x1) - 60 || x > Math.max(s.x0, s.x1) + 60 || Math.abs(y - yOn(s, x)) > gap);
 

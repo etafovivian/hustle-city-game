@@ -49,7 +49,7 @@ const OUTFIT: Record<string, { color: string; label: string }> = {
 /** Gele and caps take a fabric colour; hair is near-black. */
 const HAIR_COLOR: Record<string, string> = { gele: "f2b705", cap: "c8321e" };
 
-function avatarUri(a: AvatarConfig): string {
+export function avatarUri(a: AvatarConfig): string {
   const hairKey = HAIR[a.hairStyle] ? a.hairStyle : (LEGACY_HAIR[a.hairStyle] ?? "low_cut");
   return createAvatar(personas, {
     seed: "naija-hustle-city",
