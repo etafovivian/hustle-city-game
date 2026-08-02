@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
 import { api } from "../api.js";
@@ -10,6 +10,7 @@ import { clockLabel, useLagosLight } from "./lagosTime.js";
 import { AvatarWalker } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
+import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
 import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
@@ -19,6 +20,7 @@ import {
   STREETS,
   STREET_HALF,
   TREES,
+  VENUE_SPOTS,
   CX,
   CY,
   DISTRICTS,
@@ -160,6 +162,7 @@ export function CityMap({
   const [boardSheet, setBoardSheet] = useState<{ key: string | null } | null>(null);
   const [tick, setTick] = useState(0);
   const [walkTo, setWalkTo] = useState<{ x: number; y: number; seq: number } | null>(null);
+  const [venueOpen, setVenueOpen] = useState<string | null>(null);
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -296,7 +299,7 @@ export function CityMap({
               transform={`translate(${pz.view.x} ${pz.view.y}) scale(${k})`}
               onClick={(e) => {
                 // Tap the ground to walk there. Places, shops and billboards handle their own taps.
-                if (far || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard")) return;
+                if (far || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard, .venue-badge")) return;
                 const box = ref.current!.getBoundingClientRect();
                 const v = pz.view!;
                 setWalkTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k, seq: Date.now() });
@@ -417,6 +420,13 @@ export function CityMap({
                 )}
               </g>
 
+              {/* Venues you can go into */}
+              {!far &&
+                VENUE_SPOTS.map((spot) => {
+                  const v = VENUES_BY_KEY.get(spot.key);
+                  return v ? <VenueBuilding key={spot.key} venue={v} x={spot.x} y={spot.y} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> : null;
+                })}
+
               {/* Plots: player shops (yours first), then open plots */}
               {!far &&
                 PLOTS.map((p, i) => {
@@ -502,6 +512,13 @@ export function CityMap({
 
               {/* Labels stay readable at every zoom and time of day */}
               <g className="map-labels" aria-hidden="true">
+                {/* Venue icons show at every zoom (names only up close), so places are easy to find. */}
+                {VENUE_SPOTS.map((spot) => {
+                    const v = VENUES_BY_KEY.get(spot.key);
+                    return v ? (
+                      <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y + 200 : spot.y} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
+                    ) : null;
+                  })}
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
                   <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize="60" fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth="8" paintOrder="stroke">
                     {d.name} · opens later
@@ -637,6 +654,23 @@ export function CityMap({
       {visiting && <ShopVisit shopId={visiting} onClose={() => setVisiting(null)} onVisited={onVisited} notify={notify} />}
       {boardSheet && (
         <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
+      )}
+      {venueOpen && (
+        <VenueCard
+          venueKey={venueOpen}
+          onClose={() => setVenueOpen(null)}
+          onWalk={() => {
+            const spot = VENUE_SPOTS.find((v) => v.key === venueOpen);
+            if (spot) setWalkTo({ x: spot.x, y: spot.y + 30, seq: Date.now() });
+            setVenueOpen(null);
+          }}
+          onFindReal={() => {
+            setVenueOpen(null);
+            onDistrict("artisans");
+          }}
+          onChanged={onVisited}
+          notify={notify}
+        />
       )}
     </div>
   );

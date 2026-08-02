@@ -146,7 +146,7 @@ export interface District {
 /** Districts beyond Junction 101, named for the game world, opening in later stages. */
 export const DISTRICTS: District[] = [
   { name: "Tech Mile", x: CX + 1600, y: CY + 800, phase: 1, buildings: ["commercial-block", "mixed-use-block", "residential-block", "gadget-kiosk"] },
-  { name: "Owambe Gardens", x: CX - 1600, y: CY + 800, phase: 1, open: "ARTISANS · OPEN NOW", buildings: ["bungalow", "tailor-shop", "mixed-use-block", "suya-stand"] },
+  { name: "Owambe Gardens", x: CX - 1600, y: CY + 800, phase: 1, open: "ARTISANS · OPEN NOW", buildings: [] },
   { name: "Danfo Terminal", x: CX - 1800, y: CY - 900, phase: 2, buildings: ["mixed-use-block", "buka", "bungalow", "suya-stand"] },
   { name: "Apapa Port", x: 1800, y: CY - 0.5 * (1800 - CX), phase: 2, buildings: ["commercial-block", "residential-block"] },
   { name: "Airport Ridge", x: CX + 1600, y: CY - 800, phase: 4, buildings: ["commercial-block", "mixed-use-block"] },
@@ -167,6 +167,33 @@ const OFFSETS = [
   { x: 560, y: 20 },
 ];
 const free = (x: number, y: number) => onLand(x, y) && clearOfRoads(x, y);
+
+/**
+ * Enterable venues (see @hc/shared venues.ts). Junction 101's sit in the blocks around the roundabout;
+ * district venues take free spots around their district centre.
+ */
+const VENUE_AT: { key: string; x?: number; y?: number; district?: string }[] = [
+  { key: "mama_nkechi_buka", x: CX + 900, y: CY + 20 },
+  { key: "sharp_cuts", x: CX - 900, y: CY - 20 },
+  { key: "junction_motor_park", x: CX - 60, y: CY - 930 },
+  { key: "royal_event_centre", district: "Owambe Gardens" },
+  { key: "tailors_row", district: "Owambe Gardens" },
+  { key: "viewing_centre", district: "Owambe Gardens" },
+  { key: "mallam_suya", district: "Owambe Gardens" },
+];
+export const VENUE_SPOTS = (() => {
+  const taken = new Map<string, number>();
+  return VENUE_AT.map((v) => {
+    if (v.x !== undefined && v.y !== undefined) return { key: v.key, x: v.x, y: v.y };
+    const d = DISTRICTS.find((dd) => dd.name === v.district)!;
+    const spots = OFFSETS.map((o) => ({ x: d.x + o.x, y: d.y + o.y })).filter((p) => onLand(p.x, p.y) && clearOfRoads(p.x, p.y));
+    const i = taken.get(d.name) ?? 0;
+    taken.set(d.name, i + 1);
+    const spot = spots[i] ?? { x: d.x, y: d.y - 300 };
+    return { key: v.key, ...spot };
+  });
+})();
+const awayFromVenues = (x: number, y: number) => VENUE_SPOTS.every((v) => Math.hypot(v.x - x, (v.y - y) * 1.5) > 300);
 
 const DISTRICT_SCENERY = DISTRICTS.flatMap((d) => {
   const spots = OFFSETS.map((o) => ({ x: d.x + o.x, y: d.y + o.y })).filter((p) => free(p.x, p.y));
@@ -215,7 +242,7 @@ const clearOfStreets = (x: number, y: number, gap = 110) =>
   STREETS.every((s) => x < s.x0 - 40 || x > s.x1 + 40 || Math.abs(y - yOn(s, x)) > gap);
 const awayFromJunction = (x: number, y: number) => Math.abs(x - CX) / 700 + Math.abs(y - CY) / 520 > 1;
 const awayFromPlots = (x: number, y: number) => PLOTS.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.6) > 260);
-const buildable = (x: number, y: number) => free(x, y) && clearOfStreets(x, y) && awayFromJunction(x, y) && awayFromPlots(x, y);
+const buildable = (x: number, y: number) => free(x, y) && clearOfStreets(x, y) && awayFromJunction(x, y) && awayFromPlots(x, y) && awayFromVenues(x, y);
 
 const HOUSE_ART = ["bungalow", "residential-block", "bungalow", "mixed-use-block"];
 
@@ -264,7 +291,7 @@ const EXTRA_TREES = [
       { x: d.x + 520, y: d.y + 280 },
       { x: d.x + 140, y: d.y - 420 },
     ]
-      .filter((p) => free(p.x, p.y) && clearOfStreets(p.x, p.y))
+      .filter((p) => free(p.x, p.y) && clearOfStreets(p.x, p.y) && awayFromVenues(p.x, p.y))
       .map((p, j) => ({ ...p, kind: (i + j) % 2 ? ("palm" as const) : ("leafy" as const), key: `dt-${i}-${j}` })),
   ),
 ];

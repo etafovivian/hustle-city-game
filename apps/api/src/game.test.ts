@@ -402,3 +402,21 @@ describe("passwords", () => {
     expect((await login("pw_forgot@example.test", "reset-password-works")).statusCode).toBe(200);
   });
 });
+
+describe("venue activities", () => {
+  it("charges coins, gives XP once per day per activity, and counts for quests", async () => {
+    const p = await registerPlayer(app);
+    const before = (await p.call("GET", "/api/me")).json();
+    const res = await p.call("POST", "/api/game/venues/mama_nkechi_buka/amala");
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ gained: 10, done: ["mama_nkechi_buka:amala"] });
+    const after = (await p.call("GET", "/api/me")).json();
+    expect(after.coins).toBe(before.coins - 300);
+    expect(after.xp).toBe(before.xp + 10);
+
+    expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/amala")).statusCode).toBe(409);
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before.coins - 300);
+    expect((await p.call("POST", "/api/game/venues/nowhere/amala")).statusCode).toBe(404);
+    expect((await p.call("GET", "/api/game/venues/today")).json().done).toEqual(["mama_nkechi_buka:amala"]);
+  });
+});

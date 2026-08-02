@@ -42,6 +42,30 @@ The plan follows Lagos geography (OpenStreetMap, general knowledge), but is draw
 2. **Phases 1–4:** each district opens with its stage. Until then it shows buildings with an "Opens later" plate.
 3. **When the art arrives:** Stitch shoreline, bridge and boat art replaces the vector water and bridge.
 
+## Area styles (every area looks different)
+
+No area reuses another's house set. Each one has its own buildings, ground and props:
+
+| Area | Buildings | Ground and props | Mood |
+|---|---|---|---|
+| **Junction 101** (Mushin/Surulere crossroads) | Two-storey shop-houses, face-me-I-face-you blocks, kiosks, a motor park | Worn tarmac, laterite patches, umbrella traders, generator boxes, power lines | Busy, loud, everyday hustle |
+| **Owambe Gardens** (Surulere) | Event hall with columns, tailors' row, bungalows with gates, a viewing centre | Party canopies (white and gold), plastic chairs stacked, aso-ebi colours, palms | Celebration, weekends |
+| **Tech Mile** (Yaba) | Shopfront street ("Herbert Macaulay"): phone and laptop shops with painted signboards, a tech hub, a polytechnic gate | Tiled pavements, bus stops, students, okadas | Young, ambitious |
+| **Danfo Terminal** (Oshodi) | Bus terminal sheds, under-bridge market stalls, a pedestrian bridge | Danfo rows, conductors, puddles, banners | Chaotic, transit |
+| **Apapa Port** | Warehouses, container stacks, gantry cranes | Trailers, port fences | Industrial |
+| **Marina Wharf** (Lagos Island) | Old colonial facades, a big covered market, a ferry jetty | Crowded lanes, fabric bales | Old Lagos, trade |
+| **Island Heights** (VI/Ikoyi) | Glass towers, a five-star hotel, a rooftop lounge, a mall, a car showroom | Landscaped lawns, valet bays, fountains | High life |
+| **Lekki Gardens** | Gated estates, terrace duplexes, mansions with pools ("crazy houses") | Estate gates, guard posts, beach palms | Aspirational |
+| **Airport Ridge** (Ikeja) | Terminal, cargo hangars, a GRA family duplex | Wide roads, flags | Arrival and status |
+
+**Roads everywhere** (from the Lagos Life review):
+- a dual carriageway median with black-and-yellow striped kerbs and trees;
+- a red laterite shoulder;
+- grey tiled pavements and lamp posts;
+- bus stop shelters on danfo routes;
+- power poles with sagging wires;
+- roadside umbrella traders.
+
 ## Art still needed (Stitch, same style, flat magenta background)
 
 | For | Asset |

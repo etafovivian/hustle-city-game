@@ -9,6 +9,7 @@ import { claimQuest, questBoard, recordEvents } from "./quests.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
+import { doActivity, venueDay } from "./venues.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -118,6 +119,18 @@ export async function gameRoutes(app: FastifyInstance) {
     const user = requireUser(request);
     const { at } = dreamClaimBody.parse(request.body);
     return inTx(user.id, (ctx) => claimDreamStep(ctx, at));
+  });
+
+  // Venues: today's done activities, and doing one (costs coins, gives XP once per Lagos day).
+  app.get("/api/game/venues/today", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, venueDay);
+  });
+
+  app.post<{ Params: { venue: string; activity: string } }>("/api/game/venues/:venue/:activity", async (request) => {
+    const user = requireUser(request);
+    const { venue, activity } = request.params;
+    return inTx(user.id, (ctx) => doActivity(ctx, venue.slice(0, 40), activity.slice(0, 40)));
   });
 
   // Visit a player's shop (read-only); counts towards the "Neighbourly" quest.
