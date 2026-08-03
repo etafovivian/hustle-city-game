@@ -70,6 +70,13 @@ export function App() {
     refresh().catch(() => setMe(null));
   }, [refresh]);
 
+  // The city map is full screen (like a game); everything else floats over it.
+  const mapFull = !!me && !resetToken && view.kind === "map";
+  useEffect(() => {
+    document.body.classList.toggle("map-full", mapFull);
+    return () => document.body.classList.remove("map-full");
+  }, [mapFull]);
+
   const goMap = () => {
     setView({ kind: "map" });
     window.scrollTo({ top: 0 });
@@ -201,21 +208,24 @@ export function App() {
               </>
             ) : view.kind === "map" || !location ? (
               <>
-                <div className="spread">
-                  <div className="stack" style={{ gap: 4 }}>
+                {/* Floats over the full-screen map */}
+                <div className="map-title">
+                  <div className="stack" style={{ gap: 2 }}>
                     <h1>Junction 101</h1>
-                    <p className="muted">Oya, {me.nickname}! Tap a place to go in.</p>
+                    <p className="muted small">Oya, {me.nickname}! Tap the road to walk, or a place to go in.</p>
                   </div>
-                  <button className="btn" onClick={() => setView({ kind: "browse" })}>
-                    <Search size={18} aria-hidden="true" /> Find a business
-                  </button>
+                  <div className="row map-title-actions">
+                    <button className="btn sm" onClick={() => setView({ kind: "browse" })}>
+                      <Search size={16} aria-hidden="true" /> Find a business
+                    </button>
+                    {board && (
+                      <button type="button" className="btn sm" onClick={() => setPhone("quests")}>
+                        <ListChecks size={16} aria-hidden="true" /> Quests
+                        {readyQuests > 0 && <span className="quest-pill-badge">{readyQuests}</span>}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {board && (
-                  <button type="button" className="quest-pill show-md-down" onClick={() => setPhone("quests")}>
-                    <ListChecks size={18} aria-hidden="true" /> Today's quests
-                    {readyQuests > 0 && <span className="quest-pill-badge">{readyQuests} ready</span>}
-                  </button>
-                )}
                 <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} avatar={me.avatar} nickname={me.nickname} />
               </>
             ) : (

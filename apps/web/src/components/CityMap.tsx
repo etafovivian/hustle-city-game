@@ -174,7 +174,9 @@ export function CityMap({
       .catch(() => setNeighbours([]));
   }, []);
   // Home view: the junction plus the ring of player shops around it.
-  const HOME = { x: CX - 680, y: CY - 620, w: 1360, h: 1420 };
+  // Phones get a closer start (the junction and its places), so buildings show instead of the far view.
+  const narrow = typeof window !== "undefined" && window.innerWidth < 640;
+  const HOME = narrow ? { x: CX - 430, y: CY - 520, w: 860, h: 1100 } : { x: CX - 680, y: CY - 620, w: 1360, h: 1420 };
   const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
 
   // Banners take turns every 15 s. Each turn counts a view for boards actually on screen (close enough to
