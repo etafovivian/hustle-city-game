@@ -134,9 +134,10 @@ describe("simulated shop economy", () => {
   });
 
   it("fulfils the current customer order once and pays the offer", async () => {
-    // A new customer arrives every 30 minutes; don't start in the last seconds of a slot.
-    const toBoundary = 30 * 60_000 - (Date.now() % (30 * 60_000));
-    if (toBoundary < 10_000) await new Promise((r) => setTimeout(r, toBoundary + 200));
+    // NPC sales run every 10 minutes and a new customer comes every 30: don't start a few seconds before
+    // a 10-minute boundary, or a sales tick can empty the stock between restocking and serving.
+    const toBoundary = 10 * 60_000 - (Date.now() % (10 * 60_000));
+    if (toBoundary < 15_000) await new Promise((r) => setTimeout(r, toBoundary + 200));
     const p = await registerPlayer(app);
     const shop = (await p.call("GET", "/api/game/shop")).json() as ShopView;
     const order = shop.order!;
