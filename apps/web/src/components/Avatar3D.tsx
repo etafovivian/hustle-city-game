@@ -145,6 +145,19 @@ function loadModel() {
   return cachedGltf;
 }
 
+/** 3D hair pieces made in Blender (scripts/blender/hair.py), in the mannequin's rest-pose space. */
+const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap"]);
+const hairCache = new Map<string, Promise<THREE.Object3D>>();
+function loadHair(style: string) {
+  if (!hairCache.has(style)) {
+    hairCache.set(
+      style,
+      new GLTFLoader().loadAsync(`/models/hair/hair-${style}.glb`).then((g) => g.scene),
+    );
+  }
+  return hairCache.get(style)!;
+}
+
 export default function Avatar3D({
   avatar,
   action = "Idle_Loop",
@@ -163,6 +176,9 @@ export default function Avatar3D({
     current?: THREE.AnimationAction;
     uniforms?: ReturnType<typeof makeMaterial>["uniforms"];
     model?: THREE.Object3D;
+    /** The head bone and its bind inverse, for attaching hair so it follows every animation. */
+    head?: { bone: THREE.Bone; inverse: THREE.Matrix4 };
+    hair?: THREE.Object3D;
   }>({});
   const [ready, setReady] = useState(false);
 
@@ -186,8 +202,9 @@ export default function Avatar3D({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
-    camera.position.set(0, 1.0, 3.7);
-    camera.lookAt(0, 0.9, 0);
+    // Framed so the head (and tall styles like a gele or high top) always fit in short preview cards.
+    camera.position.set(0, 1.05, 4.6);
+    camera.lookAt(0, 0.98, 0);
     // White key and fill light so the chosen colours read as chosen; a soft gold rim for the brand.
     scene.add(new THREE.HemisphereLight("#ffffff", "#4a5470", 1.6));
     const sun = new THREE.DirectionalLight("#ffffff", 2.2);
@@ -268,7 +285,12 @@ export default function Avatar3D({
         scene.add(model);
         const mixer = new THREE.AnimationMixer(model);
         const actions = new Map(gltf.animations.map((clip) => [clip.name, mixer.clipAction(clip)]));
-        state.current = { mixer, actions, uniforms, model };
+        // The freshly cloned model is still in its rest pose: remember where the head bone sits in model
+        // space, so hair made in that same space can be re-parented onto the bone.
+        model.updateMatrixWorld(true);
+        const bone = model.getObjectByName("DEF-head") as THREE.Bone | undefined;
+        const head = bone ? { bone, inverse: bone.matrixWorld.clone().invert() } : undefined;
+        state.current = { mixer, actions, uniforms, model, head };
         const first = actions.get(action) ?? actions.get("Idle_Loop");
         first?.play();
         state.current.current = first;
@@ -300,9 +322,40 @@ export default function Avatar3D({
     u.uPattern.value = fresh.uPattern.value;
     u.uHasPattern.value = fresh.uHasPattern.value;
     u.uHairLine.value = fresh.uHairLine.value;
-    u.uHasHair.value = fresh.uHasHair.value;
+    u.uHasHair.value = state.current.hair ? 0 : fresh.uHasHair.value;
     u.uHairColor.value = fresh.uHairColor.value;
   }, [avatar.skinTone, avatar.hairStyle, avatar.outfit, ready]);
+
+  // Hair: a real 3D piece on the head bone; the painted hairline is only a fallback while it loads.
+  useEffect(() => {
+    const s = state.current;
+    if (!s.head || !s.uniforms) return;
+    const style = avatar.hairStyle;
+    let cancelled = false;
+    if (s.hair) {
+      s.hair.removeFromParent();
+      s.hair = undefined;
+    }
+    if (!HAIR_FILES.has(style)) return;
+    loadHair(style)
+      .then((src) => {
+        if (cancelled || !s.head) return;
+        const hair = src.clone(true);
+        // From rest-pose model space into the head bone's own space.
+        hair.applyMatrix4(s.head.inverse);
+        hair.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh) m.frustumCulled = false;
+        });
+        s.head.bone.add(hair);
+        s.hair = hair;
+        if (s.uniforms) s.uniforms.uHasHair.value = 0;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [avatar.hairStyle, ready]);
 
   // Cross-fade between animations.
   useEffect(() => {
