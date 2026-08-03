@@ -18,6 +18,8 @@ export interface Venue {
   icon: string;
   /** Building art in public/art. */
   art: string;
+  /** Inside view (isometric cutaway) shown on the place card, when we have the art. */
+  interior?: string;
   blurb: string;
   regulars: string[];
   activities: VenueActivity[];
@@ -32,6 +34,7 @@ export const VENUES: readonly Venue[] = [
     area: "Junction 101",
     icon: "🍲",
     art: "/art/buildings/buka.webp",
+    interior: "/art/interiors/buka.webp",
     blurb: "Hot amala, soft eba and gist that never finishes. Mama remembers everybody's order.",
     regulars: ["Mama Nkechi", "Tunde the conductor"],
     activities: [
@@ -46,7 +49,7 @@ export const VENUES: readonly Venue[] = [
     name: "Sharp Cuts Barbershop",
     area: "Junction 101",
     icon: "💈",
-    art: "/art/buildings/mixed-use-block.webp",
+    art: "/art/buildings/barbershop.webp",
     blurb: "Clippers buzzing, generator humming, and the loudest football arguments on the street.",
     regulars: ["Oga Sharp", "Emeka"],
     activities: [
@@ -73,7 +76,7 @@ export const VENUES: readonly Venue[] = [
     name: "Royal Event Centre",
     area: "Owambe Gardens",
     icon: "🎊",
-    art: "/art/buildings/commercial-block.webp",
+    art: "/art/buildings/event-centre.webp",
     blurb: "Every weekend somebody is getting married, turning fifty or celebrating a chieftaincy title. Wear your aso-ebi.",
     regulars: ["MC Gbenga", "Aunty Bisi"],
     activities: [
@@ -101,7 +104,7 @@ export const VENUES: readonly Venue[] = [
     name: "Owambe Viewing Centre",
     area: "Owambe Gardens",
     icon: "⚽",
-    art: "/art/buildings/mixed-use-block.webp",
+    art: "/art/buildings/viewing-centre.webp",
     blurb: "Big screen, plastic chairs, generator outside. When the match is on, the whole street is here.",
     regulars: ["Coach Femi", "Kola"],
     activities: [

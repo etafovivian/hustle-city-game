@@ -1,7 +1,7 @@
-// Real-time 3D avatar: Quaternius' CC0 animated mannequin (public/models/avatar-base.glb), painted per
+// Real-time 3D avatar: Quaternius' CC0 woman and man bodies (public/models/avatar-{woman,man}.glb), painted per
 // body region with the player's skin tone and outfit. Loaded lazily; falls back to the 2D avatar.
 // Swap in nicer bodies later (Tripo / Quaternius base characters) on the same humanoid rig.
-import type { AvatarConfig } from "@hc/shared";
+import { bodyOf, type AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -135,27 +135,30 @@ diffuseColor.rgb = base;`,
   return { mat, uniforms };
 }
 
-let cachedGltf: Promise<import("three/examples/jsm/loaders/GLTFLoader.js").GLTF> | null = null;
-function loadModel() {
-  if (!cachedGltf) {
+// Woman and man bodies (Quaternius Universal Base Characters + Universal Animation Library, CC0),
+// built by scripts/blender/bodies.py and scripts/build-bodies.mjs.
+const modelCache = new Map<string, Promise<import("three/examples/jsm/loaders/GLTFLoader.js").GLTF>>();
+function loadModel(body: string) {
+  if (!modelCache.has(body)) {
     const loader = new GLTFLoader();
     loader.setMeshoptDecoder(MeshoptDecoder);
-    cachedGltf = loader.loadAsync("/models/avatar-base.glb");
+    modelCache.set(body, loader.loadAsync(`/models/avatar-${body}.glb`));
   }
-  return cachedGltf;
+  return modelCache.get(body)!;
 }
 
 /** 3D hair pieces made in Blender (scripts/blender/hair.py), in the mannequin's rest-pose space. */
 const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap"]);
 const hairCache = new Map<string, Promise<THREE.Object3D>>();
-function loadHair(style: string) {
-  if (!hairCache.has(style)) {
+function loadHair(body: string, style: string) {
+  const key = `${body}/${style}`;
+  if (!hairCache.has(key)) {
     hairCache.set(
-      style,
-      new GLTFLoader().loadAsync(`/models/hair/hair-${style}.glb`).then((g) => g.scene),
+      key,
+      new GLTFLoader().loadAsync(`/models/hair/${key.replace("/", "/hair-")}.glb`).then((g) => g.scene),
     );
   }
-  return hairCache.get(style)!;
+  return hairCache.get(key)!;
 }
 
 export default function Avatar3D({
@@ -169,6 +172,7 @@ export default function Avatar3D({
   height?: number;
   onFail?: () => void;
 }) {
+  const body = bodyOf(avatar);
   const host = useRef<HTMLDivElement>(null);
   const state = useRef<{
     mixer?: THREE.AnimationMixer;
@@ -267,7 +271,7 @@ export default function Avatar3D({
       renderer.render(scene, camera);
     };
 
-    loadModel()
+    loadModel(body)
       .then((gltf) => {
         if (!alive) return;
         // SkeletonUtils.clone rebinds bones, so several viewers can share one loaded file.
@@ -275,7 +279,8 @@ export default function Avatar3D({
         const { mat, uniforms } = makeMaterial(avatar);
         model.traverse((o) => {
           const m = o as THREE.SkinnedMesh;
-          if (m.isSkinnedMesh) {
+          // Only the body is painted by region; eyes and eyebrows keep their own materials.
+          if (m.isSkinnedMesh && m.geometry.getAttribute("color")) {
             const geo = m.geometry;
             if (geo.getAttribute("color")) geo.setAttribute("region", geo.getAttribute("color"));
             m.material = mat;
@@ -288,7 +293,7 @@ export default function Avatar3D({
         // The freshly cloned model is still in its rest pose: remember where the head bone sits in model
         // space, so hair made in that same space can be re-parented onto the bone.
         model.updateMatrixWorld(true);
-        const bone = model.getObjectByName("DEF-head") as THREE.Bone | undefined;
+        const bone = model.getObjectByName("Head") as THREE.Bone | undefined;
         const head = bone ? { bone, inverse: bone.matrixWorld.clone().invert() } : undefined;
         state.current = { mixer, actions, uniforms, model, head };
         const first = actions.get(action) ?? actions.get("Idle_Loop");
@@ -337,7 +342,7 @@ export default function Avatar3D({
       s.hair = undefined;
     }
     if (!HAIR_FILES.has(style)) return;
-    loadHair(style)
+    loadHair(body, style)
       .then((src) => {
         if (cancelled || !s.head) return;
         const hair = src.clone(true);

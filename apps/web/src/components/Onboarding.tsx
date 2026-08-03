@@ -219,6 +219,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
             <Suspense fallback={<Avatar avatar={avatar} size={96} />}>
               <div className="stage-3d">
                 <Avatar3D
+                  key={avatar.body ?? "man"}
                   avatar={avatar}
                   height={250}
                   onFail={() => setNo3d(true)}

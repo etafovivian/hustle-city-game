@@ -14,15 +14,19 @@ for a in bpy.data.objects:
         a.data.pose_position = "REST"
 bpy.context.view_layer.update()
 
-# Head size from the mesh itself: vertices above the neck, near the centre line.
+# Head size from the mesh itself: vertices above the neck, near the centre line. Thresholds are
+# relative to body height so the same script fits any body (mannequin, woman, man).
 vs = [body.matrix_world @ v.co for v in body.data.vertices]
-head = [v for v in vs if v.z > 1.62 and abs(v.x) < 0.2]
+H = max(v.z for v in vs) - min(v.z for v in vs)
+FOOT = min(v.z for v in vs)
+NECK = FOOT + H * 0.865
+head = [v for v in vs if v.z > FOOT + H * 0.885 and abs(v.x) < 0.2]
 cx = sum(v.x for v in head) / len(head)
 cy = (min(v.y for v in head) + max(v.y for v in head)) / 2
 zmin, zmax = min(v.z for v in head), max(v.z for v in head)
 rx = (max(v.x for v in head) - min(v.x for v in head)) / 2
 ry = (max(v.y for v in head) - min(v.y for v in head)) / 2
-rz = (zmax - 1.58) / 2
+rz = (zmax - NECK) / 2
 cz = zmax - rz
 C = Vector((cx, cy, cz))
 print(f"HEAD centre {tuple(round(c,3) for c in C)} radii {rx:.3f} {ry:.3f} {rz:.3f}")
@@ -54,7 +58,7 @@ def obj_from_bm(bm, name, material):
 
 def hairline(y):
     t = max(-1.0, min(1.0, (y - cy) / ry))  # -1 front, +1 back
-    return cz + rz * (0.28 - 0.45 * (t + 1))  # forehead high, nape low
+    return cz + rz * (0.6 - 0.48 * (t + 1))  # forehead high (above the brows), nape low
 
 def shell(thick, keep, lump=0.0):
     """Hair that fits exactly: the head's own surface, pushed out along its normals by `thick` metres.
@@ -62,8 +66,10 @@ def shell(thick, keep, lump=0.0):
     bm = bmesh.new()
     bm.from_mesh(body.data)
     bmesh.ops.transform(bm, matrix=body.matrix_world, verts=bm.verts)
-    head_zone = lambda v: v.co.z > 1.58 and abs(v.co.x) < 0.2 and abs(v.co.y - cy) < 0.2
+    head_zone = lambda v: v.co.z > NECK and abs(v.co.x) < 0.2 and abs(v.co.y - cy) < 0.2
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not (head_zone(v) and keep(v.co))], context="VERTS")
+    # Weld UV/normal seams so the pushed-out shell has no cracks.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0008)
     bm.normal_update()
     rnd = random.Random(7)
     for v in bm.verts:
@@ -124,9 +130,9 @@ def _():
     bm = cap(0.012)
     t = top_of(bm)
     # The block starts down at the temples so it grows out of the hair, flat on top.
-    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=rx * 1.08, radius2=rx * 1.0, depth=0.13)
+    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=rx * 1.08, radius2=rx * 1.0, depth=0.1)
     bmesh.ops.scale(bm, vec=(1, ry / rx * 0.92, 1), verts=res["verts"])
-    bmesh.ops.translate(bm, vec=Vector((cx, cy + 0.008, t - 0.015)), verts=res["verts"])
+    bmesh.ops.translate(bm, vec=Vector((cx, cy + 0.008, t - 0.02)), verts=res["verts"])
     return obj_from_bm(bm, "high_top", HAIR)
 
 @style("puff")
@@ -156,7 +162,7 @@ def _():
 @style("gele")
 def _():
     # A wrapped headtie: a band over the forehead and crown, a raised top and pleated fans at the back.
-    bm = shell(0.025, lambda c: c.z > cz - rz * 0.1)
+    bm = shell(0.025, lambda c: c.z > cz + rz * 0.2)
     t = top_of(bm)
     add_ellipsoid(bm, Vector((cx, cy + 0.015, t - 0.035)), (rx * 1.15, ry * 1.08, 0.065))
     for i in range(5):

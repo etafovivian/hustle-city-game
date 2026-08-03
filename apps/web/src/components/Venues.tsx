@@ -116,6 +116,7 @@ export function VenueCard({
             <span className="small muted">{venue.area}</span>
           </div>
         </div>
+        {venue.interior && <img className="venue-interior" src={venue.interior} alt={`Inside ${venue.name}`} />}
         <p>{venue.blurb}</p>
         <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
 
