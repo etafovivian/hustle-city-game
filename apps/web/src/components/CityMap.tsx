@@ -15,8 +15,9 @@ import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
   BEACH_PATH,
-  ROAD_ENDS,
+  ROAD_PATHS,
   STREET_ENDS,
+  strokeFor,
   flyHeight,
   yOn,
   BILLBOARD_SPOTS,
@@ -319,7 +320,7 @@ export function CityMap({
               {/* Lagoon, harbour and sea, then the Island on top */}
               <path d={WATER_PATH} fill="#2f7ea6" />
               <path d={WATER_PATH} fill="url(#waves)" />
-              <path d={OCEAN_PATH} fill="#1f5a80" />
+              <path d={OCEAN_PATH} fill="#26688f" />
               <path d={OCEAN_PATH} fill="url(#waves)" />
               <path d={SHORE_PATH} fill="none" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" strokeLinecap="round" />
               <path d={ISLAND_PATH} fill="#d6b27e" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" />
@@ -341,49 +342,41 @@ export function CityMap({
                 <rect key={p.key} x={p.x - 9} y={p.y + HALF - 4} width="18" height="70" rx="4" fill="#8a8f98" stroke="#5d626b" strokeWidth="2" />
               ))}
 
-              {/* Roads, drawn in passes so crossings look like real junctions: every pavement first, then
-                  laterite shoulders, asphalt, kerbs and the striped median; streets join at the main road's kerb. */}
+              {/* Roads as continuous centre lines, stroked in layers: pavement edge, pavement, laterite shoulder,
+                  kerb, then asphalt. Every junction and every turn merges cleanly because all kerbs sit under
+                  all asphalt. Turns (Tech Mile onto Third Mainland Bridge, the Eko Bridge fork) are curves. */}
               {(() => {
-                const ground = ROADS.filter((r) => !r.flyover);
-                const main = ground.filter((r) => !r.bridge);
-                const bridges = ground.filter((r) => r.bridge);
+                const roads = ROAD_PATHS.filter((p) => p.kind === "road");
+                const bridges = ROAD_PATHS.filter((p) => p.kind === "bridge");
+                const streets = far ? [] : ROAD_PATHS.filter((p) => p.kind === "street");
+                const line = { fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
                 return (
                   <g aria-hidden="true">
                     {!far && DRIVEWAYS.map((d, i) => <path key={i} d={`M${d.x0} ${d.y0} L${d.x1} ${d.y1}`} stroke="#9a8f7c" strokeWidth="26" />)}
-                    {main.map((r) => <path key={`pv-${r.id}`} d={bandPath(r, HALF + PAVEMENT)} fill="#d6c7a5" />)}
-                    {ROAD_ENDS.map((p, i) => <ellipse key={`pve-${i}`} cx={p.x} cy={p.y} rx={HALF * 2 + PAVEMENT * 2} ry={HALF + PAVEMENT} fill="#d6c7a5" />)}
-                    {main.map((r) => <path key={`pk-${r.id}`} d={`${kerbPath(r, -HALF - PAVEMENT)}${kerbPath(r, HALF + PAVEMENT)}`} stroke="#b9a782" strokeWidth="3" />)}
-                    {main.map((r) => <path key={`lt-${r.id}`} d={bandPath(r, HALF + 9)} fill="#a8653a" />)}
-                    {bridges.map((r) => <path key={`bf-${r.id}`} d={bandPath(r, HALF + 12)} fill="#9aa0a8" />)}
-                    {ground.map((r) => <path key={`as-${r.id}`} d={bandPath(r)} fill={r.bridge ? "#55504a" : "var(--map-road)"} />)}
-                    {ROAD_ENDS.map((p, i) => <ellipse key={`ase-${i}`} cx={p.x} cy={p.y} rx={HALF * 2} ry={HALF} fill="var(--map-road)" />)}
-                    {ground.map((r) => (
-                      <path key={`kb-${r.id}`} d={`${kerbPath(r, -HALF)}${kerbPath(r, HALF)}`} stroke={r.bridge ? "#cfd3d8" : "#e6d6b4"} strokeWidth={r.bridge ? 9 : 5} />
-                    ))}
+                    {roads.map((r) => <path key={`pe-${r.id}`} d={r.d} {...line} stroke="#b9a782" strokeWidth={strokeFor(HALF + PAVEMENT) + 5} />)}
+                    {roads.map((r) => <path key={`pv-${r.id}`} d={r.d} {...line} stroke="#d6c7a5" strokeWidth={strokeFor(HALF + PAVEMENT)} />)}
+                    {streets.map((r) => <path key={`spv-${r.id}`} d={r.d} {...line} stroke="#cdbd9c" strokeWidth={strokeFor(STREET_HALF + STREET_PAVEMENT)} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sec-${p.key}`} cx={p.x} cy={p.y} rx={(STREET_HALF + STREET_PAVEMENT) * 2.2} ry={STREET_HALF + STREET_PAVEMENT + 6} fill="#cdbd9c" />)}
+                    {roads.map((r) => <path key={`lt-${r.id}`} d={r.d} {...line} stroke="#a8653a" strokeWidth={strokeFor(HALF + 9)} />)}
+                    {bridges.map((r) => <path key={`bf-${r.id}`} d={r.d} {...line} stroke="#9aa0a8" strokeWidth={strokeFor(HALF + 14)} strokeLinecap="butt" />)}
+                    {/* kerbs: a slightly wider stroke under the asphalt */}
+                    {roads.map((r) => <path key={`kb-${r.id}`} d={r.d} {...line} stroke="#e6d6b4" strokeWidth={strokeFor(HALF) + 8} />)}
+                    {bridges.map((r) => <path key={`rl-${r.id}`} d={r.d} {...line} stroke="#cfd3d8" strokeWidth={strokeFor(HALF) + 14} strokeLinecap="butt" />)}
+                    {streets.map((r) => <path key={`skb-${r.id}`} d={r.d} {...line} stroke="#d9c9a6" strokeWidth={strokeFor(STREET_HALF) + 6} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sek-${p.key}`} cx={p.x} cy={p.y} rx={STREET_HALF * 2.4 + 4} ry={STREET_HALF + 7} fill="#d9c9a6" />)}
+                    {/* asphalt */}
+                    {streets.map((r) => <path key={`sas-${r.id}`} d={r.d} {...line} stroke="#5c564f" strokeWidth={strokeFor(STREET_HALF)} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sea-${p.key}`} cx={p.x} cy={p.y} rx={STREET_HALF * 2.4} ry={STREET_HALF + 4} fill="#5c564f" />)}
+                    {bridges.map((r) => <path key={`ba-${r.id}`} d={r.d} {...line} stroke="#55504a" strokeWidth={strokeFor(HALF)} strokeLinecap="butt" />)}
+                    {roads.map((r) => <path key={`as-${r.id}`} d={r.d} {...line} stroke="var(--map-road)" strokeWidth={strokeFor(HALF)} />)}
                     {/* Lagos dual carriageway: a raised median with black-and-yellow striped kerbs */}
-                    {main.map((r) => (
+                    {roads.map((r) => (
                       <g key={`md-${r.id}`}>
-                        <path d={centrePath(r)} stroke="#2b2b2b" strokeWidth="12" />
-                        <path d={centrePath(r)} stroke="#f2c14e" strokeWidth="12" strokeDasharray="12 12" />
+                        <path d={r.d} {...line} strokeLinecap="butt" stroke="#2b2b2b" strokeWidth="12" />
+                        <path d={r.d} {...line} strokeLinecap="butt" stroke="#f2c14e" strokeWidth="12" strokeDasharray="12 12" />
                       </g>
                     ))}
-                    {bridges.map((r) => <path key={`bd-${r.id}`} d={centrePath(r)} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />)}
-                    {/* Residential streets: join the main road at its kerb, turning circle at the far end */}
-                    {!far &&
-                      STREETS.map((r) => (
-                        <g key={r.id}>
-                          <path d={bandPath(r, STREET_HALF + STREET_PAVEMENT)} fill="#cdbd9c" />
-                          <path d={bandPath(r, STREET_HALF)} fill="#5c564f" />
-                          <path d={`${kerbPath(r, -STREET_HALF)}${kerbPath(r, STREET_HALF)}`} stroke="#d9c9a6" strokeWidth="4" />
-                        </g>
-                      ))}
-                    {!far &&
-                      STREET_ENDS.map((p) => (
-                        <g key={`se-${p.key}`}>
-                          <ellipse cx={p.x} cy={p.y} rx={(STREET_HALF + STREET_PAVEMENT) * 2.2} ry={STREET_HALF + STREET_PAVEMENT + 6} fill="#cdbd9c" />
-                          <ellipse cx={p.x} cy={p.y} rx={STREET_HALF * 2.4} ry={STREET_HALF + 4} fill="#5c564f" />
-                        </g>
-                      ))}
+                    {bridges.map((r) => <path key={`bd-${r.id}`} d={r.d} {...line} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />)}
                     {/* Zebra crossings on the four approaches to Junction 101 */}
                     {!far &&
                       [ROAD_A, ROAD_B].flatMap((r) =>

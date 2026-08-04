@@ -86,7 +86,7 @@ const TIP = 3500;
 /** All water south of the mainland shore (lagoon, harbour and sea together). */
 export const WATER_PATH = `${smooth(SHORE)} L${WORLD.w + 400} ${WORLD.h + 400} L-400 ${WORLD.h + 400} L-400 ${SHORE[0]![1]}Z`;
 /** The open Atlantic: deeper blue beyond the Island's beach. */
-export const OCEAN_PATH = `M-400 6300 C1200 6000 2600 5600 ${TIP + 100} ${island(TIP + 100) + ISLAND_S + 60} L${WORLD.w + 400} ${island(WORLD.w + 400) + ISLAND_S + 60} L${WORLD.w + 400} ${WORLD.h + 400} L-400 ${WORLD.h + 400}Z`;
+export const OCEAN_PATH = `M-400 6500 C1400 6450 3000 6000 ${TIP + 900} ${island(TIP + 900) + ISLAND_S + 60} L${WORLD.w + 400} ${island(WORLD.w + 400) + ISLAND_S + 60} L${WORLD.w + 400} ${WORLD.h + 400} L-400 ${WORLD.h + 400}Z`;
 /** The Island: Marina, Island Heights and Lekki on one long strip. */
 export const ISLAND_PATH = `M${TIP} ${island(TIP) + 120} C${TIP - 20} ${island(TIP) - 260} ${TIP + 200} ${island(TIP + 300) + ISLAND_N} ${TIP + 400} ${island(TIP + 400) + ISLAND_N} L${WORLD.w + 400} ${island(WORLD.w + 400) + ISLAND_N} L${WORLD.w + 400} ${island(WORLD.w + 400) + ISLAND_S} L${TIP + 400} ${island(TIP + 400) + ISLAND_S} C${TIP + 100} ${island(TIP + 100) + ISLAND_S} ${TIP} ${island(TIP) + 380} ${TIP} ${island(TIP) + 120}Z`;
 /** Beach: a pale strip along the Island's south shore. */
@@ -254,7 +254,7 @@ export const STREETS: Segment[] = QUARTERS.flatMap(([sa, sb]) => {
   return [
     // Streets start at the main road's kerb (vertical distance from the road = the iso coordinate).
     seg(`s1${sa}${sb}`, iso(sa * (HALF - 4), sb * STREET_AT), iso(sa * STREET_LEN, sb * STREET_AT)),
-    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, sb * (HALF - 4)), iso(sa * STREET_AT, sb * STREET_LEN)),
+    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, sb * (HALF - 4)), iso(sa * STREET_AT, sb * (STREET_LEN + 0))),
   ];
 });
 
@@ -394,3 +394,45 @@ export const STREET_ENDS = STREETS.map((st) => {
   ].sort((a, b) => Math.hypot(b.x - CX, b.y - CY) - Math.hypot(a.x - CX, a.y - CY))[0]!;
   return { ...far, key: st.id };
 });
+
+// ── Road drawing paths ──
+// Roads are drawn as stroked centre lines, layer by layer (pavement, kerb, asphalt), so every junction and
+// every turn merges cleanly. Turns between straight runs are smooth curves.
+/** Stroke width that gives a vertical half-width `h` on our 2:1 isometric diagonals. */
+export const strokeFor = (h: number) => 2 * h * Math.cos(Math.atan(0.5));
+
+const P = (x: number, y: number) => `${x.toFixed(1)} ${y.toFixed(1)}`;
+/** Point `r` world-x units back from a corner along a direction (dx, dy normalised to dx = ±1). */
+const back = (c: { x: number; y: number }, dir: { x: number; y: number }, r: number) => ({ x: c.x - dir.x * r, y: c.y - dir.y * r });
+
+export interface RoadPath {
+  id: string;
+  d: string;
+  kind: "road" | "bridge" | "street";
+}
+
+export const ROAD_PATHS: RoadPath[] = (() => {
+  const a = ROADS.find((r) => r.id === "a")!;
+  const b = ROADS.find((r) => r.id === "b")!;
+  const tm = ROADS.find((r) => r.id === "bridge")!;
+  const isl = ROADS.find((r) => r.id === "island")!;
+  const eko = ROADS.find((r) => r.id === "eko")!;
+  const R = 170;
+  // Road A runs down-right into the Third Mainland Bridge head, where it turns down-left onto the bridge.
+  const head = { x: a.x1, y: a.y1 };
+  const inA = back(head, { x: 1, y: 0.5 }, R);
+  const outTm = back(head, { x: 1, y: -0.5 }, R); // = head + R * (-1, +0.5)
+  // Eko Bridge leaves Road B (running up-right) and heads down-right to Marina Wharf.
+  const fork = { x: 2400, y: yOn(b, 2400) };
+  const inB = back(fork, { x: 1, y: -0.5 }, R); // R before the fork, coming from the south-west
+  const outEko = { x: fork.x + R, y: fork.y + 0.5 * R };
+  return [
+    { id: "a", kind: "road", d: `M${P(a.x0, a.y0)} L${P(inA.x, inA.y)} Q${P(head.x, head.y)} ${P(outTm.x, outTm.y)}` },
+    { id: "bridge", kind: "bridge", d: `M${P(outTm.x, outTm.y)} L${P(tm.x0, tm.y0)}` },
+    { id: "b", kind: "road", d: `M${P(b.x0, b.y0)} L${P(b.x1, b.y1)}` },
+    { id: "eko-ramp", kind: "road", d: `M${P(inB.x, inB.y)} Q${P(fork.x, fork.y)} ${P(outEko.x, outEko.y)}` },
+    { id: "eko", kind: "bridge", d: `M${P(outEko.x, outEko.y)} L${P(eko.x1, eko.y1)}` },
+    { id: "island", kind: "road", d: `M${P(isl.x0, isl.y0)} L${P(isl.x1, isl.y1)}` },
+    ...STREETS.map((s): RoadPath => ({ id: s.id, kind: "street", d: `M${P(s.x0, s.y0)} L${P(s.x1, s.y1)}` })),
+  ];
+})();
