@@ -16,6 +16,8 @@ export interface Segment {
   x1: number;
   y1: number;
   bridge?: boolean;
+  /** Raised road on pillars (crosses over another road); height in world units at its middle. */
+  flyover?: number;
 }
 
 /** y on a segment's centre line for an x (segments are never vertical). */
@@ -32,6 +34,11 @@ export const ROADS: Segment[] = [
   { id: "bridge", x0: 4800, y0: island(4800), x1: 7200, y1: CY + 0.5 * (7200 - CX), bridge: true },
   // Island road
   { id: "island", x0: 3700, y0: island(3700), x1: 9600, y1: island(9600) },
+  // Eko Bridge: from Road B near Apapa over the harbour channel to Marina Wharf (the Island's west end)
+  { id: "eko", x0: 2400 + 64, y0: CY - 0.5 * (2400 - CX) + 32, x1: 3700, y1: island(3700), bridge: true },
+  // Oshodi-style flyover at Danfo Terminal: over Road A, ramps down at both ends
+  // (runs along the iso b axis at a = -1650, crossing Road A between b = -600 and +600)
+  { id: "flyover", x0: CX - 1650 - 600, y0: CY - 825 + 300, x1: CX - 1650 + 600, y1: CY - 825 - 300, flyover: 70 },
 ];
 export const ROAD_A = ROADS[0]!;
 export const ROAD_B = ROADS[1]!;
@@ -92,18 +99,23 @@ export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x
 
 // ── Walking ──
 export type Landmass = "mainland" | "island" | "bridge";
-const BRIDGE = ROADS.find((r) => r.bridge)!;
+const BRIDGES = ROADS.filter((r) => r.bridge);
 /** Where a person can stand: mainland, the Island, or the bridge deck. Null means water or off the map. */
 export function landmassAt(x: number, y: number): Landmass | null {
   if (x < 0 || y < 0 || x > WORLD.w || y > WORLD.h) return null;
-  if (x >= BRIDGE.x0 && x <= BRIDGE.x1 && Math.abs(y - yOn(BRIDGE, x)) < HALF + 14) return "bridge";
+  if (BRIDGES.some((b) => x >= b.x0 && x <= b.x1 && Math.abs(y - yOn(b, x)) < HALF + 14)) return "bridge";
   if (y < shoreY(x) - 12) return "mainland";
   if (x > TIP + 120 && y > island(x) + ISLAND_N + 40 && y < island(x) + ISLAND_S - 10) return "island";
   return null;
 }
 /** Bridge ends, just onto dry land on each side. */
-const BRIDGE_MAIN = { x: BRIDGE.x1 - 40, y: yOn(BRIDGE, BRIDGE.x1 - 40) };
-const BRIDGE_ISLAND = { x: BRIDGE.x0 + 40, y: yOn(BRIDGE, BRIDGE.x0 + 40) };
+/** Each bridge's mainland and Island ends, just onto dry land. */
+const CROSSINGS = BRIDGES.map((b) => {
+  const lo = { x: b.x0 + 40, y: yOn(b, b.x0 + 40) };
+  const hi = { x: b.x1 - 40, y: yOn(b, b.x1 - 40) };
+  // The end with the larger y is further south, on the Island side.
+  return lo.y > hi.y ? { island: lo, main: hi } : { island: hi, main: lo };
+});
 const JUNCTION = { x: CX, y: CY + 110 };
 
 const clearLine = (a: { x: number; y: number }, b: { x: number; y: number }) => {
@@ -124,7 +136,14 @@ export function walkRoute(from: { x: number; y: number }, to: { x: number; y: nu
   const leg = (a: { x: number; y: number }, b: { x: number; y: number }) => (clearLine(a, b) ? [b] : [JUNCTION, b]);
   const side = (m: Landmass) => (m === "bridge" ? "bridge" : m);
   if (side(start) === side(end) || start === "bridge" || end === "bridge") return leg(from, to);
-  return start === "mainland" ? [...leg(from, BRIDGE_MAIN), BRIDGE_ISLAND, to] : [BRIDGE_ISLAND, BRIDGE_MAIN, ...leg(BRIDGE_MAIN, to)];
+  // Take whichever bridge makes the shorter trip.
+  const d = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+  const c = CROSSINGS.reduce((best, k) =>
+    start === "mainland"
+      ? d(from, k.main) + d(k.island, to) < d(from, best.main) + d(best.island, to) ? k : best
+      : d(from, k.island) + d(k.main, to) < d(from, best.island) + d(best.main, to) ? k : best,
+  );
+  return start === "mainland" ? [...leg(from, c.main), c.island, to] : [c.island, c.main, ...leg(c.main, to)];
 }
 
 export const clearOfRoads = (x: number, y: number, gap = 160) =>
@@ -233,8 +252,9 @@ export const STREETS: Segment[] = QUARTERS.flatMap(([sa, sb]) => {
   const seg = (id: string, p: { x: number; y: number }, q: { x: number; y: number }): Segment =>
     p.x < q.x ? { id, x0: p.x, y0: p.y, x1: q.x, y1: q.y } : { id, x0: q.x, y0: q.y, x1: p.x, y1: p.y };
   return [
-    seg(`s1${sa}${sb}`, iso(0, sb * STREET_AT), iso(sa * STREET_LEN, sb * STREET_AT)),
-    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, 0), iso(sa * STREET_AT, sb * STREET_LEN)),
+    // Streets start at the main road's kerb (vertical distance from the road = the iso coordinate).
+    seg(`s1${sa}${sb}`, iso(sa * (HALF - 4), sb * STREET_AT), iso(sa * STREET_LEN, sb * STREET_AT)),
+    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, sb * (HALF - 4)), iso(sa * STREET_AT, sb * STREET_LEN)),
   ];
 });
 
@@ -300,18 +320,33 @@ export const TREES = [...STREET_LOTS.trees, ...EXTRA_TREES].sort((a, b) => a.y -
 export const ALL_SCENERY = [...DISTRICT_SCENERY.filter((d) => clearOfStreets(d.x, d.y)), ...STREET_LOTS.houses].sort((a, b) => a.y - b.y);
 
 /** Bridge pillars: evenly spaced along the deck where it crosses water. */
-export const PILLARS = (() => {
-  const b = ROADS.find((r) => r.bridge)!;
-  const out: { x: number; y: number }[] = [];
+export const PILLARS = BRIDGES.flatMap((b) => {
+  const out: { x: number; y: number; key: string }[] = [];
   for (let x = b.x0 + 120; x < b.x1 - 60; x += 160) {
     const y = yOn(b, x);
-    if (!onLand(x, y + 40)) out.push({ x, y });
+    if (!onLand(x, y + 40)) out.push({ x, y, key: `${b.id}-${x}` });
   }
   return out;
-})();
+});
+
+/** Height of a flyover deck along its length: ramps up over the first and last quarter, flat on top. */
+export const flyHeight = (s: Segment, x: number) => {
+  if (!s.flyover) return 0;
+  const t = (x - s.x0) / (s.x1 - s.x0);
+  const ramp = Math.min(1, Math.min(t, 1 - t) / 0.25);
+  return s.flyover * Math.max(0, ramp);
+};
+
+/** Road ends inside the world get a rounded turning end instead of stopping dead. */
+export const ROAD_ENDS = ROADS.filter((r) => !r.bridge && !r.flyover).flatMap((r) =>
+  [
+    { x: r.x0, y: r.y0 },
+    { x: r.x1, y: r.y1 },
+  ].filter((p) => p.x > 60 && p.x < WORLD.w - 60 && p.y > 60 && p.y < WORLD.h - 60 && !ROADS.some((o) => o !== r && !o.flyover && Math.hypot(o.x0 - p.x, o.y0 - p.y) < 90 || o !== r && !o.flyover && Math.hypot(o.x1 - p.x, o.y1 - p.y) < 90)),
+);
 
 /** Street lamps along every road, alternating kerbs, skipping the roundabout. */
-export const LAMPS = ROADS.flatMap((s) => {
+export const LAMPS = ROADS.filter((r) => !r.flyover).flatMap((s) => {
   const out: { x: number; y: number; key: string }[] = [];
   const [lo, hi] = [Math.min(s.x0, s.x1), Math.max(s.x0, s.x1)];
   let i = 0;
@@ -349,4 +384,13 @@ export const BILLBOARD_SPOTS = BOARD_AT.map((b) => {
   const seg = ROADS.find((r) => r.id === b.road)!;
   const roadTop = Math.min(yOn(seg, b.x - LEG), yOn(seg, b.x + LEG)) - HALF - PAVEMENT;
   return { key: b.key, x: b.x, y: roadTop - 48 };
+});
+
+/** Street ends away from the main roads: small turning circles. */
+export const STREET_ENDS = STREETS.map((st) => {
+  const far = [
+    { x: st.x0, y: st.y0 },
+    { x: st.x1, y: st.y1 },
+  ].sort((a, b) => Math.hypot(b.x - CX, b.y - CY) - Math.hypot(a.x - CX, a.y - CY))[0]!;
+  return { ...far, key: st.id };
 });

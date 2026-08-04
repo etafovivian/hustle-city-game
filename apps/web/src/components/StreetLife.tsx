@@ -2,7 +2,17 @@
 // Pure SVG animation (SMIL animateMotion), so nothing re-renders in React while it runs.
 // Art: Stitch export 9 (public/art/life, provenance in *.json sidecars).
 import { useEffect, useState } from "react";
-import { HALF, yOn, type Segment } from "./cityLayout.js";
+import { HALF, flyHeight, yOn, type Segment } from "./cityLayout.js";
+
+/** A vehicle's route along a road; flyovers rise and fall, so they get several points. */
+function roadPath(s: Segment, x0: number, x1: number, lane: number) {
+  if (!s.flyover) return `M${x0} ${yOn(s, x0) + lane} L${x1} ${yOn(s, x1) + lane}`;
+  const N = 12;
+  return Array.from({ length: N + 1 }, (_, i) => {
+    const x = x0 + ((x1 - x0) * i) / N;
+    return `${i ? "L" : "M"}${x} ${yOn(s, x) + lane - flyHeight(s, x)}`;
+  }).join(" ");
+}
 
 interface Props {
   roads: Segment[];
@@ -101,7 +111,7 @@ export function StreetLife({ roads, walkRoads, kerb, cx }: Props) {
               dur={`${dur.toFixed(1)}s`}
               begin={`${(-dur * t.offset).toFixed(1)}s`}
               repeatCount="indefinite"
-              path={`M${x0} ${f(x0) + lane} L${x1} ${f(x1) + lane}`}
+              path={roadPath(s, x0, x1, lane)}
             />
             {/* Fade in and out at the ends of a road instead of popping */}
             <animate attributeName="opacity" dur={`${dur.toFixed(1)}s`} begin={`${(-dur * t.offset).toFixed(1)}s`} repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.03;0.97;1" />
