@@ -1,16 +1,22 @@
 // The player's avatar on the map: tap the ground to walk there (like a street walk).
 // Animates on its own, so the big map doesn't re-render while you walk.
-import type { AvatarConfig } from "@hc/shared";
+import { bodyOf, type AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { walkRoute } from "./cityLayout.js";
+import { walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 type Point = { x: number; y: number };
 
 const SPEED = 230; // world units per second
-const WALK = { away: "/art/life/kaftan-walk-away.webp", toward: "/art/life/kaftan-walk-toward.webp" };
-const H = 92;
-const FRAME_W = (266 / 4) * (H / 128);
+// The player's walker is a bit bigger than street walkers so you can spot yourself.
+const WALK = walkerSize(84);
+
+/** The rendered walker closest to the player's chosen look. */
+function variantFor(a: AvatarConfig): WalkerVariant {
+  if (bodyOf(a) === "woman") return a.outfit === "peplum_coral" || a.hairStyle === "gele" ? "woman_gele" : "woman_buba";
+  return ["agbada_white", "kaftan_gold", "ankara_green"].includes(a.outfit) ? "man_kaftan" : "man_casual";
+}
 const STORE = "hc_avatar_pos";
 
 function loadPos(fallback: Point): Point {
@@ -49,7 +55,7 @@ export function AvatarWalker({
 }) {
   const [pos, setPos] = useState(() => loadPos(start));
   const [walking, setWalking] = useState(false);
-  const [facing, setFacing] = useState<{ down: boolean; mirror: boolean }>({ down: true, mirror: false });
+  const [facing, setFacing] = useState<WalkDir>("se");
   const posRef = useRef(pos);
   posRef.current = pos;
   const face = useRef(avatarUri(avatar));
@@ -83,9 +89,7 @@ export function AvatarWalker({
         } else {
           p = { x: p.x + (dx / dist) * budget, y: p.y + (dy / dist) * budget };
           budget = 0;
-          // The walk art faces down-right (towards) and up-left (away); mirror for the other diagonals.
-          const down = dy > 0;
-          setFacing({ down, mirror: down ? dx < 0 : dx > 0 });
+          setFacing(walkDir(dx, dy));
         }
       }
       posRef.current = p;
@@ -118,15 +122,15 @@ export function AvatarWalker({
       <g transform={`translate(${pos.x} ${pos.y})`}>
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
-        <g transform={facing.mirror ? "scale(-1 1)" : undefined}>
-          <svg x={-FRAME_W / 2} y={-H} width={FRAME_W} height={H} overflow="hidden">
-            <image href={facing.down ? WALK.toward : WALK.away} width={FRAME_W * 4} height={H} x={walking ? undefined : 0}>
-              {walking && <animate attributeName="x" dur="0.5s" repeatCount="indefinite" calcMode="discrete" values={`0;${-FRAME_W};${-FRAME_W * 2};${-FRAME_W * 3}`} />}
-            </image>
-          </svg>
-        </g>
+        <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
+          <image href={walkerSheet(variantFor(avatar), facing)} width={WALK.w * WALK.frames} height={WALK.h} x={walking ? undefined : 0}>
+            {walking && (
+              <animate attributeName="x" dur="0.8s" repeatCount="indefinite" calcMode="discrete" values={Array.from({ length: WALK.frames }, (_, f) => -WALK.w * f).join(";")} />
+            )}
+          </image>
+        </svg>
         {/* Name plate with the player's face, kept readable at any zoom. */}
-        <g transform={`translate(0 ${-H - 8}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>
+        <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>
           <rect width={plateW} height="30" rx="15" fill="#ffc72c" stroke="#0a0f24" strokeWidth="2" />
           <image href={face.current} x="3" y="3" width="24" height="24" />
           <text x={(plateW + 26) / 2} y="20" textAnchor="middle" fontSize="15" fontWeight="900" fill="#0a0f24">

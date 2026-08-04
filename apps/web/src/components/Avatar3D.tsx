@@ -161,6 +161,20 @@ function loadHair(body: string, style: string) {
   return hairCache.get(key)!;
 }
 
+/** Loose traditional clothes made in Blender (scripts/blender/agent/garments.py), skinned to the same skeleton. */
+const GARMENTS: Record<string, Partial<Record<string, string>>> = {
+  man: { agbada_white: "agbada", kaftan_gold: "kaftan" },
+  woman: { buba_wrapper: "buba_wrapper", peplum_coral: "peplum_gown" },
+};
+const garmentCache = new Map<string, Promise<THREE.Object3D>>();
+function loadGarment(body: string, key: string) {
+  const id = `${body}/${key}`;
+  if (!garmentCache.has(id)) garmentCache.set(id, new GLTFLoader().loadAsync(`/models/garments/${id}.glb`).then((g) => g.scene));
+  return garmentCache.get(id)!;
+}
+/** Poses the loose clothes weren't modelled for (they'd stretch through the legs); the painted outfit shows instead. */
+const NO_GARMENT_POSES = new Set(["Fixing_Kneeling", "Sitting_Idle_Loop", "Driving_Loop"]);
+
 export default function Avatar3D({
   avatar,
   action = "Idle_Loop",
@@ -183,6 +197,7 @@ export default function Avatar3D({
     /** The head bone and its bind inverse, for attaching hair so it follows every animation. */
     head?: { bone: THREE.Bone; inverse: THREE.Matrix4 };
     hair?: THREE.Object3D;
+    garment?: THREE.Object3D;
   }>({});
   const [ready, setReady] = useState(false);
 
@@ -361,6 +376,55 @@ export default function Avatar3D({
       cancelled = true;
     };
   }, [avatar.hairStyle, ready]);
+
+  // Loose clothes: re-bind the garment's skinned mesh to this avatar's bones (same names), tint to the outfit.
+  useEffect(() => {
+    const s = state.current;
+    if (!s.model) return;
+    if (s.garment) {
+      s.garment.removeFromParent();
+      s.garment = undefined;
+    }
+    const key = GARMENTS[body]?.[avatar.outfit];
+    if (!key) return;
+    let cancelled = false;
+    loadGarment(body, key)
+      .then((src) => {
+        if (cancelled || !s.model) return;
+        const bones = new Map<string, THREE.Bone>();
+        s.model.traverse((o) => {
+          if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone);
+        });
+        const group = new THREE.Group();
+        const colour = OUTFITS[avatar.outfit]?.top;
+        src.traverse((o) => {
+          const m = o as THREE.SkinnedMesh;
+          if (!m.isSkinnedMesh) return;
+          const mine = bones.size ? m.skeleton.bones.map((b) => bones.get(b.name)) : [];
+          if (mine.some((b) => !b)) return;
+          const mesh = new THREE.SkinnedMesh(m.geometry, (m.material as THREE.MeshStandardMaterial).clone());
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (colour) mat.color.set(colour);
+          mat.side = THREE.DoubleSide;
+          mat.roughness = 0.75;
+          mesh.frustumCulled = false;
+          mesh.bind(new THREE.Skeleton(mine as THREE.Bone[], m.skeleton.boneInverses), m.bindMatrix);
+          group.add(mesh);
+        });
+        s.model.add(group);
+        s.garment = group;
+        group.visible = !NO_GARMENT_POSES.has(action);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [avatar.outfit, ready]);
+
+  useEffect(() => {
+    const g = state.current.garment;
+    if (g) g.visible = !NO_GARMENT_POSES.has(action);
+  }, [action]);
 
   // Cross-fade between animations.
   useEffect(() => {

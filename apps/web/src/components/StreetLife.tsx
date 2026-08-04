@@ -3,6 +3,7 @@
 // Art: Stitch export 9 (public/art/life, provenance in *.json sidecars).
 import { useEffect, useState } from "react";
 import { HALF, flyHeight, yOn, type Segment } from "./cityLayout.js";
+import { WALKER_VARIANTS, walkDir, walkerSheet, walkerSize } from "./walkers.js";
 
 /** A vehicle's route along a road; flyovers rise and fall, so they get several points. */
 function roadPath(s: Segment, x0: number, x1: number, lane: number) {
@@ -31,9 +32,7 @@ const OKADA_SE: Sprite = { href: "/art/life/okada-se.webp", w: 49, h: 60 };
 const KEKE_SE: Sprite = { href: "/art/life/keke-se.webp", w: 57, h: 66 };
 
 // Walk strips: 4 frames side by side, 266×128 source; drawn 64 world units tall.
-const WALK = { away: "/art/life/kaftan-walk-away.webp", toward: "/art/life/kaftan-walk-toward.webp" };
-const WALK_H = 64;
-const WALK_FRAME_W = (266 / 4) * (WALK_H / 128);
+const WALK = walkerSize(64);
 
 /**
  * Vehicles for a road: about one per 1100 units each way, with art that faces the way it drives.
@@ -61,6 +60,10 @@ const WALKERS: { road: "a" | "b"; side: 1 | -1; east: boolean; from: number; to:
   { road: "a", side: -1, east: false, from: 300, to: 1400, offset: 0.4 },
   { road: "b", side: 1, east: false, from: 350, to: 1300, offset: 0.2 },
   { road: "b", side: -1, east: true, from: -1400, to: -350, offset: 0.65 },
+  { road: "a", side: -1, east: true, from: -1500, to: -400, offset: 0.15 },
+  { road: "a", side: 1, east: false, from: 350, to: 1500, offset: 0.8 },
+  { road: "b", side: -1, east: false, from: 300, to: 1450, offset: 0.55 },
+  { road: "b", side: 1, east: true, from: -1300, to: -300, offset: 0.3 },
 ];
 const WALK_SPEED = 34;
 
@@ -129,10 +132,8 @@ export function StreetLife({ roads, walkRoads, kerb, cx }: Props) {
         const y = (x: number) => yOn(r, x) + p.side * kerb;
         const length = Math.hypot(b - a, y(b) - y(a));
         const dur = length / WALK_SPEED;
-        // Heading down the screen shows the face; heading up shows the back.
-        const down = y(b) > y(a);
-        // Source art walks towards the viewer facing down-right, and away facing up-left.
-        const mirror = down ? b < a : b > a;
+        const variant = WALKER_VARIANTS[i % WALKER_VARIANTS.length]!;
+        const sheet = walkerSheet(variant, walkDir(b - a, y(b) - y(a)));
         return (
           <g key={`w${i}`}>
             <animateMotion
@@ -141,20 +142,20 @@ export function StreetLife({ roads, walkRoads, kerb, cx }: Props) {
               repeatCount="indefinite"
               path={`M${a} ${y(a)} L${b} ${y(b)}`}
             />
-            <ellipse cx="0" cy="-2" rx="13" ry="4" fill="rgb(0 0 0 / 25%)" />
-            <g transform={mirror ? "scale(-1 1)" : undefined}>
-              <svg x={-WALK_FRAME_W / 2} y={-WALK_H} width={WALK_FRAME_W} height={WALK_H} overflow="hidden">
-                <image href={down ? WALK.toward : WALK.away} width={WALK_FRAME_W * 4} height={WALK_H}>
-                  <animate
-                    attributeName="x"
-                    dur="0.5s"
-                    repeatCount="indefinite"
-                    calcMode="discrete"
-                    values={`0;${-WALK_FRAME_W};${-WALK_FRAME_W * 2};${-WALK_FRAME_W * 3}`}
-                  />
-                </image>
-              </svg>
-            </g>
+            {/* Fade at the ends of the route instead of snapping back to the start */}
+            <animate attributeName="opacity" dur={`${dur.toFixed(1)}s`} begin={`${(-dur * p.offset).toFixed(1)}s`} repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.06;0.94;1" />
+            <ellipse cx="0" cy="-1" rx="12" ry="4" fill="rgb(0 0 0 / 25%)" />
+            <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
+              <image href={sheet} width={WALK.w * WALK.frames} height={WALK.h}>
+                <animate
+                  attributeName="x"
+                  dur="0.8s"
+                  repeatCount="indefinite"
+                  calcMode="discrete"
+                  values={Array.from({ length: WALK.frames }, (_, f) => -WALK.w * f).join(";")}
+                />
+              </image>
+            </svg>
           </g>
         );
       })}
