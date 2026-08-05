@@ -116,3 +116,41 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 2. Crazy house: a gold throne chair, an aquarium wall, a car gallery behind glass.
 3. Hotel lobby: a marble floor, a reception desk and a fountain.
 4. Bank banking hall: counters with glass, a queue rope, a waiting bench.
+
+---
+
+## Batch 17: the roundabout and green (real Lagos plants)
+1. A round fountain for a roundabout's centre island: a stone basin with three water jets, a low kerb and a ring of flowers. Top view from 2:1 isometric, as wide as it is tall.
+2. A tropical almond (umbrella) tree, the Lagos compound shade tree: flat horizontal tiers of big leaves on a straight trunk.
+3. A mango tree: dense dark round crown, a few ripe mangoes, short thick trunk.
+4. A dogonyaro (neem) tree: tall, light feathery leaves.
+
+## Batch 18: more green
+1. A plantain/banana clump: three stems with big torn leaves.
+2. An ixora hedge with small red flowers (a straight hedge piece, as long as a car).
+3. A bougainvillea bush with pink flowers spilling over a low wall.
+4. Four small grass and weed patches on laterite ground, on one sheet in a 2×2 grid (bare patches, lawn patch, tall grass tuft, dry grass).
+
+## Batch 19: neighbourhood buildings we don't have yet
+1. A small Lagos church: a white hall with a pitched roof, a cross and the sign "GRACE CHAPEL".
+2. A neighbourhood mosque: a small green-and-white building with one minaret and a dome.
+3. A primary school: a long single-storey block with blue doors, a sandy yard and the sign "BRIGHT STARS SCHOOL".
+4. A small clinic with a red cross and the sign "CARE CLINIC".
+
+## Batch 20: roadside business
+1. A filling station with 2 pumps, a canopy and the sign "CITY FUEL" (no real brands).
+2. A mechanic workshop: an open shed with a car on blocks, tyres and tools.
+3. A vulcanizer's spot: a tyre pile, a compressor and a small umbrella.
+4. A POS booth: a small table with an umbrella and the sign "POS · TRANSFER · WITHDRAW".
+
+## Batch 21: homes and compounds
+1. A Lagos family compound: a walled courtyard with a single-storey house around it and a gate.
+2. An unfinished building: a concrete frame with exposed rods, blocks stacked in front.
+3. A two-storey "storey building" family house with a balcony and a water tank on the roof.
+4. A salon: a small shop with the sign "GLORY HAIR SALON" and hair posters (no brands).
+
+## Batch 22: utilities and details
+1. A big water tank on a metal stand.
+2. A generator in a small shed with an exhaust pipe.
+3. A telecom mast on a fenced plot.
+4. A "FOR SALE" land sign board on a post, with a space for a phone number (no number written).

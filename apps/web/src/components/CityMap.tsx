@@ -23,7 +23,9 @@ import {
   BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
-  STREET_HALF,
+  FOR_SALE,
+  GRASS,
+  ROUNDABOUT,
   TREES,
   VENUE_SPOTS,
   CX,
@@ -34,7 +36,6 @@ import {
   LAMPS,
   OCEAN_PATH,
   PAVEMENT,
-  STREET_PAVEMENT,
   PARK,
   PILLARS,
   PLACES,
@@ -56,6 +57,8 @@ import { usePanZoom } from "./usePanZoom.js";
 
 const J = { x: CX - 400, y: CY - 300, w: 800, h: 640 };
 
+/** Drawn height of each tree kind (width 120). */
+const TREE_H = { leafy: 140, palm: 165, mango: 125, almond: 128, bush: 40 } as const;
 const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
 /** Street furniture: stalls, shelters, poles and lamps. */
 const STREET_PROPS = [...PROPS, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
@@ -204,7 +207,11 @@ export function CityMap({
   // Home view: the junction plus the ring of player shops around it.
   // Phones get a closer start (the junction and its places), so buildings show instead of the far view.
   const narrow = typeof window !== "undefined" && window.innerWidth < 640;
-  const HOME = narrow ? { x: CX - 430, y: CY - 520, w: 860, h: 1100 } : { x: CX - 680, y: CY - 620, w: 1360, h: 1420 };
+  // A shared link can open the map on an area: ?at=lekki-gardens (district names in lower case with dashes).
+  const at = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("at") : null;
+  const spot = at ? DISTRICTS.find((d) => d.name.toLowerCase().replace(/\s+/g, "-") === at) : undefined;
+  const centre = spot ?? { x: CX, y: CY + 60 };
+  const HOME = narrow ? { x: centre.x - 430, y: centre.y - 580, w: 860, h: 1100 } : { x: centre.x - 680, y: centre.y - 680, w: 1360, h: 1420 };
   const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
 
   // Banners take turns every 15 s. Each turn counts a view for boards actually on screen (close enough to
@@ -247,6 +254,9 @@ export function CityMap({
   }, []);
   const k = pz.view?.k ?? 1;
   const world = pz.view ? `translate(${pz.view.x} ${pz.view.y}) scale(${k})` : undefined;
+  // Only draw what is on screen (with a margin; tall art stands above its foot, so more below).
+  const box = pz.view && ref.current ? { x0: -pz.view.x / k - 350, y0: -pz.view.y / k - 250, x1: (ref.current.clientWidth - pz.view.x) / k + 350, y1: (ref.current.clientHeight - pz.view.y) / k + 650 } : null;
+  const inView = (x: number, y: number) => !box || (x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1);
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
   const far = k < 0.3;
@@ -305,6 +315,39 @@ export function CityMap({
               </g>
               <circle cx="66" cy="52" r="6" fill="#6b4423" stroke="#2a1a0c" strokeWidth="2" />
             </symbol>
+            {/* Mango: a dense, dark round crown on a short trunk */}
+            <symbol id="mango" viewBox="0 0 130 140">
+              <path d="M58 96h12l3 42H55z" fill="#5a3a1c" stroke="#2a1a0c" strokeWidth="3" strokeLinejoin="round" />
+              <g stroke="#14240f" strokeWidth="3">
+                <ellipse cx="65" cy="62" rx="58" ry="46" fill="#1f5e2a" />
+                <ellipse cx="45" cy="50" rx="28" ry="22" fill="#2b7434" />
+                <ellipse cx="82" cy="44" rx="26" ry="20" fill="#2b7434" />
+              </g>
+              <circle cx="52" cy="72" r="5" fill="#e9a23b" />
+              <circle cx="88" cy="70" r="5" fill="#e9a23b" />
+            </symbol>
+            {/* Almond (umbrella) tree: flat tiers of leaves, the Lagos compound shade tree */}
+            <symbol id="almond" viewBox="0 0 140 150">
+              <path d="M66 70h8l2 78H64z" fill="#6b4423" stroke="#2a1a0c" strokeWidth="3" strokeLinejoin="round" />
+              <g stroke="#1d2a14" strokeWidth="3" strokeLinejoin="round">
+                <path d="M8 96q62-26 124 0q-62 16-124 0z" fill="#3f8f3a" />
+                <path d="M22 68q48-22 96 0q-48 14-96 0z" fill="#4fa043" />
+                <path d="M38 42q32-16 64 0q-32 11-64 0z" fill="#62b14f" />
+              </g>
+            </symbol>
+            {/* Bush: a low clump of shrubs */}
+            <symbol id="bush" viewBox="0 0 90 50">
+              <g stroke="#1d2a14" strokeWidth="3">
+                <ellipse cx="26" cy="32" rx="22" ry="16" fill="#2f7a34" />
+                <ellipse cx="62" cy="31" rx="24" ry="17" fill="#2f7a34" />
+                <ellipse cx="44" cy="22" rx="24" ry="17" fill="#3f8f3a" />
+              </g>
+              <circle cx="36" cy="18" r="3" fill="#e2557a" />
+              <circle cx="58" cy="24" r="3" fill="#e2557a" />
+            </symbol>
+            <pattern id="grass-blades" width="24" height="16" patternUnits="userSpaceOnUse">
+              <path d="M4 14l2-8 2 8M14 12l1-7 2 7" fill="none" stroke="#3c7a2e" strokeWidth="1.6" />
+            </pattern>
             <pattern id="waves" width="160" height="56" patternUnits="userSpaceOnUse">
               <path d="M0 28q40-22 80 0t80 0" fill="none" stroke="#9fd3e8" strokeOpacity=".3" strokeWidth="5" />
             </pattern>
@@ -354,6 +397,15 @@ export function CityMap({
                 </g>
               )}
 
+              {/* Grass patches: flat on the ground, under the roads and buildings */}
+              {!far &&
+                GRASS.filter((g) => inView(g.x, g.y)).map((g) => (
+                  <g key={g.key}>
+                    <ellipse cx={g.x} cy={g.y} rx={g.r} ry={g.r / 2} fill="#6fa64a" opacity=".75" />
+                    <ellipse cx={g.x} cy={g.y} rx={g.r} ry={g.r / 2} fill="url(#grass-blades)" />
+                  </g>
+                ))}
+
               {/* Third Mainland Bridge pillars sit in the water under the deck */}
               {PILLARS.map((p) => (
                 <rect key={p.key} x={p.x - 9} y={p.y + HALF - 4} width="18" height="70" rx="4" fill="#8a8f98" stroke="#5d626b" strokeWidth="2" />
@@ -366,24 +418,27 @@ export function CityMap({
                 const roads = ROAD_PATHS.filter((p) => p.kind === "road");
                 const bridges = ROAD_PATHS.filter((p) => p.kind === "bridge");
                 const streets = far ? [] : ROAD_PATHS.filter((p) => p.kind === "street");
+                const alleys = far ? [] : ROAD_PATHS.filter((p) => p.kind === "alley");
                 const line = { fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
                 return (
                   <g aria-hidden="true">
-                    {!far && DRIVEWAYS.map((d, i) => <path key={i} d={`M${d.x0} ${d.y0} L${d.x1} ${d.y1}`} stroke="#9a8f7c" strokeWidth="26" />)}
+                    {!far && DRIVEWAYS.filter((d) => inView(d.x0, d.y0)).map((d, i) => <path key={i} d={`M${d.x0} ${d.y0} L${d.x1} ${d.y1}`} stroke="#9a8f7c" strokeWidth="26" />)}
                     {roads.map((r) => <path key={`pe-${r.id}`} d={r.d} {...line} stroke="#b9a782" strokeWidth={strokeFor(HALF + PAVEMENT) + 5} />)}
                     {roads.map((r) => <path key={`pv-${r.id}`} d={r.d} {...line} stroke="#d6c7a5" strokeWidth={strokeFor(HALF + PAVEMENT)} />)}
-                    {streets.map((r) => <path key={`spv-${r.id}`} d={r.d} {...line} stroke="#cdbd9c" strokeWidth={strokeFor(STREET_HALF + STREET_PAVEMENT)} />)}
-                    {!far && STREET_ENDS.map((p) => <ellipse key={`sec-${p.key}`} cx={p.x} cy={p.y} rx={(STREET_HALF + STREET_PAVEMENT) * 2.2} ry={STREET_HALF + STREET_PAVEMENT + 6} fill="#cdbd9c" />)}
+                    {/* Alleys: packed laterite lanes, no pavement */}
+                    {alleys.map((r) => <path key={`al-${r.id}`} d={r.d} {...line} stroke="#b4895a" strokeWidth={strokeFor(r.half!)} />)}
+                    {streets.map((r) => <path key={`spv-${r.id}`} d={r.d} {...line} stroke="#cdbd9c" strokeWidth={strokeFor(r.half! + r.pav!)} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sec-${p.key}`} cx={p.x} cy={p.y} rx={(p.half + p.pav) * 2.2} ry={p.half + p.pav + 6} fill="#cdbd9c" />)}
                     {roads.map((r) => <path key={`lt-${r.id}`} d={r.d} {...line} stroke="#a8653a" strokeWidth={strokeFor(HALF + 9)} />)}
                     {bridges.map((r) => <path key={`bf-${r.id}`} d={r.d} {...line} stroke="#9aa0a8" strokeWidth={strokeFor(HALF + 14)} strokeLinecap="butt" />)}
                     {/* kerbs: a slightly wider stroke under the asphalt */}
                     {roads.map((r) => <path key={`kb-${r.id}`} d={r.d} {...line} stroke="#e6d6b4" strokeWidth={strokeFor(HALF) + 8} />)}
                     {bridges.map((r) => <path key={`rl-${r.id}`} d={r.d} {...line} stroke="#cfd3d8" strokeWidth={strokeFor(HALF) + 14} strokeLinecap="butt" />)}
-                    {streets.map((r) => <path key={`skb-${r.id}`} d={r.d} {...line} stroke="#d9c9a6" strokeWidth={strokeFor(STREET_HALF) + 6} />)}
-                    {!far && STREET_ENDS.map((p) => <ellipse key={`sek-${p.key}`} cx={p.x} cy={p.y} rx={STREET_HALF * 2.4 + 4} ry={STREET_HALF + 7} fill="#d9c9a6" />)}
+                    {streets.map((r) => <path key={`skb-${r.id}`} d={r.d} {...line} stroke="#d9c9a6" strokeWidth={strokeFor(r.half!) + 6} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sek-${p.key}`} cx={p.x} cy={p.y} rx={p.half * 2.4 + 4} ry={p.half + 7} fill="#d9c9a6" />)}
                     {/* asphalt */}
-                    {streets.map((r) => <path key={`sas-${r.id}`} d={r.d} {...line} stroke="#5c564f" strokeWidth={strokeFor(STREET_HALF)} />)}
-                    {!far && STREET_ENDS.map((p) => <ellipse key={`sea-${p.key}`} cx={p.x} cy={p.y} rx={STREET_HALF * 2.4} ry={STREET_HALF + 4} fill="#5c564f" />)}
+                    {streets.map((r) => <path key={`sas-${r.id}`} d={r.d} {...line} stroke="#5c564f" strokeWidth={strokeFor(r.half!)} />)}
+                    {!far && STREET_ENDS.map((p) => <ellipse key={`sea-${p.key}`} cx={p.x} cy={p.y} rx={p.half * 2.4} ry={p.half + 4} fill="#5c564f" />)}
                     {bridges.map((r) => <path key={`ba-${r.id}`} d={r.d} {...line} stroke="#55504a" strokeWidth={strokeFor(HALF)} strokeLinecap="butt" />)}
                     {roads.map((r) => <path key={`as-${r.id}`} d={r.d} {...line} stroke="var(--map-road)" strokeWidth={strokeFor(HALF)} />)}
                     {/* Lagos dual carriageway: a raised median with black-and-yellow striped kerbs */}
@@ -403,7 +458,7 @@ export function CityMap({
               {/* Street furniture on the far kerbs, under the traffic and walkers passing in front of it */}
               {!far && (
                 <g aria-hidden="true" className="map-scenery">
-                  {BEHIND_PROPS.map((p) => (
+                  {BEHIND_PROPS.filter((p) => inView(p.x, p.y)).map((p) => (
                     <image key={p.key} href={p.art} x={p.box.x} y={p.box.y} width={p.box.w} height={p.box.h} />
                   ))}
                 </g>
@@ -465,7 +520,7 @@ export function CityMap({
 
               {/* District and neighbourhood buildings (decorative until districts open) */}
               <g aria-hidden="true" className="map-scenery">
-                {WORLD_OBJECTS.map((o) =>
+                {WORLD_OBJECTS.filter((o) => inView(o.x, o.y)).map((o) =>
                   o.type === "building" ? (
                     <image key={o.key} href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
                   ) : far ? null : o.type === "prop" ? (
@@ -473,7 +528,11 @@ export function CityMap({
                   ) : (
                     <g key={o.key}>
                       <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
-                      <use href={o.kind === "palm" ? "#palm" : "#tree"} x={o.x - 60} y={o.y - (o.kind === "palm" ? 165 : 140)} width="120" height={o.kind === "palm" ? 170 : 145} />
+                      {o.kind === "bush" ? (
+                        <use href="#bush" x={o.x - 36} y={o.y - 36} width="72" height="40" />
+                      ) : (
+                        <use href={`#${o.kind === "leafy" ? "tree" : o.kind}`} x={o.x - 60} y={o.y - TREE_H[o.kind]} width="120" height={TREE_H[o.kind] + 5} />
+                      )}
                     </g>
                   ),
                 )}
@@ -482,7 +541,16 @@ export function CityMap({
               {/* Junction 101 */}
               <g transform={`translate(${J.x} ${J.y})`}>
                 <ellipse cx="400" cy="300" rx="150" ry="75" fill="var(--map-road)" />
-                <ellipse cx="400" cy="300" rx="78" ry="39" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
+                {/* Centre island: grass, kerb and a fountain (drawn until the Stitch fountain arrives) */}
+                <ellipse cx="400" cy="300" rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
+                {!far && (
+                  <g aria-hidden="true">
+                    <ellipse cx="400" cy="296" rx="44" ry="22" fill="#9aa0a8" stroke="#5d626b" strokeWidth="3" />
+                    <ellipse cx="400" cy="294" rx="36" ry="17" fill="#4fb3d9" />
+                    <path d="M400 292v-46M392 290q-10-26 8-44M408 290q10-26-8-44" fill="none" stroke="#bfe9f7" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="400" cy="244" r="6" fill="#e8f7fc" />
+                  </g>
+                )}
                 {far ? (
                   <g
                     className="hotspot"
@@ -517,6 +585,21 @@ export function CityMap({
                   const v = VENUES_BY_KEY.get(spot.key);
                   return v ? <VenueBuilding key={spot.key} venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> : null;
                 })}
+
+              {/* Land for sale: open plots with permanent ids (cityLayout LAND), a pegged outline and a sign */}
+              {!far &&
+                FOR_SALE.filter((l) => inView(l.x, l.y)).map((l) => (
+                  <g key={l.id} aria-hidden="true">
+                    <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill="rgb(255 255 255 / 10%)" stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
+                    <g transform={`translate(${l.x - l.hh * 0.6} ${l.y + l.hh * 0.2})`}>
+                      <rect x="-2" y="-46" width="5" height="48" fill="#6b4423" />
+                      <rect x="-30" y="-74" width="64" height="30" rx="3" fill="#fff8e1" stroke="#b3261e" strokeWidth="3" />
+                      <text x="2" y="-55" textAnchor="middle" fontSize="11" fontWeight="900" fill="#b3261e">
+                        FOR SALE
+                      </text>
+                    </g>
+                  </g>
+                ))}
 
               {/* Plots: player shops (yours first), then open plots */}
               {!far &&
@@ -583,7 +666,7 @@ export function CityMap({
                 <g aria-hidden="true" className="map-lights" opacity={light.lamps}>
                   {!far &&
                     BILLBOARD_SPOTS.map((spot) => <ellipse key={`bb-${spot.key}`} cx={spot.x} cy={spot.y - 200} rx="220" ry="110" fill="url(#window-glow)" />)}
-                  {LAMPS.map((l) => {
+                  {LAMPS.filter((l) => inView(l.x, l.y)).map((l) => {
                     // The lamp head hangs off its arm, up and to the right of the pole.
                     const box = propBox(LAMP.art, l.x, l.y, LAMP.w);
                     return (
@@ -593,7 +676,7 @@ export function CityMap({
                       </g>
                     );
                   })}
-                  {ALL_SCENERY.map((b) => {
+                  {ALL_SCENERY.filter((b) => inView(b.x, b.y)).map((b) => {
                     const box = buildingBox(b.art, b.x, b.y, b.scale);
                     return <ellipse key={b.key} cx={b.x} cy={box.y + box.h * 0.6} rx={box.w * 0.5} ry={box.h * 0.42} fill="url(#window-glow)" />;
                   })}
@@ -667,7 +750,7 @@ export function CityMap({
                   );
                 })}
                 <g transform={`translate(${J.x} ${J.y})`}>
-                  <g transform={`translate(400 305) scale(${Math.min(districtScale, 6)})`}>
+                  <g transform={`translate(400 ${far ? 305 : 352}) scale(${Math.min(districtScale, 6)})`}>
                     <text textAnchor="middle" fontSize="13" fontWeight="900" fill={INK.yellow} letterSpacing="1.4">
                       JUNCTION 101
                     </text>

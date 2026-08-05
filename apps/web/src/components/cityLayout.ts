@@ -165,27 +165,82 @@ export const PAVEMENT = 34;
 export const STREET_PAVEMENT = 16;
 
 // ── Streets ──
-/**
- * Residential streets: a block grid in each quarter around Junction 101. Each quarter gets one street
- * parallel to Road A (starting at Road B) and one parallel to Road B (starting at Road A); they cross.
- */
+/** Road classes below the arterials: carriageway half-width and pavement width (vertical world units). */
+export const STREET_CLASS = {
+  collector: { half: 34, pav: 18 },
+  local: { half: 24, pav: 14 },
+  alley: { half: 11, pav: 0 },
+} as const;
+export type StreetClass = keyof typeof STREET_CLASS;
+export interface Street extends Segment {
+  cls: StreetClass;
+  half: number;
+  pav: number;
+  /** In iso coordinates: the axis held fixed and its value, and the range of the other one. */
+  fixedAxis: "a" | "b";
+  at: number;
+  lo: number;
+  hi: number;
+}
+/** Walkers' line on a street: the middle of its pavement (alleys: the middle of the lane). */
+const kerbOf = (cls: StreetClass) => (cls === "alley" ? 0 : STREET_CLASS[cls].half + STREET_CLASS[cls].pav / 2);
+
 const QUARTERS = [
   [1, 1],
   [1, -1],
   [-1, 1],
   [-1, -1],
 ] as const;
+/**
+ * Junction 101's neighbourhood streets, the same in each quarter, in positive iso coordinates (u = |a|, v = |b|).
+ * A street keeps one coordinate `fixed` at `at` and runs along the other from `from` to `to`. Collectors leave the
+ * arterials; local streets and an alley leave the collectors and end in turning circles at the neighbourhood edge.
+ */
+interface StreetDef {
+  id: string;
+  fixed: "u" | "v";
+  at: number;
+  from: number;
+  to: number;
+  cls: StreetClass;
+}
 const STREET_AT = 850;
 const STREET_LEN = 1350;
-export const STREETS: Segment[] = QUARTERS.flatMap(([sa, sb]) => {
-  const seg = (id: string, p: { x: number; y: number }, q: { x: number; y: number }): Segment =>
-    p.x < q.x ? { id, x0: p.x, y0: p.y, x1: q.x, y1: q.y } : { id, x0: q.x, y0: q.y, x1: p.x, y1: p.y };
-  return [
-    // Streets start at the main road's kerb (vertical distance from the road = the iso coordinate).
-    seg(`s1${sa}${sb}`, iso(sa * (HALF - 4), sb * STREET_AT), iso(sa * STREET_LEN, sb * STREET_AT)),
-    seg(`s2${sa}${sb}`, iso(sa * STREET_AT, sb * (HALF - 4)), iso(sa * STREET_AT, sb * (STREET_LEN + 0))),
-  ];
-});
+const STREET_DEFS: StreetDef[] = [
+  { id: "c1", fixed: "u", at: STREET_AT, from: 0, to: STREET_LEN, cls: "collector" },
+  { id: "c2", fixed: "v", at: STREET_AT, from: 0, to: STREET_LEN, cls: "collector" },
+  { id: "l1", fixed: "v", at: 430, from: STREET_AT, to: STREET_LEN, cls: "local" },
+  { id: "l2", fixed: "u", at: 430, from: STREET_AT, to: STREET_LEN, cls: "local" },
+  { id: "y1", fixed: "u", at: 1100, from: STREET_AT, to: STREET_LEN, cls: "alley" },
+];
+/** World point of quarter coordinates (u along the fixed/running axes as given). */
+const quarterPt = (sa: number, sb: number, u: number, v: number) => iso(sa * u, sb * v);
+const defPt = (d: StreetDef, sa: number, sb: number, t: number, off = 0) =>
+  d.fixed === "u" ? quarterPt(sa, sb, d.at + off, t) : quarterPt(sa, sb, t, d.at + off);
+
+export const STREETS: Street[] = QUARTERS.flatMap(([sa, sb]) =>
+  STREET_DEFS.map((d) => {
+    // Streets off an arterial start under its asphalt; others start at the centre of the street they leave.
+    const p = defPt(d, sa, sb, d.from === 0 ? HALF - 4 : d.from);
+    const q = defPt(d, sa, sb, d.to);
+    const [a, b] = p.x < q.x ? [p, q] : [q, p];
+    const [sf, sr] = d.fixed === "u" ? [sa, sb] : [sb, sa];
+    const [r0, r1] = [sr * (d.from === 0 ? HALF - 4 : d.from), sr * d.to];
+    return {
+      id: `${d.id}${sa}${sb}`,
+      x0: a.x,
+      y0: a.y,
+      x1: b.x,
+      y1: b.y,
+      cls: d.cls,
+      ...STREET_CLASS[d.cls],
+      fixedAxis: d.fixed === "u" ? "a" : "b",
+      at: sf * d.at,
+      lo: Math.min(r0, r1),
+      hi: Math.max(r0, r1),
+    } satisfies Street;
+  }),
+);
 
 // ── Billboards ──
 /** Billboard spots: on the north kerb of a road, at an x along it. Keys match the `billboards` table. */
@@ -226,9 +281,12 @@ export function groundClear(cx: number, cy: number, hh: number) {
     if (cx + 2 * hh < Math.min(s.x0, s.x1) - 40 || cx - 2 * hh > Math.max(s.x0, s.x1) + 40) return true;
     return Math.abs(cy - yOn(s, cx)) >= hh + HALF + PAVEMENT + 8;
   });
+  const p = toIso(cx, cy);
   const streets = STREETS.every((s) => {
-    if (cx + 2 * hh < s.x0 - 60 || cx - 2 * hh > s.x1 + 60) return true;
-    return Math.abs(cy - yOn(s, cx)) >= hh + STREET_HALF + STREET_PAVEMENT + 6;
+    const [fixed, run] = s.fixedAxis === "a" ? [p.a, p.b] : [p.b, p.a];
+    // Past either end (turning circles reach a little further)
+    if (run + hh < s.lo - 10 || run - hh > s.hi + s.half * 2.4) return true;
+    return Math.abs(fixed - s.at) >= hh + s.half + s.pav + 6;
   });
   // The roundabout, and the billboards' legs and boards
   const roundabout = ((cx - CX) / (150 + 2 * hh + 40)) ** 2 + ((cy - CY) / (75 + hh + 20)) ** 2 > 1;
@@ -363,7 +421,7 @@ export const DISTRICTS: District[] = [
     ...iso(1600, 0),
     phase: 1,
     buildings: ["tech-hub", "phone-shop", "laptop-shop", "cyber-cafe", "polytechnic-gate", "chemist", "shop-house", "commercial-block", "gadget-kiosk", "mixed-use-block"],
-    front: { axis: "a", at: 1600, base: 0, from: 980, to: 2200 },
+    front: { axis: "a", at: 1800, base: 0, from: 1450, to: 2200 },
   },
   {
     name: "Owambe Gardens",
@@ -371,14 +429,14 @@ export const DISTRICTS: District[] = [
     phase: 1,
     open: "ARTISANS · OPEN NOW",
     buildings: ["shop-house", "bungalow", "residential-block", "chemist"],
-    front: { axis: "b", at: -1600, base: 0, from: -980, to: -2250 },
+    front: { axis: "b", at: -1700, base: 0, from: -1450, to: -2250 },
   },
   {
     name: "Danfo Terminal",
     ...iso(-1800, 0),
     phase: 2,
     buildings: ["bus-terminal", "face-me-block", "shop-house", "buka", "mixed-use-block", "suya-stand", "bungalow"],
-    front: { axis: "a", at: -1800, base: 0, from: -980, to: -2600 },
+    front: { axis: "a", at: -1900, base: 0, from: -1450, to: -2600 },
   },
   {
     name: "Apapa Port",
@@ -392,7 +450,7 @@ export const DISTRICTS: District[] = [
     ...iso(0, 1600),
     phase: 4,
     buildings: ["airport-terminal", "control-tower", "warehouse", "commercial-block", "mixed-use-block"],
-    front: { axis: "b", at: 1600, base: 0, from: 980, to: 2600 },
+    front: { axis: "b", at: 1800, base: 0, from: 1450, to: 2600 },
   },
   {
     name: "Marina Wharf",
@@ -420,8 +478,6 @@ export const DISTRICTS: District[] = [
       "car-showroom",
       "gym",
       "restaurant-terrace",
-      "residential-tower",
-      "bank-eko-trust",
     ],
     front: { axis: "a", at: 3700, base: ISLAND_B, from: 2600, to: 4700 },
   },
@@ -431,7 +487,7 @@ export const DISTRICTS: District[] = [
     y: island(7900),
     phase: 4,
     buildings: ["estate-gate", "crazy-house", "villa", "terrace-duplex", "villa", "terrace-duplex", "restaurant-terrace", "residential-tower"],
-    front: { axis: "a", at: 5500, base: ISLAND_B, from: 4850, to: 6700 },
+    front: { axis: "a", at: 5500, base: ISLAND_B, from: 4850, to: 7050 },
   },
   { name: "Atlantic Beach", x: 7000, y: island(7000) + ISLAND_S - 160, phase: 4, buildings: [], landmark: true },
 ];
@@ -509,42 +565,168 @@ const JETTY: Building = (() => {
 
 const DISTRICT_SCENERY = DISTRICTS.filter((d) => d.front).flatMap((d) => settle(d, d.buildings, d.name));
 
-// ── Neighbourhood streets ──
-const HOUSE_ART = ["bungalow", "residential-block", "face-me-block", "shop-house", "bungalow", "mixed-use-block"];
+// ── Neighbourhood generator ──
+// Junction 101 is built like a mixed Mainland neighbourhood (Yaba, Surulere, Mushin): plots line every street, shops
+// crowd the busy frontages and corners, compounds and flats sit behind them. Choices come from a seeded random
+// number per plot, so the city is the same on every visit and each plot keeps its id for ownership later.
 
-/** Houses on both sides of every street, each with a driveway to the street; trees between them. */
-const STREET_LOTS = (() => {
+/** Deterministic random in [0, 1) from a string (FNV-1a hash into a mulberry32 step). */
+export function seeded(key: string) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  let t = (h += 0x6d2b79f5);
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+const pick = <T,>(r: number, weighted: [T, number][]) => {
+  const total = weighted.reduce((n, [, w]) => n + w, 0);
+  let x = r * total;
+  for (const [v, w] of weighted) if ((x -= w) < 0) return v;
+  return weighted[weighted.length - 1]![0];
+};
+
+/**
+ * Neighbourhood presets (game weights, not census figures). Densities follow the Lagos planning ranges the owner
+ * shared: people and buildings per km² are kept for the economy and NPC counts; the map itself is drawn at game scale.
+ */
+export const PRESETS = {
+  mainland: {
+    label: "Mixed Mainland (Yaba, Surulere, Mushin)",
+    peoplePerKm2: 30000,
+    buildingsPerKm2: 2500,
+    /** Share of plots that are shops before the location multipliers below. */
+    commercial: 0.24,
+    /** Share of plots kept as open land for sale. */
+    forSale: 0.08,
+    green: 0.16,
+    plotHalf: 54,
+    walkers: 30,
+  },
+  premium: { label: "Lekki / Ikoyi", peoplePerKm2: 10500, buildingsPerKm2: 1100, commercial: 0.05, forSale: 0.3, green: 0.55, plotHalf: 80, walkers: 8 },
+  cbd: { label: "Victoria Island", peoplePerKm2: 8000, buildingsPerKm2: 600, commercial: 0.6, forSale: 0.2, green: 0.3, plotHalf: 80, walkers: 16 },
+} as const;
+/** Commercial pull of a location (owner's guide: quiet road 0.4×, corner 1.5×, collector 2×, junction 3×, bus stop 3.5×). */
+const PULL: Record<StreetClass | "arterial", number> = { arterial: 2.4, collector: 2, local: 0.4, alley: 0.3 };
+
+const MAINLAND_SHOPS: [string, number][] = [
+  ["shop-house", 5],
+  ["phone-shop", 2],
+  ["chemist", 2],
+  ["buka", 2],
+  ["gadget-kiosk", 2],
+  ["mixed-use-block", 2],
+  ["laptop-shop", 1],
+  ["cyber-cafe", 1],
+  ["tailor-shop", 1],
+  ["barbershop", 1],
+  ["suya-stand", 1],
+];
+const MAINLAND_HOMES: [string, number][] = [
+  ["face-me-block", 30],
+  ["bungalow", 22],
+  ["residential-block", 20],
+  ["mixed-use-block", 10],
+  ["shop-house", 6],
+  ["terrace-duplex", 2],
+];
+
+/** A plot of land with a permanent id: built on, or open land for sale. */
+export interface LandPlot {
+  id: string;
+  /** Plot centre. */
+  x: number;
+  y: number;
+  hh: number;
+  area: string;
+  use: "shop" | "home" | "for-sale";
+  /** Frontage road class (what pulls customers). */
+  road: StreetClass | "arterial";
+}
+export const LAND: LandPlot[] = [];
+/** Open plots for sale: a dashed outline and a small sign. */
+export const FOR_SALE: LandPlot[] = [];
+
+const NEIGHBOURHOOD = (() => {
+  const P = PRESETS.mainland;
   const houses: Building[] = [];
   const driveways: { x0: number; y0: number; x1: number; y1: number }[] = [];
-  const trees: { x: number; y: number; kind: "leafy" | "palm"; key: string }[] = [];
-  let n = 0;
-  for (const [sa, sb] of QUARTERS) {
-    for (const which of [1, 2] as const) {
-      for (let t = 280; t <= STREET_LEN - 120; t += 330) {
-        for (const side of [1, -1] as const) {
-          const off = side * 210;
-          const along = (tt: number, o: number) => (which === 1 ? iso(sa * tt, sb * STREET_AT + o) : iso(sa * STREET_AT + o, sb * tt));
-          const centre = which === 1 ? { a: sa * t, b: sb * STREET_AT + off } : { a: sa * STREET_AT + off, b: sb * t };
-          const c = iso(centre.a, centre.b);
-          if (!onLand(c.x, c.y + 60) || !claim(c.x, c.y, 60)) continue;
-          houses.push({ art: `/art/buildings/${HOUSE_ART[n % HOUSE_ART.length]}.webp`, ...footAt(centre.a, centre.b), key: `house-${n}`, scale: 1 });
-          // Houses above the street on screen get a driveway from their door; houses below it have the
-          // driveway beside them, so the building doesn't hide it.
-          const farSide = (which === 1 ? off : -off) > 0;
-          const dt = farSide ? 0 : 135;
-          const from = along(t + dt, off);
-          const to = along(t + dt, side * STREET_HALF);
-          driveways.push({ x0: from.x, y0: from.y, x1: to.x, y1: to.y });
-          const tree = along(t + 165, side * 250);
-          if (onLand(tree.x, tree.y) && claim(tree.x, tree.y, 16, 6)) trees.push({ ...tree, kind: n % 3 === 0 ? "palm" : "leafy", key: `tree-${n}` });
+  // Lines plots front onto, in quarter coordinates, busiest first: the arterials, then the streets.
+  type Line = { id: string; fixed: "u" | "v"; at: number; from: number; to: number; cls: StreetClass | "arterial"; clear: number };
+  const lines: Line[] = [
+    { id: "A", fixed: "v", at: 0, from: ZEBRA_AT + 40, to: STREET_LEN, cls: "arterial", clear: HALF + PAVEMENT + 8 },
+    { id: "B", fixed: "u", at: 0, from: ZEBRA_AT + 40, to: STREET_LEN, cls: "arterial", clear: HALF + PAVEMENT + 8 },
+    ...STREET_DEFS.map((d) => ({ ...d, clear: STREET_CLASS[d.cls].half + STREET_CLASS[d.cls].pav + 6 })),
+  ];
+  const crossings = (l: Line) => lines.filter((o) => o.fixed !== l.fixed && o.at > 0).map((o) => o.at);
+  for (const [sa, sb] of QUARTERS)
+    for (const l of lines)
+      for (const side of l.at === 0 ? [1] : ([1, -1] as const)) {
+        let n = 0;
+        for (let t = l.from + 60; t <= l.to - 40; t += 24) {
+          const id = `j101-${sa > 0 ? "e" : "w"}${sb > 0 ? "n" : "s"}-${l.id}${side > 0 ? "+" : "-"}${n}`;
+          const r = seeded(id);
+          const corner = crossings(l).some((c) => Math.abs(c - t) < P.plotHalf * 2 + 60);
+          const nearJunction = l.cls === "arterial" && t < 700;
+          const pull = PULL[l.cls] * (corner ? 1.5 : 1) * (nearJunction ? 1.25 : 1);
+          const shop = r < Math.min(0.9, P.commercial * pull);
+          const hh = shop ? P.plotHalf - 4 : P.plotHalf;
+          const off = l.at + side * (l.clear + hh + 2);
+          const [u, v] = l.fixed === "v" ? [t, off] : [off, t];
+          if (u < 0 || v < 0) continue;
+          const c = quarterPt(sa, sb, u, v);
+          if (!onLand(c.x, c.y + hh) || !claim(c.x, c.y, hh, 10)) continue;
           n++;
+          t += hh * 2 - 14;
+          const forSale = seeded(id + ":land") < P.forSale;
+          const plot: LandPlot = { id, x: c.x, y: c.y, hh, area: "Junction 101", use: forSale ? "for-sale" : shop ? "shop" : "home", road: l.cls };
+          LAND.push(plot);
+          if (forSale) {
+            FOR_SALE.push(plot);
+            continue;
+          }
+          const art = pick(seeded(id + ":art"), shop ? MAINLAND_SHOPS : MAINLAND_HOMES);
+          const scale = (hh * 4) / BASE;
+          houses.push({ art: `/art/buildings/${art}.webp`, x: c.x, y: c.y + siteOf(scale).lift, key: id, scale });
+          // Homes off the quieter streets get a driveway from the street to the plot.
+          if (!shop && l.cls !== "arterial" && l.cls !== "alley") {
+            const p0 = l.fixed === "v" ? quarterPt(sa, sb, t, l.at + side * STREET_CLASS[l.cls].half) : quarterPt(sa, sb, l.at + side * STREET_CLASS[l.cls].half, t);
+            const along = l.fixed === "v" ? quarterPt(sa, sb, t, off - side * hh) : quarterPt(sa, sb, off - side * hh, t);
+            driveways.push({ x0: p0.x, y0: p0.y, x1: along.x, y1: along.y });
+          }
         }
       }
-    }
-  }
-  return { houses, driveways, trees };
+  return { houses, driveways };
 })();
-export const DRIVEWAYS = STREET_LOTS.driveways;
+export const DRIVEWAYS = NEIGHBOURHOOD.driveways;
+
+/** Districts keep some frontage open for sale too: more in the nice areas. */
+const DISTRICT_LAND_SHARE: Record<string, number> = {
+  "Lekki Gardens": 0.3,
+  "Island Heights": 0.2,
+  "Marina Wharf": 0.12,
+  "Tech Mile": 0.15,
+  "Airport Ridge": 0.12,
+  "Owambe Gardens": 0.1,
+  "Danfo Terminal": 0.06,
+  "Apapa Port": 0.08,
+};
+for (const d of DISTRICTS.filter((dd) => dd.front)) {
+  const share = DISTRICT_LAND_SHARE[d.name] ?? 0.1;
+  const scale = d.name === "Lekki Gardens" || d.name === "Island Heights" ? 1.35 : 1.05;
+  const hh = siteOf(scale).hh;
+  const want = Math.max(Math.round((d.buildings.length * share) / (1 - share)), share >= 0.2 ? 6 : 2);
+  let k = 0;
+  for (const s of frontage(d)) {
+    if (k >= want) break;
+    const c = iso(s.a, s.b);
+    if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh)) continue;
+    const plot: LandPlot = { id: `${d.name.toLowerCase().replace(/\s+/g, "-")}-land-${k}`, x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
+    LAND.push(plot);
+    FOR_SALE.push(plot);
+    k++;
+  }
+}
 
 // ── Street furniture ──
 export interface Prop {
@@ -647,11 +829,19 @@ export const LAMPS = ROADS.filter((r) => !r.flyover).flatMap((s) => {
   return out;
 });
 
+/** The roundabout: asphalt ring, centre island (with the fountain) and the lane vehicles drive round anticlockwise. */
+export const ROUNDABOUT = { rx: 150, ry: 75, island: { rx: 78, ry: 39 }, lane: { rx: 114, ry: 57 } };
+// Lamps on the four corners of the junction, lighting the roundabout and the zebras
+for (const [sa, sb] of QUARTERS) {
+  const c = iso(sa * 100, sb * 100);
+  LAMPS.push({ x: c.x, y: c.y, key: `j101-${sa}${sb}`, behind: c.y < CY });
+}
+
 /** Palms along the Island road (Lekki feel) and trees around the districts. */
 const EXTRA_TREES = [
   ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
     const y = island(x) + (i % 2 ? 150 : -150);
-    return onIsland(x, y) && claim(x, y, 16, 6) ? [{ x, y, kind: "palm" as const, key: `isle-${i}` }] : [];
+    return onIsland(x, y) && claim(x, y, 16, 6) ? [{ x, y, kind: "palm" as TreeKind, key: `isle-${i}` }] : [];
   }),
   ...DISTRICTS.flatMap((d, i) =>
     [
@@ -660,20 +850,54 @@ const EXTRA_TREES = [
       { x: d.x + 140, y: d.y - 420 },
     ]
       .filter((p) => onLand(p.x, p.y) && claim(p.x, p.y, 16, 6))
-      .map((p, j) => ({ ...p, kind: (i + j) % 2 ? ("palm" as const) : ("leafy" as const), key: `dt-${i}-${j}` })),
+      .map((p, j) => ({ ...p, kind: (i + j) % 2 ? ("palm" as TreeKind) : ("leafy" as TreeKind), key: `dt-${i}-${j}` })),
   ),
 ];
-export const TREES = [...STREET_LOTS.trees, ...EXTRA_TREES].sort((a, b) => a.y - b.y);
+// ── Green: trees, bushes and grass ──
+// Lagos ground is mostly laterite, with green where people plant it: almond and mango trees shading compounds,
+// palms along the Island, hedges and lawns in the estates. Each area has its own share of green.
+export type TreeKind = "leafy" | "palm" | "mango" | "almond" | "bush";
+const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: number; green: number }[] = [
+  { name: "j101", a0: -1400, a1: 1400, b0: -1400, b1: 1400, green: PRESETS.mainland.green },
+  ...DISTRICTS.filter((d) => d.front).map((d) => {
+    const f = d.front!;
+    const [lo, hi] = [Math.min(f.from, f.to) - 150, Math.max(f.from, f.to) + 150];
+    const green = { "Lekki Gardens": 0.6, "Island Heights": 0.32, "Airport Ridge": 0.3, "Owambe Gardens": 0.25, "Tech Mile": 0.15, "Marina Wharf": 0.1, "Danfo Terminal": 0.06, "Apapa Port": 0.04 }[d.name] ?? 0.15;
+    return f.axis === "a" ? { name: d.name, a0: lo, a1: hi, b0: f.base - 950, b1: f.base + 950, green } : { name: d.name, a0: -950, a1: 950, b0: lo, b1: hi, green };
+  }),
+];
+/** Grass patches: flat on the ground, under everything. */
+export const GRASS: { x: number; y: number; r: number; key: string }[] = [];
+const SCATTER = GREEN_AREAS.flatMap((g) => {
+  const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
+  const premium = g.green >= 0.3;
+  for (let a = g.a0; a <= g.a1; a += 85)
+    for (let b = g.b0; b <= g.b1; b += 85) {
+      const key = `${g.name}:${a}:${b}`;
+      const r = seeded(key);
+      if (r > g.green) continue;
+      const c = iso(a + (seeded(key + "x") - 0.5) * 50, b + (seeded(key + "y") - 0.5) * 50);
+      if (!onLand(c.x, c.y)) continue;
+      const kind = pick<TreeKind | "grass">(seeded(key + "k"), premium ? [["grass", 4], ["bush", 3], ["palm", 2], ["almond", 2], ["mango", 1]] : [["grass", 3], ["bush", 2], ["almond", 2], ["mango", 2], ["leafy", 1], ["palm", 1]]);
+      if (kind === "grass") {
+        const p = patchAt(c.x, c.y, 26);
+        if (groundClear(c.x, c.y, 26) && !TAKEN.some((q) => overlaps(p, q, 0))) GRASS.push({ x: c.x, y: c.y, r: 34 + seeded(key + "r") * 30, key });
+        continue;
+      }
+      if (claim(c.x, c.y, kind === "bush" ? 12 : 16, 4)) out.push({ ...c, kind, key });
+    }
+  return out;
+});
+export const TREES = [...EXTRA_TREES, ...SCATTER].sort((a, b) => a.y - b.y);
 
-export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY, JETTY, ...STREET_LOTS.houses].sort((a, b) => a.y - b.y);
+export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY, JETTY, ...NEIGHBOURHOOD.houses].sort((a, b) => a.y - b.y);
 
 /** Every placed building and plot, for the layout check (scripts/check-clearance.ts). */
-export const PLACED = { scenery: ALL_SCENERY, venues: VENUE_SPOTS, plots: PLOTS, plotHalf: PLOT_HH, props: PROPS, trees: TREES, plotCentre };
+export const PLACED = { scenery: ALL_SCENERY, venues: VENUE_SPOTS, plots: PLOTS, plotHalf: PLOT_HH, props: PROPS, trees: TREES, land: LAND, plotCentre };
 
 // ── Footpaths ──
 /** Walkers keep to the middle of the pavement: this far (vertically) from a road's centre line. */
 export const KERB = HALF + PAVEMENT / 2;
-const STREET_KERB = STREET_HALF + STREET_PAVEMENT / 2;
 export interface Zebra {
   x0: number;
   y0: number;
@@ -684,8 +908,9 @@ export interface Zebra {
 }
 
 /**
- * The footpath network around Junction 101: both pavements of each arm, round the corners, across the
- * zebras, and up and down both pavements of every side street. Nodes are world points; edges join them.
+ * The footpath network around Junction 101: both pavements of each arm, round the corners, across the zebras,
+ * along both pavements of every collector and local street, and down the middle of the alleys. Nodes are world
+ * points; edges join them. Pavements meet where streets cross, so walkers can turn there.
  */
 export const FOOTPATHS = (() => {
   const nodes: { x: number; y: number }[] = [];
@@ -708,16 +933,17 @@ export const FOOTPATHS = (() => {
     const [p, q] = along === "a" ? [iso(pos, fromOther), iso(pos, toOther)] : [iso(fromOther, pos), iso(toOther, pos)];
     zebras.push({ x0: p.x, y0: p.y, x1: q.x, y1: q.y, w });
   };
-  const S = STREET_AT;
-  const SK = STREET_KERB;
+  // Streets leaving the arterials (their mouths interrupt the arterial pavements)
+  const mouthsU = STREET_DEFS.filter((d) => d.from === 0 && d.fixed === "u");
+  const mouthsV = STREET_DEFS.filter((d) => d.from === 0 && d.fixed === "v");
+  const stopsAround = (defs: StreetDef[]) => defs.flatMap((d) => [d.at - kerbOf(d.cls), d.at + kerbOf(d.cls)]);
   for (const s of [1, -1] as const) {
     for (const side of [1, -1] as const) {
-      // Main road pavements, stopping either side of each street mouth
-      const stops = [ZEBRA_AT, S - SK, S + SK, WALK_FAR].map((t) => s * t);
-      chain(stops.map((t) => [t, side * KERB]));
-      chain(stops.map((t) => [side * KERB, t]));
+      // Road A pavements (b = ±KERB) stop either side of the streets leaving Road A, and the same for Road B
+      chain([ZEBRA_AT, ...stopsAround(mouthsU), WALK_FAR].sort((p, q) => p - q).map((t) => [s * t, side * KERB]));
+      chain([ZEBRA_AT, ...stopsAround(mouthsV), WALK_FAR].sort((p, q) => p - q).map((t) => [side * KERB, s * t]));
     }
-    // Zebras at the junction (Road A at a = ±ZEBRA_AT, Road B at b = ±ZEBRA_AT) and at the far ends
+    // Zebras at the junction and at the far ends of the arms
     for (const at of [ZEBRA_AT, WALK_FAR]) {
       chain([
         [s * at, -KERB],
@@ -740,33 +966,45 @@ export const FOOTPATHS = (() => {
       [sa * KERB, sb * C],
       [sa * KERB, sb * ZEBRA_AT],
     ]);
-  // Side streets: both pavements, crossing at each street mouth and where the quarter's two streets cross
+  // Streets: pavement chains on both sides (alleys: one chain down the middle), stopping at every crossing street
   for (const [sa, sb] of QUARTERS) {
-    for (const o of [-SK, SK]) {
-      // s2: runs along b at a = sa*S; its pavements at a = sa*(S±SK)
-      chain(([KERB, S - SK, S + SK, STREET_LEN - 20] as const).map((t) => [sa * (S + o), sb * t]));
-      // s1: runs along a at b = sb*S
-      chain(([KERB, S - SK, S + SK, STREET_LEN - 20] as const).map((t) => [sa * t, sb * (S + o)]));
-    }
-    // Across each street at its far end (round the turning circle)
-    chain([
-      [sa * (S - SK), sb * (STREET_LEN - 20)],
-      [sa * (S + SK), sb * (STREET_LEN - 20)],
-    ]);
-    chain([
-      [sa * (STREET_LEN - 20), sb * (S - SK)],
-      [sa * (STREET_LEN - 20), sb * (S + SK)],
-    ]);
-    // Zebras: across each street mouth (on the main pavement line) and on all four sides of the street crossing
-    zebra("b", sb * KERB, sa * (S - STREET_HALF), sa * (S + STREET_HALF), 16);
-    zebra("a", sa * KERB, sb * (S - STREET_HALF), sb * (S + STREET_HALF), 16);
-    for (const o of [-SK, SK]) {
-      zebra("a", sa * (S + o), sb * (S - STREET_HALF), sb * (S + STREET_HALF), 14);
-      zebra("b", sb * (S + o), sa * (S - STREET_HALF), sa * (S + STREET_HALF), 14);
+    const pt = (d: StreetDef, off: number, t: number): [number, number] => (d.fixed === "u" ? [sa * (d.at + off), sb * t] : [sa * t, sb * (d.at + off)]);
+    for (const d of STREET_DEFS) {
+      const k = kerbOf(d.cls);
+      const start = d.from === 0 ? KERB : d.from + kerbOf(STREET_DEFS.find((x) => x.fixed !== d.fixed && x.at === d.from)!.cls);
+      const end = d.to - 20;
+      const crossing = STREET_DEFS.filter((x) => x.fixed !== d.fixed && x.at > start && x.at < end && d.at >= x.from && d.at <= x.to);
+      const stops = [start, ...crossing.flatMap((x) => (x.cls === "alley" ? [x.at] : [x.at - kerbOf(x.cls), x.at + kerbOf(x.cls)])), end].sort((p, q) => p - q);
+      for (const off of d.cls === "alley" ? [0] : [-k, k]) chain(stops.map((t) => pt(d, off, t)));
+      if (d.cls !== "alley") {
+        // Round the turning circle at the end
+        chain([pt(d, -k, end), pt(d, k, end)]);
+        // Zebra across the mouth, along the pavement line of the road it leaves
+        const from = d.from === 0 ? KERB : start;
+        const [lo, hi] = [d.at - STREET_CLASS[d.cls].half, d.at + STREET_CLASS[d.cls].half];
+        if (d.fixed === "u") zebra("b", sb * from, sa * lo, sa * hi, d.cls === "collector" ? 18 : 14);
+        else zebra("a", sa * from, sb * lo, sb * hi, d.cls === "collector" ? 18 : 14);
+        // Where a street crosses this one right through, zebras across this street on both sides of the crossing
+        for (const x of crossing.filter((xx) => xx.cls !== "alley" && xx.from < d.at))
+          for (const pos of [x.at - kerbOf(x.cls), x.at + kerbOf(x.cls)]) {
+            const [p0, p1] = [d.at - STREET_CLASS[d.cls].half, d.at + STREET_CLASS[d.cls].half];
+            if (d.fixed === "u") zebra("b", sb * pos, sa * p0, sa * p1, 14);
+            else zebra("a", sa * pos, sb * p0, sb * p1, 14);
+          }
+        // Streets that start at this one (T-junctions) get a crossing over this street too
+        for (const x of STREET_DEFS.filter((xx) => xx.fixed !== d.fixed && xx.from === d.at && xx.cls !== "alley")) {
+          chain([pt(d, -k, x.at + kerbOf(x.cls)), pt(d, k, x.at + kerbOf(x.cls))]);
+          const [p0, p1] = [d.at - STREET_CLASS[d.cls].half, d.at + STREET_CLASS[d.cls].half];
+          const pos = x.at + kerbOf(x.cls);
+          if (d.fixed === "u") zebra("b", sb * pos, sa * p0, sa * p1, 14);
+          else zebra("a", sa * pos, sb * p0, sb * p1, 14);
+        }
+      }
     }
   }
   const links: number[][] = nodes.map(() => []);
   for (const [p, q] of edges) {
+    if (p === q) continue;
     if (!links[p]!.includes(q)) links[p]!.push(q);
     if (!links[q]!.includes(p)) links[q]!.push(p);
   }
@@ -862,13 +1100,13 @@ export const bandPath = (s: Segment, half = HALF) =>
 export const kerbPath = (s: Segment, off: number) => `M${s.x0} ${s.y0 + off} L${s.x1} ${s.y1 + off}`;
 export const centrePath = (s: Segment) => `M${s.x0} ${s.y0} L${s.x1} ${s.y1}`;
 
-/** Street ends away from the main roads: small turning circles. */
-export const STREET_ENDS = STREETS.map((st) => {
+/** Street ends away from the main roads: turning circles sized to the street (alleys just stop). */
+export const STREET_ENDS = STREETS.filter((st) => st.cls !== "alley").map((st) => {
   const far = [
     { x: st.x0, y: st.y0 },
     { x: st.x1, y: st.y1 },
   ].sort((a, b) => Math.hypot(b.x - CX, b.y - CY) - Math.hypot(a.x - CX, a.y - CY))[0]!;
-  return { ...far, key: st.id };
+  return { ...far, key: st.id, half: st.half, pav: st.pav };
 });
 
 // ── Road drawing paths ──
@@ -884,7 +1122,10 @@ const back = (c: { x: number; y: number }, dir: { x: number; y: number }, r: num
 export interface RoadPath {
   id: string;
   d: string;
-  kind: "road" | "bridge" | "street";
+  kind: "road" | "bridge" | "street" | "alley";
+  /** Streets: carriageway half-width and pavement width. */
+  half?: number;
+  pav?: number;
 }
 
 export const ROAD_PATHS: RoadPath[] = (() => {
@@ -909,6 +1150,6 @@ export const ROAD_PATHS: RoadPath[] = (() => {
     { id: "eko-ramp", kind: "road", d: `M${P(inB.x, inB.y)} Q${P(fork.x, fork.y)} ${P(outEko.x, outEko.y)}` },
     { id: "eko", kind: "bridge", d: `M${P(outEko.x, outEko.y)} L${P(eko.x1, eko.y1)}` },
     { id: "island", kind: "road", d: `M${P(isl.x0, isl.y0)} L${P(isl.x1, isl.y1)}` },
-    ...STREETS.map((s): RoadPath => ({ id: s.id, kind: "street", d: `M${P(s.x0, s.y0)} L${P(s.x1, s.y1)}` })),
+    ...STREETS.map((s): RoadPath => ({ id: s.id, kind: s.cls === "alley" ? "alley" : "street", d: `M${P(s.x0, s.y0)} L${P(s.x1, s.y1)}`, half: s.half, pav: s.pav })),
   ];
 })();

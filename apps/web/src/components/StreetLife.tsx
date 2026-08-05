@@ -1,65 +1,199 @@
 // Moving life on the map: danfos, cars, BRT buses, okadas and kekes on the roads; people on the pavements.
-// Traffic is SMIL animation (no React re-renders). Walkers follow the footpath network (cityLayout FOOTPATHS):
-// they keep to the pavements, turn at corners and cross only at zebras, moved by one animation loop that sets
-// attributes directly, so React still doesn't re-render while they walk.
+// Vehicles drive their lanes and go round the Junction 101 roundabout; walkers follow the footpath network
+// (cityLayout FOOTPATHS): pavements, corners and zebras. Both are moved by animation loops that set attributes
+// directly, so React doesn't re-render while things move.
 // Art: Stitch exports 9 and 11 (public/art/life, provenance in *.json sidecars); walkers from the 3D bodies.
 import { useEffect, useRef, useState } from "react";
 import { ART_SIZE } from "./artSizes.js";
-import { FOOTPATHS, HALF, flyHeight, yOn, type Segment } from "./cityLayout.js";
+import { CX, CY, FOOTPATHS, PRESETS, HALF, ROUNDABOUT, flyHeight, yOn, type Segment } from "./cityLayout.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, walkerSize, type WalkDir } from "./walkers.js";
 
-/** A vehicle's route along a road; flyovers rise and fall, so they get several points. */
-function roadPath(s: Segment, x0: number, x1: number, lane: number) {
-  if (!s.flyover) return `M${x0} ${yOn(s, x0) + lane} L${x1} ${yOn(s, x1) + lane}`;
-  const N = 12;
-  return Array.from({ length: N + 1 }, (_, i) => {
-    const x = x0 + ((x1 - x0) * i) / N;
-    return `${i ? "L" : "M"}${x} ${yOn(s, x) + lane - flyHeight(s, x)}`;
-  }).join(" ");
-}
-
-interface Props {
-  roads: Segment[];
-}
-
-type Sprite = { href: string; w: number; h: number; mirror: boolean };
-/** A vehicle sprite `w` world units wide; `mirror` flips it to face the other way (SE ↔ SW, NE ↔ NW). */
-const V = (name: string, w: number, mirror = false): Sprite => {
+type View = { href: string; w: number; h: number; mirror: boolean };
+/** A vehicle view `w` world units wide; `mirror` flips it to face the other way (SE ↔ SW, NE ↔ NW). */
+const V = (name: string, w: number, mirror = false): View => {
   const href = `/art/life/${name}.webp`;
   const [pw, ph] = ART_SIZE[href] ?? [w, w];
   return { href, w, h: (w * ph) / pw, mirror };
 };
 /**
- * What drives each way on screen. The art has front views (driving down the screen) for everything, but back
- * views (driving up it) only for danfos, BRT buses, okadas and kekes, so cars only drive down the screen.
+ * Each vehicle's views by heading. Danfos, BRT buses, okadas and kekes have front and back art, so they can go
+ * any way (round the roundabout too); cars only have front views, so they only drive down the screen.
  */
-const POOL: Record<WalkDir, Sprite[]> = {
-  se: [V("danfo-se", 104), V("car-taxi", 98, true), V("okada-se", 49), V("car-saloon", 100, true), V("danfo-se", 104), V("keke-se", 57), V("car-suv-black", 94, true), V("brt-sw", 176, true), V("car-suv-white", 96, true)],
-  sw: [V("danfo-se", 104, true), V("car-taxi", 98), V("okada-sw", 50), V("car-saloon", 100), V("keke-sw", 57), V("brt-sw", 176), V("car-suv-black", 94), V("danfo-se", 104, true), V("car-suv-white", 96)],
-  ne: [V("danfo-nw", 104, true), V("okada-ne", 50), V("brt-ne", 176), V("keke-ne", 58), V("danfo-nw", 104, true)],
-  nw: [V("danfo-nw", 104), V("okada-ne", 50, true), V("keke-ne", 58, true), V("danfo-nw", 104), V("brt-ne", 176, true)],
+const KINDS: Record<string, Partial<Record<WalkDir, View>>> = {
+  danfo: { se: V("danfo-se", 104), sw: V("danfo-se", 104, true), nw: V("danfo-nw", 104), ne: V("danfo-nw", 104, true) },
+  okada: { se: V("okada-se", 49), sw: V("okada-sw", 50), ne: V("okada-ne", 50), nw: V("okada-ne", 50, true) },
+  keke: { se: V("keke-se", 57), sw: V("keke-sw", 57), ne: V("keke-ne", 58), nw: V("keke-ne", 58, true) },
+  brt: { sw: V("brt-sw", 176), se: V("brt-sw", 176, true), ne: V("brt-ne", 176), nw: V("brt-ne", 176, true) },
+  taxi: { sw: V("car-taxi", 98), se: V("car-taxi", 98, true) },
+  saloon: { sw: V("car-saloon", 100), se: V("car-saloon", 100, true) },
+  suvBlack: { sw: V("car-suv-black", 94), se: V("car-suv-black", 94, true) },
+  suvWhite: { sw: V("car-suv-white", 96), se: V("car-suv-white", 96, true) },
 };
+const ANY_WAY = ["danfo", "okada", "danfo", "keke", "brt", "danfo", "okada", "keke"];
+const CARS = ["taxi", "saloon", "suvBlack", "taxi", "suvWhite"];
+
+type Pt = { x: number; y: number };
 /** World-x to drop from each end of a road's traffic route (the Tech Mile / bridge corner is a curve). */
 const CORNER_TRIM: Record<string, { lo: number; hi: number }> = { a: { lo: 0, hi: 170 }, bridge: { lo: 0, hi: 170 } };
 
-function trafficFor(s: Segment, r: number) {
-  const downRight = (s.y1 - s.y0) / (s.x1 - s.x0) > 0;
-  const length = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
-  const n = Math.max(2, Math.round(length / 950));
-  return [true, false].flatMap((east) =>
-    Array.from({ length: n }, (_, i) => {
-      const dir: WalkDir = downRight ? (east ? "se" : "nw") : east ? "ne" : "sw";
-      const pool = POOL[dir];
-      const sprite = pool[(i * 3 + r + (east ? 0 : 2)) % pool.length]!;
-      // One speed per lane, so nothing drives through the vehicle in front.
-      return { seg: s, east, sprite, speed: east ? 150 : 138, offset: (i + (east ? 0 : 0.5)) / n };
+/** Points along a road lane from x0 to x1 (flyovers rise and fall, so they get several points). */
+function lanePoints(s: Segment, x0: number, x1: number, lane: number): Pt[] {
+  const N = s.flyover ? 12 : 1;
+  return Array.from({ length: N + 1 }, (_, i) => {
+    const x = x0 + ((x1 - x0) * i) / N;
+    return { x, y: yOn(s, x) + lane - flyHeight(s, x) };
+  });
+}
+const RING = ROUNDABOUT.lane;
+const inRing = (p: Pt) => ((p.x - CX) / RING.rx) ** 2 + ((p.y - CY) / RING.ry) ** 2;
+/** Where a lane meets the roundabout ring, coming from `far` towards `near` (bisection on the lane line). */
+function ringMeet(s: Segment, lane: number, xFar: number, xNear: number) {
+  const at = (x: number) => ({ x, y: yOn(s, x) + lane });
+  let [lo, hi] = [xFar, xNear];
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (inRing(at(mid)) > 1) lo = mid;
+    else hi = mid;
+  }
+  return at((lo + hi) / 2);
+}
+const angle = (p: Pt) => Math.atan2((p.y - CY) / RING.ry, (p.x - CX) / RING.rx);
+/** Round the ring anticlockwise on screen (traffic keeps right, so it circles the island anticlockwise). */
+function arc(from: Pt, to: Pt): Pt[] {
+  const t0 = angle(from);
+  let t1 = angle(to);
+  while (t1 >= t0) t1 -= Math.PI * 2;
+  const n = Math.max(2, Math.ceil((t0 - t1) / 0.18));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = t0 + ((t1 - t0) * i) / n;
+    return { x: CX + RING.rx * Math.cos(t), y: CY + RING.ry * Math.sin(t) };
+  });
+}
+
+type Route = { pts: Pt[]; kinds: string[]; speed: number; count: number; fadeEnd: boolean; fadeStart: boolean };
+/** Every lane's route: straight roads end to end; Roads A and B go round the roundabout at Junction 101. */
+function buildRoutes(roads: Segment[]): Route[] {
+  const out: Route[] = [];
+  for (const s of roads) {
+    const trim = CORNER_TRIM[s.id] ?? { lo: 0, hi: 0 };
+    const [lo, hi] = [Math.min(s.x0, s.x1) + trim.lo, Math.max(s.x0, s.x1) - trim.hi];
+    const downRight = (s.y1 - s.y0) / (s.x1 - s.x0) > 0;
+    const length = Math.hypot(hi - lo, yOn(s, hi) - yOn(s, lo));
+    for (const east of [true, false]) {
+      const lane = east ? HALF / 2 : -HALF / 2;
+      const [x0, x1] = east ? [lo, hi] : [hi, lo];
+      const speed = east ? 150 : 138;
+      // Cars can drive this lane when it heads down the screen (east on a down-right road, west on an up-right one).
+      const carsOk = downRight === east;
+      const count = Math.max(2, Math.round(length / 950));
+      const crosses = (s.id === "a" || s.id === "b") && Math.min(x0, x1) < CX && Math.max(x0, x1) > CX;
+      if (!crosses) {
+        out.push({ pts: lanePoints(s, x0, x1, lane), kinds: carsOk ? [...ANY_WAY, ...CARS] : ANY_WAY, speed, count, fadeEnd: true, fadeStart: true });
+        continue;
+      }
+      const entry = ringMeet(s, lane, x0, CX);
+      const exit = ringMeet(s, lane, x1, CX);
+      const approach = [{ x: x0, y: yOn(s, x0) + lane }, entry];
+      const depart = [exit, { x: x1, y: yOn(s, x1) + lane }];
+      // Through traffic: approach, round the ring, away the other side.
+      out.push({ pts: [...approach, ...arc(entry, exit).slice(1, -1), ...depart], kinds: ANY_WAY, speed, count, fadeEnd: true, fadeStart: true });
+      // Cars turn off just before the roundabout and others join just after it (they only face down the screen).
+      if (carsOk) {
+        const half = Math.max(1, Math.round(count / 2));
+        out.push({ pts: approach, kinds: CARS, speed, count: half, fadeEnd: true, fadeStart: true });
+        out.push({ pts: depart, kinds: CARS, speed, count: half, fadeEnd: true, fadeStart: true });
+      }
+    }
+  }
+  return out;
+}
+
+/** Vehicles: one animation loop moves them along their routes and turns their art to face the way they go. */
+function Traffic({ roads }: { roads: Segment[] }) {
+  const routes = useRef(buildRoutes(roads)).current;
+  const vehicles = useRef(
+    routes.flatMap((r, ri) => {
+      const len = r.pts.slice(1).reduce((n, p, i) => n + Math.hypot(p.x - r.pts[i]!.x, p.y - r.pts[i]!.y), 0);
+      return Array.from({ length: r.count }, (_, i) => ({ route: ri, len, at: (len * (i + (ri % 3) * 0.17)) / r.count, kind: r.kinds[(i * 3 + ri) % r.kinds.length]! }));
     }),
+  ).current;
+  const outer = useRef<(SVGGElement | null)[]>([]);
+  const inner = useRef<(SVGGElement | null)[]>([]);
+  const imgs = useRef<(SVGImageElement | null)[]>([]);
+  const shadows = useRef<(SVGEllipseElement | null)[]>([]);
+
+  useEffect(() => {
+    const facing: (WalkDir | "")[] = vehicles.map(() => "");
+    let last = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      for (const [i, v] of vehicles.entries()) {
+        const r = routes[v.route]!;
+        v.at = (v.at + r.speed * dt) % v.len;
+        // Find the point at distance v.at along the route
+        let d = v.at;
+        let k = 0;
+        let seg = 0;
+        for (k = 1; k < r.pts.length; k++) {
+          seg = Math.hypot(r.pts[k]!.x - r.pts[k - 1]!.x, r.pts[k]!.y - r.pts[k - 1]!.y);
+          if (d <= seg) break;
+          d -= seg;
+        }
+        const a = r.pts[k - 1]!;
+        const b = r.pts[Math.min(k, r.pts.length - 1)]!;
+        const t = seg ? d / seg : 0;
+        const x = a.x + (b.x - a.x) * t;
+        const y = a.y + (b.y - a.y) * t;
+        const g = outer.current[i];
+        if (!g) continue;
+        g.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+        // Fade at the ends of a route instead of popping
+        const edge = Math.min(v.at, v.len - v.at);
+        g.setAttribute("opacity", edge < 60 ? (edge / 60).toFixed(2) : "1");
+        // Face the way it moves (keep the last view while moving almost flat, so it doesn't flicker)
+        const [dx, dy] = [b.x - a.x, b.y - a.y];
+        let dir = facing[i]!;
+        if (!dir || Math.abs(dy) > Math.abs(dx) * 0.12) dir = walkDir(dx, dy);
+        else if (dir && Math.sign(dx) !== (dir === "se" || dir === "ne" ? 1 : -1)) dir = walkDir(dx, dy);
+        const view = KINDS[v.kind]![dir] ?? KINDS[v.kind]![facing[i] || "se"] ?? Object.values(KINDS[v.kind]!)[0]!;
+        if (dir !== facing[i]) {
+          facing[i] = dir;
+          const img = imgs.current[i]!;
+          img.setAttribute("href", view.href);
+          img.setAttribute("x", String(-view.w / 2));
+          img.setAttribute("y", String(-view.h + 6));
+          img.setAttribute("width", String(view.w));
+          img.setAttribute("height", String(view.h));
+          inner.current[i]!.setAttribute("transform", view.mirror ? "scale(-1 1)" : "");
+          shadows.current[i]!.setAttribute("rx", String(view.w * 0.42));
+          shadows.current[i]!.setAttribute("ry", String(view.h * 0.12));
+        }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [routes, vehicles]);
+
+  return (
+    <g className="traffic">
+      {vehicles.map((_, i) => (
+        <g key={i} ref={(el) => void (outer.current[i] = el)} transform="translate(-999 -999)">
+          <ellipse ref={(el) => void (shadows.current[i] = el)} cx="0" cy="-4" fill="rgb(0 0 0 / 28%)" />
+          <g ref={(el) => void (inner.current[i] = el)}>
+            <image ref={(el) => void (imgs.current[i] = el)} />
+          </g>
+        </g>
+      ))}
+    </g>
   );
 }
 
 // Walkers: drawn 64 world units tall; children are smaller inside the same frames.
 const WALK = walkerSize(64);
-const WALKERS = 26;
+const WALKERS = PRESETS.mainland.walkers;
 /** One full walk cycle (8 frames, two steps) covers this much ground, so feet don't slide. */
 const STRIDE = 58;
 
@@ -155,41 +289,13 @@ function Walkers() {
   );
 }
 
-export function StreetLife({ roads }: Props) {
+export function StreetLife({ roads }: { roads: Segment[] }) {
   const reduce = usePrefersReducedMotion();
   if (reduce) return null;
 
   return (
     <g aria-hidden="true" className="street-life">
-      {roads.flatMap(trafficFor).map((t, i) => {
-        const s = t.seg;
-        const lane = t.east ? HALF / 2 : -HALF / 2;
-        // Where Road A turns onto Third Mainland Bridge the drawn road is a curve, so traffic on both
-        // stops short of the sharp corner (and fades) instead of cutting across the bend.
-        const trim = CORNER_TRIM[s.id] ?? { lo: 0, hi: 0 };
-        const [lo, hi] = [Math.min(s.x0, s.x1) + trim.lo, Math.max(s.x0, s.x1) - trim.hi];
-        const [x0, x1] = t.east ? [lo, hi] : [hi, lo];
-        const f = (x: number) => yOn(s, x);
-        const length = Math.hypot(x1 - x0, f(x1) - f(x0));
-        const dur = length / t.speed;
-        const { href, w, h, mirror } = t.sprite;
-        return (
-          <g key={i}>
-            <animateMotion
-              dur={`${dur.toFixed(1)}s`}
-              begin={`${(-dur * t.offset).toFixed(1)}s`}
-              repeatCount="indefinite"
-              path={roadPath(s, x0, x1, lane)}
-            />
-            {/* Fade in and out at the ends of a road instead of popping */}
-            <animate attributeName="opacity" dur={`${dur.toFixed(1)}s`} begin={`${(-dur * t.offset).toFixed(1)}s`} repeatCount="indefinite" values="0;1;1;0" keyTimes="0;0.03;0.97;1" />
-            <ellipse cx="0" cy="-4" rx={w * 0.42} ry={h * 0.12} fill="rgb(0 0 0 / 28%)" />
-            <g transform={mirror ? "scale(-1 1)" : undefined}>
-              <image href={href} x={-w / 2} y={-h + 6} width={w} height={h} />
-            </g>
-          </g>
-        );
-      })}
+      <Traffic roads={roads} />
       <Walkers />
     </g>
   );
