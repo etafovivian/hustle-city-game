@@ -302,6 +302,144 @@ def sync_viewport_colors():
                 break
 
 
+# ------------------------------------------------------------------ toon look (LOOK=toon)
+SS = 2                                   # supersample factor (render 2x, box-filter down)
+OUTLINE_SRGB = (0x1b / 255, 0x14 / 255, 0x10 / 255)
+TOON_LIGHT = None                        # set in setup_toon: key light up and to the left of the camera
+
+
+def srgb_to_lin(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def toon_palette(rgb, name):
+    """Richer colours: more saturation; greys/whites become warm off-white; eyes/brows dark."""
+    import colorsys
+    n = name.lower()
+    if "eye" in n and "brow" not in n:
+        return (0.02, 0.012, 0.008)
+    if "brow" in n or n.startswith("mi_hair"):
+        return (0.015, 0.01, 0.006)
+    # The outfit colours are treated as display (sRGB) colours, then converted to linear for the emission
+    # shader, so dark skin stays a rich brown instead of washing out to tan.
+    r, g, b = rgb[:3]
+    h, sat, v = colorsys.rgb_to_hsv(r, g, b)
+    if n.startswith("mi_superhero"):     # skin: lift to a readable warm brown (the shadow band darkens it)
+        out = colorsys.hsv_to_rgb(h, min(1.0, sat * 1.05), min(1.0, v * 1.55))
+    elif sat < 0.16 and v > 0.6:         # whites / cream: warm off-white instead of grey
+        out = (0.98 * v / 0.93, 0.94 * v / 0.93, 0.84 * v / 0.93)
+    else:
+        out = colorsys.hsv_to_rgb(h, min(1.0, sat * 1.1), min(1.0, v * 1.04))
+    return tuple(srgb_to_lin(min(1.0, c)) for c in out)
+
+
+def toon_material(src, cache):
+    if src.name in cache:
+        return cache[src.name]
+    base = toon_palette(tuple(src.diffuse_color), src.name)
+    m = bpy.data.materials.new("toon_" + src.name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    dot = nt.nodes.new("ShaderNodeVectorMath")
+    dot.operation = "DOT_PRODUCT"
+    dot.inputs[1].default_value = TOON_LIGHT
+    fac = nt.nodes.new("ShaderNodeMath")
+    fac.operation = "MULTIPLY_ADD"
+    fac.inputs[1].default_value, fac.inputs[2].default_value = 0.5, 0.5
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    cr = ramp.color_ramp
+    cr.interpolation = "CONSTANT"
+    shadow = (base[0] * 0.58, base[1] * 0.52, base[2] * 0.64)          # cool, darker shadow band
+    lit = (min(1, base[0] * 1.18), min(1, base[1] * 1.1), min(1, base[2] * 0.98))  # warm highlight band
+    cr.elements[0].position, cr.elements[0].color = 0.0, (*shadow, 1)
+    cr.elements[1].position, cr.elements[1].color = 0.44, (*base, 1)
+    e = cr.elements.new(0.8)
+    e.color = (*lit, 1)
+    nt.links.new(geo.outputs["Normal"], dot.inputs[0])
+    nt.links.new(dot.outputs["Value"], fac.inputs[0])
+    nt.links.new(fac.outputs[0], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], em.inputs["Color"])
+    em.inputs["Strength"].default_value = 1.0
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    cache[src.name] = m
+    return m
+
+
+def setup_toon(scene):
+    global TOON_LIGHT
+    to_cam, right, up = cam_axes()
+    TOON_LIGHT = tuple((-right * 0.55 + Vector((0, 0, 1)) * 0.75 + to_cam * 0.35).normalized())
+    cache = {}
+    for o in bpy.data.objects:
+        if o.type == "MESH":
+            for slot in o.material_slots:
+                if slot.material:
+                    slot.material = toon_material(slot.material, cache)
+    print("TOON materials", sorted(cache))
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 16
+    scene.cycles.use_denoising = False
+    scene.cycles.use_adaptive_sampling = False
+    scene.cycles.max_bounces = 0
+    scene.cycles.filter_width = 1.0
+    scene.render.film_transparent = True
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "None"
+    scene.render.resolution_x, scene.render.resolution_y = FW * SS, FH * SS
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA"
+    if scene.world is None:
+        scene.world = bpy.data.worlds.new("w")
+    scene.world.use_nodes = True
+    bg = scene.world.node_tree.nodes.get("Background")
+    if bg:
+        bg.inputs["Strength"].default_value = 0.0
+    # Freestyle outlines: silhouette, open borders (hems, sleeve ends), material boundaries, contours
+    scene.render.use_freestyle = True
+    scene.render.line_thickness_mode = "ABSOLUTE"
+    scene.render.line_thickness = 1.0
+    vl = bpy.context.view_layer
+    vl.use_freestyle = True
+    fs = vl.freestyle_settings
+    fs.mode = "EDITOR"
+    ls = fs.linesets[0] if len(fs.linesets) else fs.linesets.new("outline")
+    ls.select_by_visibility = True
+    ls.visibility = "VISIBLE"
+    ls.select_by_edge_types = True
+    ls.select_silhouette = True
+    ls.select_border = True
+    ls.select_material_boundary = True
+    ls.select_external_contour = True
+    ls.select_contour = True
+    ls.select_crease = False
+    st = ls.linestyle or bpy.data.linestyles.new("ink")
+    ls.linestyle = st
+    st.color = tuple(srgb_to_lin(c) for c in OUTLINE_SRGB)
+    st.thickness = float(os.environ.get("TOON_LINE", "4.0"))   # at 2x: ~2 px after downscale
+    st.thickness_position = "CENTER"
+    st.alpha = 1.0
+    st.use_length_min = True             # drop short muscle/fold squiggles
+    st.length_min = 7.0 * SS
+
+
+def downsample(a):
+    if SS == 1:
+        return a
+    h, w = a.shape[0] // SS, a.shape[1] // SS
+    pm = a.copy()
+    pm[..., :3] *= pm[..., 3:4]
+    pm = pm.reshape(h, SS, w, SS, 4).mean(axis=(1, 3))
+    al = pm[..., 3:4]
+    pm[..., :3] = np.where(al > 1e-4, pm[..., :3] / np.maximum(al, 1e-4), 0)
+    return pm
+
+
 def render_variant(name, sex, fn, tmp):
     arm, body, others = load_body(os.path.join(HUSTLE, f"body-{sex}.glb"))
     skin = body.material_slots[0].material
@@ -323,6 +461,11 @@ def render_variant(name, sex, fn, tmp):
         sh.show_cavity = False
     scene.display.render_aa = "8"
     setup_camera(scene)
+    if look == "toon":
+        setup_toon(scene)
+        if arm.scale[0] < 0.9:  # children: thinner ink so their slim legs don't turn into solid lines
+            for ls in bpy.context.view_layer.freestyle_settings.linesets:
+                ls.linestyle.thickness = float(os.environ.get("TOON_LINE", "4.0")) * 0.75
     act = bpy.data.actions["Walk_Loop"]
     f0, f1 = 1.0, 33.0  # one full cycle (frame 33 == frame 1)
     frames0 = {}
@@ -335,6 +478,8 @@ def render_variant(name, sex, fn, tmp):
             scene.render.filepath = p
             bpy.ops.render.render(write_still=True)
             a = read_png(p)
+            if look == "toon":
+                a = downsample(a)
             sheet[:, i * FW:(i + 1) * FW] = a
             if i == 0:
                 frames0[d] = a

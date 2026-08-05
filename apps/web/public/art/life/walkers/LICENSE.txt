@@ -1,4 +1,5 @@
-Walk-cycle sprite sheets rendered for Naija Hustle City by scripts/blender/agent/sprites.py (Blender 5.2, headless)
+Walk-cycle sprite sheets rendered for Naija Hustle City by scripts/blender/agent/sprites.py (Blender 5.2, headless, LOOK=toon:
+cel bands plus Freestyle outlines)
 from the CC0 Quaternius bodies and animations in public/models (see public/models/LICENSE.txt), with clothes from
 scripts/blender/agent/garments.py and hair from scripts/blender/hair.py. Original work for this project.
 Each file: 8 frames of 96x160 in a row (Walk_Loop), direction se/sw/ne/nw = walking towards screen down-right,
