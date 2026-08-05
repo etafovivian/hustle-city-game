@@ -6,7 +6,13 @@
 3. Paste one batch.
 
 Send me each zip as it's done; I'll cut out and place them while you start the next.
-**Done:** barbershop, event hall, viewing centre, buka interior (zip 10).
+**Done:** barbershop, event hall, viewing centre, buka interior (zip 10). Batches 1–16 (zip 11), except:
+
+**Redo (zip 11 problems):**
+- Provision shop interior (batch 2 #3): it came with real brand logos on the posters and boxes. Ask again with "no logos or brand names anywhere, plain labels".
+- Hangout interior and viewing centre interior: real beer brands and real club names were painted out by hand; a clean redo would look better.
+- Batch 13 cars came as one view each (driving down-left). Ask for the **back view** too (driving up-right) so cars can drive up the screen.
+- Batch 14 sheets repeated each view twice; we have danfo, BRT, okada and keke in both views now, so no redo needed.
 
 **Style block (paste first, every time):**
 > Isometric 2:1 cartoon game asset for a 2026 mobile city game set in Lagos, Nigeria. Hand-drawn style with bold dark outlines, rich saturated colour and warm lighting, matching the attached reference exactly. Camera: classic 2:1 isometric. Rules: no real brand names or logos, no currency symbols, no political or religious slogans. Signs only show the words given. Each image is one single object, centred, nothing cropped, on a flat solid magenta #FF00FF background. Make 4 separate images, one per item below.

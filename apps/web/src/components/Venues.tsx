@@ -5,9 +5,11 @@ import { CheckCircle2, Coins, Footprints, Sparkles, Store, X } from "lucide-reac
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
+import { buildingBox } from "./sprites.js";
 
 /** The building: tap to open its card. */
-export function VenueBuilding({ venue, x, y, onOpen }: { venue: Venue; x: number; y: number; onOpen: () => void }) {
+export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue; x: number; y: number; scale?: number; onOpen: () => void }) {
+  const box = buildingBox(venue.art, x, y, scale);
   return (
     <g
       className="hotspot venue"
@@ -23,19 +25,19 @@ export function VenueBuilding({ venue, x, y, onOpen }: { venue: Venue; x: number
         }
       }}
     >
-      <ellipse cx={x} cy={y} rx="100" ry="22" fill="rgb(0 0 0 / 28%)" />
+      <ellipse cx={x} cy={y} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
       <g className="bld">
-        <image href={venue.art} x={x - 120} y={y - 210} width="240" height="230" preserveAspectRatio="xMidYMax meet" />
+        <image href={venue.art} x={box.x} y={box.y} width={box.w} height={box.h} />
       </g>
     </g>
   );
 }
 
-/** Icon badge floating above the roof, with the name beside it (drawn above the night tint). */
+/** Icon badge floating above the roof (`y` is the roof top), with the name beside it (drawn above the night tint). */
 export function VenueBadge({ venue, x, y, scale, showName, onOpen }: { venue: Venue; x: number; y: number; scale: number; showName: boolean; onOpen: () => void }) {
   const nameW = venue.name.length * 9.5 + 30;
   return (
-    <g className="venue-badge" transform={`translate(${x} ${y - 236}) scale(${scale})`} onClick={onOpen} aria-hidden="true">
+    <g className="venue-badge" transform={`translate(${x} ${y - 16}) scale(${scale})`} onClick={onOpen} aria-hidden="true">
       <line x1="0" y1="18" x2="0" y2="34" stroke="#fff" strokeWidth="3" opacity=".8" />
       <circle r="22" fill="#fff" stroke={INK.indigoDeep} strokeWidth="3" />
       <text y="8" textAnchor="middle" fontSize="22">

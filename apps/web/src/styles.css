@@ -187,6 +187,11 @@ a { color: inherit; text-underline-offset: 3px; }
 /* ── Map ───────────────────────────────────────────── */
 .map svg { display: block; }
 .map-frame { position: relative; }
+/* The map's stacked layers (ground, traffic, buildings): each its own compositing layer, so moving traffic
+   doesn't repaint the buildings. Only the top layer takes taps. */
+.map-viewport { position: relative; }
+.map-layer { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
+.map-layer:not(.map-top) { pointer-events: none; }
 .map-viewport { height: clamp(380px, 62vh, 640px); border-radius: 12px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; background: #a4814f; }
 .map-viewport:active { cursor: grabbing; }
 .map-viewport:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }

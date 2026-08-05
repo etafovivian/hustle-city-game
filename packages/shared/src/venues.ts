@@ -50,6 +50,7 @@ export const VENUES: readonly Venue[] = [
     area: "Junction 101",
     icon: "💈",
     art: "/art/buildings/barbershop.webp",
+    interior: "/art/interiors/barbershop.webp",
     blurb: "Clippers buzzing, generator humming, and the loudest football arguments on the street.",
     regulars: ["Oga Sharp", "Emeka"],
     activities: [
@@ -63,7 +64,7 @@ export const VENUES: readonly Venue[] = [
     name: "Junction Motor Park",
     area: "Junction 101",
     icon: "🚐",
-    art: "/art/danfo-park.webp",
+    art: "/art/buildings/motor-park.webp",
     blurb: "Danfos loading for every corner of the city. Conductors shouting, hawkers weaving between buses.",
     regulars: ["Conductor Ade", "Iya Pure Water"],
     activities: [
@@ -77,6 +78,7 @@ export const VENUES: readonly Venue[] = [
     area: "Owambe Gardens",
     icon: "🎊",
     art: "/art/buildings/event-centre.webp",
+    interior: "/art/interiors/event-centre.webp",
     blurb: "Every weekend somebody is getting married, turning fifty or celebrating a chieftaincy title. Wear your aso-ebi.",
     regulars: ["MC Gbenga", "Aunty Bisi"],
     activities: [
@@ -91,6 +93,7 @@ export const VENUES: readonly Venue[] = [
     area: "Owambe Gardens",
     icon: "🧵",
     art: "/art/buildings/tailor-shop.webp",
+    interior: "/art/interiors/tailor-shop.webp",
     blurb: "Sewing machines in a line, aso-ebi fabric in every colour. Owambe Saturday starts here.",
     regulars: ["Ada the tailor", "Baba Fabrics"],
     activities: [
@@ -105,6 +108,7 @@ export const VENUES: readonly Venue[] = [
     area: "Owambe Gardens",
     icon: "⚽",
     art: "/art/buildings/viewing-centre.webp",
+    interior: "/art/interiors/viewing-centre.webp",
     blurb: "Big screen, plastic chairs, generator outside. When the match is on, the whole street is here.",
     regulars: ["Coach Femi", "Kola"],
     activities: [

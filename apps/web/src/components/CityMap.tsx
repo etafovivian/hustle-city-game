@@ -35,8 +35,12 @@ import {
   OCEAN_PATH,
   PAVEMENT,
   STREET_PAVEMENT,
+  PARK,
   PILLARS,
+  PLACES,
   PLOTS,
+  PROPS,
+  ZEBRAS,
   ROAD_A,
   ROAD_B,
   ROADS,
@@ -47,15 +51,40 @@ import {
   centrePath,
   kerbPath,
 } from "./cityLayout.js";
+import { buildingBox, propBox } from "./sprites.js";
 import { usePanZoom } from "./usePanZoom.js";
 
 const J = { x: CX - 400, y: CY - 300, w: 800, h: 640 };
 
-/** Buildings and trees in one back-to-front list so nearer things cover farther ones. */
+const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
+/** Street furniture: stalls, shelters, poles and lamps. */
+const STREET_PROPS = [...PROPS, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
+
+/** Buildings, trees and street furniture in one back-to-front list so nearer things cover farther ones. */
 const WORLD_OBJECTS = [
-  ...ALL_SCENERY.map((b) => ({ ...b, type: "building" as const, kind: undefined })),
-  ...TREES.map((t) => ({ ...t, type: "tree" as const, art: "" })),
+  ...ALL_SCENERY.map((b) => ({ ...b, type: "building" as const, box: buildingBox(b.art, b.x, b.y, b.scale) })),
+  ...TREES.map((t) => ({ ...t, type: "tree" as const })),
+  ...STREET_PROPS.filter((p) => !p.behind).map((p) => ({ ...p, type: "prop" as const, box: propBox(p.art, p.x, p.y, p.w) })),
 ].sort((a, b) => a.y - b.y);
+/** Furniture on the far side of a road: drawn before the traffic and walkers, which pass in front of it. */
+const BEHIND_PROPS = STREET_PROPS.filter((p) => p.behind)
+  .map((p) => ({ ...p, box: propBox(p.art, p.x, p.y, p.w) }))
+  .sort((a, b) => a.y - b.y);
+
+/** A zebra crossing: white stripes along the road, across it from kerb to kerb. */
+function zebraStripes(z: (typeof ZEBRAS)[number]) {
+  const [ux, uy] = [z.x1 - z.x0, z.y1 - z.y0];
+  // The road runs along the other iso axis: (1, 0.5) if the zebra runs along (1, -0.5), and the other way round.
+  const r = Math.hypot(1, 0.5);
+  const [vx, vy] = uy / ux < 0 ? [1 / r, 0.5 / r] : [1 / r, -0.5 / r];
+  const [hx, hy] = [(vx * z.w) / 2, (vy * z.w) / 2];
+  const n = Math.max(3, Math.round(Math.hypot(ux, uy) / 15));
+  return Array.from({ length: n }, (_, i) => {
+    const [t0, t1] = [(i + 0.2) / n, (i + 0.7) / n];
+    const [ax, ay, bx, by] = [z.x0 + ux * t0, z.y0 + uy * t0, z.x0 + ux * t1, z.y0 + uy * t1];
+    return `M${ax - hx} ${ay - hy}L${ax + hx} ${ay + hy}L${bx + hx} ${by + hy}L${bx - hx} ${by - hy}Z`;
+  }).join("");
+}
 
 /** Each hustle's shop looks different on the map (Stitch art in public/art/buildings). */
 const HUSTLE_ART: Record<string, string> = {
@@ -65,12 +94,6 @@ const HUSTLE_ART: Record<string, string> = {
   artisan: "/art/buildings/tailor-shop.webp",
 };
 
-/** The three Junction 101 places. */
-const PLACES: { id: LocationKey; label: string; art: string; x: number; y: number; w: number; h: number }[] = [
-  { id: "work_hub", label: "Work Hub", art: "/art/work-hub.webp", x: 300, y: 0, w: 200, h: 196 },
-  { id: "hangout", label: "The Hangout", art: "/art/hangout.webp", x: 540, y: 150, w: 220, h: 170 },
-  { id: "market_square", label: "Market Square", art: "/art/market-square.webp", x: 276, y: 372, w: 248, h: 176 },
-];
 
 const PHASE_LABEL = { dawn: "Early morning", day: "Daytime", dusk: "Evening", night: "Night" } as const;
 
@@ -223,6 +246,7 @@ export function CityMap({
     };
   }, []);
   const k = pz.view?.k ?? 1;
+  const world = pz.view ? `translate(${pz.view.x} ${pz.view.y}) scale(${k})` : undefined;
   const plateScale = readable(k, 20, 14);
   const districtScale = readable(k, 56, 16, 20);
   const far = k < 0.3;
@@ -243,7 +267,9 @@ export function CityMap({
         aria-label="New Lagos map. Drag or use arrow keys to move, plus and minus to zoom, 0 to recentre. Tap the ground to walk there. Tab to the places."
         {...pz.handlers}
       >
-        <svg width="100%" height="100%">
+        {/* Three stacked layers with one view transform: the ground and roads, the moving traffic and walkers,
+            then buildings, people's shops and labels. Only the thin middle layer repaints while things move. */}
+        <svg className="map-layer" aria-hidden="true">
           <defs>
             {/* Laterite sand: speckles of lighter and darker grains. */}
             <pattern id="sand" width="90" height="90" patternUnits="userSpaceOnUse">
@@ -302,16 +328,7 @@ export function CityMap({
             </radialGradient>
           </defs>
           {pz.view && (
-            <g
-              transform={`translate(${pz.view.x} ${pz.view.y}) scale(${k})`}
-              onClick={(e) => {
-                // Tap the ground to walk there. Places, shops and billboards handle their own taps.
-                if (far || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard, .venue-badge")) return;
-                const box = ref.current!.getBoundingClientRect();
-                const v = pz.view!;
-                setWalkTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k, seq: Date.now() });
-              }}
-            >
+            <g transform={world}>
               <rect width={WORLD.w} height={WORLD.h} fill="#cfa874" />
               <rect width={WORLD.w} height={WORLD.h} fill="url(#sand)" />
               <ellipse cx={CX} cy={CY} rx="1400" ry="800" fill="url(#glow-centre)" />
@@ -377,25 +394,44 @@ export function CityMap({
                       </g>
                     ))}
                     {bridges.map((r) => <path key={`bd-${r.id}`} d={r.d} {...line} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />)}
-                    {/* Zebra crossings on the four approaches to Junction 101 */}
-                    {!far &&
-                      [ROAD_A, ROAD_B].flatMap((r) =>
-                        [-1, 1].map((side) => {
-                          const x = CX + side * 210 - HALF;
-                          const y = yOn(r, x);
-                          const down = (r.y1 - r.y0) / (r.x1 - r.x0) > 0;
-                          // A line straight across the road (along the other iso axis), from one kerb to the other,
-                          // drawn as thick dashes so it reads as zebra stripes.
-                          const d = down ? `M${x} ${y + HALF} L${x + 2 * HALF} ${y}` : `M${x} ${y - HALF} L${x + 2 * HALF} ${y}`;
-                          return <path key={`zb-${r.id}-${side}`} d={d} stroke="#f4f1e8" strokeWidth="30" strokeDasharray="7 7" opacity=".9" />;
-                        }),
-                      )}
+                    {/* Zebra crossings: at the junction, at the far ends of its footpaths, and across every side street */}
+                    {!far && <path d={ZEBRAS.map(zebraStripes).join("")} fill="#f4f1e8" opacity=".92" />}
                   </g>
                 );
               })()}
 
-              {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
-              {!far && <StreetLife roads={ROADS} walkRoads={{ a: ROAD_A, b: ROAD_B }} kerb={HALF + PAVEMENT / 2} cx={CX} />}
+              {/* Street furniture on the far kerbs, under the traffic and walkers passing in front of it */}
+              {!far && (
+                <g aria-hidden="true" className="map-scenery">
+                  {BEHIND_PROPS.map((p) => (
+                    <image key={p.key} href={p.art} x={p.box.x} y={p.box.y} width={p.box.w} height={p.box.h} />
+                  ))}
+                </g>
+              )}
+
+            </g>
+          )}
+        </svg>
+        {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
+        <svg className="map-layer" aria-hidden="true">
+          {pz.view && !far && (
+            <g transform={world}>
+              <StreetLife roads={ROADS} />
+            </g>
+          )}
+        </svg>
+        <svg
+          className="map-layer map-top"
+          onClick={(e) => {
+            // Tap the ground to walk there. Places, shops and billboards handle their own taps.
+            if (far || !pz.view || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard, .venue-badge")) return;
+            const box = ref.current!.getBoundingClientRect();
+            const v = pz.view;
+            setWalkTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k, seq: Date.now() });
+          }}
+        >
+          {pz.view && (
+            <g transform={world}>
 
               {/* Flyover: a raised deck on pillars over Road A (drawn above the traffic passing under it) */}
               {ROADS.filter((r) => r.flyover).map((r) => {
@@ -431,8 +467,10 @@ export function CityMap({
               <g aria-hidden="true" className="map-scenery">
                 {WORLD_OBJECTS.map((o) =>
                   o.type === "building" ? (
-                    <image key={o.key} href={o.art} x={o.x - 120} y={o.y - 210} width="240" height="230" preserveAspectRatio="xMidYMax meet" />
-                  ) : far ? null : (
+                    <image key={o.key} href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
+                  ) : far ? null : o.type === "prop" ? (
+                    <image key={o.key} href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
+                  ) : (
                     <g key={o.key}>
                       <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
                       <use href={o.kind === "palm" ? "#palm" : "#tree"} x={o.x - 60} y={o.y - (o.kind === "palm" ? 165 : 140)} width="120" height={o.kind === "palm" ? 170 : 145} />
@@ -445,13 +483,6 @@ export function CityMap({
               <g transform={`translate(${J.x} ${J.y})`}>
                 <ellipse cx="400" cy="300" rx="150" ry="75" fill="var(--map-road)" />
                 <ellipse cx="400" cy="300" rx="78" ry="39" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="2" />
-                {!far && (
-                  <g aria-hidden="true" className="map-scenery">
-                    <image href="/art/city-park.webp" x="0" y="190" width="230" height="200" preserveAspectRatio="xMidYMid meet" />
-                    <image href="/art/danfo-park.webp" x="8" y="455" width="150" height="130" preserveAspectRatio="xMidYMax meet" />
-                    <image href="/art/signpost.webp" x="660" y="452" width="66" height="130" preserveAspectRatio="xMidYMax meet" />
-                  </g>
-                )}
                 {far ? (
                   <g
                     className="hotspot"
@@ -469,16 +500,22 @@ export function CityMap({
                   >
                     <image href="/art/market-square.webp" x="200" y="150" width="400" height="300" preserveAspectRatio="xMidYMid meet" />
                   </g>
-                ) : (
-                  PLACES.map((pl) => <Hotspot key={pl.id} part="body" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />)
-                )}
+                ) : null}
               </g>
+              {!far && (
+                <>
+                  <image href="/art/city-park.webp" x={PARK.x} y={PARK.y} width={PARK.w} height={PARK.h} preserveAspectRatio="xMidYMax meet" aria-hidden="true" className="map-scenery" />
+                  {PLACES.map((pl) => (
+                    <Hotspot key={pl.id} part="body" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />
+                  ))}
+                </>
+              )}
 
               {/* Venues you can go into */}
               {!far &&
                 VENUE_SPOTS.map((spot) => {
                   const v = VENUES_BY_KEY.get(spot.key);
-                  return v ? <VenueBuilding key={spot.key} venue={v} x={spot.x} y={spot.y} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> : null;
+                  return v ? <VenueBuilding key={spot.key} venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> : null;
                 })}
 
               {/* Plots: player shops (yours first), then open plots */}
@@ -511,9 +548,9 @@ export function CityMap({
                         }
                       }}
                     >
-                      <Diamond x={p.x} y={p.y + 40} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 16%)"} stroke={shop.isMe ? "#ffc72c" : "#8c6a3e"} strokeWidth="2" />
+                      <Diamond x={p.x} y={p.y} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 16%)"} stroke={shop.isMe ? "#ffc72c" : "#8c6a3e"} strokeWidth="2" />
                       <g className="bld">
-                        <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y - 110} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
+                        <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y + 45 - 150} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
                       </g>
                     </g>
                   );
@@ -546,21 +583,24 @@ export function CityMap({
                 <g aria-hidden="true" className="map-lights" opacity={light.lamps}>
                   {!far &&
                     BILLBOARD_SPOTS.map((spot) => <ellipse key={`bb-${spot.key}`} cx={spot.x} cy={spot.y - 200} rx="220" ry="110" fill="url(#window-glow)" />)}
-                  {LAMPS.map((l) => (
-                    <g key={l.key}>
-                      <ellipse cx={l.x} cy={l.y + 10} rx="110" ry="52" fill="url(#lamp-pool)" />
-                      <circle cx={l.x} cy={l.y - 30} r="5" fill="#fff4c8" />
-                    </g>
-                  ))}
-                  {ALL_SCENERY.map((b) => (
-                    <ellipse key={b.key} cx={b.x} cy={b.y - 90} rx="120" ry="95" fill="url(#window-glow)" />
-                  ))}
+                  {LAMPS.map((l) => {
+                    // The lamp head hangs off its arm, up and to the right of the pole.
+                    const box = propBox(LAMP.art, l.x, l.y, LAMP.w);
+                    return (
+                      <g key={l.key}>
+                        <ellipse cx={l.x + 14} cy={l.y + 12} rx="110" ry="52" fill="url(#lamp-pool)" />
+                        <circle cx={box.x + box.w * 0.72} cy={box.y + box.h * 0.1} r="7" fill="#fff4c8" />
+                      </g>
+                    );
+                  })}
+                  {ALL_SCENERY.map((b) => {
+                    const box = buildingBox(b.art, b.x, b.y, b.scale);
+                    return <ellipse key={b.key} cx={b.x} cy={box.y + box.h * 0.6} rx={box.w * 0.5} ry={box.h * 0.42} fill="url(#window-glow)" />;
+                  })}
                   {!far &&
                     PLOTS.map((p, i) => neighbours[i] && <ellipse key={i} cx={p.x} cy={p.y - 30} rx="110" ry="80" fill="url(#window-glow)" />)}
-                  <g transform={`translate(${J.x} ${J.y})`}>
-                    <ellipse cx="400" cy="300" rx="260" ry="140" fill="url(#lamp-pool)" />
-                    {!far && PLACES.map((pl) => <ellipse key={pl.id} cx={pl.x + pl.w / 2} cy={pl.y + pl.h * 0.55} rx={pl.w * 0.6} ry={pl.h * 0.5} fill="url(#window-glow)" />)}
-                  </g>
+                  <ellipse cx={CX} cy={CY} rx="260" ry="140" fill="url(#lamp-pool)" />
+                  {!far && PLACES.map((pl) => <ellipse key={pl.id} cx={pl.x + pl.w / 2} cy={pl.y + pl.h * 0.55} rx={pl.w * 0.6} ry={pl.h * 0.5} fill="url(#window-glow)" />)}
                 </g>
               )}
 
@@ -570,7 +610,7 @@ export function CityMap({
                 {VENUE_SPOTS.map((spot) => {
                     const v = VENUES_BY_KEY.get(spot.key);
                     return v ? (
-                      <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y + 200 : spot.y} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
+                      <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y - 36 : buildingBox(v.art, spot.x, spot.y, spot.scale).y - 20} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
                     ) : null;
                   })}
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
@@ -632,17 +672,16 @@ export function CityMap({
                       JUNCTION 101
                     </text>
                   </g>
-                  {far ? (
+                  {far && (
                     <g transform={`translate(400 470) scale(${districtScale})`}>
                       <rect x="-150" y="-34" width="300" height="60" rx="30" fill={INK.yellow} />
                       <text textAnchor="middle" y="6" fontSize="30" fontWeight="900" fill={INK.indigoDeep}>
                         Junction 101
                       </text>
                     </g>
-                  ) : (
-                    PLACES.map((pl) => <Hotspot key={pl.id} part="label" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />)
                   )}
                 </g>
+                {!far && PLACES.map((pl) => <Hotspot key={pl.id} part="label" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />)}
                 {!far &&
                   PLOTS.map((p, i) => {
                     const shop = neighbours[i];
@@ -650,7 +689,7 @@ export function CityMap({
                     const label = shop.isMe ? "Your shop" : `@${shop.nickname}`;
                     const plateW = label.length * 11 + 34;
                     return (
-                      <g key={i} transform={`translate(${p.x} ${p.y + 52}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
+                      <g key={i} transform={`translate(${p.x} ${p.y + 66}) scale(${plateScale * 0.9}) translate(${-plateW / 2} 0)`}>
                         <rect width={plateW} height="32" rx="16" fill={shop.isMe ? INK.yellow : INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".5" />
                         <text x={plateW / 2} y="21" textAnchor="middle" fontSize="17" fontWeight="800" fill={shop.isMe ? INK.indigoDeep : "#fff"}>
                           {label}
