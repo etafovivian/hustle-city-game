@@ -39,6 +39,9 @@ const WALK = walkerSize(64);
  * Down-right roads use the SE/NW art; up-right roads mirror it (NE = mirrored NW, SW = mirrored SE).
  */
 const MIX = [DANFO_SE, OKADA_SE, DANFO_SE, KEKE_SE];
+/** World-x to drop from each end of a road's traffic route (the Tech Mile / bridge corner is a curve). */
+const CORNER_TRIM: Record<string, { lo: number; hi: number }> = { a: { lo: 0, hi: 170 }, bridge: { lo: 0, hi: 170 } };
+
 function trafficFor(s: Segment) {
   const downRight = (s.y1 - s.y0) / (s.x1 - s.x0) > 0;
   const length = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
@@ -102,7 +105,10 @@ export function StreetLife({ roads, walkRoads, kerb, cx }: Props) {
       {roads.flatMap(trafficFor).map((t, i) => {
         const s = t.seg;
         const lane = t.east ? HALF / 2 : -HALF / 2;
-        const [lo, hi] = [Math.min(s.x0, s.x1), Math.max(s.x0, s.x1)];
+        // Where Road A turns onto Third Mainland Bridge the drawn road is a curve, so traffic on both
+        // stops short of the sharp corner (and fades) instead of cutting across the bend.
+        const trim = CORNER_TRIM[s.id] ?? { lo: 0, hi: 0 };
+        const [lo, hi] = [Math.min(s.x0, s.x1) + trim.lo, Math.max(s.x0, s.x1) - trim.hi];
         const [x0, x1] = t.east ? [lo, hi] : [hi, lo];
         const f = (x: number) => yOn(s, x);
         const length = Math.hypot(x1 - x0, f(x1) - f(x0));
