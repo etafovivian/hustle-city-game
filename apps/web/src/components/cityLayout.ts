@@ -563,6 +563,48 @@ const JETTY: Building = (() => {
   return { art: "/art/buildings/ferry-jetty.webp", x, y, key: "jetty", scale: 1 };
 })();
 
+/** A plot of land with a permanent id: built on, or open land for sale. */
+export interface LandPlot {
+  id: string;
+  /** Plot centre. */
+  x: number;
+  y: number;
+  hh: number;
+  area: string;
+  use: "shop" | "home" | "for-sale";
+  /** Frontage road class (what pulls customers). */
+  road: StreetClass | "arterial";
+}
+export const LAND: LandPlot[] = [];
+/** Open plots for sale: a dashed outline and a small sign. */
+export const FOR_SALE: LandPlot[] = [];
+const landId = (area: string, k: number) => `${area.toLowerCase().replace(/\s+/g, "-")}-land-${k}`;
+
+/**
+ * In the nice areas land comes first: before any building is placed, every few frontage spots (front rows
+ * included) are kept as plots for sale. Buildings then take what's left.
+ */
+const LAND_FIRST: Record<string, { every: number; scale: number }> = {
+  "Lekki Gardens": { every: 4, scale: 1.3 },
+  "Island Heights": { every: 5, scale: 1.3 },
+};
+for (const d of DISTRICTS.filter((dd) => dd.front && LAND_FIRST[dd.name])) {
+  const { every, scale } = LAND_FIRST[d.name]!;
+  const hh = siteOf(scale).hh;
+  let n = 0;
+  let k = 0;
+  for (const s of frontage(d)) {
+    const c = iso(s.a, s.b);
+    if (!onSite(c.x, c.y, hh) || !groundClear(c.x, c.y, hh)) continue;
+    // Spread the land along the whole frontage: every n-th usable spot.
+    if (n++ % every !== 1) continue;
+    if (!claim(c.x, c.y, hh)) continue;
+    const plot: LandPlot = { id: landId(d.name, k++), x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
+    LAND.push(plot);
+    FOR_SALE.push(plot);
+  }
+}
+
 const DISTRICT_SCENERY = DISTRICTS.filter((d) => d.front).flatMap((d) => settle(d, d.buildings, d.name));
 
 // ── Neighbourhood generator ──
@@ -631,22 +673,6 @@ const MAINLAND_HOMES: [string, number][] = [
   ["terrace-duplex", 2],
 ];
 
-/** A plot of land with a permanent id: built on, or open land for sale. */
-export interface LandPlot {
-  id: string;
-  /** Plot centre. */
-  x: number;
-  y: number;
-  hh: number;
-  area: string;
-  use: "shop" | "home" | "for-sale";
-  /** Frontage road class (what pulls customers). */
-  road: StreetClass | "arterial";
-}
-export const LAND: LandPlot[] = [];
-/** Open plots for sale: a dashed outline and a small sign. */
-export const FOR_SALE: LandPlot[] = [];
-
 const NEIGHBOURHOOD = (() => {
   const P = PRESETS.mainland;
   const houses: Building[] = [];
@@ -711,7 +737,7 @@ const DISTRICT_LAND_SHARE: Record<string, number> = {
   "Danfo Terminal": 0.06,
   "Apapa Port": 0.08,
 };
-for (const d of DISTRICTS.filter((dd) => dd.front)) {
+for (const d of DISTRICTS.filter((dd) => dd.front && !LAND_FIRST[dd.name])) {
   const share = DISTRICT_LAND_SHARE[d.name] ?? 0.1;
   const scale = d.name === "Lekki Gardens" || d.name === "Island Heights" ? 1.35 : 1.05;
   const hh = siteOf(scale).hh;
@@ -721,7 +747,7 @@ for (const d of DISTRICTS.filter((dd) => dd.front)) {
     if (k >= want) break;
     const c = iso(s.a, s.b);
     if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh)) continue;
-    const plot: LandPlot = { id: `${d.name.toLowerCase().replace(/\s+/g, "-")}-land-${k}`, x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
+    const plot: LandPlot = { id: landId(d.name, k), x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
     LAND.push(plot);
     FOR_SALE.push(plot);
     k++;
