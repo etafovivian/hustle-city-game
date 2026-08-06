@@ -4,7 +4,7 @@ import glob, json, pathlib
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
 sizes = {}
-for d in ("buildings", "props", "life"):
+for d in ("buildings", "props", "life", "nature"):
     for f in sorted((root / "public/art" / d).glob("*.webp")):
         sizes[f"/art/{d}/{f.name}"] = list(Image.open(f).size)
 body = ",\n".join(f'  "{k}": [{w}, {h}]' for k, (w, h) in sizes.items())

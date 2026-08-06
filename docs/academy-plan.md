@@ -70,10 +70,17 @@ a certificate with their name on it.
   start, own storage later.
 - A written agreement with the partner hub (who issues, who reviews, revenue split, use of their name and logo).
 
-## Questions for the owner
+## Owner's answers (2026-10-12)
 
-1. The institute's name (as it should print), and the Akure hub's name, and do we have their logo and permission?
-2. Is the real certificate paid? Rough price?
-3. Videos: link from YouTube/Vimeo (unlisted), or upload them to us?
-4. Who reviews final projects: only you, or tutors too?
-5. First course to launch with?
+- Issuer: **Lampnet Institute of Technology**. Partner: **AkureTechHub** (managed by Lampnet; logo use being finalised, so
+  certificates show names only for now).
+- Virtual certificate: **free**. Physical certificate: **₦5,000**. Professional training (Microsoft, AWS, DevOps,
+  DevSecOps and similar): **₦500,000–₦800,000** per course; other tracks (software, cyber) at lower prices.
+- Videos: **unlisted YouTube links** for now; own hosting later.
+- Final projects: reviewed by **a real person** (the institute), maybe AI-assisted later.
+- First courses: **tech**. A starter draft, "Web Basics: Your First Web Page", is seeded for the owner to add videos to.
+
+Step A is built: course builder (admin), catalogue, server-timed lessons, module quizzes (answers stay on the server,
+pass mark, retry wait, daily limit), free virtual certificate with public verify page (`/?verify=<number>`) and
+share links, completion reward in City Coins and XP. Vendor-named courses (AWS, Microsoft) should say they prepare
+learners for the vendor's own exam and that Lampnet isn't the vendor, unless Lampnet is an official partner.

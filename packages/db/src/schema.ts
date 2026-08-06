@@ -466,3 +466,165 @@ export const featureFlags = pgTable("feature_flags", {
   description: text("description").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// --- Hustle Academy (docs/academy-plan.md) --------------------------------
+
+export const courses = pgTable(
+  "courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    category: text("category").notNull(),
+    level: text("level").notNull().default("beginner"),
+    provider: text("provider").notNull().default("lampnet"), // lampnet | akuretechhub
+    status: text("status").notNull().default("draft"), // draft | published
+    rewardCoins: integer("reward_coins").notNull().default(500),
+    rewardXp: integer("reward_xp").notNull().default(100),
+    physicalCertKobo: bigint("physical_cert_kobo", { mode: "number" }).notNull().default(500_000),
+    trainingFeeKobo: bigint("training_fee_kobo", { mode: "number" }),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("courses_slug_uq").on(t.slug),
+    check("courses_status_valid", sql`${t.status} in ('draft','published')`),
+    check("courses_provider_valid", sql`${t.provider} in ('lampnet','akuretechhub')`),
+  ],
+);
+
+export const courseModules = pgTable(
+  "course_modules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    title: text("title").notNull(),
+    quizSize: integer("quiz_size").notNull().default(5),
+    passPercent: integer("pass_percent").notNull().default(70),
+  },
+  (t) => [index("course_modules_course_idx").on(t.courseId, t.position), check("course_modules_pass_range", sql`${t.passPercent} between 1 and 100`)],
+);
+
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduleId: uuid("module_id")
+      .notNull()
+      .references(() => courseModules.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    title: text("title").notNull(),
+    kind: text("kind").notNull().default("video"), // video | text
+    youtubeId: text("youtube_id"),
+    body: text("body").notNull().default(""),
+    // Seconds a learner must spend on the lesson (server-timed) before it counts as done.
+    minSeconds: integer("min_seconds").notNull().default(60),
+  },
+  (t) => [index("lessons_module_idx").on(t.moduleId, t.position), check("lessons_min_seconds_nonneg", sql`${t.minSeconds} >= 0`)],
+);
+
+export const quizQuestions = pgTable(
+  "quiz_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduleId: uuid("module_id")
+      .notNull()
+      .references(() => courseModules.id, { onDelete: "cascade" }),
+    prompt: text("prompt").notNull(),
+    options: jsonb("options").$type<string[]>().notNull(),
+    answer: integer("answer").notNull(),
+    explanation: text("explanation").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+  },
+  (t) => [index("quiz_questions_module_idx").on(t.moduleId)],
+);
+
+export const enrolments = pgTable(
+  "enrolments",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id),
+    enrolledAt: createdAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.courseId] })],
+);
+
+export const lessonProgress = pgTable(
+  "lesson_progress",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => lessons.id, { onDelete: "cascade" }),
+    seconds: integer("seconds").notNull().default(0),
+    lastBeatAt: timestamp("last_beat_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.lessonId] })],
+);
+
+export const quizAttempts = pgTable(
+  "quiz_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    moduleId: uuid("module_id")
+      .notNull()
+      .references(() => courseModules.id, { onDelete: "cascade" }),
+    questionIds: jsonb("question_ids").$type<string[]>().notNull(),
+    answers: jsonb("answers").$type<(number | null)[]>(),
+    percent: integer("percent"),
+    passed: boolean("passed"),
+    startedAt: createdAt(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  },
+  (t) => [index("quiz_attempts_user_module_idx").on(t.userId, t.moduleId, t.startedAt)],
+);
+
+// Append-only: certificates are never edited (a trigger blocks UPDATE/DELETE); revoking adds a row below.
+export const certificates = pgTable(
+  "certificates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    number: text("number").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id),
+    holderName: text("holder_name").notNull(),
+    courseTitle: text("course_title").notNull(),
+    provider: text("provider").notNull(),
+    kind: text("kind").notNull().default("virtual"), // virtual | physical
+    issuedAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("certificates_number_uq").on(t.number),
+    uniqueIndex("certificates_user_course_kind_uq").on(t.userId, t.courseId, t.kind),
+    check("certificates_kind_valid", sql`${t.kind} in ('virtual','physical')`),
+  ],
+);
+
+export const certificateRevocations = pgTable("certificate_revocations", {
+  certificateId: uuid("certificate_id")
+    .primaryKey()
+    .references(() => certificates.id),
+  reason: text("reason").notNull(),
+  actorId: uuid("actor_id").references(() => users.id),
+  createdAt: createdAt(),
+});

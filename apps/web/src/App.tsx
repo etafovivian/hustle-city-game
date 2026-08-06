@@ -11,6 +11,7 @@ import { Merchants } from "./components/Merchants.js";
 import { Phone, type PhoneApp } from "./components/Phone.js";
 import { Quests } from "./components/Quests.js";
 import { ResetPassword } from "./components/Password.js";
+import { VerifyPage } from "./components/Academy.js";
 import { ShopPanel } from "./components/ShopPanel.js";
 import { PlaceHeader, Selvedge } from "./components/ui.js";
 import { LOCATION_PRINT } from "./prints.js";
@@ -53,6 +54,8 @@ export function App() {
   // A one-time reset link opens straight into "choose a new password".
   const [resetToken, setResetToken] = useState<string | null>(() => new URLSearchParams(window.location.search).get("reset"));
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  // A shared certificate link opens the public check page.
+  const [verify, setVerify] = useState<string | null>(() => new URLSearchParams(window.location.search).get("verify"));
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -71,7 +74,7 @@ export function App() {
   }, [refresh]);
 
   // The city map is full screen (like a game); everything else floats over it.
-  const mapFull = !!me && !resetToken && view.kind === "map";
+  const mapFull = !!me && !resetToken && !verify && view.kind === "map";
   useEffect(() => {
     document.body.classList.toggle("map-full", mapFull);
     return () => document.body.classList.remove("map-full");
@@ -106,6 +109,18 @@ export function App() {
     notify("Request sent. Replies land in Phone → Messages.");
     setPhone("messages");
   };
+
+  if (verify) {
+    return (
+      <VerifyPage
+        number={verify}
+        onDone={() => {
+          window.history.replaceState(null, "", window.location.pathname);
+          setVerify(null);
+        }}
+      />
+    );
+  }
 
   if (resetToken) {
     return (

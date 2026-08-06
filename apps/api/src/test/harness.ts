@@ -51,7 +51,7 @@ type App = Awaited<ReturnType<typeof testServer>>;
 export interface Player {
   cookie: string;
   id: string;
-  call: (method: "GET" | "POST" | "PATCH", url: string, body?: unknown) => Promise<Awaited<ReturnType<App["inject"]>>>;
+  call: (method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", url: string, body?: unknown) => Promise<Awaited<ReturnType<App["inject"]>>>;
 }
 
 let counter = 0;

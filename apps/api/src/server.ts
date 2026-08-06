@@ -10,6 +10,7 @@ import { authRoutes } from "./modules/auth.js";
 import { billboardRoutes } from "./modules/billboards.js";
 import { businessRoutes } from "./modules/businesses.js";
 import { serviceRoutes } from "./modules/services.js";
+import { academyRoutes } from "./modules/academy.js";
 import { gameRoutes } from "./modules/game/routes.js";
 import { marketRoutes } from "./modules/market.js";
 import { meRoutes } from "./modules/me.js";
@@ -80,6 +81,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(businessRoutes);
   await app.register(serviceRoutes);
   await app.register(billboardRoutes);
+  await app.register(academyRoutes);
 
   return app;
 }

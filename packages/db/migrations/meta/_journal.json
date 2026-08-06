@@ -50,6 +50,13 @@
       "when": 1791749433234,
       "tag": "0006_billboards",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791823576457,
+      "tag": "0007_academy",
+      "breakpoints": true
     }
   ]
 }

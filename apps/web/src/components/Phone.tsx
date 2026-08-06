@@ -1,8 +1,9 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, Briefcase, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { AcademyApp, AdminAcademy } from "./Academy.js";
 import { Dream, DreamCard } from "./Dream.js";
 import { AdminAds, MyAds } from "./Billboards.js";
 import { ChangePassword } from "./Password.js";
@@ -11,9 +12,10 @@ import { AdminReview, Workshop } from "./Workshop.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
+  { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
   { key: "jobs", label: "Jobs", Icon: Briefcase, tint: "#1e2a5e" },
   { key: "quests", label: "Quests", Icon: ListChecks, tint: "#00a859" },
   { key: "standings", label: "Standings", Icon: Trophy, tint: "#df382b" },
@@ -25,7 +27,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", dream: "Dream", account: "Account", workshop: "Workshop", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Workshop", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -141,6 +143,7 @@ export function Phone({
             </div>
           )}
           {app === "dream" && dream && <Dream dream={dream} onDream={setDream} onChanged={onChanged} notify={notify} />}
+          {app === "academy" && <AcademyApp notify={notify} onChanged={onChanged} />}
           {app === "jobs" && <WorkHub />}
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
@@ -154,6 +157,7 @@ export function Phone({
           {app === "workshop" && <Workshop notify={notify} />}
           {app === "admin" && isAdmin && (
             <div className="stack">
+              <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
               <AdminReview notify={notify} />
             </div>

@@ -653,6 +653,8 @@ const PULL: Record<StreetClass | "arterial", number> = { arterial: 2.4, collecto
 
 const MAINLAND_SHOPS: [string, number][] = [
   ["shop-house", 5],
+  ["salon", 2],
+  ["mechanic", 1],
   ["phone-shop", 2],
   ["chemist", 2],
   ["buka", 2],
@@ -665,13 +667,25 @@ const MAINLAND_SHOPS: [string, number][] = [
   ["suya-stand", 1],
 ];
 const MAINLAND_HOMES: [string, number][] = [
-  ["face-me-block", 30],
-  ["bungalow", 22],
-  ["residential-block", 20],
-  ["mixed-use-block", 10],
-  ["shop-house", 6],
+  ["face-me-block", 22],
+  ["family-compound", 14],
+  ["bungalow", 16],
+  ["storey-house", 14],
+  ["residential-block", 14],
+  ["mixed-use-block", 8],
+  ["unfinished-building", 5],
+  ["shop-house", 5],
   ["terrace-duplex", 2],
 ];
+/** Schools, clinics and places of worship: about one plot in ten off the busiest frontages (owner's guide). */
+const MAINLAND_CIVIC: [string, number][] = [
+  ["church", 3],
+  ["mosque", 3],
+  ["school", 3],
+  ["clinic", 2],
+];
+/** Filling stations want a main-road frontage. */
+const ARTERIAL_EXTRA: [string, number][] = [["filling-station", 1]];
 
 const NEIGHBOURHOOD = (() => {
   const P = PRESETS.mainland;
@@ -711,7 +725,8 @@ const NEIGHBOURHOOD = (() => {
             FOR_SALE.push(plot);
             continue;
           }
-          const art = pick(seeded(id + ":art"), shop ? MAINLAND_SHOPS : MAINLAND_HOMES);
+          const civic = !shop && l.cls !== "arterial" && seeded(id + ":civic") < 0.1;
+          const art = pick(seeded(id + ":art"), shop ? (l.cls === "arterial" ? [...MAINLAND_SHOPS, ...ARTERIAL_EXTRA] : MAINLAND_SHOPS) : civic ? MAINLAND_CIVIC : MAINLAND_HOMES);
           const scale = (hh * 4) / BASE;
           houses.push({ art: `/art/buildings/${art}.webp`, x: c.x, y: c.y + siteOf(scale).lift, key: id, scale });
           // Homes off the quieter streets get a driveway from the street to the plot.
@@ -776,6 +791,8 @@ const PROP_W: Record<string, number> = {
   "trader-fruit": 92,
   "kiosk-container": 110,
   "suya-grill": 110,
+  "pos-booth": 84,
+  vulcanizer: 104,
 };
 /** Junction 101's arms have zebras and street mouths; poles and lamps keep clear of them. */
 const atCrossing = (road: Segment, x: number) => {
@@ -823,7 +840,7 @@ export const PROPS: Prop[] = (() => {
   for (const road of [A, B])
     for (const dir of [1, -1] as const)
       for (const side of [1, -1] as const) {
-        const kinds = [traders[n % 3]!, traders[(n + 1) % 3]!, n % 2 ? "kiosk-container" : "bus-stop"];
+        const kinds = [traders[n % 3]!, n % 2 ? "pos-booth" : "vulcanizer", traders[(n + 1) % 3]!, n % 2 ? "kiosk-container" : "bus-stop"];
         scan(road, CX + dir * 260, CX + dir * 1600, side, kinds, `arm-${road.id}-${dir}-${side}`);
         n++;
       }
@@ -882,7 +899,7 @@ const EXTRA_TREES = [
 // ── Green: trees, bushes and grass ──
 // Lagos ground is mostly laterite, with green where people plant it: almond and mango trees shading compounds,
 // palms along the Island, hedges and lawns in the estates. Each area has its own share of green.
-export type TreeKind = "leafy" | "palm" | "mango" | "almond" | "bush";
+export type TreeKind = "leafy" | "palm" | "mango" | "almond" | "neem" | "plantain" | "bush" | "hedge" | "bougainvillea";
 const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: number; green: number }[] = [
   { name: "j101", a0: -1400, a1: 1400, b0: -1400, b1: 1400, green: PRESETS.mainland.green },
   ...DISTRICTS.filter((d) => d.front).map((d) => {
@@ -904,13 +921,19 @@ const SCATTER = GREEN_AREAS.flatMap((g) => {
       if (r > g.green) continue;
       const c = iso(a + (seeded(key + "x") - 0.5) * 50, b + (seeded(key + "y") - 0.5) * 50);
       if (!onLand(c.x, c.y)) continue;
-      const kind = pick<TreeKind | "grass">(seeded(key + "k"), premium ? [["grass", 4], ["bush", 3], ["palm", 2], ["almond", 2], ["mango", 1]] : [["grass", 3], ["bush", 2], ["almond", 2], ["mango", 2], ["leafy", 1], ["palm", 1]]);
+      const kind = pick<TreeKind | "grass">(
+        seeded(key + "k"),
+        premium
+          ? [["grass", 4], ["hedge", 2], ["bougainvillea", 1], ["palm", 2], ["almond", 2], ["mango", 1], ["plantain", 1], ["bush", 1]]
+          : [["grass", 3], ["bush", 1], ["almond", 2], ["mango", 2], ["neem", 2], ["plantain", 2], ["palm", 1]],
+      );
       if (kind === "grass") {
         const p = patchAt(c.x, c.y, 26);
         if (groundClear(c.x, c.y, 26) && !TAKEN.some((q) => overlaps(p, q, 0))) GRASS.push({ x: c.x, y: c.y, r: 34 + seeded(key + "r") * 30, key });
         continue;
       }
-      if (claim(c.x, c.y, kind === "bush" ? 12 : 16, 4)) out.push({ ...c, kind, key });
+      const hh = kind === "hedge" || kind === "bougainvillea" ? 28 : kind === "bush" ? 12 : 16;
+      if (claim(c.x, c.y, hh, 4)) out.push({ ...c, kind, key });
     }
   return out;
 });

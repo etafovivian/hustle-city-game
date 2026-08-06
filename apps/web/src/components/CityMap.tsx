@@ -57,8 +57,18 @@ import { usePanZoom } from "./usePanZoom.js";
 
 const J = { x: CX - 400, y: CY - 300, w: 800, h: 640 };
 
-/** Drawn height of each tree kind (width 120). */
+/** Drawn height of the drawn (vector) tree kinds, width 120. */
 const TREE_H = { leafy: 140, palm: 165, mango: 125, almond: 128, bush: 40 } as const;
+/** Stitch art for the plants (export 12): width in world units. "leafy" trees use the neem art. */
+const NATURE: Record<string, { art: string; w: number }> = {
+  mango: { art: "/art/nature/mango.webp", w: 130 },
+  almond: { art: "/art/nature/almond.webp", w: 140 },
+  neem: { art: "/art/nature/neem.webp", w: 100 },
+  leafy: { art: "/art/nature/neem.webp", w: 100 },
+  plantain: { art: "/art/nature/plantain.webp", w: 100 },
+  hedge: { art: "/art/nature/ixora-hedge.webp", w: 120 },
+  bougainvillea: { art: "/art/nature/bougainvillea-wall.webp", w: 120 },
+};
 const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
 /** Street furniture: stalls, shelters, poles and lamps. */
 const STREET_PROPS = [...PROPS, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
@@ -528,10 +538,16 @@ export function CityMap({
                   ) : (
                     <g key={o.key}>
                       <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
-                      {o.kind === "bush" ? (
+                      {NATURE[o.kind] ? (
+                        (() => {
+                          const n = NATURE[o.kind]!;
+                          const b = propBox(n.art, o.x, o.y + 10, n.w);
+                          return <image href={n.art} x={b.x} y={b.y} width={b.w} height={b.h} />;
+                        })()
+                      ) : o.kind === "bush" ? (
                         <use href="#bush" x={o.x - 36} y={o.y - 36} width="72" height="40" />
                       ) : (
-                        <use href={`#${o.kind === "leafy" ? "tree" : o.kind}`} x={o.x - 60} y={o.y - TREE_H[o.kind]} width="120" height={TREE_H[o.kind] + 5} />
+                        <use href="#palm" x={o.x - 60} y={o.y - TREE_H.palm} width="120" height={TREE_H.palm + 5} />
                       )}
                     </g>
                   ),
@@ -541,14 +557,11 @@ export function CityMap({
               {/* Junction 101 */}
               <g transform={`translate(${J.x} ${J.y})`}>
                 <ellipse cx="400" cy="300" rx="150" ry="75" fill="var(--map-road)" />
-                {/* Centre island: grass, kerb and a fountain (drawn until the Stitch fountain arrives) */}
+                {/* Centre island: grass, kerb and the fountain */}
                 <ellipse cx="400" cy="300" rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
                 {!far && (
                   <g aria-hidden="true">
-                    <ellipse cx="400" cy="296" rx="44" ry="22" fill="#9aa0a8" stroke="#5d626b" strokeWidth="3" />
-                    <ellipse cx="400" cy="294" rx="36" ry="17" fill="#4fb3d9" />
-                    <path d="M400 292v-46M392 290q-10-26 8-44M408 290q10-26-8-44" fill="none" stroke="#bfe9f7" strokeWidth="4" strokeLinecap="round" />
-                    <circle cx="400" cy="244" r="6" fill="#e8f7fc" />
+                    <image href="/art/props/fountain.webp" x="322" y="242" width="156" height="118" />
                   </g>
                 )}
                 {far ? (
@@ -591,13 +604,7 @@ export function CityMap({
                 FOR_SALE.filter((l) => inView(l.x, l.y)).map((l) => (
                   <g key={l.id} aria-hidden="true">
                     <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill="rgb(255 255 255 / 10%)" stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
-                    <g transform={`translate(${l.x - l.hh * 0.6} ${l.y + l.hh * 0.2})`}>
-                      <rect x="-2" y="-46" width="5" height="48" fill="#6b4423" />
-                      <rect x="-30" y="-74" width="64" height="30" rx="3" fill="#fff8e1" stroke="#b3261e" strokeWidth="3" />
-                      <text x="2" y="-55" textAnchor="middle" fontSize="11" fontWeight="900" fill="#b3261e">
-                        FOR SALE
-                      </text>
-                    </g>
+                    <image href="/art/props/for-sale-sign.webp" x={l.x - l.hh * 0.6 - 40} y={l.y + l.hh * 0.25 - 87} width="82" height="89" />
                   </g>
                 ))}
 
