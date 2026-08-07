@@ -444,6 +444,10 @@ export function CityMap({
             <pattern id="grass-blades" width="24" height="16" patternUnits="userSpaceOnUse">
               <path d="M4 14l2-8 2 8M14 12l1-7 2 7" fill="none" stroke="#3c7a2e" strokeWidth="1.6" />
             </pattern>
+            {/* Cartoon water (Stitch export 13), tiled */}
+            <pattern id="water-tex" width="1100" height="502" patternUnits="userSpaceOnUse">
+              <image href="/art/nature/water.webp" width="1100" height="502" />
+            </pattern>
             <pattern id="waves" width="160" height="56" patternUnits="userSpaceOnUse">
               <path d="M0 28q40-22 80 0t80 0" fill="none" stroke="#9fd3e8" strokeOpacity=".3" strokeWidth="5" />
             </pattern>
@@ -475,9 +479,10 @@ export function CityMap({
 
               {/* Lagoon, harbour and sea, then the Island on top */}
               <path d={WATER_PATH} fill="#2f7ea6" />
-              <path d={WATER_PATH} fill="url(#waves)" />
-              <path d={OCEAN_PATH} fill="#26688f" />
-              <path d={OCEAN_PATH} fill="url(#waves)" />
+              {!far && <path d={WATER_PATH} fill="url(#water-tex)" />}
+              {far && <path d={WATER_PATH} fill="url(#waves)" />}
+              {/* The open Atlantic: the same water, deeper */}
+              <path d={OCEAN_PATH} fill="rgb(12 40 86 / 34%)" />
               <path d={SHORE_PATH} fill="none" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" strokeLinecap="round" />
               <path d={ISLAND_PATH} fill="#d6b27e" stroke="#e9f4f6" strokeOpacity=".55" strokeWidth="10" />
               <path d={ISLAND_PATH} fill="url(#sand)" />

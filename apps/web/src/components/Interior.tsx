@@ -22,12 +22,29 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-export function InteriorScene({ src, alt, crowd = 4, seed = 1 }: { src: string; alt: string; crowd?: number; seed?: number }) {
+/** People who stay put and do something (Blender pose sheets in public/art/life/poses): dance, serve, stand. */
+export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk";
+const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
+  dance: ["woman_gele", "man_kaftan", "woman_buba"],
+  serve: ["woman_buba", "man_casual"],
+  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele"],
+  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+};
+
+export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { src: string; alt: string; crowd?: number; seed?: number; poses?: PoseAction[] }) {
   const box = useRef<HTMLDivElement>(null);
   const els = useRef<(HTMLDivElement | null)[]>([]);
   const [h, setH] = useState(0);
   const reduce = usePrefersReducedMotion();
   const variants: WalkerVariant[] = Array.from({ length: crowd }, (_, i) => WALKER_VARIANTS[(i + seed) % WALKER_VARIANTS.length]!);
+  // Posed people stand at fixed spots spread over the floor, each facing the viewer (se or sw).
+  const posed = poses.map((action, i) => {
+    const vs = POSE_VARIANTS[action];
+    const spot = onFloor(0.2 + ((i * 0.37 + seed * 0.13) % 0.6), 0.25 + ((i * 0.29 + seed * 0.07) % 0.55));
+    return { action, variant: vs[(i + seed) % vs.length]!, dir: (i % 2 ? "sw" : "se") as WalkDir, ...spot };
+  });
+  const posedEls = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const el = box.current;
@@ -58,6 +75,7 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1 }: { src: string; 
     };
     people.forEach((_, i) => place(i));
     if (reduce) return;
+    const t0 = performance.now();
     let last = performance.now();
     let raf = 0;
     const step = (now: number) => {
@@ -87,6 +105,14 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1 }: { src: string; 
         }
         place(i);
       });
+      // Posed people loop their 8 frames (dancers a little faster)
+      posed.forEach((p, i) => {
+        const el = posedEls.current[i];
+        if (!el) return;
+        const fps = p.action === "dance" ? 10 : 7;
+        const frame = (Math.floor(((now - t0) / 1000) * fps) + i * 3) % 8;
+        el.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
+      });
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -107,6 +133,24 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1 }: { src: string; 
             className="interior-npc"
             aria-hidden="true"
             style={{ width: ph * 0.6, height: ph, marginTop: ph * 0.1 }}
+          />
+        ))}
+      {h > 0 &&
+        posed.map((p, i) => (
+          <div
+            key={`pose-${i}`}
+            ref={(el) => void (posedEls.current[i] = el)}
+            className="interior-npc"
+            aria-hidden="true"
+            style={{
+              width: ph * 0.6,
+              height: ph,
+              marginTop: ph * 0.1,
+              left: `${p.x * 100}%`,
+              top: `${p.y * 100}%`,
+              zIndex: Math.round(p.y * 1000),
+              backgroundImage: `url(/art/life/poses/${p.action}-${p.variant}-${p.dir}.webp)`,
+            }}
           />
         ))}
     </div>

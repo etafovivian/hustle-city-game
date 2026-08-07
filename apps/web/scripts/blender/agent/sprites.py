@@ -440,8 +440,38 @@ def downsample(a):
     return pm
 
 
-def render_variant(name, sex, fn, tmp):
+LIBRARY_FBX = os.path.join(HUSTLE, "al_ue.fbx")   # Quaternius Universal Animation Library (Unreal rig)
+
+
+def import_library_actions(names):
+    """Copy extra clips (e.g. Sitting_Talking_Loop) from the UAL fbx onto the scene; the fbx objects are removed."""
+    before_o, before_a = set(bpy.data.objects), set(bpy.data.actions)
+    bpy.ops.import_scene.fbx(filepath=LIBRARY_FBX)
+    for a in list(bpy.data.actions):
+        if a in before_a:
+            continue
+        short = a.name.split("|")[-1]
+        if short in names and short not in bpy.data.actions:
+            a.name = short
+            a.use_fake_user = True
+            # keep bone channels only: the fbx clip also keys the rig object's transform, which would
+            # override the direction rotation we set on the armature object
+            for layer in a.layers:
+                for st in layer.strips:
+                    for cb in st.channelbags:
+                        for fc in [f for f in cb.fcurves if not f.data_path.startswith("pose.bones")]:
+                            cb.fcurves.remove(fc)
+        else:
+            bpy.data.actions.remove(a)
+    for o in list(bpy.data.objects):
+        if o not in before_o:
+            bpy.data.objects.remove(o)
+
+
+def prepare_variant(name, sex, fn, extra_actions=()):
     arm, body, others = load_body(os.path.join(HUSTLE, f"body-{sex}.glb"))
+    if extra_actions:
+        import_library_actions(extra_actions)
     skin = body.material_slots[0].material
     fn(arm, body)
     keep = tuple(skin.diffuse_color)
@@ -466,6 +496,11 @@ def render_variant(name, sex, fn, tmp):
         if arm.scale[0] < 0.9:  # children: thinner ink so their slim legs don't turn into solid lines
             for ls in bpy.context.view_layer.freestyle_settings.linesets:
                 ls.linestyle.thickness = float(os.environ.get("TOON_LINE", "4.0")) * 0.75
+    return arm, scene, look
+
+
+def render_variant(name, sex, fn, tmp):
+    arm, scene, look = prepare_variant(name, sex, fn)
     act = bpy.data.actions["Walk_Loop"]
     f0, f1 = 1.0, 33.0  # one full cycle (frame 33 == frame 1)
     frames0 = {}
@@ -486,6 +521,177 @@ def render_variant(name, sex, fn, tmp):
         write_png(sheet, os.path.join(OUT, f"walk-{name}-{d}.png"))
         print("SHEET", name, d, "rot", round(facing_angle(sx, sy), 1))
     return frames0
+
+
+# ------------------------------------------------------------------ interior poses (POSE=1)
+# action -> (base clip, variants). Directions: se/sw only (interiors are seen from the front).
+POSES = {
+    "sit_eat": ("Sitting_Idle_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele"]),
+    "sit_talk": ("Sitting_Talking_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"]),
+    "stand_idle": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"]),
+    "serve": (os.environ.get("SERVE_BASE", "Idle_Talking_Loop"), ["woman_buba", "man_casual"]),
+    "dance": ("Dance_Loop", ["woman_gele", "man_kaftan", "woman_buba"]),
+}
+POSE_DIRS = {"se": DIRS["se"], "sw": DIRS["sw"]}
+
+
+def ik_hand(arm, side):
+    """IK on the forearm (2-bone chain) towards an empty parented to the armature object."""
+    e = bpy.data.objects.new(f"ik_{side}", None)
+    bpy.context.scene.collection.objects.link(e)
+    e.parent = arm
+    c = arm.pose.bones[f"lowerarm_{side}"].constraints.new("IK")
+    c.target = e
+    c.chain_count = 2
+    c.use_tail = True
+    return e, c
+
+
+def clear_ik(arm):
+    for pb in arm.pose.bones:
+        for c in list(pb.constraints):
+            pb.constraints.remove(c)
+    for o in list(bpy.data.objects):
+        if o.name.startswith("ik_"):
+            bpy.data.objects.remove(o)
+
+
+def bone_pos(arm, name):
+    return arm.pose.bones[name].head.copy()  # armature space (follows the object's rotation and scale)
+
+
+def body_point(arm, bone, offset):
+    """A point fixed to a bone: `offset` is given in the rest-pose axes (x = character's left, -y = forward,
+    z = up) relative to the bone head, then carried along with the bone's current pose (twist, lean)."""
+    pb = arm.pose.bones[bone]
+    delta = pb.matrix @ pb.bone.matrix_local.inverted()
+    return delta @ (pb.bone.head_local + Vector(offset))
+
+
+def pose_frames(arm, action, base):
+    """Generator: sets up frame i of the pose loop (0..NF-1)."""
+    act = bpy.data.actions[base]
+    f0, f1 = act.frame_range
+    span = f1 - f0
+    clear_ik(arm)
+    hooks = None
+    if action in ("sit_eat", "serve", "dance"):
+        er, cr = ik_hand(arm, "r")
+        el, cl = ik_hand(arm, "l")
+        cr.influence = cl.influence = 0.0
+        hooks = (er, cr, el, cl)
+    for i in range(NF):
+        t = i / NF
+        set_action(arm, base, f0 + span * t)
+        if hooks:
+            er, cr, el, cl = hooks
+            cr.influence = cl.influence = 0.0
+            bpy.context.view_layer.update()
+            if action == "sit_eat":
+                # left hand holds the bowl above the lap; right hand goes bowl -> mouth -> bowl once per loop
+                k = smoothstep(0.0, 1.0, 0.5 - 0.5 * math.cos(2 * math.pi * t))
+                bowl = body_point(arm, "spine_01", (-0.05, -0.3, 0.05))
+                mouth = body_point(arm, "Head", (-0.02, -0.13, 0.03))
+                er.location = bowl.lerp(mouth, k)
+                el.location = body_point(arm, "spine_01", (0.07, -0.28, 0.02))
+            elif action == "dance":
+                # owambe: both hands up around head height, waving/swaying in alternation over the clip
+                a = 2 * math.pi * t
+                er.location = body_point(arm, "spine_03", (-0.36 - 0.06 * math.sin(a), -0.08, 0.4 + 0.09 * math.sin(a)))
+                el.location = body_point(arm, "spine_03", (0.36 - 0.06 * math.sin(a), -0.08, 0.4 - 0.09 * math.sin(a)))
+            else:  # serve: left hand steadies a pot at waist height, right hand stirs a small circle
+                a = 2 * math.pi * t
+                er.location = body_point(arm, "spine_01", (-0.15 + 0.05 * math.cos(a), -0.34 + 0.05 * math.sin(a), 0.13))
+                el.location = body_point(arm, "spine_01", (0.17, -0.3, 0.1))
+            cr.influence = cl.influence = 1.0
+            bpy.context.view_layer.update()
+        yield i
+
+
+def clip_yaw(arm, base):
+    """Yaw (deg) of the body's facing in this clip relative to the rig's -Y (some idles stand turned)."""
+    rot = tuple(arm.rotation_euler)
+    arm.rotation_euler = (0, 0, 0)
+    act = bpy.data.actions[base]
+    set_action(arm, base, act.frame_range[0])
+    bpy.context.view_layer.update()
+    P = lambda b: arm.pose.bones[b].head
+    across = (P("upperarm_l") - P("upperarm_r")) + (P("thigh_l") - P("thigh_r"))
+    f = across.cross(Vector((0, 0, 1)))
+    arm.rotation_euler = rot
+    # facing(theta) = (sin t, -cos t)  ->  theta = atan2(f.x, -f.y)
+    return math.degrees(math.atan2(f.x, -f.y))
+
+
+def render_poses(name, sex, fn, jobs, tmp):
+    bases = sorted({POSES[a][0] for a in jobs})
+    arm, scene, look = prepare_variant(name, sex, fn, extra_actions=[b for b in bases if b not in bpy.data.actions] if False else
+                                        [b for b in bases if b == "Sitting_Talking_Loop"])
+    first = {}
+    for action in jobs:
+        base = POSES[action][0]
+        yaw = clip_yaw(arm, base)
+        print("CLIP", base, "body yaw", round(yaw, 1))
+        for d, (sx, sy) in POSE_DIRS.items():
+            arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy) - yaw))
+            sheet = np.zeros((FH, FW * NF, 4), dtype=np.float32)
+            for i in pose_frames(arm, action, base):
+                p = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
+                scene.render.filepath = p
+                bpy.ops.render.render(write_still=True)
+                a = read_png(p)
+                if look == "toon":
+                    a = downsample(a)
+                sheet[:, i * FW:(i + 1) * FW] = a
+                if i == 0:
+                    first[(action, d)] = a
+            write_png(sheet, os.path.join(OUT, f"{action}-{name}-{d}.png"))
+            print("SHEET", action, name, d)
+    clear_ik(arm)
+    return first
+
+
+def contact_sheet(cells, ncols, path):
+    """cells: list of rows, each a list of RGBA frames (or None)."""
+    rows = len(cells)
+    cs = np.zeros((FH * rows, FW * ncols, 4), dtype=np.float32)
+    cs[..., :3] = 0.9
+    cs[..., 3] = 1
+    for r, row in enumerate(reversed(cells)):  # numpy rows are bottom-up in Blender images
+        for c, a in enumerate(row):
+            y0, x0 = r * FH, c * FW
+            if a is not None:
+                al = a[..., 3:4]
+                cs[y0:y0 + FH, x0:x0 + FW, :3] = a[..., :3] * al + cs[y0:y0 + FH, x0:x0 + FW, :3] * (1 - al)
+            cs[y0 + FOOT_PX, x0:x0 + FW, :3] = (0.7, 0.4, 0.4)  # ground line marker
+    write_png(cs, path)
+
+
+if os.environ.get("POSE"):
+    tmp = os.path.join(OUT, "_frames")
+    os.makedirs(tmp, exist_ok=True)
+    only_actions = set(os.environ["POSE"].split(",")) if os.environ["POSE"] not in ("1", "all") else set(POSES)
+    got = {}
+    for name, sex, fn in VARIANTS:
+        if ONLY and name not in ONLY:
+            continue
+        jobs = [a for a in POSES if a in only_actions and name in POSES[a][1]]
+        if jobs:
+            got[name] = render_poses(name, sex, fn, jobs, tmp)
+    # contact sheet: one row per action, columns = variant x (se, sw) for that action
+    cells = []
+    for action in POSES:
+        row = []
+        for name in POSES[action][1]:
+            for d in POSE_DIRS:
+                row.append(got.get(name, {}).get((action, d)))
+        if any(x is not None for x in row):
+            cells.append(row)
+    ncols = max(len(r) for r in cells)
+    cells = [r + [None] * (ncols - len(r)) for r in cells]
+    contact_sheet(cells, ncols, os.path.join(OUT, "poses-contact.png"))
+    print("DONE poses")
+    sys.exit(0)
 
 
 tmp = os.path.join(OUT, "_frames")

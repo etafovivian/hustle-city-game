@@ -5,8 +5,19 @@ import { CheckCircle2, Coins, Footprints, GraduationCap, Sparkles, Store, X } fr
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
-import { InteriorScene } from "./Interior.js";
+import { InteriorScene, type PoseAction } from "./Interior.js";
 import { buildingBox } from "./sprites.js";
+
+/** Who is inside each place: people walking about, and people doing something (dancing, serving, standing). */
+const SCENES: Record<string, { walkers: number; poses: PoseAction[] }> = {
+  royal_event_centre: { walkers: 2, poses: ["dance", "dance", "dance", "stand_idle"] },
+  mama_nkechi_buka: { walkers: 2, poses: ["serve", "stand_idle", "stand_idle"] },
+  viewing_centre: { walkers: 1, poses: ["stand_idle", "stand_idle", "stand_idle", "stand_idle"] },
+  sharp_cuts: { walkers: 1, poses: ["serve", "stand_idle"] },
+  tailors_row: { walkers: 1, poses: ["serve", "stand_idle"] },
+  grand_lagoon_hotel: { walkers: 3, poses: ["stand_idle", "stand_idle"] },
+  lagoon_capital_bank: { walkers: 2, poses: ["stand_idle", "stand_idle", "stand_idle"] },
+};
 
 /** The building: tap to open its card. */
 export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue; x: number; y: number; scale?: number; onOpen: () => void }) {
@@ -122,7 +133,7 @@ export function VenueCard({
             <span className="small muted">{venue.area}</span>
           </div>
         </div>
-        {venue.interior && <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} crowd={venue.key === "royal_event_centre" ? 6 : 4} seed={venue.key.length} />}
+        {venue.interior && <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} crowd={SCENES[venue.key]?.walkers ?? 3} poses={SCENES[venue.key]?.poses ?? ["stand_idle", "stand_idle"]} seed={venue.key.length} />}
         <p>{venue.blurb}</p>
         <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
 

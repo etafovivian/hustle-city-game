@@ -1,0 +1,6 @@
+Pose sprite sheets (sit_eat, sit_talk, stand_idle, serve, dance) rendered for Naija Hustle City by
+scripts/blender/agent/sprites.py (Blender 5.2, headless, POSE=all LOOK=toon) from the CC0 Quaternius bodies and
+Universal Animation Library clips (see public/models/LICENSE.txt), with clothes from scripts/blender/agent/garments.py.
+Eating, stirring and the dance arms are keyframed on top of the nearest library clip. Original work for this project.
+Each file: 8 frames of 96x160 in a row, directions se/sw only; feet 16 px above the frame bottom; 76 px per metre.
+Seated poses: the seat sits about 0.3 m behind the feet point.
