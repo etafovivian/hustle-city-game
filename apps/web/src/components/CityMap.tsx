@@ -3,7 +3,7 @@
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
@@ -12,6 +12,7 @@ import { AvatarWalker } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
 import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
+import { DepthSorted, type DepthItem } from "./People.js";
 import { StreetLife } from "./StreetLife.js";
 import {
   ALL_SCENERY,
@@ -185,7 +186,10 @@ export function CityMap({
   onDistrict,
   avatar,
   nickname,
+  onApp,
 }: {
+  /** Open a phone app (a venue like the school can). */
+  onApp?: (app: "academy") => void;
   onOpen: (id: LocationKey) => void;
   visited: Set<string>;
   /** A shop visit happened (quest progress may have moved). */
@@ -272,6 +276,87 @@ export function CityMap({
   const districtScale = readable(k, 56, 16, 20);
   const far = k < 0.3;
   const light = useLagosLight();
+
+  // Everything that stands up on the buildings layer, with its foot point for depth order.
+  const depthItems: DepthItem[] = [];
+  for (const o of WORLD_OBJECTS) {
+    // Zoomed far out, only each area's signature buildings are drawn (hundreds of houses would be dots anyway).
+    if (!inView(o.x, o.y) || (far && (o.type !== "building" || !o.landmark))) continue;
+    let node: ReactNode;
+    if (o.type === "building" || o.type === "prop") node = <image href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} aria-hidden="true" />;
+    else {
+      const n = NATURE[o.kind];
+      const b = n ? propBox(n.art, o.x, o.y + 10, n.w) : null;
+      node = (
+        <g aria-hidden="true">
+          <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
+          {n && b ? (
+            <image href={n.art} x={b.x} y={b.y} width={b.w} height={b.h} />
+          ) : o.kind === "bush" ? (
+            <use href="#bush" x={o.x - 36} y={o.y - 36} width="72" height="40" />
+          ) : (
+            <use href="#palm" x={o.x - 60} y={o.y - TREE_H.palm} width="120" height={TREE_H.palm + 5} />
+          )}
+        </g>
+      );
+    }
+    depthItems.push({ key: o.key, y: o.y, node });
+  }
+  if (!far) {
+    depthItems.push({
+      key: "park",
+      y: PARK.y + PARK.h,
+      node: <image href="/art/city-park.webp" x={PARK.x} y={PARK.y} width={PARK.w} height={PARK.h} preserveAspectRatio="xMidYMax meet" aria-hidden="true" />,
+    });
+    for (const pl of PLACES)
+      depthItems.push({ key: `place-${pl.id}`, y: pl.y + pl.h, node: <Hotspot part="body" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={(id) => !pz.wasDragged() && onOpen(id)} /> });
+    for (const spot of VENUE_SPOTS) {
+      const v = VENUES_BY_KEY.get(spot.key);
+      if (v && inView(spot.x, spot.y))
+        depthItems.push({ key: `venue-${spot.key}`, y: spot.y, node: <VenueBuilding venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> });
+    }
+    for (const l of FOR_SALE)
+      if (inView(l.x, l.y))
+        depthItems.push({
+          key: l.id,
+          y: l.y + l.hh,
+          node: (
+            <g aria-hidden="true">
+              <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill="rgb(255 255 255 / 10%)" stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
+              <image href="/art/props/for-sale-sign.webp" x={l.x - l.hh * 0.6 - 40} y={l.y + l.hh * 0.25 - 87} width="82" height="89" />
+            </g>
+          ),
+        });
+    PLOTS.forEach((p, i) => {
+      const shop = neighbours[i];
+      if (!shop) return;
+      depthItems.push({
+        key: `plot-${i}`,
+        y: p.y + 45,
+        node: (
+          <g
+            className="hotspot"
+            role="button"
+            tabIndex={0}
+            aria-label={`${shop.isMe ? "Your shop" : `${shop.nickname}'s shop`}: ${shop.shopName}`}
+            onClick={() => !pz.wasDragged() && setPeek(shop)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                setPeek(shop);
+              }
+            }}
+          >
+            <Diamond x={p.x} y={p.y} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 16%)"} stroke={shop.isMe ? "#ffc72c" : "#8c6a3e"} strokeWidth="2" />
+            <g className="bld">
+              <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y + 45 - 150} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
+            </g>
+          </g>
+        ),
+      });
+    });
+  }
 
   const open = (id: LocationKey) => {
     if (!pz.wasDragged()) onOpen(id);
@@ -462,6 +547,11 @@ export function CityMap({
                     {bridges.map((r) => <path key={`bd-${r.id}`} d={r.d} {...line} stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />)}
                     {/* Zebra crossings: at the junction, at the far ends of its footpaths, and across every side street */}
                     {!far && <path d={ZEBRAS.map(zebraStripes).join("")} fill="#f4f1e8" opacity=".92" />}
+                    {/* The roundabout: asphalt ring, grassed centre island and the fountain. On the ground layer, so the
+                        traffic going round drives over it, not under it. */}
+                    <ellipse cx={CX} cy={CY} rx={ROUNDABOUT.rx} ry={ROUNDABOUT.ry} fill="var(--map-road)" />
+                    <ellipse cx={CX} cy={CY} rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
+                    {!far && <image href="/art/props/fountain.webp" x={CX - 78} y={CY - 58} width="156" height="118" />}
                   </g>
                 );
               })()}
@@ -529,42 +619,8 @@ export function CityMap({
                 </g>
               ))}
 
-              {/* District and neighbourhood buildings (decorative until districts open) */}
-              <g aria-hidden="true" className="map-scenery">
-                {WORLD_OBJECTS.filter((o) => inView(o.x, o.y)).map((o) =>
-                  o.type === "building" ? (
-                    <image key={o.key} href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
-                  ) : far ? null : o.type === "prop" ? (
-                    <image key={o.key} href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
-                  ) : (
-                    <g key={o.key}>
-                      <ellipse cx={o.x + 10} cy={o.y} rx="46" ry="14" fill="rgb(0 0 0 / 22%)" />
-                      {NATURE[o.kind] ? (
-                        (() => {
-                          const n = NATURE[o.kind]!;
-                          const b = propBox(n.art, o.x, o.y + 10, n.w);
-                          return <image href={n.art} x={b.x} y={b.y} width={b.w} height={b.h} />;
-                        })()
-                      ) : o.kind === "bush" ? (
-                        <use href="#bush" x={o.x - 36} y={o.y - 36} width="72" height="40" />
-                      ) : (
-                        <use href="#palm" x={o.x - 60} y={o.y - TREE_H.palm} width="120" height={TREE_H.palm + 5} />
-                      )}
-                    </g>
-                  ),
-                )}
-              </g>
-
               {/* Junction 101 */}
               <g transform={`translate(${J.x} ${J.y})`}>
-                <ellipse cx="400" cy="300" rx="150" ry="75" fill="var(--map-road)" />
-                {/* Centre island: grass, kerb and the fountain */}
-                <ellipse cx="400" cy="300" rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
-                {!far && (
-                  <g aria-hidden="true">
-                    <image href="/art/props/fountain.webp" x="322" y="242" width="156" height="118" />
-                  </g>
-                )}
                 {far ? (
                   <g
                     className="hotspot"
@@ -584,68 +640,24 @@ export function CityMap({
                   </g>
                 ) : null}
               </g>
-              {!far && (
-                <>
-                  <image href="/art/city-park.webp" x={PARK.x} y={PARK.y} width={PARK.w} height={PARK.h} preserveAspectRatio="xMidYMax meet" aria-hidden="true" className="map-scenery" />
-                  {PLACES.map((pl) => (
-                    <Hotspot key={pl.id} part="body" {...pl} visited={visited.has(pl.id)} plateScale={plateScale} onOpen={open} />
-                  ))}
-                </>
-              )}
-
-              {/* Venues you can go into */}
+              {/* Open plots: flat on the ground, under everything that stands */}
               {!far &&
-                VENUE_SPOTS.map((spot) => {
-                  const v = VENUES_BY_KEY.get(spot.key);
-                  return v ? <VenueBuilding key={spot.key} venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> : null;
-                })}
-
-              {/* Land for sale: open plots with permanent ids (cityLayout LAND), a pegged outline and a sign */}
-              {!far &&
-                FOR_SALE.filter((l) => inView(l.x, l.y)).map((l) => (
-                  <g key={l.id} aria-hidden="true">
-                    <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill="rgb(255 255 255 / 10%)" stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
-                    <image href="/art/props/for-sale-sign.webp" x={l.x - l.hh * 0.6 - 40} y={l.y + l.hh * 0.25 - 87} width="82" height="89" />
-                  </g>
-                ))}
-
-              {/* Plots: player shops (yours first), then open plots */}
-              {!far &&
-                PLOTS.map((p, i) => {
-                  const shop = neighbours[i];
-                  if (!shop)
-                    return (
-                      <g key={i} aria-hidden="true">
-                        <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(30 110 60 / 14%)" stroke="#2f6b45" strokeWidth="3" strokeDasharray="10 8" />
-                        <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#24533a" letterSpacing="2">
-                          OPEN PLOT
-                        </text>
-                      </g>
-                    );
-                  const open = () => !pz.wasDragged() && setPeek(shop);
-                  return (
-                    <g
-                      key={i}
-                      className="hotspot"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${shop.isMe ? "Your shop" : `${shop.nickname}'s shop`}: ${shop.shopName}`}
-                      onClick={open}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setPeek(shop);
-                        }
-                      }}
-                    >
-                      <Diamond x={p.x} y={p.y} w={240} h={120} fill={shop.isMe ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 16%)"} stroke={shop.isMe ? "#ffc72c" : "#8c6a3e"} strokeWidth="2" />
-                      <g className="bld">
-                        <image href={HUSTLE_ART[shop.hustle] ?? HUSTLE_ART.trader} x={p.x - 90} y={p.y + 45 - 150} width="180" height="150" preserveAspectRatio="xMidYMax meet" />
-                      </g>
+                PLOTS.map((p, i) =>
+                  neighbours[i] ? null : (
+                    <g key={i} aria-hidden="true">
+                      <Diamond x={p.x} y={p.y} w={260} h={130} fill="rgb(30 110 60 / 14%)" stroke="#2f6b45" strokeWidth="3" strokeDasharray="10 8" />
+                      <text x={p.x} y={p.y + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#24533a" letterSpacing="2">
+                        OPEN PLOT
+                      </text>
                     </g>
-                  );
-                })}
+                  ),
+                )}
+
+              {/* Buildings, trees, stalls, places, venues, shops and land signs, back to front, with the walkers
+                  slotted in by depth (see People.tsx) */}
+              <g className="map-scenery">
+                <DepthSorted items={depthItems} people={!far} />
+              </g>
 
               {/* You: tap the ground to walk */}
               {!far && (
@@ -866,6 +878,13 @@ export function CityMap({
           }}
           onChanged={onVisited}
           notify={notify}
+          onApp={
+            onApp &&
+            ((app) => {
+              setVenueOpen(null);
+              onApp(app);
+            })
+          }
         />
       )}
         </>,

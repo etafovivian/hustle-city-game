@@ -25,6 +25,8 @@ export interface Venue {
   activities: VenueActivity[];
   /** Real-world artisans or shops to suggest from this venue (artisan category key). */
   realCategory?: string;
+  /** A phone app this place opens (the Academy at the school). */
+  opens?: "academy";
 }
 
 export const VENUES: readonly Venue[] = [
@@ -127,6 +129,48 @@ export const VENUES: readonly Venue[] = [
     activities: [
       { key: "beef_suya", label: "Beef suya, extra yaji", cost: 300, xp: 10 },
       { key: "kilishi", label: "A pack of kilishi", cost: 400, xp: 10 },
+    ],
+  },
+  {
+    key: "lampnet_academy",
+    name: "Lampnet Academy",
+    area: "Tech Mile",
+    icon: "🎓",
+    art: "/art/buildings/school.webp",
+    blurb: "Lampnet Institute of Technology's campus on Tech Mile, with AkureTechHub. Real tech courses, free to start, with a certificate when you finish.",
+    regulars: ["Tutor Kemi", "Femi from AkureTechHub"],
+    activities: [
+      { key: "study", label: "Study session in the library", cost: 100, xp: 10 },
+      { key: "meetup", label: "Join the evening tech meetup", cost: 250, xp: 15 },
+    ],
+    opens: "academy",
+  },
+  {
+    key: "lagoon_capital_bank",
+    name: "Lagoon Capital Bank",
+    area: "Island Heights",
+    icon: "🏦",
+    art: "/art/buildings/bank-lagoon-capital.webp",
+    interior: "/art/interiors/bank-hall.webp",
+    blurb: "Glass doors, cold AC and a queue that moves slowly. Everybody on the Island banks here, or says they do.",
+    regulars: ["Teller Funmi", "Mr Okafor the manager"],
+    activities: [
+      { key: "queue", label: "Queue to update your BVN details", cost: 100, xp: 8 },
+      { key: "loan_chat", label: "Ask the manager about a business loan", cost: 300, xp: 15 },
+    ],
+  },
+  {
+    key: "grand_lagoon_hotel",
+    name: "Grand Lagoon Hotel",
+    area: "Island Heights",
+    icon: "🏨",
+    art: "/art/buildings/hotel.webp",
+    interior: "/art/interiors/hotel-lobby.webp",
+    blurb: "Fountain in the lobby, live saxophone at night. Big deals get signed over Chapman here.",
+    regulars: ["Concierge Tayo", "Chief Adebayo"],
+    activities: [
+      { key: "chapman", label: "Chapman at the lobby bar", cost: 600, xp: 12 },
+      { key: "lunch", label: "Lunch at the poolside restaurant", cost: 1500, xp: 25 },
     ],
   },
 ];

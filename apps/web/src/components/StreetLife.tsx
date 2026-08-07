@@ -5,8 +5,8 @@
 // Art: Stitch exports 9 and 11 (public/art/life, provenance in *.json sidecars); walkers from the 3D bodies.
 import { useEffect, useRef, useState } from "react";
 import { ART_SIZE } from "./artSizes.js";
-import { CX, CY, FOOTPATHS, PRESETS, HALF, ROUNDABOUT, flyHeight, yOn, type Segment } from "./cityLayout.js";
-import { WALKER_VARIANTS, walkDir, walkerSheet, walkerSize, type WalkDir } from "./walkers.js";
+import { CX, CY, HALF, ROUNDABOUT, flyHeight, yOn, type Segment } from "./cityLayout.js";
+import { walkDir, type WalkDir } from "./walkers.js";
 
 type View = { href: string; w: number; h: number; mirror: boolean };
 /** A vehicle view `w` world units wide; `mirror` flips it to face the other way (SE ↔ SW, NE ↔ NW). */
@@ -191,12 +191,6 @@ function Traffic({ roads }: { roads: Segment[] }) {
   );
 }
 
-// Walkers: drawn 64 world units tall; children are smaller inside the same frames.
-const WALK = walkerSize(64);
-const WALKERS = PRESETS.mainland.walkers;
-/** One full walk cycle (8 frames, two steps) covers this much ground, so feet don't slide. */
-const STRIDE = 58;
-
 function usePrefersReducedMotion() {
   const [reduce, setReduce] = useState(() => {
     try {
@@ -219,76 +213,6 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-/** People on the pavements: each walks from node to node of the footpath network, choosing a way at each corner. */
-function Walkers() {
-  const groups = useRef<(SVGGElement | null)[]>([]);
-  const sheets = useRef<(SVGImageElement | null)[]>([]);
-
-  useEffect(() => {
-    const { nodes, links } = FOOTPATHS;
-    // Same start every visit (a seeded shuffle), different choices as they go.
-    let seed = 20261012;
-    const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
-    const people = Array.from({ length: WALKERS }, (_, i) => {
-      const from = Math.floor(rnd() * nodes.length);
-      const to = links[from]![Math.floor(rnd() * links[from]!.length)]!;
-      return { from, to, t: rnd(), walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, dir: "" as WalkDir | "" };
-    });
-    let last = performance.now();
-    let raf = 0;
-    const step = (now: number) => {
-      const dt = Math.min(0.1, (now - last) / 1000);
-      last = now;
-      for (const [i, p] of people.entries()) {
-        let a = nodes[p.from]!;
-        let b = nodes[p.to]!;
-        let len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        p.t += (p.speed * dt) / len;
-        p.walked += p.speed * dt;
-        while (p.t >= 1) {
-          // At a corner: carry on any way but back (unless it's a dead end).
-          const ways = links[p.to]!.filter((n) => n !== p.from);
-          const next = ways.length ? ways[Math.floor(rnd() * ways.length)]! : p.from;
-          const over = (p.t - 1) * len;
-          [p.from, p.to] = [p.to, next];
-          a = nodes[p.from]!;
-          b = nodes[p.to]!;
-          len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-          p.t = over / len;
-        }
-        const x = a.x + (b.x - a.x) * p.t;
-        const y = a.y + (b.y - a.y) * p.t;
-        groups.current[i]?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
-        const img = sheets.current[i];
-        if (!img) continue;
-        const dir = walkDir(b.x - a.x, b.y - a.y);
-        if (dir !== p.dir) {
-          p.dir = dir;
-          img.setAttribute("href", walkerSheet(p.variant, dir));
-        }
-        const frame = Math.floor((p.walked / STRIDE) * WALK.frames) % WALK.frames;
-        img.setAttribute("x", String(-WALK.w * frame));
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  return (
-    <g className="walkers">
-      {Array.from({ length: WALKERS }, (_, i) => (
-        <g key={i} ref={(el) => void (groups.current[i] = el)} transform="translate(-999 -999)">
-          <ellipse cx="0" cy="-1" rx="12" ry="4" fill="rgb(0 0 0 / 25%)" />
-          <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
-            <image ref={(el) => void (sheets.current[i] = el)} width={WALK.w * WALK.frames} height={WALK.h} />
-          </svg>
-        </g>
-      ))}
-    </g>
-  );
-}
-
 export function StreetLife({ roads }: { roads: Segment[] }) {
   const reduce = usePrefersReducedMotion();
   if (reduce) return null;
@@ -296,7 +220,6 @@ export function StreetLife({ roads }: { roads: Segment[] }) {
   return (
     <g aria-hidden="true" className="street-life">
       <Traffic roads={roads} />
-      <Walkers />
     </g>
   );
 }

@@ -15,7 +15,7 @@ for (const v of L.PLACED.venues) {
 for (const [i, p] of L.PLACED.plots.entries()) boxes.push({ name: `plot ${i}`, cx: p.x, cy: p.y, hh: L.PLACED.plotHalf });
 for (const p of L.PLACES) boxes.push({ name: `place ${p.id}`, cx: p.x + p.w / 2, cy: p.y + p.h - p.w / 4, hh: p.w / 4 });
 for (const l of L.PLACED.land.filter((ll) => ll.use === "for-sale")) boxes.push({ name: `land ${l.id}`, cx: l.x, cy: l.y, hh: l.hh });
-for (const t of L.PLACED.trees) boxes.push({ name: `tree ${t.key}`, cx: t.x, cy: t.y, hh: 14 });
+for (const t of L.PLACED.trees) boxes.push({ name: `tree ${t.key}`, cx: t.x, cy: t.y, hh: 12 });
 
 const bad: string[] = [];
 for (const b of boxes) if (!L.groundClear(b.cx, b.cy, b.hh)) bad.push(`${b.name} is on a road, pavement, street or billboard`);

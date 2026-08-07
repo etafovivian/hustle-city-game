@@ -1,10 +1,11 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
 import { VENUES_BY_KEY, type Venue, type VenueDay } from "@hc/shared";
-import { CheckCircle2, Coins, Footprints, Sparkles, Store, X } from "lucide-react";
+import { CheckCircle2, Coins, Footprints, GraduationCap, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
+import { InteriorScene } from "./Interior.js";
 import { buildingBox } from "./sprites.js";
 
 /** The building: tap to open its card. */
@@ -62,6 +63,7 @@ export function VenueCard({
   onFindReal,
   onChanged,
   notify,
+  onApp,
 }: {
   venueKey: string;
   onClose: () => void;
@@ -69,6 +71,8 @@ export function VenueCard({
   onFindReal: () => void;
   onChanged: () => void;
   notify: (m: string) => void;
+  /** Open a phone app (the school opens the Academy). */
+  onApp?: (app: "academy") => void;
 }) {
   const venue = VENUES_BY_KEY.get(venueKey)!;
   const [done, setDone] = useState<Set<string>>(new Set());
@@ -118,7 +122,7 @@ export function VenueCard({
             <span className="small muted">{venue.area}</span>
           </div>
         </div>
-        {venue.interior && <img className="venue-interior" src={venue.interior} alt={`Inside ${venue.name}`} />}
+        {venue.interior && <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} crowd={venue.key === "royal_event_centre" ? 6 : 4} seed={venue.key.length} />}
         <p>{venue.blurb}</p>
         <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
 
@@ -152,6 +156,11 @@ export function VenueCard({
           <button type="button" className="btn" onClick={onWalk}>
             <Footprints size={16} aria-hidden="true" /> Walk there
           </button>
+          {venue.opens === "academy" && onApp && (
+            <button type="button" className="btn go" onClick={() => onApp("academy")}>
+              <GraduationCap size={16} aria-hidden="true" /> Open Hustle Academy
+            </button>
+          )}
           {venue.realCategory && (
             <button type="button" className="btn quiet" onClick={onFindReal}>
               <Store size={16} aria-hidden="true" /> Find a real one near you

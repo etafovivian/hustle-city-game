@@ -2,7 +2,7 @@
 // Third Mainland Bridge down to the Island, the Atlantic in the south.
 // Roads run on the 2:1 isometric axes (slope ±0.5) so they line up with the building art.
 
-export const WORLD = { w: 9600, h: 7600 };
+export const WORLD = { w: 13000, h: 10400 };
 /** Junction 101, the start of the game. */
 export const CX = 4800;
 export const CY = 2400;
@@ -33,7 +33,7 @@ export const ROADS: Segment[] = [
   // Third Mainland Bridge: from the bridge head down-left across the lagoon to the Island
   { id: "bridge", x0: 4800, y0: island(4800), x1: 7200, y1: CY + 0.5 * (7200 - CX), bridge: true },
   // Island road
-  { id: "island", x0: 3700, y0: island(3700), x1: 9600, y1: island(9600) },
+  { id: "island", x0: 3700, y0: island(3700), x1: 13000, y1: island(13000) },
   // Eko Bridge: from Road B near Apapa over the harbour channel to Marina Wharf (the Island's west end)
   { id: "eko", x0: 2400 + 64, y0: CY - 0.5 * (2400 - CX) + 32, x1: 3700, y1: island(3700), bridge: true },
   // Oshodi-style flyover at Danfo Terminal: over Road A, ramps down at both ends
@@ -56,6 +56,8 @@ const SHORE: [number, number][] = [
   [7300, 3580],
   [8200, 3420],
   [9600, 3220],
+  [11200, 3080],
+  [13000, 2960],
 ];
 const shoreY = (x: number) => {
   for (let i = 1; i < SHORE.length; i++) {
@@ -80,7 +82,7 @@ function smooth(points: [number, number][]) {
 }
 
 const ISLAND_N = -450; // north shore, relative to the island road
-const ISLAND_S = 600; // south shore (beach)
+const ISLAND_S = 1100; // south shore (beach)
 const TIP = 3500;
 
 /** All water south of the mainland shore (lagoon, harbour and sea together). */
@@ -181,6 +183,8 @@ export interface Street extends Segment {
   at: number;
   lo: number;
   hi: number;
+  /** The street's far end (where its turning circle is). */
+  end: { x: number; y: number };
 }
 /** Walkers' line on a street: the middle of its pavement (alleys: the middle of the lane). */
 const kerbOf = (cls: StreetClass) => (cls === "alley" ? 0 : STREET_CLASS[cls].half + STREET_CLASS[cls].pav / 2);
@@ -218,7 +222,7 @@ const quarterPt = (sa: number, sb: number, u: number, v: number) => iso(sa * u, 
 const defPt = (d: StreetDef, sa: number, sb: number, t: number, off = 0) =>
   d.fixed === "u" ? quarterPt(sa, sb, d.at + off, t) : quarterPt(sa, sb, t, d.at + off);
 
-export const STREETS: Street[] = QUARTERS.flatMap(([sa, sb]) =>
+const JUNCTION_STREETS: Street[] = QUARTERS.flatMap(([sa, sb]) =>
   STREET_DEFS.map((d) => {
     // Streets off an arterial start under its asphalt; others start at the centre of the street they leave.
     const p = defPt(d, sa, sb, d.from === 0 ? HALF - 4 : d.from);
@@ -238,9 +242,102 @@ export const STREETS: Street[] = QUARTERS.flatMap(([sa, sb]) =>
       at: sf * d.at,
       lo: Math.min(r0, r1),
       hi: Math.max(r0, r1),
+      end: q,
     } satisfies Street;
   }),
 );
+
+// ── Area street grids ──
+// Every area beyond Junction 101 gets its own streets: collectors leave its main road at intervals and local streets
+// run between them, ending in turning circles. Plots then line every street (see the area generator below).
+/** A line plots front onto, in absolute iso coordinates: `at` on the fixed axis, running from `from` to `to`. */
+export interface FrontLine {
+  id: string;
+  fixed: "a" | "b";
+  at: number;
+  from: number;
+  to: number;
+  cls: StreetClass | "arterial";
+  /** Drawn from under the main road it leaves (instead of from a street's centre). */
+  offRoad?: boolean;
+}
+/** The Island road is the iso line b = -2400 (it runs parallel to Road A). */
+export const ISLAND_B = -2400;
+const A_ROAD = (from: number, to: number): FrontLine => ({ id: "A", fixed: "b", at: 0, from, to, cls: "arterial" });
+const B_ROAD = (from: number, to: number): FrontLine => ({ id: "B", fixed: "a", at: 0, from, to, cls: "arterial" });
+const I_ROAD = (from: number, to: number): FrontLine => ({ id: "I", fixed: "b", at: ISLAND_B, from, to, cls: "arterial" });
+const st = (id: string, fixed: "a" | "b", at: number, from: number, to: number, cls: StreetClass, offRoad = false): FrontLine => ({ id, fixed, at, from, to, cls, offRoad });
+const range = (from: number, to: number, step: number) => Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
+
+/** Collectors leaving a main road on both sides (or one), every `step`, `reach` long. */
+function collectors(tag: string, fixed: "a" | "b", ats: number[], road: number, reaches: number[]) {
+  return ats.flatMap((at, i) => reaches.map((r, j) => st(`${tag}c${i}${j ? "s" : "n"}`, fixed, at, road, road + r, "collector", true)));
+}
+
+/** Areas with their own street grid. Junction 101's neighbourhood has its quarter streets (above). */
+const AREA_GRIDS: { area: string; lines: FrontLine[] }[] = [
+  {
+    area: "Tech Mile",
+    lines: [A_ROAD(1450, 2250), ...collectors("tm", "a", [1650, 2050], 0, [1500]), st("tml1", "b", 800, 1650, 2300, "local"), st("tml2", "b", 1250, 1650, 2300, "local")],
+  },
+  {
+    area: "Airport Ridge",
+    lines: [B_ROAD(1450, 2750), ...collectors("ar", "b", [1750, 2200, 2650], 0, [1400, -1400]), ...[750, -750].map((a, i) => st(`arl${i}`, "a", a, 1750, 2650, "local"))],
+  },
+  {
+    area: "Danfo Terminal",
+    lines: [A_ROAD(-2750, -1450), ...collectors("dt", "a", [-2050, -2500], 0, [1400, -1400]), ...[800, -800].map((b, i) => st(`dtl${i}`, "b", b, -2050, -2750, "local"))],
+  },
+  {
+    area: "Owambe Gardens",
+    lines: [B_ROAD(-2350, -1450), ...collectors("ow", "b", [-1750, -2150], 0, [1400, -1400]), ...[750, -750].map((a, i) => st(`owl${i}`, "a", a, -1750, -2150, "local"))],
+  },
+  {
+    area: "Apapa Port",
+    lines: [B_ROAD(-3250, -2550), ...collectors("ap", "b", [-2900], 0, [1200, -1200]), ...[600, -600].map((a, i) => st(`apl${i}`, "a", a, -2900, -3250, "local"))],
+  },
+  {
+    area: "Marina Wharf",
+    lines: [I_ROAD(1450, 2300), ...collectors("mw", "a", [1850, 2200], ISLAND_B, [300, -950]), st("mwl", "b", ISLAND_B - 300, 1850, 2300, "local"), st("mwl2", "b", ISLAND_B - 680, 1850, 2300, "local")],
+  },
+  {
+    area: "Island Heights",
+    lines: [I_ROAD(2550, 4800), ...collectors("ih", "a", range(2850, 4650, 600), ISLAND_B, [300, -950]), st("ihl", "b", ISLAND_B - 300, 2850, 4650, "local"), st("ihl2", "b", ISLAND_B - 680, 2850, 4650, "local")],
+  },
+  {
+    area: "Lekki Gardens",
+    lines: [I_ROAD(4900, 10300), ...collectors("lk", "a", range(5150, 10100, 600), ISLAND_B, [300, -950]), st("lkl", "b", ISLAND_B - 300, 5150, 10100, "local"), st("lkl2", "b", ISLAND_B - 680, 5150, 10100, "local")],
+  },
+];
+
+/** Streets stop where the land does (with room for the turning circle); very short ones are dropped. */
+for (const g of AREA_GRIDS)
+  g.lines = g.lines.flatMap((l) => {
+    if (l.cls === "arterial") return [l];
+    const dir = Math.sign(l.to - l.from);
+    const pt = (t: number) => (l.fixed === "a" ? iso(l.at, t) : iso(t, l.at));
+    let end = l.from;
+    for (let t = l.from + dir * 40; dir > 0 ? t <= l.to : t >= l.to; t += dir * 40) {
+      const p = pt(t);
+      if (!onLand(p.x, p.y + 40)) break;
+      end = t;
+    }
+    end -= dir * 60;
+    return Math.abs(end - l.from) < 200 ? [] : [{ ...l, to: end }];
+  });
+
+/** A front line as a drawn street (main-road lines are drawn already). */
+function streetOf(l: FrontLine): Street {
+  const cls = l.cls as StreetClass;
+  const dir = Math.sign(l.to - l.from);
+  const start = l.offRoad ? l.from + dir * (HALF - 4) : l.from;
+  const pt = (t: number) => (l.fixed === "a" ? iso(l.at, t) : iso(t, l.at));
+  const p = pt(start);
+  const q = pt(l.to);
+  const [a, b] = p.x < q.x ? [p, q] : [q, p];
+  return { id: l.id, x0: a.x, y0: a.y, x1: b.x, y1: b.y, cls, ...STREET_CLASS[cls], fixedAxis: l.fixed, at: l.at, lo: Math.min(start, l.to), hi: Math.max(start, l.to), end: q };
+}
+export const STREETS: Street[] = [...JUNCTION_STREETS, ...AREA_GRIDS.flatMap((g) => g.lines.filter((l) => l.cls !== "arterial").map(streetOf))];
 
 // ── Billboards ──
 /** Billboard spots: on the north kerb of a road, at an x along it. Keys match the `billboards` table. */
@@ -285,7 +382,7 @@ export function groundClear(cx: number, cy: number, hh: number) {
   const streets = STREETS.every((s) => {
     const [fixed, run] = s.fixedAxis === "a" ? [p.a, p.b] : [p.b, p.a];
     // Past either end (turning circles reach a little further)
-    if (run + hh < s.lo - 10 || run - hh > s.hi + s.half * 2.4) return true;
+    if (run + hh < s.lo - s.half * 2.4 || run - hh > s.hi + s.half * 2.4) return true;
     return Math.abs(fixed - s.at) >= hh + s.half + s.pav + 6;
   });
   // The roundabout, and the billboards' legs and boards
@@ -325,7 +422,8 @@ export const PLACES = PLACE_AT.map((p) => {
 });
 export const PARK = (() => {
   const c = iso(-182, -182);
-  claim(c.x, c.y, 55);
+  // The park's trees and fence spread past its base, so it keeps a wider square than its art.
+  claim(c.x, c.y, 68, 24);
   return { x: c.x - 115, y: c.y + 55 - 200, w: 230, h: 200 };
 })();
 
@@ -338,6 +436,9 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "tailors_row", district: "Owambe Gardens" },
   { key: "viewing_centre", district: "Owambe Gardens" },
   { key: "mallam_suya", district: "Owambe Gardens" },
+  { key: "lampnet_academy", district: "Tech Mile", scale: 1.15 },
+  { key: "lagoon_capital_bank", district: "Island Heights", scale: 1.3 },
+  { key: "grand_lagoon_hotel", district: "Island Heights", scale: 1.5 },
 ];
 
 /**
@@ -411,8 +512,6 @@ const BIG: Record<string, number> = {
   "control-tower": 0.95,
 };
 
-/** The Island road is the iso line b = -2400 (it runs parallel to Road A). */
-const ISLAND_B = -2400;
 
 /** Districts beyond Junction 101, named for the game world, opening in later stages. */
 export const DISTRICTS: District[] = [
@@ -467,8 +566,6 @@ export const DISTRICTS: District[] = [
     phase: 3,
     buildings: [
       "office-tower",
-      "bank-lagoon-capital",
-      "hotel",
       "residential-tower",
       "bank-crown-savings",
       "mall",
@@ -483,13 +580,13 @@ export const DISTRICTS: District[] = [
   },
   {
     name: "Lekki Gardens",
-    x: 7900,
-    y: island(7900),
+    x: 10000,
+    y: island(10000),
     phase: 4,
     buildings: ["estate-gate", "crazy-house", "villa", "terrace-duplex", "villa", "terrace-duplex", "restaurant-terrace", "residential-tower"],
-    front: { axis: "a", at: 5500, base: ISLAND_B, from: 4850, to: 7050 },
+    front: { axis: "a", at: 7600, base: ISLAND_B, from: 4900, to: 10300 },
   },
-  { name: "Atlantic Beach", x: 7000, y: island(7000) + ISLAND_S - 160, phase: 4, buildings: [], landmark: true },
+  { name: "Atlantic Beach", x: 9000, y: island(9000) + ISLAND_S - 160, phase: 4, buildings: [], landmark: true },
 ];
 
 const onSite = (cx: number, cy: number, hh: number) => onLand(cx, cy + hh) && onLand(cx, cy - hh) && onLand(cx - 2 * hh, cy) && onLand(cx + 2 * hh, cy);
@@ -519,6 +616,8 @@ export interface Building {
   y: number;
   key: string;
   scale: number;
+  /** An area's signature building: still drawn when the map is zoomed far out. */
+  landmark?: boolean;
 }
 /** Takes the first free frontage spot for each art in turn. */
 function settle(d: District, arts: string[], tag: string) {
@@ -539,6 +638,9 @@ function settle(d: District, arts: string[], tag: string) {
 }
 
 const VENUE_ART: Record<string, string> = {
+  lampnet_academy: "school",
+  lagoon_capital_bank: "bank-lagoon-capital",
+  grand_lagoon_hotel: "hotel",
   royal_event_centre: "event-centre",
   tailors_row: "tailor-shop",
   viewing_centre: "viewing-centre",
@@ -579,31 +681,6 @@ export const LAND: LandPlot[] = [];
 /** Open plots for sale: a dashed outline and a small sign. */
 export const FOR_SALE: LandPlot[] = [];
 const landId = (area: string, k: number) => `${area.toLowerCase().replace(/\s+/g, "-")}-land-${k}`;
-
-/**
- * In the nice areas land comes first: before any building is placed, every few frontage spots (front rows
- * included) are kept as plots for sale. Buildings then take what's left.
- */
-const LAND_FIRST: Record<string, { every: number; scale: number }> = {
-  "Lekki Gardens": { every: 4, scale: 1.3 },
-  "Island Heights": { every: 5, scale: 1.3 },
-};
-for (const d of DISTRICTS.filter((dd) => dd.front && LAND_FIRST[dd.name])) {
-  const { every, scale } = LAND_FIRST[d.name]!;
-  const hh = siteOf(scale).hh;
-  let n = 0;
-  let k = 0;
-  for (const s of frontage(d)) {
-    const c = iso(s.a, s.b);
-    if (!onSite(c.x, c.y, hh) || !groundClear(c.x, c.y, hh)) continue;
-    // Spread the land along the whole frontage: every n-th usable spot.
-    if (n++ % every !== 1) continue;
-    if (!claim(c.x, c.y, hh)) continue;
-    const plot: LandPlot = { id: landId(d.name, k++), x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
-    LAND.push(plot);
-    FOR_SALE.push(plot);
-  }
-}
 
 const DISTRICT_SCENERY = DISTRICTS.filter((d) => d.front).flatMap((d) => settle(d, d.buildings, d.name));
 
@@ -687,87 +764,157 @@ const MAINLAND_CIVIC: [string, number][] = [
 /** Filling stations want a main-road frontage. */
 const ARTERIAL_EXTRA: [string, number][] = [["filling-station", 1]];
 
-const NEIGHBOURHOOD = (() => {
-  const P = PRESETS.mainland;
+/** What each area builds (game weights from the owner's Lagos guide, not census figures). */
+interface AreaPreset {
+  /** Share of plots that are shops before the location pull. */
+  commercial: number;
+  /** Share of plots kept as open land for sale. */
+  forSale: number;
+  /** Half-side of a plot (iso units): bigger plots, bigger buildings. */
+  plotHalf: number;
+  shops: [string, number][];
+  homes: [string, number][];
+  civic?: [string, number][];
+  /** Extra choices for main-road frontage (filling stations, motor parks). */
+  mainRoad?: [string, number][];
+}
+const AREA_PRESETS: Record<string, AreaPreset> = {
+  "Junction 101": { commercial: PRESETS.mainland.commercial, forSale: PRESETS.mainland.forSale, plotHalf: PRESETS.mainland.plotHalf, shops: MAINLAND_SHOPS, homes: MAINLAND_HOMES, civic: MAINLAND_CIVIC, mainRoad: ARTERIAL_EXTRA },
+  "Tech Mile": {
+    commercial: 0.5,
+    forSale: 0.12,
+    plotHalf: 54,
+    shops: [["phone-shop", 3], ["laptop-shop", 3], ["cyber-cafe", 2], ["gadget-kiosk", 2], ["tech-hub", 1], ["shop-house", 2], ["chemist", 1], ["salon", 1]],
+    homes: [["residential-block", 3], ["storey-house", 3], ["mixed-use-block", 2], ["bungalow", 1]],
+    civic: [["school", 1], ["polytechnic-gate", 1]],
+    mainRoad: [["filling-station", 1]],
+  },
+  "Danfo Terminal": {
+    commercial: 0.55,
+    forSale: 0.06,
+    plotHalf: 50,
+    shops: [["shop-house", 4], ["buka", 3], ["suya-stand", 2], ["mechanic", 2], ["gadget-kiosk", 2], ["salon", 1], ["market-hall", 1]],
+    homes: [["face-me-block", 4], ["family-compound", 3], ["unfinished-building", 2], ["storey-house", 2]],
+    civic: [["mosque", 2], ["church", 2], ["clinic", 1]],
+    mainRoad: [["filling-station", 1], ["motor-park", 1]],
+  },
+  "Owambe Gardens": {
+    commercial: 0.35,
+    forSale: 0.1,
+    plotHalf: 56,
+    shops: [["tailor-shop", 3], ["event-centre", 2], ["buka", 2], ["salon", 2], ["shop-house", 2], ["viewing-centre", 1]],
+    homes: [["bungalow", 3], ["storey-house", 3], ["family-compound", 2], ["residential-block", 2]],
+    civic: [["church", 2], ["mosque", 1], ["school", 1]],
+  },
+  "Airport Ridge": {
+    commercial: 0.4,
+    forSale: 0.12,
+    plotHalf: 66,
+    shops: [["commercial-block", 3], ["warehouse", 2], ["hotel", 1], ["chemist", 1], ["filling-station", 1]],
+    homes: [["residential-block", 3], ["bungalow", 2], ["terrace-duplex", 2]],
+    civic: [["clinic", 1], ["school", 1]],
+  },
+  "Apapa Port": {
+    commercial: 0.7,
+    forSale: 0.08,
+    plotHalf: 66,
+    shops: [["warehouse", 4], ["container-port", 2], ["mechanic", 2], ["commercial-block", 1], ["filling-station", 1]],
+    homes: [["face-me-block", 2], ["unfinished-building", 1]],
+  },
+  "Marina Wharf": {
+    commercial: 0.75,
+    forSale: 0.1,
+    plotHalf: 48,
+    shops: [["colonial-block", 4], ["shop-house", 3], ["market-hall", 2], ["commercial-block", 2], ["bank-eko-trust", 1], ["chemist", 1]],
+    homes: [["storey-house", 2], ["colonial-block", 2], ["face-me-block", 1]],
+    civic: [["mosque", 1], ["church", 1]],
+  },
+  "Island Heights": {
+    commercial: 0.7,
+    forSale: 0.2,
+    plotHalf: 64,
+    shops: [["office-tower", 4], ["bank-lagoon-capital", 1], ["bank-crown-savings", 1], ["bank-eko-trust", 1], ["mall", 1], ["hotel", 1], ["skyline-lounge", 1], ["car-showroom", 1], ["gym", 1], ["restaurant-terrace", 2], ["atm", 1]],
+    homes: [["residential-tower", 3], ["terrace-duplex", 1]],
+  },
+  "Lekki Gardens": {
+    commercial: 0.1,
+    forSale: 0.3,
+    plotHalf: 62,
+    shops: [["restaurant-terrace", 2], ["gym", 1], ["chemist", 1], ["car-showroom", 1], ["mall", 1]],
+    homes: [["villa", 4], ["terrace-duplex", 4], ["residential-tower", 1], ["crazy-house", 1], ["estate-gate", 1]],
+    civic: [["school", 1], ["church", 1]],
+  },
+};
+
+/** The Junction 101 neighbourhood's front lines: both arterials' frontages and every quarter street. */
+const J101_LINES: FrontLine[] = [
+  A_ROAD(ZEBRA_AT + 40, STREET_LEN),
+  A_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)),
+  B_ROAD(ZEBRA_AT + 40, STREET_LEN),
+  B_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)),
+  ...QUARTERS.flatMap(([sa, sb]) =>
+    STREET_DEFS.map((d): FrontLine =>
+      d.fixed === "u" ? st(`${d.id}${sa}${sb}`, "a", sa * d.at, sb * d.from, sb * d.to, d.cls) : st(`${d.id}${sa}${sb}`, "b", sb * d.at, sa * d.from, sa * d.to, d.cls),
+    ),
+  ),
+];
+
+/**
+ * The area generator: plots on both sides of every front line, shops on busy frontages and corners, homes and
+ * civic buildings behind, a share kept as land for sale. Seeded per plot id, so the same on every visit.
+ */
+function fillArea(area: string, lines: FrontLine[]) {
+  const P = AREA_PRESETS[area]!;
+  const slug = area.toLowerCase().replace(/\s+/g, "-");
   const houses: Building[] = [];
   const driveways: { x0: number; y0: number; x1: number; y1: number }[] = [];
-  // Lines plots front onto, in quarter coordinates, busiest first: the arterials, then the streets.
-  type Line = { id: string; fixed: "u" | "v"; at: number; from: number; to: number; cls: StreetClass | "arterial"; clear: number };
-  const lines: Line[] = [
-    { id: "A", fixed: "v", at: 0, from: ZEBRA_AT + 40, to: STREET_LEN, cls: "arterial", clear: HALF + PAVEMENT + 8 },
-    { id: "B", fixed: "u", at: 0, from: ZEBRA_AT + 40, to: STREET_LEN, cls: "arterial", clear: HALF + PAVEMENT + 8 },
-    ...STREET_DEFS.map((d) => ({ ...d, clear: STREET_CLASS[d.cls].half + STREET_CLASS[d.cls].pav + 6 })),
-  ];
-  const crossings = (l: Line) => lines.filter((o) => o.fixed !== l.fixed && o.at > 0).map((o) => o.at);
-  for (const [sa, sb] of QUARTERS)
-    for (const l of lines)
-      for (const side of l.at === 0 ? [1] : ([1, -1] as const)) {
-        let n = 0;
-        for (let t = l.from + 60; t <= l.to - 40; t += 24) {
-          const id = `j101-${sa > 0 ? "e" : "w"}${sb > 0 ? "n" : "s"}-${l.id}${side > 0 ? "+" : "-"}${n}`;
-          const r = seeded(id);
-          const corner = crossings(l).some((c) => Math.abs(c - t) < P.plotHalf * 2 + 60);
-          const nearJunction = l.cls === "arterial" && t < 700;
-          const pull = PULL[l.cls] * (corner ? 1.5 : 1) * (nearJunction ? 1.25 : 1);
-          const shop = r < Math.min(0.9, P.commercial * pull);
-          const hh = shop ? P.plotHalf - 4 : P.plotHalf;
-          const off = l.at + side * (l.clear + hh + 2);
-          const [u, v] = l.fixed === "v" ? [t, off] : [off, t];
-          if (u < 0 || v < 0) continue;
-          const c = quarterPt(sa, sb, u, v);
-          if (!onLand(c.x, c.y + hh) || !claim(c.x, c.y, hh, 10)) continue;
-          n++;
-          t += hh * 2 - 14;
-          const forSale = seeded(id + ":land") < P.forSale;
-          const plot: LandPlot = { id, x: c.x, y: c.y, hh, area: "Junction 101", use: forSale ? "for-sale" : shop ? "shop" : "home", road: l.cls };
-          LAND.push(plot);
-          if (forSale) {
-            FOR_SALE.push(plot);
-            continue;
-          }
-          const civic = !shop && l.cls !== "arterial" && seeded(id + ":civic") < 0.1;
-          const art = pick(seeded(id + ":art"), shop ? (l.cls === "arterial" ? [...MAINLAND_SHOPS, ...ARTERIAL_EXTRA] : MAINLAND_SHOPS) : civic ? MAINLAND_CIVIC : MAINLAND_HOMES);
-          const scale = (hh * 4) / BASE;
-          houses.push({ art: `/art/buildings/${art}.webp`, x: c.x, y: c.y + siteOf(scale).lift, key: id, scale });
-          // Homes off the quieter streets get a driveway from the street to the plot.
-          if (!shop && l.cls !== "arterial" && l.cls !== "alley") {
-            const p0 = l.fixed === "v" ? quarterPt(sa, sb, t, l.at + side * STREET_CLASS[l.cls].half) : quarterPt(sa, sb, l.at + side * STREET_CLASS[l.cls].half, t);
-            const along = l.fixed === "v" ? quarterPt(sa, sb, t, off - side * hh) : quarterPt(sa, sb, off - side * hh, t);
-            driveways.push({ x0: p0.x, y0: p0.y, x1: along.x, y1: along.y });
-          }
+  for (const l of lines) {
+    const clear = l.cls === "arterial" ? HALF + PAVEMENT + 8 : STREET_CLASS[l.cls].half + STREET_CLASS[l.cls].pav + 6;
+    const crossings = lines.filter((o) => o.fixed !== l.fixed).map((o) => o.at);
+    const [lo, hi] = [Math.min(l.from, l.to), Math.max(l.from, l.to)];
+    for (const side of [1, -1] as const) {
+      let n = 0;
+      for (let t = lo + 60; t <= hi - 40; t += 24) {
+        const id = `${slug}-${l.id}${side > 0 ? "+" : "-"}${n}`;
+        const r = seeded(id);
+        const corner = crossings.some((c) => Math.abs(c - t) < P.plotHalf * 2 + 60);
+        const nearJunction = area === "Junction 101" && l.cls === "arterial" && Math.abs(t) < 700;
+        const pull = PULL[l.cls] * (corner ? 1.5 : 1) * (nearJunction ? 1.25 : 1);
+        const shop = r < Math.min(0.92, P.commercial * pull);
+        const hh = shop ? P.plotHalf - 4 : P.plotHalf;
+        const off = l.at + side * (clear + hh + 2);
+        const c = l.fixed === "b" ? iso(t, off) : iso(off, t);
+        if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh, 22)) continue;
+        n++;
+        t += hh * 2;
+        const forSale = seeded(id + ":land") < P.forSale;
+        const plot: LandPlot = { id, x: c.x, y: c.y, hh, area, use: forSale ? "for-sale" : shop ? "shop" : "home", road: l.cls };
+        LAND.push(plot);
+        if (forSale) {
+          FOR_SALE.push(plot);
+          continue;
+        }
+        const civic = !shop && !!P.civic && l.cls !== "arterial" && seeded(id + ":civic") < 0.1;
+        const choices = shop ? (l.cls === "arterial" && P.mainRoad ? [...P.shops, ...P.mainRoad] : P.shops) : civic ? P.civic! : P.homes;
+        const art = pick(seeded(id + ":art"), choices);
+        const scale = (hh * 4) / BASE;
+        houses.push({ art: `/art/buildings/${art}.webp`, x: c.x, y: c.y + siteOf(scale).lift, key: id, scale });
+        // Homes off the quieter streets get a driveway from the street to the plot.
+        if (!shop && l.cls !== "arterial" && l.cls !== "alley") {
+          const half = STREET_CLASS[l.cls].half;
+          const p0 = l.fixed === "b" ? iso(t - hh * 2, l.at + side * half) : iso(l.at + side * half, t - hh * 2);
+          const p1 = l.fixed === "b" ? iso(t - hh * 2, off - side * hh) : iso(off - side * hh, t - hh * 2);
+          driveways.push({ x0: p0.x, y0: p0.y, x1: p1.x, y1: p1.y });
         }
       }
-  return { houses, driveways };
-})();
-export const DRIVEWAYS = NEIGHBOURHOOD.driveways;
-
-/** Districts keep some frontage open for sale too: more in the nice areas. */
-const DISTRICT_LAND_SHARE: Record<string, number> = {
-  "Lekki Gardens": 0.3,
-  "Island Heights": 0.2,
-  "Marina Wharf": 0.12,
-  "Tech Mile": 0.15,
-  "Airport Ridge": 0.12,
-  "Owambe Gardens": 0.1,
-  "Danfo Terminal": 0.06,
-  "Apapa Port": 0.08,
-};
-for (const d of DISTRICTS.filter((dd) => dd.front && !LAND_FIRST[dd.name])) {
-  const share = DISTRICT_LAND_SHARE[d.name] ?? 0.1;
-  const scale = d.name === "Lekki Gardens" || d.name === "Island Heights" ? 1.35 : 1.05;
-  const hh = siteOf(scale).hh;
-  const want = Math.max(Math.round((d.buildings.length * share) / (1 - share)), share >= 0.2 ? 6 : 2);
-  let k = 0;
-  for (const s of frontage(d)) {
-    if (k >= want) break;
-    const c = iso(s.a, s.b);
-    if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh)) continue;
-    const plot: LandPlot = { id: landId(d.name, k), x: c.x, y: c.y, hh, area: d.name, use: "for-sale", road: "arterial" };
-    LAND.push(plot);
-    FOR_SALE.push(plot);
-    k++;
+    }
   }
+  return { houses, driveways };
 }
+
+const FILLED = [fillArea("Junction 101", J101_LINES), ...AREA_GRIDS.map((g) => fillArea(g.area, g.lines))];
+const AREA_HOUSES = FILLED.flatMap((f) => f.houses);
+export const DRIVEWAYS = FILLED.flatMap((f) => f.driveways);
 
 // ── Street furniture ──
 export interface Prop {
@@ -900,13 +1047,13 @@ const EXTRA_TREES = [
 // Lagos ground is mostly laterite, with green where people plant it: almond and mango trees shading compounds,
 // palms along the Island, hedges and lawns in the estates. Each area has its own share of green.
 export type TreeKind = "leafy" | "palm" | "mango" | "almond" | "neem" | "plantain" | "bush" | "hedge" | "bougainvillea";
+const GREEN_SHARE: Record<string, number> = { "Lekki Gardens": 0.6, "Island Heights": 0.32, "Airport Ridge": 0.3, "Owambe Gardens": 0.25, "Tech Mile": 0.15, "Marina Wharf": 0.1, "Danfo Terminal": 0.06, "Apapa Port": 0.04 };
 const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: number; green: number }[] = [
   { name: "j101", a0: -1400, a1: 1400, b0: -1400, b1: 1400, green: PRESETS.mainland.green },
-  ...DISTRICTS.filter((d) => d.front).map((d) => {
-    const f = d.front!;
-    const [lo, hi] = [Math.min(f.from, f.to) - 150, Math.max(f.from, f.to) + 150];
-    const green = { "Lekki Gardens": 0.6, "Island Heights": 0.32, "Airport Ridge": 0.3, "Owambe Gardens": 0.25, "Tech Mile": 0.15, "Marina Wharf": 0.1, "Danfo Terminal": 0.06, "Apapa Port": 0.04 }[d.name] ?? 0.15;
-    return f.axis === "a" ? { name: d.name, a0: lo, a1: hi, b0: f.base - 950, b1: f.base + 950, green } : { name: d.name, a0: -950, a1: 950, b0: lo, b1: hi, green };
+  ...AREA_GRIDS.map((g) => {
+    const as = g.lines.flatMap((l) => (l.fixed === "a" ? [l.at] : [l.from, l.to]));
+    const bs = g.lines.flatMap((l) => (l.fixed === "b" ? [l.at] : [l.from, l.to]));
+    return { name: g.area, a0: Math.min(...as) - 200, a1: Math.max(...as) + 200, b0: Math.min(...bs) - 200, b1: Math.max(...bs) + 200, green: GREEN_SHARE[g.area] ?? 0.15 };
   }),
 ];
 /** Grass patches: flat on the ground, under everything. */
@@ -939,7 +1086,7 @@ const SCATTER = GREEN_AREAS.flatMap((g) => {
 });
 export const TREES = [...EXTRA_TREES, ...SCATTER].sort((a, b) => a.y - b.y);
 
-export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY, JETTY, ...NEIGHBOURHOOD.houses].sort((a, b) => a.y - b.y);
+export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), { ...JETTY, landmark: true }, ...AREA_HOUSES].sort((a, b) => a.y - b.y);
 
 /** Every placed building and plot, for the layout check (scripts/check-clearance.ts). */
 export const PLACED = { scenery: ALL_SCENERY, venues: VENUE_SPOTS, plots: PLOTS, plotHalf: PLOT_HH, props: PROPS, trees: TREES, land: LAND, plotCentre };
@@ -1150,13 +1297,7 @@ export const kerbPath = (s: Segment, off: number) => `M${s.x0} ${s.y0 + off} L${
 export const centrePath = (s: Segment) => `M${s.x0} ${s.y0} L${s.x1} ${s.y1}`;
 
 /** Street ends away from the main roads: turning circles sized to the street (alleys just stop). */
-export const STREET_ENDS = STREETS.filter((st) => st.cls !== "alley").map((st) => {
-  const far = [
-    { x: st.x0, y: st.y0 },
-    { x: st.x1, y: st.y1 },
-  ].sort((a, b) => Math.hypot(b.x - CX, b.y - CY) - Math.hypot(a.x - CX, a.y - CY))[0]!;
-  return { ...far, key: st.id, half: st.half, pav: st.pav };
-});
+export const STREET_ENDS = STREETS.filter((s) => s.cls !== "alley").map((s) => ({ ...s.end, key: s.id, half: s.half, pav: s.pav }));
 
 // ── Road drawing paths ──
 // Roads are drawn as stroked centre lines, layer by layer (pavement, kerb, asphalt), so every junction and

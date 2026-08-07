@@ -582,6 +582,10 @@ textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bot
 .venue-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; padding-right: 44px; }
 .venue-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #fff; font-size: 28px; box-shadow: var(--shadow); }
 .venue-interior { width: 100%; max-height: 300px; object-fit: contain; border-radius: 16px; background: radial-gradient(circle at 50% 60%, #3a2a1a, var(--sheet-2)); padding: 8px; }
+/* Inside a place: the room big, with people moving about in it */
+.interior-scene { position: relative; width: min(100%, 62dvh); margin: 0 auto; border-radius: 18px; overflow: hidden; background: radial-gradient(circle at 50% 60%, #3a2a1a, var(--sheet-2)); }
+.interior-scene img { display: block; width: 100%; height: auto; }
+.interior-npc { position: absolute; transform: translate(-50%, -100%); background-repeat: no-repeat; background-size: 800% 100%; pointer-events: none; filter: drop-shadow(0 3px 2px rgb(0 0 0 / 35%)); }
 .venue-acts { list-style: none; margin: 0; padding: 0; display: grid; }
 .venue-acts li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); }
 .venue-act-label { display: grid; gap: 2px; }
