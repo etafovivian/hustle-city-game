@@ -1,15 +1,135 @@
-// Inside a place: the cutaway room, shown big, with people moving about in it. They walk between random spots on the
-// floor, stop for a moment, then carry on (walk sprites from the 3D bodies; sitting and eating poses come next).
-// The floor is the diamond at the bottom of every Stitch cutaway: its corners are fractions of the image.
+// Inside a place: the cutaway room, shown big, with people in it. Each room is marked up by hand (see ROOMS): a
+// walkway through its open floor that walkers follow from spot to spot, and stations where people stay and do
+// something (the cook at the pots, the barber by the chair, dancers on the dance floor, people seated on the benches).
+// Positions are fractions of the image: where the person's feet touch the floor.
 import { useEffect, useRef, useState } from "react";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
 
-const FLOOR = { top: [0.5, 0.5], right: [0.88, 0.69], bottom: [0.5, 0.9], left: [0.12, 0.69] } as const;
-/** Floor coordinates (u, v in 0..1 along the two back walls) to image fractions. */
-const onFloor = (u: number, v: number) => ({
-  x: FLOOR.top[0] + u * (FLOOR.right[0] - FLOOR.top[0]) + v * (FLOOR.left[0] - FLOOR.top[0]),
-  y: FLOOR.top[1] + u * (FLOOR.right[1] - FLOOR.top[1]) + v * (FLOOR.left[1] - FLOOR.top[1]),
-});
+/** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
+export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk";
+const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
+  dance: ["woman_gele", "man_kaftan", "woman_buba"],
+  serve: ["woman_buba", "man_casual"],
+  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele"],
+  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
+};
+
+type Pt = [number, number];
+export interface Room {
+  /** Open floor, in order: walkers go back and forth along it, pausing at each spot. */
+  walkway: Pt[];
+  walkers: number;
+  stations: { action: PoseAction; at: Pt; dir: "se" | "sw"; variant?: WalkerVariant }[];
+}
+
+/** Hand-marked rooms, keyed by interior art name (public/art/interiors). */
+export const ROOMS: Record<string, Room> = {
+  buka: {
+    walkway: [
+      [0.25, 0.74],
+      [0.33, 0.8],
+      [0.44, 0.85],
+      [0.54, 0.9],
+      [0.64, 0.86],
+    ],
+    walkers: 2,
+    stations: [
+      { action: "serve", at: [0.56, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.4, 0.75], dir: "se" },
+      { action: "sit_eat", at: [0.24, 0.66], dir: "se", variant: "man_kaftan" },
+      { action: "sit_eat", at: [0.38, 0.57], dir: "se", variant: "woman_gele" },
+    ],
+  },
+  "event-centre": {
+    walkway: [
+      [0.36, 0.63],
+      [0.46, 0.71],
+      [0.56, 0.75],
+      [0.62, 0.67],
+      [0.52, 0.5],
+    ],
+    walkers: 2,
+    stations: [
+      { action: "dance", at: [0.45, 0.56], dir: "se" },
+      { action: "dance", at: [0.53, 0.62], dir: "sw" },
+      { action: "dance", at: [0.58, 0.55], dir: "se" },
+      { action: "dance", at: [0.47, 0.65], dir: "sw" },
+    ],
+  },
+  "viewing-centre": {
+    walkway: [
+      [0.2, 0.78],
+      [0.32, 0.86],
+      [0.5, 0.9],
+      [0.64, 0.86],
+      [0.76, 0.75],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.74, 0.76], dir: "sw" },
+      { action: "stand_idle", at: [0.24, 0.8], dir: "se" },
+      { action: "sit_talk", at: [0.15, 0.68], dir: "se" },
+    ],
+  },
+  barbershop: {
+    walkway: [
+      [0.36, 0.86],
+      [0.48, 0.88],
+      [0.6, 0.8],
+      [0.7, 0.72],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.62, 0.65], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.42, 0.78], dir: "se" },
+    ],
+  },
+  "tailor-shop": {
+    walkway: [
+      [0.28, 0.78],
+      [0.4, 0.85],
+      [0.52, 0.89],
+      [0.62, 0.81],
+      [0.73, 0.74],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.22, 0.66], dir: "se", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.57, 0.76], dir: "sw", variant: "woman_gele" },
+    ],
+  },
+  "bank-hall": {
+    walkway: [
+      [0.25, 0.75],
+      [0.4, 0.82],
+      [0.55, 0.85],
+      [0.7, 0.76],
+      [0.78, 0.67],
+    ],
+    walkers: 2,
+    stations: [
+      { action: "stand_idle", at: [0.57, 0.67], dir: "se" },
+      { action: "stand_idle", at: [0.73, 0.63], dir: "sw" },
+      { action: "sit_talk", at: [0.32, 0.64], dir: "se" },
+    ],
+  },
+  "hotel-lobby": {
+    walkway: [
+      [0.25, 0.72],
+      [0.35, 0.8],
+      [0.5, 0.86],
+      [0.62, 0.8],
+      [0.66, 0.73],
+    ],
+    walkers: 2,
+    stations: [
+      { action: "stand_idle", at: [0.3, 0.65], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.66, 0.63], dir: "sw", variant: "woman_gele" },
+    ],
+  },
+};
 
 function usePrefersReducedMotion() {
   const [reduce] = useState(() => {
@@ -22,29 +142,18 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-/** People who stay put and do something (Blender pose sheets in public/art/life/poses): dance, serve, stand. */
-export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk";
-const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
-  dance: ["woman_gele", "man_kaftan", "woman_buba"],
-  serve: ["woman_buba", "man_casual"],
-  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
-  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele"],
-  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
-};
-
-export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { src: string; alt: string; crowd?: number; seed?: number; poses?: PoseAction[] }) {
+export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: string; room: Room | undefined; seed?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const els = useRef<(HTMLDivElement | null)[]>([]);
+  const posedEls = useRef<(HTMLDivElement | null)[]>([]);
   const [h, setH] = useState(0);
   const reduce = usePrefersReducedMotion();
-  const variants: WalkerVariant[] = Array.from({ length: crowd }, (_, i) => WALKER_VARIANTS[(i + seed) % WALKER_VARIANTS.length]!);
-  // Posed people stand at fixed spots spread over the floor, each facing the viewer (se or sw).
-  const posed = poses.map((action, i) => {
-    const vs = POSE_VARIANTS[action];
-    const spot = onFloor(0.2 + ((i * 0.37 + seed * 0.13) % 0.6), 0.25 + ((i * 0.29 + seed * 0.07) % 0.55));
-    return { action, variant: vs[(i + seed) % vs.length]!, dir: (i % 2 ? "sw" : "se") as WalkDir, ...spot };
+  const walkway = room?.walkway ?? [];
+  const variants: WalkerVariant[] = walkway.length > 1 ? Array.from({ length: room!.walkers }, (_, i) => WALKER_VARIANTS[(i * 2 + seed) % WALKER_VARIANTS.length]!) : [];
+  const posed = (room?.stations ?? []).map((s, i) => {
+    const vs = POSE_VARIANTS[s.action];
+    return { ...s, variant: s.variant ?? vs[(i + seed) % vs.length]! };
   });
-  const posedEls = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const el = box.current;
@@ -59,16 +168,26 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { s
     if (!h) return;
     let s = seed * 9301 + 49297;
     const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-    const people = variants.map(() => ({ u: 0.15 + rnd() * 0.7, v: 0.15 + rnd() * 0.7, tu: rnd(), tv: rnd(), wait: rnd() * 2, walked: 0, dir: "se" as WalkDir }));
+    // Each walker is between walkway spot `from` and `to`, `t` of the way.
+    const people = variants.map((_, i) => {
+      const from = Math.floor(rnd() * walkway.length);
+      const to = from + 1 < walkway.length ? from + 1 : from - 1;
+      return { from, to, t: rnd() * 0.8, wait: i * 1.2, walked: 0, dir: (to > from ? "se" : "nw") as WalkDir };
+    });
     const width = box.current!.clientWidth;
+    const pos = (p: (typeof people)[number]) => {
+      const a = walkway[p.from]!;
+      const b = walkway[p.to]!;
+      return [a[0] + (b[0] - a[0]) * p.t, a[1] + (b[1] - a[1]) * p.t] as Pt;
+    };
     const place = (i: number) => {
       const p = people[i]!;
       const el = els.current[i];
       if (!el) return;
-      const at = onFloor(p.u, p.v);
-      el.style.left = `${at.x * 100}%`;
-      el.style.top = `${at.y * 100}%`;
-      el.style.zIndex = String(Math.round(at.y * 1000));
+      const [x, y] = pos(p);
+      el.style.left = `${x * 100}%`;
+      el.style.top = `${y * 100}%`;
+      el.style.zIndex = String(Math.round(y * 1000));
       const frame = p.wait > 0 ? 0 : Math.floor(p.walked / 0.024) % 8;
       el.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
       el.style.backgroundImage = `url(${walkerSheet(variants[i]!, p.dir)})`;
@@ -76,7 +195,7 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { s
     people.forEach((_, i) => place(i));
     if (reduce) return;
     const t0 = performance.now();
-    let last = performance.now();
+    let last = t0;
     let raf = 0;
     const step = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
@@ -84,24 +203,27 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { s
       people.forEach((p, i) => {
         if (p.wait > 0) p.wait -= dt;
         else {
-          const du = p.tu - p.u;
-          const dv = p.tv - p.v;
-          const d = Math.hypot(du, dv);
-          if (d < 0.02) {
-            // Arrived: stand a moment, then pick somewhere new on the floor.
-            p.wait = 1 + rnd() * 3;
-            p.tu = 0.08 + rnd() * 0.84;
-            p.tv = 0.08 + rnd() * 0.84;
-          } else {
-            const speed = 0.09; // floor widths per second
-            const k = Math.min(1, (speed * dt) / d);
-            const a = onFloor(p.u, p.v);
-            p.u += du * k;
-            p.v += dv * k;
-            const b = onFloor(p.u, p.v);
-            p.walked += Math.hypot(b.x - a.x, b.y - a.y);
-            p.dir = walkDir((b.x - a.x) * width, (b.y - a.y) * width);
+          const a = walkway[p.from]!;
+          const b = walkway[p.to]!;
+          const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+          const speed = 0.06; // image widths per second
+          const before = pos(p);
+          p.t += (speed * dt) / len;
+          if (p.t >= 1) {
+            // Reached a spot: stand a moment, then carry on along the walkway (or turn back at its ends).
+            p.t = 0;
+            const forward = p.to > p.from;
+            p.from = p.to;
+            const ahead = forward ? p.from + 1 : p.from - 1;
+            p.to = ahead >= 0 && ahead < walkway.length && rnd() > 0.25 ? ahead : forward ? p.from - 1 : p.from + 1;
+            p.to = Math.max(0, Math.min(walkway.length - 1, p.to));
+            p.wait = 0.8 + rnd() * 2.5;
           }
+          const after = pos(p);
+          p.walked += Math.hypot(after[0] - before[0], after[1] - before[1]);
+          const nb = walkway[p.to]!;
+          const na = walkway[p.from]!;
+          p.dir = walkDir((nb[0] - na[0]) * width, (nb[1] - na[1]) * width);
         }
         place(i);
       });
@@ -122,19 +244,12 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { s
 
   // People stand about a fifth of the room's height (sprite frames are 96×160, feet 16 px above the bottom).
   const ph = h * 0.21;
+  const size = { width: ph * 0.6, height: ph, marginTop: ph * 0.1 };
   return (
     <div ref={box} className="interior-scene">
       <img src={src} alt={alt} />
       {h > 0 &&
-        variants.map((v, i) => (
-          <div
-            key={`${v}-${i}`}
-            ref={(el) => void (els.current[i] = el)}
-            className="interior-npc"
-            aria-hidden="true"
-            style={{ width: ph * 0.6, height: ph, marginTop: ph * 0.1 }}
-          />
-        ))}
+        variants.map((v, i) => <div key={`${v}-${i}`} ref={(el) => void (els.current[i] = el)} className="interior-npc" aria-hidden="true" style={size} />)}
       {h > 0 &&
         posed.map((p, i) => (
           <div
@@ -143,12 +258,10 @@ export function InteriorScene({ src, alt, crowd = 4, seed = 1, poses = [] }: { s
             className="interior-npc"
             aria-hidden="true"
             style={{
-              width: ph * 0.6,
-              height: ph,
-              marginTop: ph * 0.1,
-              left: `${p.x * 100}%`,
-              top: `${p.y * 100}%`,
-              zIndex: Math.round(p.y * 1000),
+              ...size,
+              left: `${p.at[0] * 100}%`,
+              top: `${p.at[1] * 100}%`,
+              zIndex: Math.round(p.at[1] * 1000),
               backgroundImage: `url(/art/life/poses/${p.action}-${p.variant}-${p.dir}.webp)`,
             }}
           />
