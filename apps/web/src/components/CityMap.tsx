@@ -4,6 +4,7 @@
 import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type SVGProps } from "react";
+import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
@@ -478,7 +479,7 @@ export function CityMap({
           )}
         </svg>
         {/* Traffic and people (hidden when zoomed far out, and for reduced motion) */}
-        <svg className="map-layer" aria-hidden="true">
+        <svg className="map-layer traffic-layer" aria-hidden="true">
           {pz.view && !far && (
             <g transform={world}>
               <StreetLife roads={ROADS} />
@@ -658,8 +659,16 @@ export function CityMap({
                 />
               )}
 
-              {/* Lagos time of day: one multiply tint over the whole world */}
-              {light.phase !== "day" && <rect width={WORLD.w} height={WORLD.h} fill={light.tint} className="map-tint" />}
+            </g>
+          )}
+        </svg>
+        {/* Lagos time of day: one multiply tint over every layer below (ground, traffic and buildings). It is a plain
+            element between the layers so it blends with all of them; inside one layer it would only reach that layer. */}
+        {light.phase !== "day" && <div className="map-tint-layer" style={{ background: light.tint }} aria-hidden="true" />}
+        {/* Lit things and labels above the tint: billboards, lamps and windows, names. Only their buttons take taps. */}
+        <svg className="map-layer map-overlay">
+          {pz.view && (
+            <g transform={world}>
 
               {/* Billboards: paid ads from real businesses. Drawn above the night tint because their screens are lit. */}
               {!far &&
@@ -834,11 +843,15 @@ export function CityMap({
           )}
         </div>
       )}
-      {visiting && <ShopVisit shopId={visiting} onClose={() => setVisiting(null)} onVisited={onVisited} notify={notify} />}
-      {boardSheet && (
+      {/* Windows over the map open at the top of the page: the full-screen map is its own stacking layer, so
+          anything opened inside it would sit under the header and title card (and their close buttons too). */}
+      {createPortal(
+        <>
+          {visiting && <ShopVisit shopId={visiting} onClose={() => setVisiting(null)} onVisited={onVisited} notify={notify} />}
+          {boardSheet && (
         <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
       )}
-      {venueOpen && (
+          {venueOpen && (
         <VenueCard
           venueKey={venueOpen}
           onClose={() => setVenueOpen(null)}
@@ -854,6 +867,9 @@ export function CityMap({
           onChanged={onVisited}
           notify={notify}
         />
+      )}
+        </>,
+        document.body,
       )}
     </div>
   );

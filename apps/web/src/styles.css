@@ -190,8 +190,10 @@ a { color: inherit; text-underline-offset: 3px; }
 /* The map's stacked layers (ground, traffic, buildings): each its own compositing layer, so moving traffic
    doesn't repaint the buildings. Only the top layer takes taps. */
 .map-viewport { position: relative; }
-.map-layer { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
-.map-layer:not(.map-top) { pointer-events: none; }
+.map-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Only the moving layer gets its own compositing layer (a huge promoted ground layer can paint blank on some phones). */
+.map-layer.traffic-layer { will-change: transform; }
+.map-layer:not(.map-top):not(.map-overlay) { pointer-events: none; }
 .map-viewport { height: clamp(380px, 62vh, 640px); border-radius: 12px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; background: #a4814f; }
 .map-viewport:active { cursor: grabbing; }
 .map-viewport:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -201,7 +203,9 @@ a { color: inherit; text-underline-offset: 3px; }
 .map-hint { position: absolute; left: 16px; bottom: 14px; margin: 0; padding: 4px 10px; border-radius: 999px; background: rgb(10 15 36 / 80%); color: var(--muted); pointer-events: none; }
 .map-clock { position: absolute; left: 16px; top: 14px; margin: 0; padding: 4px 12px; border-radius: 999px; background: rgb(10 15 36 / 82%); color: var(--yellow); font-weight: 700; pointer-events: none; }
 /* Day and night: the tint multiplies the world, lights add on top, labels sit above both. */
-.map-tint { mix-blend-mode: multiply; pointer-events: none; transition: fill 2s ease; }
+.map-tint-layer { position: absolute; inset: 0; mix-blend-mode: multiply; pointer-events: none; transition: background-color 2s ease; }
+.map-overlay { pointer-events: none; }
+.map-overlay .billboard, .map-overlay .hotspot { pointer-events: auto; }
 .map-lights { mix-blend-mode: screen; pointer-events: none; transition: opacity 2s ease; }
 .map-labels { pointer-events: none; }
 .map-labels .district-open { pointer-events: auto; cursor: pointer; }
@@ -453,7 +457,7 @@ fieldset.avatar-picker { border: 0; margin: 0; padding: 0; min-width: 0; }
 @media (max-width: 899px) { .hide-md-down { display: none !important; } }
 
 /* ── Phone ───────────────────────────────────────────── */
-.phone-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: end center; padding: 12px; background: rgb(5 8 22 / 62%); backdrop-filter: blur(3px); animation: fade-in 0.2s ease; }
+.phone-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: end center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); background: rgb(5 8 22 / 62%); backdrop-filter: blur(3px); animation: fade-in 0.2s ease; }
 @media (min-width: 700px) { .phone-backdrop { place-items: center; } }
 .phone {
   position: relative; width: min(400px, 100%); height: min(780px, calc(100dvh - 24px)); display: grid; grid-template-rows: auto auto 1fr;
@@ -622,20 +626,20 @@ textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bot
 /* ── Full-screen map (like a game): the city fills the screen, the UI floats on top ── */
 body.map-full { overflow: hidden; overscroll-behavior: none; }
 body.map-full .selvedge { display: none; }
-body.map-full .shellbar { position: fixed; top: 10px; left: 10px; right: 10px; border-radius: 18px; background: rgb(10 15 36 / 72%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 30px -10px rgb(0 0 0 / 60%); }
+body.map-full .shellbar { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; border-radius: 18px; background: rgb(10 15 36 / 72%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 30px -10px rgb(0 0 0 / 60%); }
 body.map-full .shellbar-inner { max-width: none; padding: 8px 12px; }
 body.map-full .page { padding: 0; max-width: none; }
 body.map-full .map-frame { position: fixed; inset: 0; z-index: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 body.map-full .map-viewport { height: 100dvh; border-radius: 0; }
 body.map-full .map-viewport:focus-visible { outline-offset: -4px; }
-body.map-full .map-controls { top: 140px; right: 14px; z-index: 5; }
-body.map-full .map-clock { top: 140px; left: 14px; z-index: 5; }
+body.map-full .map-controls { top: calc(140px + env(safe-area-inset-top)); right: 14px; z-index: 5; }
+body.map-full .map-clock { top: calc(140px + env(safe-area-inset-top)); left: 14px; z-index: 5; }
 body.map-full .map-hint { bottom: 104px; z-index: 5; }
 body.map-full .map-peek { bottom: 104px; z-index: 6; }
 .map-title { display: none; }
 body.map-full .map-title {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
-  position: fixed; top: 72px; left: 10px; right: 10px; z-index: 10; padding: 8px 14px; border-radius: 16px;
+  position: fixed; top: calc(72px + env(safe-area-inset-top)); left: 10px; right: 10px; z-index: 10; padding: 8px 14px; border-radius: 16px;
   background: rgb(10 15 36 / 66%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
 body.map-full .map-title h1 { font-size: 20px; line-height: 1.1; }
@@ -644,7 +648,7 @@ body.map-full .map-title .muted { margin: 0; }
 .map-title-actions .quest-pill-badge { margin-left: 4px; }
 @media (max-width: 560px) {
   body.map-full .map-title p { display: none; }
-  body.map-full .map-controls, body.map-full .map-clock { top: 196px; }
+  body.map-full .map-controls, body.map-full .map-clock { top: calc(196px + env(safe-area-inset-top)); }
 }
 
 /* Hustle Academy */
