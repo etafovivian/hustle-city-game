@@ -541,14 +541,16 @@ export const DISTRICTS: District[] = [
     name: "Apapa Port",
     ...iso(0, -3000),
     phase: 2,
-    buildings: ["container-port", "warehouse", "warehouse", "commercial-block"],
-    front: { axis: "b", at: -3000, base: 0, from: -2550, to: -3300 },
+    // Lagos's main port: yard after yard of containers and cranes, sheds between them.
+    buildings: ["container-port", "container-port", "warehouse", "container-port", "container-port", "warehouse", "container-port", "warehouse", "container-port", "commercial-block"],
+    front: { axis: "b", at: -2950, base: 0, from: -2550, to: -3300 },
   },
   {
     name: "Airport Ridge",
     ...iso(0, 1600),
     phase: 4,
-    buildings: ["airport-terminal", "control-tower", "warehouse", "commercial-block", "mixed-use-block"],
+    // Terminal and tower up front; hangars (big sheds) towards the runway (see RUNWAY).
+    buildings: ["airport-terminal", "control-tower", "warehouse", "warehouse", "warehouse", "commercial-block", "mixed-use-block"],
     front: { axis: "b", at: 1800, base: 0, from: 1450, to: 2600 },
   },
   {
@@ -681,6 +683,32 @@ export const LAND: LandPlot[] = [];
 /** Open plots for sale: a dashed outline and a small sign. */
 export const FOR_SALE: LandPlot[] = [];
 const landId = (area: string, k: number) => `${area.toLowerCase().replace(/\s+/g, "-")}-land-${k}`;
+
+// ── Airport: runway, taxiway and apron ──
+/**
+ * The runway runs parallel to Road A, north of Airport Ridge's streets (iso b = RUNWAY.b), with a taxiway beside it
+ * and an apron (the parking pad for planes) between the taxiway and the terminal side. Drawn on the ground layer;
+ * the ground under them is claimed so nothing gets built or planted there.
+ */
+export const RUNWAY = { a0: -1300, a1: 1300, b: 3150, half: 70, taxiB: 2970, taxiHalf: 26, apron: { a0: -500, a1: 500, b0: 2840, b1: 2950 } };
+for (let a = RUNWAY.a0; a <= RUNWAY.a1; a += 100) {
+  for (const [b, hh] of [
+    [RUNWAY.b, RUNWAY.half + 20],
+    [RUNWAY.taxiB, RUNWAY.taxiHalf + 20],
+  ] as const) {
+    const c = iso(a, b);
+    TAKEN.push(patchAt(c.x, c.y, hh));
+  }
+}
+for (let a = RUNWAY.apron.a0; a <= RUNWAY.apron.a1; a += 60) {
+  const c = iso(a, (RUNWAY.apron.b0 + RUNWAY.apron.b1) / 2);
+  TAKEN.push(patchAt(c.x, c.y, (RUNWAY.apron.b1 - RUNWAY.apron.b0) / 2 + 10));
+}
+/** An iso rectangle as a world polygon path. */
+export const isoRect = (a0: number, a1: number, b0: number, b1: number) => {
+  const p = [iso(a0, b0), iso(a1, b0), iso(a1, b1), iso(a0, b1)];
+  return `M${p.map((q) => `${q.x.toFixed(0)} ${q.y.toFixed(0)}`).join(" L")}Z`;
+};
 
 const DISTRICT_SCENERY = DISTRICTS.filter((d) => d.front).flatMap((d) => settle(d, d.buildings, d.name));
 
@@ -818,7 +846,7 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     commercial: 0.7,
     forSale: 0.08,
     plotHalf: 66,
-    shops: [["warehouse", 4], ["container-port", 2], ["mechanic", 2], ["commercial-block", 1], ["filling-station", 1]],
+    shops: [["container-port", 5], ["warehouse", 4], ["mechanic", 2], ["commercial-block", 1], ["filling-station", 1]],
     homes: [["face-me-block", 2], ["unfinished-building", 1]],
   },
   "Marina Wharf": {
@@ -1084,7 +1112,28 @@ const SCATTER = GREEN_AREAS.flatMap((g) => {
     }
   return out;
 });
-export const TREES = [...EXTRA_TREES, ...SCATTER].sort((a, b) => a.y - b.y);
+// ── Forests ──
+/** Forest reserves on the open land between areas: dark ground packed with trees. */
+export const FORESTS = [
+  { name: "Ikeja Forest Reserve", a0: -3100, a1: -1500, b0: 1550, b1: 3000 },
+  { name: "Lagoon Forest", a0: 1600, a1: 3400, b0: 2850, b1: 4300 },
+  { name: "Badagry Creek Forest", a0: -1500, a1: 300, b0: -4600, b1: -3450 },
+].map((f) => ({ ...f, path: isoRect(f.a0, f.a1, f.b0, f.b1) }));
+const FOREST_TREES = FORESTS.flatMap((f) => {
+  const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
+  for (let a = f.a0 + 40; a <= f.a1 - 40; a += 62)
+    for (let b = f.b0 + 40; b <= f.b1 - 40; b += 62) {
+      const key = `${f.name}:${a}:${b}`;
+      if (seeded(key) > 0.86) continue;
+      const c = iso(a + (seeded(key + "x") - 0.5) * 44, b + (seeded(key + "y") - 0.5) * 44);
+      if (!onLand(c.x, c.y)) continue;
+      const kind = pick<TreeKind>(seeded(key + "k"), [["almond", 3], ["mango", 3], ["neem", 3], ["palm", 2], ["plantain", 1], ["bush", 2], ["leafy", 1]]);
+      if (claim(c.x, c.y, kind === "bush" ? 10 : 13, 2)) out.push({ ...c, kind, key });
+    }
+  return out;
+});
+
+export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES].sort((a, b) => a.y - b.y);
 
 export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), { ...JETTY, landmark: true }, ...AREA_HOUSES].sort((a, b) => a.y - b.y);
 

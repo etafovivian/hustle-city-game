@@ -194,3 +194,21 @@ green lots), but it is alive in ways ours isn't yet:
 
 Suggested order for us: ambient sound + icons over buildings (quick), ride picker with fares (we have the art),
 needs bars, then presence + venue chat (the big one).
+
+### Their place list (37, on the map menu) and our equivalents
+
+Home · Afrika Shrine (music club) · Viewing Centre · Amala Shitta (buka) · CcHub (tech hub) · Market · Freedom Park
+(culture park) · i-Fitness (gym) · Marina Towers · Quilox (nightclub) · Canopy Walk (nature) · The Palms (mall) · The
+Library · Beach · General Hospital · Mama Bisi's Salon · Ivory Rooftop · Police Station · Church · Mosque · Naija Radio ·
+Polling Unit · Eko Hotels · Polanco Motors (car dealer) · Boat Cruise · Ikoyi Golf Club · High Court · UNILAG · Eko
+Casino · MindSpace (therapy) · Stadium · Charterhouse · Snooker Spot · HANDI HQ · Mako (pizza) · Jibowu Park (motor park).
+
+They use real names; we keep invented ones. Each card has 4–10 activity chips (CcHub: hack on a side project, free
+Wi-Fi, freelance gig, tech meetup, pitch your startup, hackathon, coffee and puff-puff, gist with founders, and
+"hack an ATM", a crime action). Fares on the ride picker change with distance (Afrika Shrine: Keke ₦200, Okada ₦600,
+Cab ₦1,800). Needs shown as six icons: food, energy, fun, social, hygiene, toilet.
+
+We have the art for many of these already and can open them as places next: car showroom (Island Motors), Skyline
+lounge, Fit Lagos gym, Glory Hair Salon, church, mosque, clinic, City Polytechnic, the jetty (boat cruise), the beach,
+the park. Missing art (queued, batches 25–28): police station, hospital, stadium, radio, library, court, snooker,
+golf, and their interiors.

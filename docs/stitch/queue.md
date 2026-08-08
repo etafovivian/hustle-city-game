@@ -154,3 +154,39 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 2. A generator in a small shed with an exhaust pipe.
 3. A telecom mast on a fenced plot.
 4. A "FOR SALE" land sign board on a post, with a space for a phone number (no number written).
+
+## Batch 23: airport (planes and the plane harbour)
+1. A passenger jet parked on the ground, white with a green tail stripe (no airline name or logo), seen from 2:1 isometric, nose pointing down-left.
+2. The same jet with its nose pointing up-right (back view).
+3. A small propeller plane parked, nose pointing down-left.
+4. A big aircraft hangar: curved roof, wide open doors, a jet's nose showing inside.
+
+## Batch 24: airport and port details
+1. An airport jet bridge (boarding bridge) attached to nothing, with stairs, and a fuel truck beside it.
+2. A container cargo ship moored at a quay, loaded with coloured containers, side view at 2:1 iso, long.
+3. A harbour tugboat, red and black.
+4. A quay crane (ship-to-shore gantry crane), tall, red and white.
+
+## Batch 25: places Lagos Life has that we don't (exteriors)
+1. A police station: a two-storey building, blue and white, with the sign "POLICE" and a patrol car outside (no real force crest).
+2. A general hospital: a long three-storey building with a red cross, an ambulance bay and the sign "GENERAL HOSPITAL".
+3. A football stadium: an oval stadium with floodlights and green pitch visible.
+4. A radio station: a small building with a tall antenna mast and the sign "CITY FM".
+
+## Batch 26: more places (exteriors)
+1. A public library: a classic building with steps and columns and the sign "CITY LIBRARY".
+2. A high court: a white building with columns and the sign "HIGH COURT".
+3. A snooker and games spot: a small shop with an open front, a snooker table inside, plastic chairs outside.
+4. A golf clubhouse with a green and a flag (sign "LAGOON GOLF CLUB").
+
+## Batch 27: interiors for places we already have outsides for (cutaway room line)
+1. Gym interior: treadmills, weights rack, mirrors, a boxing bag.
+2. Rooftop lounge / club interior: bar counter with bottles (no brands), DJ booth, coloured lights, sofas.
+3. Hair salon interior: two styling chairs, mirrors, hair dryers, wigs on stands.
+4. Church interior: rows of pews, an altar with a pulpit, keyboard and drums corner.
+
+## Batch 28: more interiors
+1. Mosque interior: carpeted prayer hall, mihrab niche, shoe rack by the door.
+2. Classroom interior: desks in rows, a blackboard, a teacher's table, a ceiling fan.
+3. Car showroom interior: two cars without badges on a shiny floor, a sales desk.
+4. Boat cruise deck (top of a boat, open air): deck chairs, a small bar, string lights, railings, lagoon water around.

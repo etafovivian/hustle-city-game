@@ -26,7 +26,11 @@ import {
   DRIVEWAYS,
   STREETS,
   FOR_SALE,
+  FORESTS,
   GRASS,
+  RUNWAY,
+  iso,
+  isoRect,
   ROUNDABOUT,
   TREES,
   VENUE_SPOTS,
@@ -224,7 +228,8 @@ export function CityMap({
   const narrow = typeof window !== "undefined" && window.innerWidth < 640;
   // A shared link can open the map on an area: ?at=lekki-gardens (district names in lower case with dashes).
   const at = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("at") : null;
-  const spot = at ? DISTRICTS.find((d) => d.name.toLowerCase().replace(/\s+/g, "-") === at) : undefined;
+  const xy = at && /^\d+,\d+$/.test(at) ? { x: Number(at.split(",")[0]), y: Number(at.split(",")[1]) } : undefined;
+  const spot = xy ?? (at ? DISTRICTS.find((d) => d.name.toLowerCase().replace(/\s+/g, "-") === at) : undefined);
   const centre = spot ?? { x: CX, y: CY + 60 };
   const HOME = narrow ? { x: centre.x - 430, y: centre.y - 580, w: 860, h: 1100 } : { x: centre.x - 680, y: centre.y - 680, w: 1360, h: 1420 };
   const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
@@ -496,6 +501,24 @@ export function CityMap({
                     Atlantic Ocean
                   </text>
                 </g>
+              )}
+
+              {/* Forest floor: dark green ground under the forest reserves (their trees are on the buildings layer) */}
+              {FORESTS.map((f) => (
+                <path key={f.name} d={f.path} fill="#3f6e33" stroke="#3f6e33" strokeWidth="90" strokeLinejoin="round" opacity=".9" />
+              ))}
+              {/* Airport: apron, taxiway and runway (centre line dashes, threshold bars at both ends) */}
+              <path d={isoRect(RUNWAY.apron.a0, RUNWAY.apron.a1, RUNWAY.apron.b0, RUNWAY.apron.b1)} fill="#8f949b" stroke="#6d7279" strokeWidth="4" />
+              <path d={isoRect(RUNWAY.a0, RUNWAY.a1, RUNWAY.taxiB - RUNWAY.taxiHalf, RUNWAY.taxiB + RUNWAY.taxiHalf)} fill="#4a4743" />
+              <path d={isoRect(RUNWAY.a0 + 300, RUNWAY.a0 + 340, RUNWAY.apron.b1, RUNWAY.taxiB)} fill="#4a4743" />
+              <path d={isoRect(RUNWAY.a1 - 340, RUNWAY.a1 - 300, RUNWAY.apron.b1, RUNWAY.taxiB)} fill="#4a4743" />
+              <path d={isoRect(RUNWAY.a0, RUNWAY.a1, RUNWAY.b - RUNWAY.half, RUNWAY.b + RUNWAY.half)} fill="#3d3a37" stroke="#e8e2d0" strokeWidth="4" />
+              {(() => {
+                const [p, q] = [iso(RUNWAY.a0 + 160, RUNWAY.b), iso(RUNWAY.a1 - 160, RUNWAY.b)];
+                return <path d={`M${p.x} ${p.y} L${q.x} ${q.y}`} stroke="#f4f1e8" strokeWidth="6" strokeDasharray="60 40" />;
+              })()}
+              {[RUNWAY.a0 + 30, RUNWAY.a1 - 110].map((a0) =>
+                [-48, -24, 0, 24, 48].map((db) => <path key={`${a0}-${db}`} d={isoRect(a0, a0 + 80, RUNWAY.b + db - 6, RUNWAY.b + db + 6)} fill="#f4f1e8" />),
               )}
 
               {/* Grass patches: flat on the ground, under the roads and buildings */}
