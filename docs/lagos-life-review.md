@@ -170,3 +170,27 @@ Hunger, energy and fun only, fewer than theirs. Eating at a buka, resting at hom
 - **Home interiors per tier (isometric rooms):** shared-corridor room, student room, mini-flat sitting room, duplex lounge, mansion lounge with pool view.
 - **Place interiors:** a buka, the hangout bar, a market stall row.
 - **People:** more walk sheets (women and men, all 4 directions). The Blender character work covers this.
+
+## Second look (2026-10-12): map, ambience and what we're missing
+
+Seen on the owner's account (no money spent, nothing posted). Their map is simpler than ours now (plain 3D blocks on
+green lots), but it is alive in ways ours isn't yet:
+
+| They have | We have | Gap to close |
+|---|---|---|
+| Other real players in each venue, name tags, a chat box ("Say something to the 6 players here"), "77k online", visit counter | Only you on the map; NPC walkers | **Presence + venue chat** (biggest gap; needs a realtime service) |
+| Spots inside a venue to move between (Captain's helm, Sun deck, Deck bar, Party deck) | One room view per place with activities | Stations inside a room you can tap to stand at |
+| Mood ("Miserable"), "Sick – treat it", "Eat something" hints, needs bars | XP, coins, dream | **Needs bars** (hunger, energy, fun, health) that venues refill |
+| Sound toggle (ambience) | Silent | **Ambient sound**: traffic and horns, generator hum, market chatter, owambe music inside venues |
+| An icon over every building | Badges only on venues | Icons over shops, banks, schools, clinics, churches/mosques |
+| Map filters: Serious go-slow (traffic), Billboards, Neighbours, Sea, Gov; Names toggle | None | Layer chips (traffic, billboards, neighbours, land for sale) |
+| Cities: Lagos, Port Harcourt, Abuja | Lagos only | Later |
+| Player government ("Gov @… : Money speak faster than words") | None | Later (elections) |
+| Billboards with real ads, "MEGA SCREEN ₦250k / 7 days" | Boards at ₦25k–₦60k/week | **Our board prices are ~10× under theirs**; owner to decide |
+| Place card: share a link to the place, activity chips, "Here now", player shops here | Venue card with activities, walk there | **Share a place** (we have `?at=` for areas; add per place), "Here now" once presence exists |
+| Travel picker on every card: Trek (free), Keke ₦100, Danfo ₦100, Okada ₦250, Cab ₦750, "Rush hour: cab fares are up" | Tap-to-walk only | **Go there with a ride**: pick a ride, pay coins, short animated trip (we have the vehicle art) |
+| Daily gem hunt (collectibles hidden on the map, prize pool) | Daily quests | Daily collectibles on the map |
+| Photo button (screenshot to share) | None | Photo/share of your scene |
+
+Suggested order for us: ambient sound + icons over buildings (quick), ride picker with fares (we have the art),
+needs bars, then presence + venue chat (the big one).
