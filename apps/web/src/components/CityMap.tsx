@@ -462,13 +462,18 @@ export function CityMap({
               <stop offset="1" stopColor="#5a3d1c" stopOpacity=".38" />
             </radialGradient>
             <radialGradient id="lamp-pool">
-              <stop offset="0" stopColor="#ffd98a" stopOpacity=".75" />
-              <stop offset=".5" stopColor="#ffb547" stopOpacity=".28" />
+              <stop offset="0" stopColor="#ffd98a" stopOpacity=".5" />
+              <stop offset=".55" stopColor="#ffb547" stopOpacity=".16" />
               <stop offset="1" stopColor="#ffb547" stopOpacity="0" />
             </radialGradient>
+            <radialGradient id="lamp-head">
+              <stop offset="0" stopColor="#fffbe6" stopOpacity=".95" />
+              <stop offset=".35" stopColor="#ffe7a3" stopOpacity=".55" />
+              <stop offset="1" stopColor="#ffcf6e" stopOpacity="0" />
+            </radialGradient>
             <radialGradient id="window-glow">
-              <stop offset="0" stopColor="#ffcf6e" stopOpacity=".55" />
-              <stop offset=".6" stopColor="#ff9f3a" stopOpacity=".16" />
+              <stop offset="0" stopColor="#ffcf6e" stopOpacity=".42" />
+              <stop offset=".6" stopColor="#ff9f3a" stopOpacity=".1" />
               <stop offset="1" stopColor="#ff9f3a" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="glow-centre" cx="50%" cy="50%" r="50%">
@@ -724,22 +729,24 @@ export function CityMap({
                   {!far &&
                     BILLBOARD_SPOTS.map((spot) => <ellipse key={`bb-${spot.key}`} cx={spot.x} cy={spot.y - 200} rx="220" ry="110" fill="url(#window-glow)" />)}
                   {LAMPS.filter((l) => inView(l.x, l.y)).map((l) => {
-                    // The lamp head hangs off its arm, up and to the right of the pole.
+                    // The lamp head hangs off its arm, up and to the right of the pole: a soft glow under the head,
+                    // and a flat pool on the ground straight below it (squashed 2:1 like the ground).
                     const box = propBox(LAMP.art, l.x, l.y, LAMP.w);
+                    const hx = box.x + box.w * 0.86;
                     return (
                       <g key={l.key}>
-                        <ellipse cx={l.x + 14} cy={l.y + 12} rx="110" ry="52" fill="url(#lamp-pool)" />
-                        <circle cx={box.x + box.w * 0.72} cy={box.y + box.h * 0.1} r="7" fill="#fff4c8" />
+                        <ellipse cx={hx} cy={l.y + 4} rx="64" ry="32" fill="url(#lamp-pool)" />
+                        <ellipse cx={hx} cy={box.y + box.h * 0.2} rx="14" ry="10" fill="url(#lamp-head)" />
                       </g>
                     );
                   })}
                   {ALL_SCENERY.filter((b) => inView(b.x, b.y)).map((b) => {
                     const box = buildingBox(b.art, b.x, b.y, b.scale);
-                    return <ellipse key={b.key} cx={b.x} cy={box.y + box.h * 0.6} rx={box.w * 0.5} ry={box.h * 0.42} fill="url(#window-glow)" />;
+                    return <ellipse key={b.key} cx={b.x} cy={box.y + box.h * 0.55} rx={box.w * 0.42} ry={box.h * 0.32} fill="url(#window-glow)" />;
                   })}
                   {!far &&
-                    PLOTS.map((p, i) => neighbours[i] && <ellipse key={i} cx={p.x} cy={p.y - 30} rx="110" ry="80" fill="url(#window-glow)" />)}
-                  <ellipse cx={CX} cy={CY} rx="260" ry="140" fill="url(#lamp-pool)" />
+                    PLOTS.map((p, i) => neighbours[i] && <ellipse key={i} cx={p.x} cy={p.y - 40} rx="80" ry="56" fill="url(#window-glow)" />)}
+                  <ellipse cx={CX} cy={CY} rx="220" ry="110" fill="url(#lamp-pool)" />
                   {!far && PLACES.map((pl) => <ellipse key={pl.id} cx={pl.x + pl.w / 2} cy={pl.y + pl.h * 0.55} rx={pl.w * 0.6} ry={pl.h * 0.5} fill="url(#window-glow)" />)}
                 </g>
               )}

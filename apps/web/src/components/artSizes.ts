@@ -65,7 +65,7 @@ export const ART_SIZE: Record<string, [number, number]> = {
   "/art/buildings/villa.webp": [821, 640],
   "/art/buildings/warehouse.webp": [828, 640],
   "/art/props/bus-stop.webp": [650, 640],
-  "/art/props/cargo-ship.webp": [689, 640],
+  "/art/props/cargo-ship.webp": [660, 540],
   "/art/props/footbridge.webp": [804, 640],
   "/art/props/for-sale-sign.webp": [591, 640],
   "/art/props/fountain.webp": [804, 607],
