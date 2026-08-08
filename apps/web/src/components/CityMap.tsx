@@ -46,6 +46,7 @@ import {
   PILLARS,
   PLACES,
   PLOTS,
+  PORT_AND_PLANES,
   PROPS,
   ZEBRAS,
   ROAD_A,
@@ -77,7 +78,7 @@ const NATURE: Record<string, { art: string; w: number }> = {
 };
 const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
 /** Street furniture: stalls, shelters, poles and lamps. */
-const STREET_PROPS = [...PROPS, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
+const STREET_PROPS = [...PROPS, ...PORT_AND_PLANES, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
 
 /** Buildings, trees and street furniture in one back-to-front list so nearer things cover farther ones. */
 const WORLD_OBJECTS = [

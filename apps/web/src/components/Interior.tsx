@@ -115,6 +115,122 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.32, 0.64], dir: "se" },
     ],
   },
+  gym: {
+    walkway: [
+      [0.42, 0.8],
+      [0.52, 0.86],
+      [0.62, 0.8],
+      [0.72, 0.7],
+      [0.8, 0.62],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.67, 0.71], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.78, 0.62], dir: "sw", variant: "man_casual" },
+      { action: "stand_idle", at: [0.5, 0.76], dir: "se", variant: "man_kaftan" },
+    ],
+  },
+  "boat-deck": {
+    walkway: [
+      [0.36, 0.56],
+      [0.46, 0.62],
+      [0.56, 0.58],
+      [0.64, 0.5],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.48, 0.52], dir: "se" },
+      { action: "dance", at: [0.56, 0.47], dir: "sw" },
+      { action: "serve", at: [0.62, 0.38], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.36, 0.46], dir: "se", variant: "woman_gele" },
+    ],
+  },
+  church: {
+    walkway: [
+      [0.32, 0.74],
+      [0.42, 0.7],
+      [0.52, 0.66],
+      [0.6, 0.6],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.73, 0.52], dir: "sw", variant: "man_casual" },
+      { action: "dance", at: [0.4, 0.63], dir: "se", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.71, 0.7], dir: "sw" },
+    ],
+  },
+  salon: {
+    walkway: [
+      [0.4, 0.82],
+      [0.5, 0.76],
+      [0.58, 0.68],
+      [0.66, 0.62],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.52, 0.6], dir: "sw", variant: "woman_buba" },
+      { action: "serve", at: [0.41, 0.7], dir: "se", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.87, 0.67], dir: "sw", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.74, 0.8], dir: "sw", variant: "schoolgirl" },
+    ],
+  },
+  lounge: {
+    walkway: [
+      [0.22, 0.7],
+      [0.3, 0.63],
+      [0.4, 0.58],
+      [0.52, 0.62],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.13, 0.5], dir: "se", variant: "man_casual" },
+      { action: "dance", at: [0.22, 0.69], dir: "se", variant: "woman_gele" },
+      { action: "dance", at: [0.29, 0.74], dir: "sw", variant: "man_kaftan" },
+      { action: "serve", at: [0.36, 0.41], dir: "sw", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_buba" },
+    ],
+  },
+  mosque: {
+    walkway: [
+      [0.3, 0.7],
+      [0.45, 0.78],
+      [0.6, 0.82],
+      [0.72, 0.72],
+      [0.6, 0.62],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.4, 0.62], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.55, 0.7], dir: "se", variant: "man_casual" },
+      { action: "stand_idle", at: [0.68, 0.64], dir: "sw", variant: "schoolboy" },
+    ],
+  },
+  "car-showroom": {
+    walkway: [
+      [0.4, 0.88],
+      [0.52, 0.88],
+      [0.62, 0.82],
+      [0.8, 0.68],
+    ],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.38, 0.43], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.47, 0.6], dir: "sw", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.82, 0.64], dir: "sw", variant: "man_casual" },
+    ],
+  },
+  classroom: {
+    walkway: [],
+    walkers: 0,
+    stations: [
+      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "schoolboy" },
+      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
+    ],
+  },
   "hotel-lobby": {
     walkway: [
       [0.25, 0.72],

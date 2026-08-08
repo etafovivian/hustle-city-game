@@ -439,6 +439,22 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "lampnet_academy", district: "Tech Mile", scale: 1.15 },
   { key: "lagoon_capital_bank", district: "Island Heights", scale: 1.3 },
   { key: "grand_lagoon_hotel", district: "Island Heights", scale: 1.5 },
+  { key: "fit_lagos", district: "Island Heights" },
+  { key: "skyline_lounge", district: "Island Heights" },
+  { key: "island_motors", district: "Island Heights" },
+  { key: "lagoon_golf_club", district: "Island Heights" },
+  { key: "glory_hair_salon", district: "Owambe Gardens" },
+  { key: "grace_chapel", district: "Owambe Gardens" },
+  { key: "city_stadium", district: "Owambe Gardens" },
+  { key: "central_mosque", district: "Danfo Terminal" },
+  { key: "police_division", district: "Danfo Terminal" },
+  { key: "oga_snooker", district: "Danfo Terminal" },
+  // The boat cruise leaves from Marina's ferry jetty (drawn half over the lagoon)
+  { key: "lagoon_boat_cruise", a: 1510, b: -2060 },
+  { key: "high_court", district: "Marina Wharf" },
+  { key: "city_library", district: "Tech Mile" },
+  { key: "city_fm", district: "Tech Mile" },
+  { key: "general_hospital", district: "Airport Ridge", scale: 1.2 },
 ];
 
 /**
@@ -506,6 +522,11 @@ const BIG: Record<string, number> = {
   "container-port": 1.2,
   "colonial-block": 1.1,
   "event-centre": 1.15,
+  stadium: 2,
+  "golf-club": 1.4,
+  hospital: 1.3,
+  "high-court": 1.2,
+  library: 1.15,
   // Small things
   atm: 0.75,
   "kiosk-container": 0.7,
@@ -640,6 +661,20 @@ function settle(d: District, arts: string[], tag: string) {
 }
 
 const VENUE_ART: Record<string, string> = {
+  fit_lagos: "gym",
+  skyline_lounge: "skyline-lounge",
+  island_motors: "car-showroom",
+  lagoon_golf_club: "golf-club",
+  glory_hair_salon: "salon",
+  grace_chapel: "church",
+  city_stadium: "stadium",
+  central_mosque: "mosque",
+  police_division: "police-station",
+  oga_snooker: "snooker",
+  high_court: "high-court",
+  city_library: "library",
+  city_fm: "radio-station",
+  general_hospital: "hospital",
   lampnet_academy: "school",
   lagoon_capital_bank: "bank-lagoon-capital",
   grand_lagoon_hotel: "hotel",
@@ -690,7 +725,7 @@ const landId = (area: string, k: number) => `${area.toLowerCase().replace(/\s+/g
  * and an apron (the parking pad for planes) between the taxiway and the terminal side. Drawn on the ground layer;
  * the ground under them is claimed so nothing gets built or planted there.
  */
-export const RUNWAY = { a0: -1300, a1: 1300, b: 3150, half: 70, taxiB: 2970, taxiHalf: 26, apron: { a0: -500, a1: 500, b0: 2840, b1: 2950 } };
+export const RUNWAY = { a0: -1300, a1: 1300, b: 3150, half: 70, taxiB: 2970, taxiHalf: 26, apron: { a0: -950, a1: 950, b0: 2740, b1: 2944 } };
 for (let a = RUNWAY.a0; a <= RUNWAY.a1; a += 100) {
   for (const [b, hh] of [
     [RUNWAY.b, RUNWAY.half + 20],
@@ -1055,6 +1090,30 @@ for (const [sa, sb] of QUARTERS) {
   LAMPS.push({ x: c.x, y: c.y, key: `j101-${sa}${sb}`, behind: c.y < CY });
 }
 
+// ── Airport and harbour life ──
+/** Jets parked nose-in on the apron, boarding bridges between them, small planes at the end; ships, quay cranes and
+ * tugboats along Apapa's waterfront. Drawn with the street furniture (they stand on claimed or open water). */
+export const PORT_AND_PLANES: Prop[] = (() => {
+  const out: Prop[] = [];
+  const at = (a: number, b: number) => iso(a, b);
+  const mid = (RUNWAY.apron.b0 + RUNWAY.apron.b1) / 2;
+  for (const [i, a] of [-700, -250, 200, 650].entries()) {
+    const c = at(a, mid + 10);
+    out.push({ art: `/art/props/${i % 3 === 1 ? "jet-ne" : "jet-sw"}.webp`, x: c.x, y: c.y + 60, key: `jet-${i}`, w: 270, behind: false });
+    const bridge = at(a + 200, RUNWAY.apron.b0 + 30);
+    if (i < 3) out.push({ art: "/art/props/jet-bridge.webp", x: bridge.x, y: bridge.y + 30, key: `bridge-${i}`, w: 150, behind: false });
+  }
+  for (const [i, a] of [880, -900].entries()) {
+    const c = at(a, mid);
+    out.push({ art: "/art/props/plane-small.webp", x: c.x, y: c.y + 40, key: `plane-${i}`, w: 150, behind: false });
+  }
+  // Apapa's waterfront: ships moored off the quay, cranes on its edge, tugs in the harbour
+  for (const [i, x] of [2150, 2700].entries()) out.push({ art: "/art/props/cargo-ship.webp", x, y: shoreY(x) + 210, key: `ship-${i}`, w: 360, behind: false });
+  for (const [i, x] of [1950, 2250, 2550, 2850].entries()) out.push({ art: "/art/props/quay-crane.webp", x, y: shoreY(x) - 10, key: `crane-${i}`, w: 150, behind: true });
+  for (const [i, x] of [2420, 3050].entries()) out.push({ art: "/art/props/tugboat.webp", x, y: shoreY(x) + 380, key: `tug-${i}`, w: 120, behind: false });
+  return out;
+})();
+
 /** Palms along the Island road (Lekki feel) and trees around the districts. */
 const EXTRA_TREES = [
   ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
@@ -1135,7 +1194,7 @@ const FOREST_TREES = FORESTS.flatMap((f) => {
 
 export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES].sort((a, b) => a.y - b.y);
 
-export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), { ...JETTY, landmark: true }, ...AREA_HOUSES].sort((a, b) => a.y - b.y);
+export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES].sort((a, b) => a.y - b.y);
 
 /** Every placed building and plot, for the layout check (scripts/check-clearance.ts). */
 export const PLACED = { scenery: ALL_SCENERY, venues: VENUE_SPOTS, plots: PLOTS, plotHalf: PLOT_HH, props: PROPS, trees: TREES, land: LAND, plotCentre };
