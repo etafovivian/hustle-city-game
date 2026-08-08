@@ -190,3 +190,23 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 2. Classroom interior: desks in rows, a blackboard, a teacher's table, a ceiling fan.
 3. Car showroom interior: two cars without badges on a shiny floor, a sales desk.
 4. Boat cruise deck (top of a boat, open air): deck chairs, a small bar, string lights, railings, lagoon water around.
+
+**For batches 29–31, also add:** "Leave a clear open walkway across the middle of the floor (people will walk there). No people in the picture. Draw the room a bit bigger than usual, seen from slightly higher."
+
+## Batch 29: interiors for the new places (part 1)
+1. Cutaway interior of a police station front desk: a long counter with a duty sergeant's logbook, a wooden bench for people waiting, a notice board, a cell door with bars at the back, a ceiling fan. Blue and white walls, sign "CHARGE ROOM". No real force crest.
+2. Cutaway interior of a hospital ward and reception: a reception desk, three hospital beds with curtains between them, a drip stand, a medicine cabinet, a wall sign "OPD". White and pale green walls.
+3. Cutaway interior of a radio studio: a desk with a mixing console, two microphones on arms, headphones, an "ON AIR" red light, foam panels on the walls, a glass window to a small control room.
+4. Cutaway interior of a public library reading room: tall bookshelves on both back walls, two long reading tables with chairs and green desk lamps, a librarian's desk, a "QUIET PLEASE" sign.
+
+## Batch 30: interiors for the new places (part 2)
+1. Cutaway interior of a courtroom: the judge's raised bench with a carved front, a witness box, two lawyers' tables, rows of benches for the public, a court clerk's desk. Wood panelling.
+2. Cutaway interior of a golf clubhouse lounge: leather armchairs, a bar counter (bottles without labels), golf bags on a rack, framed photos of greens, big windows showing a golf course.
+3. Cutaway interior of a snooker and games spot: one snooker table in the middle with cues on a wall rack, a scoreboard on the wall, plastic chairs around the walls, a small drinks fridge, a TV showing a plain green football pitch. No console or brand names.
+4. Cutaway interior of a stadium players' tunnel area / changing room: wooden benches, kit hanging on pegs (plain green and white, no badges), a tactics board, a door opening onto the green pitch.
+
+## Batch 31: clean redos (replace the painted-over ones)
+1. Cutaway interior of a Lagos hangout bar: a bar counter, coolers of drinks with plain unlabelled bottles, plastic tables and chairs, a small stage with a speaker, string lights. No brand names or logos anywhere.
+2. Cutaway interior of a viewing centre: a big wall screen showing only a green football pitch, rows of plastic chairs and benches, a drinks cooler with plain bottles, a chalkboard that says "MATCH TONIGHT". No club names or badges.
+3. Cutaway interior of a provision shop: shelves of tins, sachets, bags of rice and detergent with plain coloured labels, a counter with a till, a fridge. No logos or brand names anywhere, plain labels only.
+4. An aircraft hangar (exterior): a big curved-roof hangar with its doors open and a small plane half inside, a tow tractor in front. (It was missing from zip 14.)
