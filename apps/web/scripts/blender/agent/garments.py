@@ -255,8 +255,9 @@ def build_agbada(F, mat):
     hem = (F.z_knee + F.z_ankle) / 2
     zn, zs_ = F.z_neck, F.z_shoulder
     # boxy (superellipse) cross-sections: flat front/back panels, shoulders widened by the folded sleeves
-    ell = [(zn - 0.01, 0.2, 0.14), (zn - 0.05, 0.3, 0.155), (zs_ - 0.03, 0.4, 0.185), (zs_ - 0.12, 0.44, 0.195),
-           (F.z_wrist, 0.45, 0.19), (hem, 0.48, 0.2)]
+    # (owner, 2026-10-12: the first cut was far too puffy; this drapes just past the arms)
+    ell = [(zn - 0.01, 0.19, 0.13), (zn - 0.05, 0.25, 0.14), (zs_ - 0.03, 0.3, 0.155), (zs_ - 0.12, 0.32, 0.16),
+           (F.z_wrist, 0.33, 0.16), (hem, 0.35, 0.165)]
 
     def minell(z):
         if z > ell[0][0] + 0.005:
@@ -327,8 +328,8 @@ def build_peplum(F, mat):
     for s in "lr":  # short cap sleeves
         F.sleeve(p, s, 0.06, 0.3, 4, 12, lambda t: 0.016 + 0.02 * t)
     # peplum: flared frill from the waist
-    zs = levels(F.z_waist + 0.01, F.z_waist - 0.17, 0.045)
-    rings = F.body_loft(zs, TORSO | UPPERLEGS, 28, lambda z, a: lerp(0.02, 0.12, smoothstep(F.z_waist + 0.01, F.z_waist - 0.17, z) ** 1.3))
+    zs = levels(F.z_waist + 0.01, F.z_waist - 0.15, 0.045)
+    rings = F.body_loft(zs, TORSO | UPPERLEGS, 28, lambda z, a: lerp(0.02, 0.075, smoothstep(F.z_waist + 0.01, F.z_waist - 0.15, z) ** 1.3))
     v, f = grid(rings)
     p.add(v, f, [F.body_w(q) for q in v])
     # long mermaid skirt: fitted to the knee, then flaring to the ankle
@@ -337,8 +338,8 @@ def build_peplum(F, mat):
 
     def m(z, a):
         if z > flare_from:
-            return lerp(0.022, 0.065, smoothstep(F.z_waist, flare_from, z))
-        return lerp(0.065, 0.16, smoothstep(flare_from, F.z_ankle, z) ** 1.3)
+            return lerp(0.02, 0.05, smoothstep(F.z_waist, flare_from, z))
+        return lerp(0.05, 0.1, smoothstep(flare_from, F.z_ankle, z) ** 1.3)
     rings = F.body_loft(zs, TORSO | LEGS, 24, m)
     v, f = grid(rings)
     p.add(v, f, [F.body_w(q) for q in v])

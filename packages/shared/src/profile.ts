@@ -19,17 +19,18 @@ export const AVATAR_OPTIONS = {
 export type BodyType = (typeof AVATAR_OPTIONS.body)[number];
 
 /**
- * Every hair style and outfit works with both bodies; these orders just put the most common
- * choices for each body first in the picker.
+ * Every hair style works with both bodies; these orders put the most common choices first in the picker.
+ * Outfits: the gowns are cut for the woman's body and the agbada for the man's (on the other body they only
+ * showed as painted colour), so each picker leaves those out. Older profiles that have them still load.
  */
 export const LOOK_ORDER: Record<BodyType, { hair: string[]; outfit: string[] }> = {
   man: {
     hair: ["low_cut", "buzzcut", "high_top", "curly", "locs", "bald", "cap", "puff", "braids", "bob", "gele"],
-    outfit: ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black", "buba_wrapper", "peplum_coral"],
+    outfit: ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black"],
   },
   woman: {
     hair: ["braids", "puff", "bob", "gele", "curly", "locs", "low_cut", "high_top", "buzzcut", "bald", "cap"],
-    outfit: ["buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black", "agbada_white"],
+    outfit: ["buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black"],
   },
 };
 
