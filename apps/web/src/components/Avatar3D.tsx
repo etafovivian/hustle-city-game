@@ -386,7 +386,14 @@ export default function Avatar3D({
       s.garment = undefined;
     }
     const key = GARMENTS[body]?.[avatar.outfit];
+    const model = s.model;
+    model.visible = true;
     if (!key) return;
+    // Hide the body until its robe or gown arrives, so the painted stand-in (a full coral or white body
+    // suit) never flashes up first. If the garment is slow or fails, show the painted outfit after 5 s.
+    model.visible = false;
+    const show = () => void (model.visible = true);
+    const fallback = window.setTimeout(show, 5000);
     let cancelled = false;
     loadGarment(body, key)
       .then((src) => {
@@ -415,9 +422,15 @@ export default function Avatar3D({
         s.garment = group;
         group.visible = !NO_GARMENT_POSES.has(action);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        window.clearTimeout(fallback);
+        if (!cancelled) show();
+      });
     return () => {
       cancelled = true;
+      window.clearTimeout(fallback);
+      model.visible = true;
     };
   }, [avatar.outfit, ready]);
 

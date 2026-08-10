@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { STOCK_ITEMS_BY_KEY, orderSlotIndex, type QuestBoard, type ShopView } from "@hc/shared";
+import { STOCK_ITEMS_BY_KEY, VENUES_BY_KEY, isOpenAt, lagosHourOf, orderSlotIndex, type QuestBoard, type ShopView } from "@hc/shared";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { TEST_DATABASE_URL, prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
@@ -422,5 +422,18 @@ describe("venue activities", () => {
     expect((await p.call("GET", "/api/me")).json().coins).toBe(before.coins - 300);
     expect((await p.call("POST", "/api/game/venues/nowhere/amala")).statusCode).toBe(404);
     expect((await p.call("GET", "/api/game/venues/today")).json().done).toEqual(["mama_nkechi_buka:amala"]);
+  });
+
+  it("keeps the free action off the server, prices the flex, and keeps opening hours", async () => {
+    const p = await registerPlayer(app);
+    expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/free")).statusCode).toBe(404);
+    // A new player can't afford the flex (25,000 coins), and nothing is charged.
+    const before = (await p.call("GET", "/api/me")).json().coins;
+    expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/flex")).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before);
+    // The lounge opens at 10 pm Lagos time.
+    const lounge = await p.call("POST", "/api/game/venues/skyline_lounge/chapman");
+    if (isOpenAt(VENUES_BY_KEY.get("skyline_lounge")!, lagosHourOf(new Date()))) expect(lounge.statusCode).toBe(200);
+    else expect(lounge.json()).toMatchObject({ error: "closed" });
   });
 });

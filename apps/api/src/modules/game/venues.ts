@@ -2,7 +2,7 @@
 // The ledger reference makes each activity once a day; doing it again is refused before any charge.
 
 import { gameLedgerEntries, profiles } from "@hc/db";
-import { VENUES_BY_KEY, activityRef, dayKey, type VenueDay } from "@hc/shared";
+import { VENUES_BY_KEY, activityRef, clockHour, dayKey, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
 import { and, eq, like, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -22,8 +22,12 @@ export async function venueDay({ tx, userId, now, timeZone }: ShopCtx): Promise<
 export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: string) {
   const { tx, userId, now, timeZone } = ctx;
   const venue = VENUES_BY_KEY.get(venueKey);
-  const activity = venue?.activities.find((a) => a.key === activityKey);
+  // The free action needs no server: it costs nothing and gives no XP.
+  const activity = venue ? venueActions(venue).find((a) => a.key === activityKey && a.kind !== "free") : undefined;
   if (!venue || !activity) throw notFound("Activity");
+  if (!isOpenAt(venue, lagosHourOf(now))) {
+    throw new AppError(409, "closed", `${venue.name} is closed now. It opens at ${clockHour(venueHours(venue)![0])}.`);
+  }
   await lockProfile(tx, userId);
   const posting = await postCoins(tx, userId, -activity.cost, "activity", activityRef(dayKey(now, timeZone), venue.key, activity.key));
   if (!posting.applied) throw new AppError(409, "done_today", "You've done that here today. Come back tomorrow.");

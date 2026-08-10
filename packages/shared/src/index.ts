@@ -11,3 +11,4 @@ export * from "./services.js";
 export * from "./billboards.js";
 export * from "./venues.js";
 export * from "./academy.js";
+export * from "./land.js";

@@ -1,6 +1,6 @@
 # Lagos Life (lagoslife.app): competitor walkthrough
 
-Observed 12 Oct 2026, ~7:17–7:29 PM in-game (Mon, night), on the owner's account. Read-only: no money spent, no posts, no votes, no settings changed. Wallet before and after: ₦1,004,800. The player was physically at the Lagoon Boat Cruise; home is a UNILAG Hall of Residence (₦1,200/week).
+Observed 12 Oct 2026, ~7:17–7:29 PM in-game (Mon, night), on the owner's account. First pass was read-only (wallet unchanged at ₦1,004,800); a second, owner-approved pass spent a little in-game money (see Trips and walking). The player was physically at the Lagoon Boat Cruise; home is a UNILAG Hall of Residence (₦1,200/week).
 
 ## How a place card works
 
@@ -145,14 +145,45 @@ Apps opened read-only:
 - A top banner shows the governor's current slogan city-wide.
 - Keyboard shortcuts: M, H, B, P, S, T, 1–9, E, arrows, R, Enter, Del, C, Esc, ?.
 
-## Trips, walking and activities: not tested
+## Trips and walking (second pass, owner-approved in-game spend)
 
-The coordinator later relayed that the owner allowed spending in-game money to test trips, Walk Yaba and activities. That approval was relayed by another agent, and it reversed the original strict rule on the owner's real account, so I did not press any paid "Go" or activity button. What can be seen without spending:
-- Trips are paid per mode (Trek is free; the others cost ₦100–1,800).
-- Walk Yaba first requires a ₦150 Danfo trip to Yaba.
-- Activities are timed (6–17 s) with shown costs and need effects.
+Second pass at 7:50–8:03 PM in-game. Wallet: **₦1,004,800 before → ₦1,004,850 after**. Spent ₦950 on two rides, a street event and one meal; earned ₦1,000 back from two goal rewards. No real money, chat, votes or settings were touched.
 
-If the owner confirms directly, a follow-up pass can cover the trip animations and walking controls.
+| Trip | Mode / fare | What happened |
+|---|---|---|
+| Boat Cruise → UNILAG | Danfo ₦150 | Fare is taken the moment you press Go. The screen fades to a dark navy "ride" view with a pill "🚐 On the way to University of Lagos…" and small controls: 🎥 / 👀 / 💺 (camera or seat views), "🗺️ Map" and "⏭ Skip". It then drops you straight into the venue's 3D room with a UNILAG student card (course, CGPA, Student portal, Short Courses). About 1–2 min real time without pressing Skip. No event. |
+| UNILAG → MindSpace (Yaba) | Trek, free | The picker remembers your last mode. A dark fade with "🚶 On the way to MindSpace…", then the city map with the same banner, then the venue interior (therapy circle, "YOU ARE NOT ALONE" signs). About 15–20 s for a short hop. |
+| Yaba → Amala Shitta (Surulere) | Okada ₦300 | Rush hour had just ended: Cab dropped from ₦900 to ₦600 at 8 PM. On arrival a **travel event** modal appeared: "Area Boys! Three area boys block your path. 'Oga/Madam, owo mi da?'". There were four choices: **Pay ₦200 (Safe)**, **Talk your way out (Charisma check)**, **Run! (Fitness check)**, and **Stand your ground (Fitness · 37% they back off; lose: pay ₦200 + energy knock)**. I paid ₦200, which gave "'God bless you, Oga!' They let you pass." A toast also appeared: "Mission done: Move around: 3 places today. Claim your reward". This event explains the "Area Boys Palava −10" moodlet. |
+
+**Walk Yaba (walking mode).** Inside Yaba it opens instantly and for free; from outside Yaba it costs a ride there.
+- **View:** a third-person, street-level 3D view behind the avatar on Herbert Macaulay Way at dusk. It is low-poly but dense: storey buildings with balconies, shop signs, overhead power lines, street lamps, trees, parked and moving yellow danfos and cars, and NPC pedestrians on the pavement.
+- **Controls:** hint "Tap where you want to go. Hold and drag to steer." Tapping drops a green triangle target and the avatar walks to it. Hold-and-drag turns the camera or heading.
+- **Nearby chips with live distances:** "💡 CcHub · 80 m", "🌭 Mallam Sani · 210 m" (a street vendor), "🏘️ @player's house · 380 m", "🛺 Keke park · 430 m". Tapping a chip auto-walks there at about 2–3 m/s, and the distances update as you move.
+- **Other UI:** a context button "🫶🏾 Enter MindSpace ›" for the nearest venue, a location pill "Herbert Macaulay Way · Yaba · CcHub Block · 🌙" with an "Anywhere ›" jump, plus Map, an eye toggle and a camera button.
+- **Flies:** white flies buzz around the avatar, matching the "Smelly" moodlet (Hygiene 0%). Low needs are shown on the character itself.
+- **Fitness skill:** walking raised it; toast "Fitness skill up! Now level 1".
+
+## Activities (second pass)
+
+- **Sunbathe on Deck** (Boat Cruise, Free, labelled 9 s):
+  - Tap the card and the avatar walks to a deck lounger. A ☀️ icon floats over the head, and a top-left chip shows "Sunbathe on Deck · tap to cancel".
+  - It ran about 13–15 s real time. The game clock barely moves, so activities are real-time.
+  - Result: Energy 72→78%, Fun 0→12%, ₦0. No reward toast.
+- **Amala & Ewedu** (Amala Shitta "Buka counter" spot, ₦300, 8 s):
+  - The ₦300 is charged up front and a "🧾 ₦300" receipt chip appears in the venue bar. Same pattern: the avatar goes to the counter, then a cancellable chip.
+  - Result: **Hunger 0→70%** in one meal, and mood flipped **Miserable → Fine**.
+  - Two goal toasts appeared: "Goal complete: Eat something · +₦500 +1 ✨" and "Freshen up · +₦500 +1 ✨". The next hint changed to "🎯 Get a job: Open Phone → Jobs" (a tutorial goal chain).
+  - Other buka items ranged from ₦100 (Zobo, 5 s) to ₦650, all +Hunger, most also +Fun.
+- **Venue ambience:** each venue has a live ticker of small events ("Somebody caught a fish! (It was small)", "Sunset over Third Mainland Bridge", "Fresh ewedu just came out of the pot", "Somebody asked for 'plenty pepper'"), plus random bubble lines from players. Amala Shitta had 850+ people, an NPC "Mama Nkechi" behind the counter, and a "🃏🎲 TABLES · Play for real · Hall of Fame" banner.
+- **Sound:** music is on by default; the audio itself was not checked from here.
+
+Takeaways for Hustle City:
+1. Charge the fare on "Go", then a short skippable ride scene.
+2. **Random street events with skill-check choices** (pay / talk / run / fight, with odds shown): the best "Lagos feel" mechanic seen.
+3. Walk mode with tap-to-move and nearby-POI chips showing distances.
+4. Needs shown on the avatar (flies when smelly).
+5. Cheap street food that fixes Hunger in one go.
+6. Tutorial goal chain paying small ₦ and ✨ rewards.
 
 ## Ideas for Hustle City (ranked)
 

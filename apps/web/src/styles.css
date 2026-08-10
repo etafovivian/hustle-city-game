@@ -201,6 +201,23 @@ a { color: inherit; text-underline-offset: 3px; }
 .map-ctl { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--rule-strong); background: rgb(18 24 53 / 92%); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
 .map-ctl:hover { color: var(--yellow); border-color: var(--yellow); }
 .map-hint { position: absolute; left: 16px; bottom: 14px; margin: 0; padding: 4px 10px; border-radius: 999px; background: rgb(10 15 36 / 80%); color: var(--muted); pointer-events: none; }
+.map-land { position: absolute; left: 16px; top: 48px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #f2c14e; background: rgb(10 15 36 / 86%); color: #f2c14e; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 0 0 0 rgb(242 193 78 / 50%); animation: land-pulse 2.6s ease-out 3; }
+.map-land:hover { background: rgb(242 193 78 / 18%); }
+@keyframes land-pulse { 0% { box-shadow: 0 0 0 0 rgb(242 193 78 / 55%); } 100% { box-shadow: 0 0 0 14px rgb(242 193 78 / 0%); } }
+@media (prefers-reduced-motion: reduce) { .map-land { animation: none; } }
+.land-plot { cursor: pointer; }
+.land-icon { color: #b07a00; }
+.land-plot:hover polygon, .land-plot:focus-visible polygon { fill: rgb(255 199 44 / 22%); }
+.prime-tag { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #f2c14e; color: #2a1b00; font-size: 11px; font-weight: 800; vertical-align: middle; }
+.land-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.land-facts > div { padding: 10px 12px; border-radius: 14px; background: var(--sheet-2); }
+.land-facts dt { font-size: 12px; color: var(--muted); }
+.land-facts dd { margin: 2px 0 0; font-weight: 800; }
+.land-price { color: #f2c14e; font-weight: 800; white-space: nowrap; }
+.land-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.land-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); }
+.land-rows li > span:first-child { display: grid; gap: 2px; }
+@media (max-width: 520px) { .land-facts { grid-template-columns: 1fr 1fr; } }
 .map-clock { position: absolute; left: 16px; top: 14px; margin: 0; padding: 4px 12px; border-radius: 999px; background: rgb(10 15 36 / 82%); color: var(--yellow); font-weight: 700; pointer-events: none; }
 /* Day and night: the tint multiplies the world, lights add on top, labels sit above both. */
 .map-tint-layer { position: absolute; inset: 0; mix-blend-mode: multiply; pointer-events: none; transition: background-color 2s ease; }
@@ -591,6 +608,24 @@ textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bot
 .venue-act-label { display: grid; gap: 2px; }
 .venue-meta { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .venue-meta svg { display: inline-block; }
+.venue-hours { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 700; }
+.venue-hours.open { color: var(--ok); }
+.venue-hours.closed { color: var(--warn, #e0a030); }
+.venue-acts li.free strong { font-weight: 600; }
+.venue-acts li.flex { margin: 4px -10px 0; padding: 10px; border-radius: 14px; border: 1px solid rgb(255 199 44 / 55%); background: linear-gradient(135deg, rgb(255 199 44 / 14%), rgb(255 199 44 / 4%)); }
+.venue-acts li.flex strong { display: inline-flex; align-items: center; gap: 6px; color: var(--yellow); }
+.vibes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.vibe { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--sheet-2); color: var(--text); }
+.vibe-food { background: #7a3b12; color: #ffd9b3; }
+.vibe-fun, .vibe-social { background: #5b2a86; color: #ead9ff; }
+.vibe-style { background: #8a1f5c; color: #ffd6ec; }
+.vibe-health { background: #155e3a; color: #c6f6d9; }
+.vibe-brain { background: #1e3f8a; color: #d5e2ff; }
+.vibe-rest, .vibe-faith { background: #23506b; color: #d3eefc; }
+.vibe-rep, .vibe-hustle { background: #6b5200; color: #ffeaa6; }
+.act-progress { display: block; height: 6px; margin-top: 6px; border-radius: 999px; background: var(--sheet-2); overflow: hidden; }
+.act-progress > span { display: block; height: 100%; background: var(--yellow); transition: width 0.2s linear; }
+.btn.gold { background: linear-gradient(135deg, #ffd65a, #e0a020); border-color: #e0a020; color: #2a1b00; }
 /* Shop visit */
 .visit-sheet { position: relative; width: min(720px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; display: grid; gap: 16px; padding: 20px; border-radius: 24px; background: var(--sheet); border: 1px solid var(--rule-strong); box-shadow: var(--shadow); animation: phone-up 0.3s var(--ease-out); outline: none; }
 .visit-close { position: absolute; top: 14px; right: 14px; }
@@ -638,6 +673,7 @@ body.map-full .map-viewport { height: 100dvh; border-radius: 0; }
 body.map-full .map-viewport:focus-visible { outline-offset: -4px; }
 body.map-full .map-controls { top: calc(140px + env(safe-area-inset-top)); right: 14px; z-index: 5; }
 body.map-full .map-clock { top: calc(140px + env(safe-area-inset-top)); left: 14px; z-index: 5; }
+body.map-full .map-land { top: calc(174px + env(safe-area-inset-top)); left: 14px; z-index: 5; }
 body.map-full .map-hint { bottom: 104px; z-index: 5; }
 body.map-full .map-peek { bottom: 104px; z-index: 6; }
 .map-title { display: none; }
@@ -653,6 +689,7 @@ body.map-full .map-title .muted { margin: 0; }
 @media (max-width: 560px) {
   body.map-full .map-title p { display: none; }
   body.map-full .map-controls, body.map-full .map-clock { top: calc(196px + env(safe-area-inset-top)); }
+  body.map-full .map-land { top: calc(230px + env(safe-area-inset-top)); }
 }
 
 /* Hustle Academy */
@@ -692,3 +729,4 @@ body.map-full .map-title .muted { margin: 0; }
 .cert-course { font-size: 18px; }
 .cert.revoked { filter: grayscale(.8); }
 .cert-stamp { position: absolute; top: 40%; transform: rotate(-14deg); padding: 6px 14px; border: 3px solid var(--danger); color: var(--danger); font-weight: 900; text-transform: uppercase; background: rgb(255 255 255 / 80%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }

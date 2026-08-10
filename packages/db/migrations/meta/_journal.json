@@ -57,6 +57,13 @@
       "when": 1791823576457,
       "tag": "0007_academy",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791832096708,
+      "tag": "0008_land_interest",
+      "breakpoints": true
     }
   ]
 }

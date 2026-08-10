@@ -2,9 +2,10 @@
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
+import { LandPlot, LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
+import { LandCard, LandList } from "./Land.js";
 import { api } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
@@ -214,6 +215,15 @@ export function CityMap({
   const [tick, setTick] = useState(0);
   const [walkTo, setWalkTo] = useState<{ x: number; y: number; seq: number } | null>(null);
   const [venueOpen, setVenueOpen] = useState<string | null>(null);
+  // A shared plot link (?plot=<id>) opens that plot's card.
+  const [landOpen, setLandOpen] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("plot");
+    } catch {
+      return null;
+    }
+  });
+  const [landList, setLandList] = useState(false);
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -327,8 +337,8 @@ export function CityMap({
           key: l.id,
           y: l.y + l.hh,
           node: (
-            <g aria-hidden="true">
-              <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill="rgb(255 255 255 / 10%)" stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
+            <g className="hotspot land-plot" role="button" tabIndex={0} aria-label={`Land for sale in ${l.area}. Open.`} onClick={() => !pz.wasDragged() && setLandOpen(l.id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setLandOpen(l.id))}>
+              <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill={landOpen === l.id ? "rgb(255 199 44 / 30%)" : "rgb(255 255 255 / 10%)"} stroke="#f2c14e" strokeWidth="3" strokeDasharray="12 9" />
               <image href="/art/props/for-sale-sign.webp" x={l.x - l.hh * 0.6 - 40} y={l.y + l.hh * 0.25 - 87} width="82" height="89" />
             </g>
           ),
@@ -864,6 +874,9 @@ export function CityMap({
           <LocateFixed size={18} aria-hidden="true" />
         </button>
       </div>
+      <button type="button" className="map-land" onClick={() => setLandList(true)}>
+        <LandPlot size={15} aria-hidden="true" /> Land for sale
+      </button>
       <p className="map-clock tiny" aria-live="off">
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]}
       </p>
@@ -899,6 +912,27 @@ export function CityMap({
           {boardSheet && (
         <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
       )}
+          {landList && (
+            <LandList
+              onClose={() => setLandList(false)}
+              onPick={(p) => {
+                setLandList(false);
+                pz.flyTo(p.x, p.y, 0.9);
+                setLandOpen(p.id);
+              }}
+            />
+          )}
+          {landOpen && !landList && (
+            <LandCard
+              plotId={landOpen}
+              onClose={() => setLandOpen(null)}
+              notify={notify}
+              onList={() => {
+                setLandOpen(null);
+                setLandList(true);
+              }}
+            />
+          )}
           {venueOpen && (
         <VenueCard
           venueKey={venueOpen}

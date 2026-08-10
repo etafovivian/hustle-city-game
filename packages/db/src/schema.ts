@@ -628,3 +628,16 @@ export const certificateRevocations = pgTable("certificate_revocations", {
   actorId: uuid("actor_id").references(() => users.id),
   createdAt: createdAt(),
 });
+
+/** Players who want a plot of land (ownership opens later; the owner contacts them first). One row per player and plot. */
+export const landInterest = pgTable(
+  "land_interest",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    plotId: text("plot_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.plotId] })],
+);

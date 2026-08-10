@@ -1,11 +1,12 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { VENUES_BY_KEY, type Venue, type VenueDay } from "@hc/shared";
-import { CheckCircle2, Coins, Footprints, GraduationCap, Sparkles, Store, X } from "lucide-react";
+import { VENUES_BY_KEY, VIBE_LABEL, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS } from "./Interior.js";
+import { useLagosLight } from "./lagosTime.js";
 import { buildingBox } from "./sprites.js";
 
 /** The building: tap to open its card. */
@@ -92,14 +93,42 @@ export function VenueCard({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const act = async (key: string) => {
-    setBusy(key);
+  const hour = useLagosLight().hour;
+  const open = isOpenAt(venue, hour);
+  const actions = venueActions(venue);
+  /** The activity playing now: the room plays for its seconds, then the result shows. */
+  const [running, setRunning] = useState<{ action: VenueAction; started: number; gained: number } | null>(null);
+  const [left, setLeft] = useState(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = () => {
+      const remain = running.action.seconds - (Date.now() - running.started) / 1000;
+      setLeft(Math.max(0, remain));
+      if (remain > 0) return;
+      window.clearInterval(id);
+      const vibes = running.action.gives.map((g) => `+${VIBE_LABEL[g]}`).join(" ");
+      notify(running.gained ? `+${running.gained} XP ${vibes} at ${venue.name}` : `${vibes} at ${venue.name}`);
+      setRunning(null);
+    };
+    const id = window.setInterval(tick, 200);
+    tick();
+    return () => window.clearInterval(id);
+  }, [running, notify, venue.name]);
+
+  const act = async (a: VenueAction) => {
     setError(null);
+    if (a.kind === "free") {
+      setRunning({ action: a, started: Date.now(), gained: 0 });
+      return;
+    }
+    setBusy(a.key);
     try {
-      const r = await api<VenueDay & { gained: number }>("POST", `/api/game/venues/${venue.key}/${key}`);
+      // Pay first (the server checks hours, coins and once-a-day), then the room plays it out.
+      const r = await api<VenueDay & { gained: number }>("POST", `/api/game/venues/${venue.key}/${a.key}`);
       setDone(new Set(r.done));
       onChanged();
-      notify(`+${r.gained} XP at ${venue.name}`);
+      setRunning({ action: a, started: Date.now(), gained: r.gained });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -126,24 +155,55 @@ export function VenueCard({
         <p>{venue.blurb}</p>
         <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
 
+        <p className={`venue-hours small ${open ? "open" : "closed"}`}>
+          <Clock size={14} aria-hidden="true" /> {hoursLabel(venue, hour)}
+          {!open && <span className="muted"> · come back tonight or tomorrow</span>}
+        </p>
+
         <ul className="venue-acts">
-          {venue.activities.map((a) => {
-            const isDone = done.has(`${venue.key}:${a.key}`);
+          {actions.map((a) => {
+            const isDone = a.kind !== "free" && done.has(`${venue.key}:${a.key}`);
+            const playing = running?.action.key === a.key;
             return (
-              <li key={a.key}>
+              <li key={a.key} className={a.kind === "flex" ? "flex" : a.kind === "free" ? "free" : undefined}>
                 <span className="venue-act-label">
-                  <strong>{a.label}</strong>
+                  <strong>
+                    {a.kind === "flex" && <Crown size={14} aria-hidden="true" />} {a.label}
+                  </strong>
                   <span className="tiny muted venue-meta">
-                    <Coins size={12} aria-hidden="true" /> {formatCoins(a.cost)} coins <span aria-hidden="true">·</span> <Sparkles size={12} aria-hidden="true" /> +{a.xp} XP
+                    {a.cost ? (
+                      <>
+                        <Coins size={12} aria-hidden="true" /> {formatCoins(a.cost)} coins <span aria-hidden="true">·</span> <Sparkles size={12} aria-hidden="true" /> +{a.xp} XP
+                      </>
+                    ) : (
+                      <>Free</>
+                    )}{" "}
+                    <span aria-hidden="true">·</span> <Timer size={12} aria-hidden="true" /> {a.seconds}s
                   </span>
+                  <span className="vibes">
+                    {a.gives.map((g) => (
+                      <span key={g} className={`vibe vibe-${g}`}>
+                        +{VIBE_LABEL[g]}
+                      </span>
+                    ))}
+                  </span>
+                  {playing && (
+                    <span className="act-progress" role="progressbar" aria-valuemin={0} aria-valuemax={a.seconds} aria-valuenow={Math.round(a.seconds - left)}>
+                      <span style={{ width: `${(100 * (a.seconds - left)) / a.seconds}%` }} />
+                    </span>
+                  )}
                 </span>
                 {isDone ? (
                   <span className="notice small">
                     <CheckCircle2 size={15} aria-hidden="true" /> Done today
                   </span>
+                ) : playing ? (
+                  <span className="small muted">{Math.ceil(left)}s</span>
+                ) : !open ? (
+                  <span className="small muted">Opens {clockHour(venueHours(venue)![0])}</span>
                 ) : (
-                  <button type="button" className="btn sm go" disabled={busy !== null} onClick={() => void act(a.key)}>
-                    {busy === a.key ? "…" : "Do it"}
+                  <button type="button" className={`btn sm ${a.kind === "flex" ? "gold" : "go"}`} disabled={busy !== null || running !== null} onClick={() => void act(a)}>
+                    {busy === a.key ? "…" : a.kind === "flex" ? "Flex" : "Do it"}
                   </button>
                 )}
               </li>
