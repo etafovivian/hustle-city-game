@@ -1,5 +1,6 @@
 import type { LeaderboardRow } from "@hc/shared";
 import { AlertCircle, Clock, Trophy, Users } from "lucide-react";
+import { InteriorScene, ROOMS } from "./Interior.js";
 import { useEffect, useState } from "react";
 import { api, formatCoins } from "../api.js";
 
@@ -60,6 +61,7 @@ export function Hangout({ onViewed }: { onViewed: () => void }) {
 
   return (
     <div className="stack-lg">
+      <InteriorScene src="/art/interiors/hangout.webp" alt="Inside The Hangout" room={ROOMS.hangout} seed={7} />
       <section className="sheet" aria-labelledby="standings-title">
         <div className="side-title">
           <h2 id="standings-title" style={{ fontSize: 18 }} className="row">

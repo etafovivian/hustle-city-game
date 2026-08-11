@@ -224,6 +224,7 @@ export const VENUES: readonly Venue[] = [
     area: "Island Heights",
     icon: "⛳",
     art: "/art/buildings/golf-club.webp",
+    interior: "/art/interiors/golf-lounge.webp",
     blurb: "Old money, new money and the people who carry their bags. Deals get made on the 9th hole.",
     regulars: ["Chief Adebayo", "Caddie Musa"],
     activities: [
@@ -266,6 +267,7 @@ export const VENUES: readonly Venue[] = [
     area: "Owambe Gardens",
     icon: "🏟️",
     art: "/art/buildings/stadium.webp",
+    interior: "/art/interiors/stadium-room.webp",
     blurb: "Floodlights, vuvuzelas and the derby everyone argues about for a week.",
     regulars: ["Coach Femi", "Captain Uche"],
     activities: [
@@ -293,6 +295,7 @@ export const VENUES: readonly Venue[] = [
     area: "Danfo Terminal",
     icon: "🚓",
     art: "/art/buildings/police-station.webp",
+    interior: "/art/interiors/police-desk.webp",
     blurb: "The station for Junction 101, Danfo Terminal and Tech Mile. Bring your papers.",
     regulars: ["Inspector Bello", "Sergeant Ngozi"],
     activities: [
@@ -306,6 +309,7 @@ export const VENUES: readonly Venue[] = [
     area: "Danfo Terminal",
     icon: "🎱",
     art: "/art/buildings/snooker.webp",
+    interior: "/art/interiors/snooker-room.webp",
     blurb: "One snooker table, a games corner and cold drinks. Winner stays on.",
     regulars: ["Oga Tunde", "Small Boy Kayode"],
     activities: [
@@ -333,6 +337,7 @@ export const VENUES: readonly Venue[] = [
     area: "Marina Wharf",
     icon: "⚖️",
     art: "/art/buildings/high-court.webp",
+    interior: "/art/interiors/courtroom.webp",
     blurb: "Wigs, gowns and long queues. Lawyers in a hurry, everybody else waiting.",
     regulars: ["Barrister Okoro", "Court Clerk Funmi"],
     activities: [
@@ -346,6 +351,7 @@ export const VENUES: readonly Venue[] = [
     area: "Tech Mile",
     icon: "📚",
     art: "/art/buildings/library.webp",
+    interior: "/art/interiors/library-room.webp",
     blurb: "Quiet, cool and free Wi-Fi. The students from City Polytechnic study here until closing.",
     regulars: ["Librarian Mrs Adeyemi"],
     activities: [
@@ -359,6 +365,7 @@ export const VENUES: readonly Venue[] = [
     area: "Tech Mile",
     icon: "📻",
     art: "/art/buildings/radio-station.webp",
+    interior: "/art/interiors/radio-studio.webp",
     blurb: "The morning show everyone listens to in traffic. Call in, shout out your hustle.",
     regulars: ["OAP Toke", "OAP Big Mike"],
     activities: [
@@ -372,6 +379,7 @@ export const VENUES: readonly Venue[] = [
     area: "Airport Ridge",
     icon: "🏥",
     art: "/art/buildings/hospital.webp",
+    interior: "/art/interiors/hospital-ward.webp",
     blurb: "Doctors, nurses and a pharmacy that is always out of one thing. Get checked before you break down.",
     regulars: ["Dr Okafor", "Nurse Amaka"],
     activities: [

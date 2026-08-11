@@ -191,6 +191,8 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 3. Car showroom interior: two cars without badges on a shiny floor, a sales desk.
 4. Boat cruise deck (top of a boat, open air): deck chairs, a small bar, string lights, railings, lagoon water around.
 
+**Done (zip 15):** batches 29–31 interiors (police, hospital, radio, library, court, golf lounge, snooker, stadium room, hangout, viewing centre, provision shop). Still to redo: the **aircraft hangar** came with a sky and runway background instead of magenta, so it can't be cut out; ask again with "single object on flat magenta, no background, no sky".
+
 **For batches 29–31, also add:** "Leave a clear open walkway across the middle of the floor (people will walk there). No people in the picture. Draw the room a bit bigger than usual, seen from slightly higher."
 
 ## Batch 29: interiors for the new places (part 1)
