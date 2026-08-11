@@ -286,7 +286,15 @@ const AREA_GRIDS: { area: string; lines: FrontLine[] }[] = [
   },
   {
     area: "Danfo Terminal",
-    lines: [A_ROAD(-2750, -1450), ...collectors("dt", "a", [-2050, -2500], 0, [1400, -1400]), ...[800, -800].map((b, i) => st(`dtl${i}`, "b", b, -2050, -2750, "local"))],
+    lines: [
+      A_ROAD(-2750, -1450),
+      ...collectors("dt", "a", [-2050, -2500], 0, [1400, -1400]),
+      // The flyover's ramps land at b = ±600 on a = -1650: streets carry on from both ends, and the side streets
+      // run through to meet them, so the flyover joins the grid instead of stopping in the sand.
+      st("dtfn", "a", -1650, 600, 1400, "collector"),
+      st("dtfs", "a", -1650, -600, -1400, "collector"),
+      ...[800, -800].map((b, i) => st(`dtl${i}`, "b", b, -1650, -2750, "local")),
+    ],
   },
   {
     area: "Owambe Gardens",

@@ -640,8 +640,12 @@ export function CityMap({
                   const x = r.x0 + ((r.x1 - r.x0) * i) / N;
                   return { x, y: yOn(r, x), h: flyHeight(r, x) };
                 });
-                const edge = (off: number) => pts.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y - p.h + off}`).join(" ");
-                const deck = `${edge(-HALF)} ${[...pts].reverse().map((p) => `L${p.x} ${p.y - p.h + HALF}`).join(" ")}Z`;
+                // The deck narrows to the width of the street it lands on as it comes down, so each end meets
+                // its ground street flush (Danfo Terminal's approach streets) instead of ending as a wide slab.
+                const LAND_HALF = 34;
+                const halfAt = (h: number) => LAND_HALF + (HALF - LAND_HALF) * Math.min(1, h / (r.flyover! * 0.6));
+                const edge = (side: number) => pts.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y - p.h + side * halfAt(p.h)}`).join(" ");
+                const deck = `${edge(-1)} ${[...pts].reverse().map((p) => `L${p.x} ${p.y - p.h + halfAt(p.h)}`).join(" ")}Z`;
                 return (
                   <g key={r.id} aria-hidden="true">
                     {/* shadow on the ground */}
@@ -649,8 +653,8 @@ export function CityMap({
                     {pts.filter((p, i) => i % 3 === 0 && p.h > 20).map((p) => (
                       <rect key={p.x} x={p.x - 10} y={p.y - p.h + HALF - 4} width="20" height={p.h} rx="3" fill="#9ca1a9" stroke="#5d626b" strokeWidth="2" />
                     ))}
-                    <path d={deck} fill="#4d4944" />
-                    <path d={`${edge(-HALF)} ${edge(HALF)}`} fill="none" stroke="#cfd3d8" strokeWidth="8" />
+                    <path d={deck} fill="#5c564f" />
+                    <path d={`${edge(-1)} ${edge(1)}`} fill="none" stroke="#cfd3d8" strokeWidth="8" />
                     <path d={edge(0)} fill="none" stroke="var(--map-lane)" strokeWidth="3" strokeDasharray="20 16" />
                   </g>
                 );
