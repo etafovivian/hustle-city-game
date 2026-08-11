@@ -596,6 +596,24 @@ textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bot
 .req-status.ad-awaiting_payment { background: var(--yellow); color: var(--yellow-ink); }
 .req-status.ad-rejected { background: #7f1d1d; color: #fff; }
 /* Venues */
+/* Inside a place: the room is the star. Wide screens put it big on the left with the card beside it; phones show
+   it edge to edge on top. */
+.visit-sheet.venue-card { width: min(1240px, 100%); }
+.venue-layout { display: grid; gap: 16px; }
+.venue-info { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.venue-info > p { margin: 0; }
+.venue-room .interior-scene { width: 100%; max-width: none; }
+@media (min-width: 900px) {
+  .visit-sheet.venue-card { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); height: min(860px, calc(100dvh - 24px)); }
+  .venue-layout.has-room { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); min-height: 0; }
+  .venue-layout.has-room .venue-room { display: grid; align-items: center; min-height: 0; }
+  .venue-layout.has-room .venue-room .interior-scene { width: min(100%, calc(100dvh - 140px)); margin: 0 auto; }
+  .venue-layout.has-room .venue-info { overflow-y: auto; min-height: 0; padding-right: 4px; }
+}
+@media (max-width: 899px) {
+  .venue-room { margin: 0 -20px; }
+  .venue-room .interior-scene { border-radius: 0; }
+}
 .venue-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; padding-right: 44px; }
 .venue-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #fff; font-size: 28px; box-shadow: var(--shadow); }
 .venue-interior { width: 100%; max-height: 300px; object-fit: contain; border-radius: 16px; background: radial-gradient(circle at 50% 60%, #3a2a1a, var(--sheet-2)); padding: 8px; }
@@ -730,3 +748,28 @@ body.map-full .map-title .muted { margin: 0; }
 .cert.revoked { filter: grayscale(.8); }
 .cert-stamp { position: absolute; top: 40%; transform: rotate(-14deg); padding: 6px 14px; border: 3px solid var(--danger); color: var(--danger); font-weight: 900; text-transform: uppercase; background: rgb(255 255 255 / 80%); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Rides: the picker and the area boys */
+.ride-sheet { width: min(520px, 100%); }
+.rush-tag { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #7a2e12; color: #ffd2b8; font-size: 11px; font-weight: 800; }
+.ride-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ride-option { width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 16px; border: 1.5px solid var(--rule); background: var(--sheet-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ride-option:hover:not(:disabled) { border-color: var(--yellow); }
+.ride-option:disabled { opacity: 0.5; cursor: not-allowed; }
+.ride-art { display: grid; place-items: center; height: 48px; color: var(--yellow); }
+.ride-art img { max-height: 48px; max-width: 64px; object-fit: contain; }
+.ride-text { display: grid; gap: 2px; }
+.ride-meta { display: grid; justify-items: end; gap: 2px; }
+.ride-fare { display: inline-flex; align-items: center; gap: 4px; color: var(--yellow); font-weight: 800; }
+.area-boys { width: min(480px, 100%); border-color: #c0392b; }
+.area-boys-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+.area-boys-head h2 { margin: 0; color: #ff8f80; }
+.area-boys-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: #3a1414; color: #ff8f80; }
+.area-options { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.area-option { width: 100%; height: 100%; display: grid; gap: 3px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--rule); background: var(--sheet-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.area-option:hover:not(:disabled) { border-color: var(--yellow); }
+.area-option.pay { border-color: #2f7a4a; }
+.area-option.stand { border-color: #8a2a1f; }
+.area-result { margin: 0; padding: 12px 14px; border-radius: 14px; font-weight: 700; }
+.area-result.ok { background: #123d26; color: #c6f6d9; }
+.area-result.bad { background: #3a1414; color: #ffd2cc; }
+@media (max-width: 420px) { .area-options { grid-template-columns: 1fr; } }

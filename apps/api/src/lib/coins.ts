@@ -19,6 +19,8 @@ export type CoinKind =
   | "dream_reward"
   | "activity"
   | "course_reward"
+  | "ride"
+  | "area_boys"
   | "admin_adjustment";
 
 export interface PostingResult {

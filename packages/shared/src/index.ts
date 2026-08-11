@@ -12,3 +12,4 @@ export * from "./billboards.js";
 export * from "./venues.js";
 export * from "./academy.js";
 export * from "./land.js";
+export * from "./rides.js";

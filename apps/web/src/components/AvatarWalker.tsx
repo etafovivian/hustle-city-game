@@ -1,12 +1,15 @@
 // The player's avatar on the map: tap the ground to walk there (like a street walk).
 // Animates on its own, so the big map doesn't re-render while you walk.
-import { bodyOf, type AvatarConfig } from "@hc/shared";
+import { RIDE_BY_MODE, bodyOf, type AvatarConfig, type RideMode } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { walkRoute } from "./cityLayout.js";
+import { vehicleView } from "./StreetLife.js";
 import { walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 type Point = { x: number; y: number };
+/** Where to go, and how: on foot, or a paid ride (which the area boys may stop partway). */
+export type Trip = Point & { seq: number; mode?: RideMode; rideId?: string; stop?: boolean };
 
 const SPEED = 230; // world units per second
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
@@ -43,21 +46,32 @@ export function AvatarWalker({
   target,
   plateScale,
   onBlocked,
+  onStop,
+  onArrive,
+  posOut,
 }: {
   avatar: AvatarConfig;
   nickname: string;
   /** Where the avatar stands the first time (before any saved spot). */
   start: Point;
   /** Latest tap; `seq` changes on every tap so tapping the same spot twice still walks. */
-  target: (Point & { seq: number }) | null;
+  target: Trip | null;
   plateScale: number;
   onBlocked: () => void;
+  /** The area boys stopped the ride: resolves when the player has dealt with them. */
+  onStop?: (rideId: string) => Promise<void>;
+  /** Reached the end of a trip. */
+  onArrive?: (trip: Trip) => void;
+  /** Kept up to date with where the player is (for pricing rides from here). */
+  posOut?: { current: Point };
 }) {
   const [pos, setPos] = useState(() => loadPos(start));
   const [walking, setWalking] = useState(false);
   const [facing, setFacing] = useState<WalkDir>("se");
   const posRef = useRef(pos);
   posRef.current = pos;
+  if (posOut) posOut.current = pos;
+  const [riding, setRiding] = useState<RideMode>("walk");
   const face = useRef(avatarUri(avatar));
   face.current = avatarUri(avatar);
 
@@ -69,14 +83,33 @@ export function AvatarWalker({
       return;
     }
     const path = [...route];
+    const mode = target.mode ?? "walk";
+    const speed = RIDE_BY_MODE.get(mode)?.speed ?? SPEED;
+    let total = 0;
+    for (let i = 0, prev = posRef.current; i < path.length; prev = path[i]!, i++) total += Math.hypot(path[i]!.x - prev.x, path[i]!.y - prev.y);
+    let travelled = 0;
+    let stopPending = Boolean(target.stop && target.rideId && onStop);
     let raf = 0;
+    let cancelled = false;
     let last = performance.now();
     setWalking(true);
+    setRiding(mode);
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+      // Partway through, the area boys block the road: wait until the player has dealt with them.
+      if (stopPending && travelled >= total * 0.45) {
+        stopPending = false;
+        onStop!(target.rideId!).then(() => {
+          if (cancelled) return;
+          last = performance.now();
+          raf = requestAnimationFrame(step);
+        });
+        return;
+      }
       let p = posRef.current;
-      let budget = SPEED * dt;
+      let budget = speed * dt;
+      travelled += budget;
       while (budget > 0 && path.length) {
         const next = path[0]!;
         const dx = next.x - p.x;
@@ -97,11 +130,14 @@ export function AvatarWalker({
       if (path.length) raf = requestAnimationFrame(step);
       else {
         setWalking(false);
+        setRiding("walk");
         savePos(p);
+        onArrive?.(target);
       }
     };
     raf = requestAnimationFrame(step);
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       savePos(posRef.current);
     };
@@ -122,6 +158,18 @@ export function AvatarWalker({
       <g transform={`translate(${pos.x} ${pos.y})`}>
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
+        {walking && riding !== "walk" ? (
+          (() => {
+            const v = vehicleView(RIDE_BY_MODE.get(riding)!.vehicle!, facing);
+            const w = v.w * 1.25;
+            const h = v.h * 1.25;
+            return (
+              <g transform={v.mirror ? "scale(-1 1)" : undefined}>
+                <image href={v.href} x={-w / 2} y={-h + 7} width={w} height={h} />
+              </g>
+            );
+          })()
+        ) : (
         <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
           <image href={walkerSheet(variantFor(avatar), facing)} width={WALK.w * WALK.frames} height={WALK.h} x={walking ? undefined : 0}>
             {walking && (
@@ -129,6 +177,7 @@ export function AvatarWalker({
             )}
           </image>
         </svg>
+        )}
         {/* Name plate with the player's face, kept readable at any zoom. */}
         <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>
           <rect width={plateW} height="30" rx="15" fill="#ffc72c" stroke="#0a0f24" strokeWidth="2" />

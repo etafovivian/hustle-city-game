@@ -29,6 +29,11 @@ const KINDS: Record<string, Partial<Record<WalkDir, View>>> = {
   suvBlack: { sw: V("car-suv-black", 94), se: V("car-suv-black", 94, true) },
   suvWhite: { sw: V("car-suv-white", 96), se: V("car-suv-white", 96, true) },
 };
+/** A vehicle's art for a heading (the player's ride uses the same views as traffic). */
+export function vehicleView(kind: string, dir: WalkDir): View {
+  const views = KINDS[kind] ?? KINDS.taxi!;
+  return views[dir] ?? views[dir === "ne" ? "se" : dir === "nw" ? "sw" : dir] ?? Object.values(views)[0]!;
+}
 const ANY_WAY = ["danfo", "okada", "danfo", "keke", "brt", "danfo", "okada", "keke"];
 const CARS = ["taxi", "saloon", "suvBlack", "taxi", "suvWhite"];
 

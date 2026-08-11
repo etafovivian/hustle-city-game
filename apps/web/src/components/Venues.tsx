@@ -151,7 +151,13 @@ export function VenueCard({
             <span className="small muted">{venue.area}</span>
           </div>
         </div>
-        {venue.interior && <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]} seed={venue.key.length} />}
+        <div className={`venue-layout ${venue.interior ? "has-room" : ""}`}>
+        {venue.interior && (
+          <div className="venue-room">
+            <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]} seed={venue.key.length} />
+          </div>
+        )}
+        <div className="venue-info">
         <p>{venue.blurb}</p>
         <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
 
@@ -214,7 +220,7 @@ export function VenueCard({
 
         <div className="row">
           <button type="button" className="btn" onClick={onWalk}>
-            <Footprints size={16} aria-hidden="true" /> Walk there
+            <Footprints size={16} aria-hidden="true" /> Go there
           </button>
           {venue.opens === "academy" && onApp && (
             <button type="button" className="btn go" onClick={() => onApp("academy")}>
@@ -226,6 +232,8 @@ export function VenueCard({
               <Store size={16} aria-hidden="true" /> Find a real one near you
             </button>
           )}
+        </div>
+        </div>
         </div>
       </div>
     </div>

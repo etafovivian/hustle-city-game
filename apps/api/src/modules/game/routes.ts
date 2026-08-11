@@ -1,5 +1,5 @@
 import { gameLedgerEntries, profiles, shopDecor, simShops, users } from "@hc/db";
-import { DECOR_BY_KEY, LOCATION_KEYS, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
+import { AREA_BOYS_OPTIONS, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
 import { doActivity, venueDay } from "./venues.js";
+import { settleStop, startRide } from "./rides.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -23,6 +24,8 @@ const decorBuyBody = z.object({
   rotation: z.number().int(),
   requestId: z.uuid(),
 });
+const rideBody = z.object({ mode: z.enum(RIDE_MODES.map((m) => m.mode) as [string, ...string[]]), units: z.number().int() });
+const stopBody = z.object({ choice: z.enum(AREA_BOYS_OPTIONS.map((o) => o.choice) as [string, ...string[]]) });
 const dreamClaimBody = z.object({ at: z.number().int().positive() });
 const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });
 
@@ -206,5 +209,18 @@ export async function gameRoutes(app: FastifyInstance) {
         isMe: r.userId === user.id,
       }),
     );
+  });
+
+  app.post("/api/game/rides", async (request) => {
+    const user = requireUser(request);
+    const { mode, units } = rideBody.parse(request.body);
+    return inTx(user.id, (ctx) => startRide(ctx, mode as never, units));
+  });
+
+  app.post<{ Params: { id: string } }>("/api/game/rides/:id/stop", async (request) => {
+    const user = requireUser(request);
+    const { choice } = stopBody.parse(request.body);
+    const id = z.uuid().parse(request.params.id);
+    return inTx(user.id, (ctx) => settleStop(ctx, id, choice as never));
   });
 }

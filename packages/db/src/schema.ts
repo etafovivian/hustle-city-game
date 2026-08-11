@@ -641,3 +641,22 @@ export const landInterest = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.plotId] })],
 );
+
+/** Paid trips across the map. The fare is charged when the ride starts; an area-boys stop is settled once. */
+export const rides = pgTable(
+  "rides",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mode: text("mode").notNull(),
+    units: integer("units").notNull(),
+    fare: integer("fare").notNull(),
+    stop: boolean("stop").notNull().default(false),
+    stopChoice: text("stop_choice"),
+    stopCost: integer("stop_cost"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("rides_user_created_idx").on(t.userId, t.createdAt)],
+);

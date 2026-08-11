@@ -1,12 +1,14 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, type AvatarConfig, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LandPlot, LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { LandCard, LandList } from "./Land.js";
-import { api } from "../api.js";
+import { AreaBoys, RidePicker } from "./Rides.js";
+import type { Trip } from "./AvatarWalker.js";
+import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
 import { AvatarWalker } from "./AvatarWalker.js";
@@ -23,6 +25,7 @@ import {
   strokeFor,
   flyHeight,
   yOn,
+  walkRoute,
   BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
@@ -213,7 +216,40 @@ export function CityMap({
   const [boards, setBoards] = useState<BillboardView[]>([]);
   const [boardSheet, setBoardSheet] = useState<{ key: string | null } | null>(null);
   const [tick, setTick] = useState(0);
-  const [walkTo, setWalkTo] = useState<{ x: number; y: number; seq: number } | null>(null);
+  const [walkTo, setWalkTo] = useState<Trip | null>(null);
+  /** Where the player is now (kept by AvatarWalker), for pricing rides. */
+  const meAt = useRef({ x: CX - 120, y: CY + 150 });
+  const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string } | null>(null);
+  const [stopFor, setStopFor] = useState<{ rideId: string; done: () => void } | null>(null);
+  /** A place to open on arrival (trips started from its card). */
+  const arriveAt = useRef<string | null>(null);
+
+  /** Go somewhere: short hops just walk; longer trips offer a ride. */
+  const goTo = (to: { x: number; y: number }, label: string, venue?: string) => {
+    const route = walkRoute(meAt.current, to);
+    if (!route) return notify("You can't walk on water. Take the bridge to the Island.");
+    let units = 0;
+    route.reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
+    arriveAt.current = venue ?? null;
+    if (units < RIDE_PICK_FROM) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
+    else setRidePick({ ...to, units: Math.round(units), to: label, venue });
+  };
+  const ride = async (mode: RideMode) => {
+    const pick = ridePick!;
+    if (mode === "walk") {
+      setRidePick(null);
+      setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode });
+      return;
+    }
+    const r = await api<RideStart>("POST", "/api/game/rides", { mode, units: Math.min(pick.units, MAX_RIDE_UNITS) });
+    setRidePick(null);
+    onVisited();
+    notify(`${RIDE_BY_MODE.get(mode)!.label} to ${pick.to}: ${formatCoins(r.fare)} coins`);
+    setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode, rideId: r.rideId, stop: r.stop });
+    // Look ahead to where you're going, so you watch your ride pull in (and the area boys, if they come).
+    const me = meAt.current;
+    if (pz.view) pz.flyTo(me.x + (pick.x - me.x) * 0.6, me.y + (pick.y - me.y) * 0.6, Math.min(pz.view.k, 0.6));
+  };
   const [venueOpen, setVenueOpen] = useState<string | null>(null);
   // A shared plot link (?plot=<id>) opens that plot's card.
   const [landOpen, setLandOpen] = useState<string | null>(() => {
@@ -627,7 +663,7 @@ export function CityMap({
             if (far || !pz.view || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard, .venue-badge")) return;
             const box = ref.current!.getBoundingClientRect();
             const v = pz.view;
-            setWalkTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k, seq: Date.now() });
+            goTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k }, "there");
           }}
         >
           {pz.view && (
@@ -716,6 +752,12 @@ export function CityMap({
                   target={walkTo}
                   plateScale={plateScale}
                   onBlocked={() => notify("You can't walk on water. Take the bridge to the Island.")}
+                  posOut={meAt}
+                  onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
+                  onArrive={() => {
+                    if (arriveAt.current) setVenueOpen(arriveAt.current);
+                    arriveAt.current = null;
+                  }}
                 />
               )}
 
@@ -916,6 +958,19 @@ export function CityMap({
           {boardSheet && (
         <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
       )}
+          {ridePick && (
+            <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} />
+          )}
+          {stopFor && (
+            <AreaBoys
+              rideId={stopFor.rideId}
+              onDone={() => {
+                stopFor.done();
+                setStopFor(null);
+                onVisited();
+              }}
+            />
+          )}
           {landList && (
             <LandList
               onClose={() => setLandList(false)}
@@ -943,8 +998,9 @@ export function CityMap({
           onClose={() => setVenueOpen(null)}
           onWalk={() => {
             const spot = VENUE_SPOTS.find((v) => v.key === venueOpen);
-            if (spot) setWalkTo({ x: spot.x, y: spot.y + 30, seq: Date.now() });
+            const v = VENUES_BY_KEY.get(venueOpen);
             setVenueOpen(null);
+            if (spot) goTo({ x: spot.x, y: spot.y + 30 }, v?.name ?? "there", venueOpen);
           }}
           onFindReal={() => {
             setVenueOpen(null);
