@@ -3,7 +3,7 @@
 import { RIDE_BY_MODE, bodyOf, type AvatarConfig, type RideMode } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
-import { walkRoute } from "./cityLayout.js";
+import { roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
 import { walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
@@ -77,7 +77,8 @@ export function AvatarWalker({
 
   useEffect(() => {
     if (!target) return;
-    const route = walkRoute(posRef.current, target);
+    // Rides keep to the roads; walkers to the pavements and zebras.
+    const route = target.mode && target.mode !== "walk" ? roadRoute(posRef.current, target) : walkRoute(posRef.current, target);
     if (!route) {
       onBlocked();
       return;

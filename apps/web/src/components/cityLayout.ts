@@ -140,6 +140,11 @@ export function walkRoute(from: { x: number; y: number }, to: { x: number; y: nu
     const onFoot = footpathRoute(from, to);
     if (onFoot) return onFoot;
   }
+  // A few steps away: just walk over.
+  if (Math.hypot(to.x - from.x, to.y - from.y) < 260 && clearLine(from, to)) return [to];
+  // Farther afield, follow the streets' pavements (and the bridges) instead of cutting across plots.
+  const byRoad = roadRoute(from, to, true);
+  if (byRoad) return byRoad;
   const leg = (a: { x: number; y: number }, b: { x: number; y: number }) => (clearLine(a, b) ? [b] : [JUNCTION, b]);
   const side = (m: Landmass) => (m === "bridge" ? "bridge" : m);
   if (side(start) === side(end) || start === "bridge" || end === "bridge") return leg(from, to);
@@ -1459,3 +1464,174 @@ export const ROAD_PATHS: RoadPath[] = (() => {
     ...STREETS.map((s): RoadPath => ({ id: s.id, kind: s.cls === "alley" ? "alley" : "street", d: `M${P(s.x0, s.y0)} L${P(s.x1, s.y1)}`, half: s.half, pav: s.pav })),
   ];
 })();
+
+// ── The road network ──
+// Every road, street and bridge as one graph, so rides drive along the roads and long walks follow the
+// pavements, instead of cutting across plots. Nodes are segment ends, crossings, and where a street meets another
+// road; built once, on first use.
+type P = { x: number; y: number };
+interface NetLine extends Segment {
+  half: number;
+  pav: number;
+}
+const ROAD_NET = (() => {
+  let built: { nodes: P[]; links: { to: number; d: number }[][]; lines: NetLine[]; cuts: { t: number; node: number }[][] } | null = null;
+  return () => {
+    if (built) return built;
+    const lines: NetLine[] = [
+      ...ROADS.map((r) => ({ ...r, half: HALF, pav: PAVEMENT })),
+      ...STREETS.map((s) => ({ ...s, half: s.half, pav: s.pav })),
+    ];
+    const nodes: P[] = [];
+    const index = new Map<string, number>();
+    const node = (p: P) => {
+      const k = `${Math.round(p.x / 4)},${Math.round(p.y / 4)}`;
+      if (!index.has(k)) {
+        index.set(k, nodes.length);
+        nodes.push({ x: p.x, y: p.y });
+      }
+      return index.get(k)!;
+    };
+    const at = (l: Segment, t: number): P => ({ x: l.x0 + (l.x1 - l.x0) * t, y: l.y0 + (l.y1 - l.y0) * t });
+    const project = (l: Segment, p: P) => {
+      const dx = l.x1 - l.x0;
+      const dy = l.y1 - l.y0;
+      const t = Math.max(0, Math.min(1, ((p.x - l.x0) * dx + (p.y - l.y0) * dy) / (dx * dx + dy * dy)));
+      const q = at(l, t);
+      return { t, q, d: Math.hypot(q.x - p.x, q.y - p.y) };
+    };
+    const ts: number[][] = lines.map(() => [0, 1]);
+    const extra: [P, P][] = [];
+    lines.forEach((a, i) => {
+      lines.forEach((b, j) => {
+        if (i >= j) return;
+        // Proper crossing
+        const d = (a.x1 - a.x0) * (b.y1 - b.y0) - (a.y1 - a.y0) * (b.x1 - b.x0);
+        if (Math.abs(d) > 1e-6) {
+          const u = ((b.x0 - a.x0) * (b.y1 - b.y0) - (b.y0 - a.y0) * (b.x1 - b.x0)) / d;
+          const v = ((b.x0 - a.x0) * (a.y1 - a.y0) - (b.y0 - a.y0) * (a.x1 - a.x0)) / d;
+          if (u > 0.001 && u < 0.999 && v > 0.001 && v < 0.999) {
+            ts[i]!.push(u);
+            ts[j]!.push(v);
+          }
+        }
+      });
+    });
+    // A street that stops at (or just short of) another road joins it there.
+    lines.forEach((a, i) => {
+      for (const end of [{ x: a.x0, y: a.y0 }, { x: a.x1, y: a.y1 }]) {
+        lines.forEach((b, j) => {
+          if (i === j) return;
+          const pr = project(b, end);
+          if (pr.d < b.half + a.half + 40 && pr.d > 0.5) {
+            ts[j]!.push(pr.t);
+            extra.push([end, pr.q]);
+          }
+        });
+      }
+    });
+    const links: { to: number; d: number }[][] = [];
+    const link = (p: P, q: P) => {
+      const a = node(p);
+      const b = node(q);
+      if (a === b) return;
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      (links[a] ??= []).push({ to: b, d });
+      (links[b] ??= []).push({ to: a, d });
+    };
+    const cuts = lines.map((l, i) => {
+      const sorted = [...new Set(ts[i]!.map((t) => Math.round(t * 1e5) / 1e5))].sort((p, q) => p - q);
+      for (let k = 1; k < sorted.length; k++) link(at(l, sorted[k - 1]!), at(l, sorted[k]!));
+      return sorted.map((t) => ({ t, node: node(at(l, t)) }));
+    });
+    for (const [p, q] of extra) link(p, q);
+    for (let i = 0; i < nodes.length; i++) links[i] ??= [];
+    built = { nodes, links, lines, cuts };
+    return built;
+  };
+})();
+
+/**
+ * A route along the roads from one point to another: onto the nearest road, along the network (bridges included)
+ * and off at the nearest point to the destination. `pavement` keeps walkers on the kerb side instead of the lane.
+ */
+export function roadRoute(from: P, to: P, pavement = false): P[] | null {
+  const net = ROAD_NET();
+  const nearest = (p: P) => {
+    let best = { line: -1, t: 0, q: p, d: Infinity };
+    net.lines.forEach((l, i) => {
+      const dx = l.x1 - l.x0;
+      const dy = l.y1 - l.y0;
+      const t = Math.max(0, Math.min(1, ((p.x - l.x0) * dx + (p.y - l.y0) * dy) / (dx * dx + dy * dy)));
+      const q = { x: l.x0 + dx * t, y: l.y0 + dy * t };
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < best.d) best = { line: i, t, q, d };
+    });
+    return best;
+  };
+  const s = nearest(from);
+  const e = nearest(to);
+  if (s.line < 0 || e.line < 0) return null;
+  // The two network nodes either side of a point on a line.
+  const bracket = (n: typeof s) => {
+    const c = net.cuts[n.line]!;
+    let k = 1;
+    while (k < c.length - 1 && c[k]!.t < n.t) k++;
+    return [c[k - 1]!, c[k]!];
+  };
+  const len = (a: P, b: P) => Math.hypot(a.x - b.x, a.y - b.y);
+  const dist = new Map<number, number>();
+  const prev = new Map<number, number>();
+  for (const c of bracket(s)) dist.set(c.node, len(s.q, net.nodes[c.node]!));
+  const goal = new Map(bracket(e).map((c) => [c.node, len(net.nodes[c.node]!, e.q)]));
+  const done = new Set<number>();
+  // Dijkstra (the network is a few hundred nodes)
+  for (;;) {
+    let cur = -1;
+    let cd = Infinity;
+    for (const [i, d] of dist) if (!done.has(i) && d < cd) [cur, cd] = [i, d];
+    if (cur < 0) break;
+    done.add(cur);
+    for (const { to: nb, d } of net.links[cur]!) {
+      if (cd + d < (dist.get(nb) ?? Infinity)) {
+        dist.set(nb, cd + d);
+        prev.set(nb, cur);
+      }
+    }
+  }
+  let end = -1;
+  let ed = Infinity;
+  for (const [n, d] of goal) if ((dist.get(n) ?? Infinity) + d < ed) [end, ed] = [n, (dist.get(n) ?? Infinity) + d];
+  // Same stretch of road: just go along it
+  const sameStretch = s.line === e.line && bracket(s)[0]!.node === bracket(e)[0]!.node;
+  const path: P[] = [];
+  if (!sameStretch) {
+    if (end < 0 || !Number.isFinite(ed)) return null;
+    for (let n: number | undefined = end; n !== undefined; n = prev.get(n)) path.unshift(net.nodes[n]!);
+  }
+  let pts = [s.q, ...path, e.q];
+  // Junction 101 is a roundabout: go round the ring (anticlockwise, like the traffic) instead of over the fountain.
+  pts = pts.flatMap((p, i) => {
+    if (Math.hypot(p.x - CX, p.y - CY) > 20 || i === 0 || i === pts.length - 1) return [p];
+    const ring = pavement ? { rx: ROUNDABOUT.rx + 46, ry: ROUNDABOUT.ry + 23 } : ROUNDABOUT.lane;
+    const ang = (q: P) => Math.atan2((q.y - CY) / ring.ry, (q.x - CX) / ring.rx);
+    const a0 = ang(pts[i - 1]!);
+    const a1 = ang(pts[i + 1]!);
+    const sweep = (((a0 - a1) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const n = Math.max(1, Math.ceil(sweep / (Math.PI / 6)));
+    return Array.from({ length: n + 1 }, (_, k) => {
+      const t = a0 - (sweep * k) / n;
+      return { x: CX + ring.rx * Math.cos(t), y: CY + ring.ry * Math.sin(t) };
+    });
+  });
+  if (pavement) {
+    // Walk on the near-side pavement: shift each point down by its road's half-width plus half the pavement.
+    const off = (p: P) => {
+      const n = nearest(p);
+      const l = net.lines[n.line]!;
+      return { x: p.x, y: p.y + l.half + l.pav / 2 };
+    };
+    pts = pts.map((p) => (Math.hypot((p.x - CX) / 2, p.y - CY) < ROUNDABOUT.ry + 40 ? p : off(p)));
+  }
+  return [...pts, to];
+}

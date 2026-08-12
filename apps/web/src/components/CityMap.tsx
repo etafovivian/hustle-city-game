@@ -26,6 +26,7 @@ import {
   flyHeight,
   yOn,
   walkRoute,
+  roadRoute,
   BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
@@ -229,7 +230,8 @@ export function CityMap({
     const route = walkRoute(meAt.current, to);
     if (!route) return notify("You can't walk on water. Take the bridge to the Island.");
     let units = 0;
-    route.reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
+    // Fares go by the distance along the roads (the way the ride will actually go).
+    (roadRoute(meAt.current, to) ?? route).reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
     arriveAt.current = venue ?? null;
     if (units < RIDE_PICK_FROM) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
     else setRidePick({ ...to, units: Math.round(units), to: label, venue });
@@ -325,7 +327,10 @@ export function CityMap({
   const box = pz.view && ref.current ? { x0: -pz.view.x / k - 350, y0: -pz.view.y / k - 250, x1: (ref.current.clientWidth - pz.view.x) / k + 350, y1: (ref.current.clientHeight - pz.view.y) / k + 650 } : null;
   const inView = (x: number, y: number) => !box || (x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1);
   const plateScale = readable(k, 20, 14);
-  const districtScale = readable(k, 56, 16, 20);
+  // District names: big signs when zoomed out to find your way; up close a small pill (about 13 px) that doesn't
+  // cover the streets and buildings you're looking at.
+  const districtNear = k >= 0.45;
+  const districtScale = districtNear ? 13 / (56 * k) : readable(k, 56, 16, 20);
   const far = k < 0.3;
   const light = useLagosLight();
 
@@ -817,8 +822,8 @@ export function CityMap({
                     ) : null;
                   })}
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
-                  <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize="60" fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth="8" paintOrder="stroke">
-                    {d.name} · opens later
+                  <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
+                    {d.name}
                   </text>
                 ))}
                 {DISTRICTS.filter((d) => !d.landmark).map((d) => {
@@ -828,19 +833,21 @@ export function CityMap({
                         x={-(d.name.length * 17 + 50)}
                         y="-62"
                         width={d.name.length * 34 + 100}
-                        height="118"
+                        height={d.open ? 118 : 88}
                         rx="26"
                         fill={d.open ? "#166534" : INK.indigoDeep}
                         stroke={d.open ? INK.yellow : "none"}
                         strokeWidth="4"
-                        opacity={d.open ? 1 : 0.9}
+                        opacity={d.open ? 1 : districtNear ? 0.72 : 0.9}
                       />
                       <text textAnchor="middle" fontSize="56" fontWeight="900" fill="#fff">
                         {d.name}
                       </text>
-                      <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
-                        {d.open ?? "OPENS LATER"}
-                      </text>
+                      {d.open && (
+                        <text textAnchor="middle" y="40" fontSize="24" fontWeight="700" fill={INK.yellow} letterSpacing="3">
+                          {d.open}
+                        </text>
+                      )}
                     </>
                   );
                   return d.open ? (
