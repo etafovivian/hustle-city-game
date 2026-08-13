@@ -1,5 +1,5 @@
 import { auditEvents, hashPassword, issueResetLink, profiles, useResetLink, users, verifyPassword } from "@hc/db";
-import { DEFAULT_AVATAR, DREAMS_BY_KEY, HUSTLES_BY_KEY, checkNickname, checkShopName, isValidAvatar } from "@hc/shared";
+import { DEFAULT_AVATAR, DREAMS_BY_KEY, HUSTLES_BY_KEY, checkNickname, checkShopName, cleanAvatar, isValidAvatar } from "@hc/shared";
 import type { FastifyInstance } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -58,7 +58,7 @@ export async function authRoutes(app: FastifyInstance) {
           .returning({ id: users.id });
         await tx
           .insert(profiles)
-          .values({ userId: user!.id, nickname: body.nickname, avatar, hustle: hustle.key, dream: dream.key });
+          .values({ userId: user!.id, nickname: body.nickname, avatar: cleanAvatar(avatar), hustle: hustle.key, dream: dream.key });
         if (app.config.STARTING_COINS > 0) {
           await postCoins(tx, user!.id, app.config.STARTING_COINS, "signup_grant", "signup_grant");
         }

@@ -1,5 +1,5 @@
 import { profiles, users, type Db } from "@hc/db";
-import { checkNickname, isValidAvatar, type AvatarConfig, type Me, type Role } from "@hc/shared";
+import { checkNickname, cleanAvatar, isValidAvatar, type AvatarConfig, type Me, type Role } from "@hc/shared";
 import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -46,7 +46,7 @@ export async function meRoutes(app: FastifyInstance) {
     }
     if (body.avatar !== undefined) {
       if (!isValidAvatar(body.avatar)) throw badRequest("invalid_avatar", "Choose avatar options from the list.");
-      set.avatar = body.avatar;
+      set.avatar = cleanAvatar(body.avatar);
     }
     if (Object.keys(set).length) {
       try {

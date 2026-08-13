@@ -43,7 +43,46 @@ export interface AvatarConfig {
   skinTone: string;
   hairStyle: string;
   outfit: string;
+  /** Fabric colour for the outfit (from OUTFIT_COLORS); missing means the outfit's own colour. */
+  outfitColor?: string;
+  /** Hair colour (HAIR_COLORS), or the fabric colour of a gele or cap (OUTFIT_COLORS); missing means the default. */
+  hairColor?: string;
 }
+
+/** Fabric dyes every outfit can be worn in: the wax-print and aso-oke colours people actually wear. */
+export const OUTFIT_COLORS = [
+  { hex: "#0f7b6c", label: "Teal" },
+  { hex: "#1e7a46", label: "Green" },
+  { hex: "#1f2a6b", label: "Indigo" },
+  { hex: "#2f5fb3", label: "Royal blue" },
+  { hex: "#5b2a86", label: "Purple" },
+  { hex: "#7a1f3d", label: "Wine" },
+  { hex: "#c8321e", label: "Red" },
+  { hex: "#e4572e", label: "Coral" },
+  { hex: "#e88a1a", label: "Orange" },
+  { hex: "#f2b705", label: "Gold" },
+  { hex: "#e985b5", label: "Pink" },
+  { hex: "#ece6d6", label: "Cream" },
+  { hex: "#f4f4f2", label: "White" },
+  { hex: "#8a8f98", label: "Grey" },
+  { hex: "#25282b", label: "Black" },
+] as const;
+
+/** Natural and dyed hair. */
+export const HAIR_COLORS = [
+  { hex: "#1b1410", label: "Black" },
+  { hex: "#3b2417", label: "Dark brown" },
+  { hex: "#6b3a1f", label: "Brown" },
+  { hex: "#8c2f1d", label: "Auburn" },
+  { hex: "#6d1830", label: "Burgundy" },
+  { hex: "#c99a4a", label: "Honey blonde" },
+  { hex: "#9a9a9a", label: "Grey" },
+] as const;
+
+/** Styles that are fabric (wraps and caps): they take an outfit colour instead of a hair colour. */
+export const FABRIC_HAIR = new Set(["gele", "cap"]);
+const OUTFIT_COLOR_SET = new Set<string>(OUTFIT_COLORS.map((c) => c.hex));
+const HAIR_COLOR_SET = new Set<string>(HAIR_COLORS.map((c) => c.hex));
 
 export const bodyOf = (a: AvatarConfig): BodyType => (a.body === "woman" ? "woman" : "man");
 
@@ -60,8 +99,22 @@ export function isValidAvatar(value: unknown): value is AvatarConfig {
     (v.body === undefined || (AVATAR_OPTIONS.body as readonly unknown[]).includes(v.body)) &&
     (AVATAR_OPTIONS.skinTone as readonly unknown[]).includes(v.skinTone) &&
     (AVATAR_OPTIONS.hairStyle as readonly unknown[]).includes(v.hairStyle) &&
-    (AVATAR_OPTIONS.outfit as readonly unknown[]).includes(v.outfit)
+    (AVATAR_OPTIONS.outfit as readonly unknown[]).includes(v.outfit) &&
+    (v.outfitColor === undefined || OUTFIT_COLOR_SET.has(v.outfitColor as string)) &&
+    (v.hairColor === undefined || HAIR_COLOR_SET.has(v.hairColor as string) || OUTFIT_COLOR_SET.has(v.hairColor as string))
   );
+}
+
+/** Only the known avatar fields (what gets stored), so nothing extra rides along in the profile. */
+export function cleanAvatar(v: AvatarConfig): AvatarConfig {
+  return {
+    ...(v.body ? { body: v.body } : {}),
+    skinTone: v.skinTone,
+    hairStyle: v.hairStyle,
+    outfit: v.outfit,
+    ...(v.outfitColor ? { outfitColor: v.outfitColor } : {}),
+    ...(v.hairColor ? { hairColor: v.hairColor } : {}),
+  };
 }
 
 export const NICKNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;

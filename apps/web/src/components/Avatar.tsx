@@ -1,7 +1,7 @@
 // Player avatars drawn with DiceBear "Personas" by Draftbit (CC BY 4.0, credited in the picker and README).
 import { createAvatar } from "@dicebear/core";
 import * as personas from "@dicebear/personas";
-import { AVATAR_OPTIONS, LEGACY_HAIR, LOOK_ORDER, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
+import { AVATAR_OPTIONS, FABRIC_HAIR, HAIR_COLORS, LEGACY_HAIR, LOOK_ORDER, OUTFIT_COLORS, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
 import { useMemo } from "react";
 
 type PersonasHair = NonNullable<personas.Options["hair"]>[number];
@@ -55,8 +55,8 @@ export function avatarUri(a: AvatarConfig): string {
     seed: "naija-hustle-city",
     skinColor: [a.skinTone.replace("#", "")],
     hair: [HAIR[hairKey]!],
-    hairColor: [HAIR_COLOR[hairKey] ?? "1b1410"],
-    clothingColor: [OUTFIT[a.outfit]?.color ?? OUTFIT.ankara_green!.color],
+    hairColor: [(a.hairColor ?? "").replace("#", "") || (HAIR_COLOR[hairKey] ?? "1b1410")],
+    clothingColor: [(a.outfitColor ?? "").replace("#", "") || (OUTFIT[a.outfit]?.color ?? OUTFIT.ankara_green!.color)],
     body: ["rounded"],
     eyes: ["open"],
     mouth: ["smile"],
@@ -68,7 +68,7 @@ export function avatarUri(a: AvatarConfig): string {
 }
 
 export function Avatar({ avatar, size = 40, className }: { avatar: AvatarConfig; size?: number; className?: string }) {
-  const src = useMemo(() => avatarUri(avatar), [avatar.skinTone, avatar.hairStyle, avatar.outfit, avatar.body]);
+  const src = useMemo(() => avatarUri(avatar), [avatar.skinTone, avatar.hairStyle, avatar.outfit, avatar.body, avatar.outfitColor, avatar.hairColor]);
   return (
     <span className={`avatar ${className ?? ""}`} style={{ width: size, height: size }}>
       <img src={src} width={size} height={size} alt="Your avatar" draggable={false} />
@@ -143,7 +143,7 @@ export function AvatarPicker({
         <span className="small muted">Hair</span>
         <div className="swatches">
           {LOOK_ORDER[bodyOf(value)].hair.map((h) => (
-            <button key={h} type="button" className="chip" aria-pressed={value.hairStyle === h} onClick={() => onChange({ ...value, hairStyle: h })}>
+            <button key={h} type="button" className="chip" aria-pressed={value.hairStyle === h} onClick={() => onChange({ ...value, hairStyle: h, hairColor: FABRIC_HAIR.has(h) === FABRIC_HAIR.has(value.hairStyle) ? value.hairColor : undefined })}>
               {HAIR_LABEL[h]}
             </button>
           ))}
@@ -160,6 +160,34 @@ export function AvatarPicker({
           ))}
         </div>
       </div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">Outfit colour</span>
+        <div className="swatches">
+          <button type="button" className="swatch swatch-default" style={{ background: `#${OUTFIT[value.outfit]?.color ?? "1e7a46"}` }} aria-label="The outfit's own colour" aria-pressed={!value.outfitColor} onClick={() => onChange({ ...value, outfitColor: undefined })} />
+          {OUTFIT_COLORS.map((c) => (
+            <button key={c.hex} type="button" className="swatch" style={{ background: c.hex }} aria-label={`Outfit colour: ${c.label}`} title={c.label} aria-pressed={value.outfitColor === c.hex} onClick={() => onChange({ ...value, outfitColor: c.hex })} />
+          ))}
+        </div>
+      </div>
+      {value.hairStyle !== "bald" && (
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="small muted">{FABRIC_HAIR.has(value.hairStyle) ? (value.hairStyle === "gele" ? "Gele colour" : "Cap colour") : "Hair colour"}</span>
+          <div className="swatches">
+            {(FABRIC_HAIR.has(value.hairStyle) ? OUTFIT_COLORS : HAIR_COLORS).map((c) => (
+              <button
+                key={c.hex}
+                type="button"
+                className="swatch"
+                style={{ background: c.hex }}
+                aria-label={`${FABRIC_HAIR.has(value.hairStyle) ? "Fabric" : "Hair"} colour: ${c.label}`}
+                title={c.label}
+                aria-pressed={(value.hairColor ?? (FABRIC_HAIR.has(value.hairStyle) ? "" : "#1b1410")) === c.hex}
+                onClick={() => onChange({ ...value, hairColor: c.hex })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       <p className="tiny muted">
         Avatar art: “Personas” by Draftbit, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, via DiceBear.
       </p>

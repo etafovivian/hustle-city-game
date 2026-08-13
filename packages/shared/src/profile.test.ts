@@ -20,3 +20,13 @@ describe("isValidAvatar", () => {
     expect(isValidAvatar({ ...DEFAULT_AVATAR, body: "robot" })).toBe(false);
   });
 });
+
+describe("avatar colours", () => {
+  it("accepts palette colours and drops unknown fields", async () => {
+    const { cleanAvatar } = await import("./profile.js");
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, outfitColor: "#5b2a86", hairColor: "#8c2f1d" })).toBe(true);
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, hairStyle: "gele", hairColor: "#f2b705" })).toBe(true);
+    expect(isValidAvatar({ ...DEFAULT_AVATAR, outfitColor: "#123456" })).toBe(false);
+    expect(cleanAvatar({ ...DEFAULT_AVATAR, outfitColor: "#5b2a86", extra: "x" } as never)).toEqual({ ...DEFAULT_AVATAR, outfitColor: "#5b2a86" });
+  });
+});

@@ -63,8 +63,39 @@ const HAIR_LINE: Record<string, number | null> = {
 /** Fabric colours for wraps and caps; everything else is near-black hair. */
 const HAIR_TINT: Record<string, string> = { cap: "#df382b", gele: "#f2b705" };
 
-function regionColors(a: AvatarConfig): THREE.Color[] {
+/**
+ * The outfit painted in the player's chosen fabric colour: everything dyed in the outfit's main colour takes the new
+ * one (trousers that match the top get a slightly deeper shade), and the Ankara pattern switches to gold on dark
+ * cloth or deep brown on light cloth so it still shows.
+ */
+export function paintFor(a: AvatarConfig): OutfitPaint {
   const o = OUTFITS[a.outfit] ?? OUTFITS.ankara_green!;
+  if (!a.outfitColor) return o;
+  const pick = new THREE.Color(a.outfitColor);
+  const base = new THREE.Color(o.top);
+  // (Color.sub clamps at zero, so compare channel by channel.)
+  const near = (hex: string) => {
+    if (hex === "skin") return false;
+    const c = new THREE.Color(hex);
+    return Math.abs(c.r - base.r) < 0.08 && Math.abs(c.g - base.g) < 0.08 && Math.abs(c.b - base.b) < 0.08;
+  };
+  const deeper = "#" + pick.clone().multiplyScalar(0.86).getHexString();
+  const hsl = { h: 0, s: 0, l: 0 };
+  pick.getHSL(hsl);
+  const dye = (hex: string, deep = false) => (near(hex) ? (deep ? deeper : a.outfitColor!) : hex);
+  return {
+    ...o,
+    top: a.outfitColor,
+    upperArm: dye(o.upperArm),
+    forearm: dye(o.forearm),
+    bottom: dye(o.bottom, true),
+    shin: dye(o.shin, true),
+    ...(o.pattern ? { pattern: hsl.l < 0.45 ? "#f2b705" : "#3a2410" } : {}),
+  };
+}
+
+function regionColors(a: AvatarConfig): THREE.Color[] {
+  const o = paintFor(a);
   // THREE.Color already converts sRGB hex to linear, so no extra conversion (doing it twice
   // turned skin orange-red and deep tones black). Very deep tones get a small lift so their form reads.
   const skin = new THREE.Color(a.skinTone);
@@ -88,11 +119,11 @@ function regionColors(a: AvatarConfig): THREE.Color[] {
 function makeMaterial(a: AvatarConfig) {
   const uniforms = {
     uColors: { value: regionColors(a) },
-    uPattern: { value: new THREE.Color((OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ?? "#000000") },
-    uHasPattern: { value: (OUTFITS[a.outfit] ?? OUTFITS.ankara_green!).pattern ? 1 : 0 },
+    uPattern: { value: new THREE.Color(paintFor(a).pattern ?? "#000000") },
+    uHasPattern: { value: paintFor(a).pattern ? 1 : 0 },
     uHairLine: { value: HAIR_LINE[a.hairStyle] ?? 1.75 },
     uHasHair: { value: HAIR_LINE[a.hairStyle] === null ? 0 : 1 },
-    uHairColor: { value: new THREE.Color(HAIR_TINT[a.hairStyle] ?? "#1b1410") },
+    uHairColor: { value: new THREE.Color(a.hairColor ?? HAIR_TINT[a.hairStyle] ?? "#1b1410") },
   };
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.02 });
   mat.onBeforeCompile = (shader) => {
@@ -344,7 +375,7 @@ export default function Avatar3D({
     u.uHairLine.value = fresh.uHairLine.value;
     u.uHasHair.value = state.current.hair ? 0 : fresh.uHasHair.value;
     u.uHairColor.value = fresh.uHairColor.value;
-  }, [avatar.skinTone, avatar.hairStyle, avatar.outfit, ready]);
+  }, [avatar.skinTone, avatar.hairStyle, avatar.outfit, avatar.outfitColor, avatar.hairColor, ready]);
 
   // Hair: a real 3D piece on the head bone; the painted hairline is only a fallback while it loads.
   useEffect(() => {
@@ -365,7 +396,15 @@ export default function Avatar3D({
         hair.applyMatrix4(s.head.inverse);
         hair.traverse((o) => {
           const m = o as THREE.Mesh;
-          if (m.isMesh) m.frustumCulled = false;
+          if (!m.isMesh) return;
+          m.frustumCulled = false;
+          // The chosen hair colour (or the gele / cap fabric), on this avatar's own copy of the material.
+          if (avatar.hairColor) {
+            const mat = (m.material as THREE.MeshStandardMaterial).clone();
+            mat.color.set(avatar.hairColor);
+            if (mat.map) mat.color.multiplyScalar(1.6);
+            m.material = mat;
+          }
         });
         s.head.bone.add(hair);
         s.hair = hair;
@@ -375,7 +414,7 @@ export default function Avatar3D({
     return () => {
       cancelled = true;
     };
-  }, [avatar.hairStyle, ready]);
+  }, [avatar.hairStyle, avatar.hairColor, ready]);
 
   // Loose clothes: re-bind the garment's skinned mesh to this avatar's bones (same names), tint to the outfit.
   useEffect(() => {
@@ -403,7 +442,7 @@ export default function Avatar3D({
           if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone);
         });
         const group = new THREE.Group();
-        const colour = OUTFITS[avatar.outfit]?.top;
+        const colour = paintFor(avatar).top;
         src.traverse((o) => {
           const m = o as THREE.SkinnedMesh;
           if (!m.isSkinnedMesh) return;
@@ -432,7 +471,7 @@ export default function Avatar3D({
       window.clearTimeout(fallback);
       model.visible = true;
     };
-  }, [avatar.outfit, ready]);
+  }, [avatar.outfit, avatar.outfitColor, ready]);
 
   useEffect(() => {
     const g = state.current.garment;
