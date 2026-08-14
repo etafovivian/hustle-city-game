@@ -664,3 +664,16 @@ export const rides = pgTable(
   },
   (t) => [index("rides_user_created_idx").on(t.userId, t.createdAt)],
 );
+
+/** A business's building on the map: one plot per business, one business per plot (free in the beta). */
+export const businessPlots = pgTable(
+  "business_plots",
+  {
+    businessId: uuid("business_id")
+      .primaryKey()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    plotId: text("plot_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("business_plots_plot_uq").on(t.plotId)],
+);

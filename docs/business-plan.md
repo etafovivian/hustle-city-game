@@ -88,7 +88,14 @@ Pricing idea (owner to decide): packages from ₦250,000 a month (one branded pl
 | 5 | Business dashboard: leads, views, redemptions, billboard stats in one place | M |
 | 6 | Jobs board (Stage B2) and Academy hiring | L |
 
-## Questions for the owner
+## Owner's answers (2026-10-12)
+
+- **The building on the map is free at first**, to fill the city. (Paid "On the map" tiers come later.)
+- **Payments: bank transfer confirmed by an admin** for now, like billboards. No payment provider yet.
+- **Deals only**: discounts the business honours. No airtime, data or other real rewards for now.
+- First corporates: not decided yet.
+
+## Questions for the owner (asked 2026-10-12)
 
 1. Prices: are the tier ideas above roughly right for Lagos SMEs, or should the map building be free at first to fill
    the city?

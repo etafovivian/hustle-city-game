@@ -28,3 +28,22 @@ describe("land interest", () => {
     expect((await a.call("GET", "/api/admin/land-interest")).statusCode).toBe(403);
   });
 });
+
+describe("businesses on the map", () => {
+  it("puts a live business on one free plot, moves it, and keeps others off it", async () => {
+    const owner = await registerPlayer(app);
+    const other = await registerPlayer(app);
+    const biz = (await owner.call("POST", "/api/businesses", { kind: "retail", name: "Mama Bisi Provisions", category: "provisions", areas: ["Yaba"], pickupAddress: "12 Herbert Macaulay Way, Yaba", description: "Rice, beans, garri, noodles and drinks every day." })).json();
+    // Not live yet
+    expect((await owner.call("PUT", `/api/businesses/${biz.id}/plot`, { plotId: "lekki-gardens-c2+3" })).statusCode).toBe(409);
+    const sql = (await import("postgres")).default((await import("./test/harness.js")).TEST_DATABASE_URL, { max: 1 });
+    await sql`update businesses set status = 'published' where id = ${biz.id}`;
+    await sql.end();
+    expect((await other.call("PUT", `/api/businesses/${biz.id}/plot`, { plotId: "lekki-gardens-c2+3" })).statusCode).toBe(404);
+    expect((await owner.call("PUT", `/api/businesses/${biz.id}/plot`, { plotId: "lekki-gardens-c2+3" })).statusCode).toBe(200);
+    expect((await owner.call("PUT", `/api/businesses/${biz.id}/plot`, { plotId: "lekki-gardens-c2+4" })).statusCode).toBe(200);
+    const map = (await app.inject({ method: "GET", url: "/api/map/businesses" })).json();
+    expect(map).toHaveLength(1);
+    expect(map[0]).toMatchObject({ plotId: "lekki-gardens-c2+4", name: "Mama Bisi Provisions", kind: "retail" });
+  });
+});

@@ -774,3 +774,5 @@ body.map-full .map-title .muted { margin: 0; }
 .area-result.bad { background: #3a1414; color: #ffd2cc; }
 @media (max-width: 420px) { .area-options { grid-template-columns: 1fr; } }
 .verified-tag { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #0e3b2a; color: #7ef0b0; font-size: 12px; font-weight: 800; vertical-align: middle; }
+.biz-art { width: 64px; height: 64px; object-fit: contain; }
+.land-build { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #0e3b2a; border: 1px solid #2f7a4a; }

@@ -1,10 +1,11 @@
 // Land interest: players say which plot they want; the owner sees who to contact when ownership opens.
 
-import { landInterest, users } from "@hc/db";
-import { PLOT_ID, type LandInterestView } from "@hc/shared";
-import { and, count, desc, eq } from "drizzle-orm";
+import { businessMembers, businessPlots, businesses, landInterest, products, users } from "@hc/db";
+import { PLOT_ID, type LandInterestView, type MapBusiness } from "@hc/shared";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { AppError } from "../lib/errors.js";
+import { z } from "zod";
+import { AppError, notFound } from "../lib/errors.js";
 import { requireRole, requireUser } from "../plugins/auth.js";
 
 /** Most plots one player can hold interest in, so the list stays meaningful. */
@@ -49,5 +50,65 @@ export async function landRoutes(app: FastifyInstance) {
       .innerJoin(users, eq(users.id, landInterest.userId))
       .orderBy(desc(landInterest.createdAt))
       .limit(500);
+  });
+
+  // ── Businesses on the map (free in the beta: one plot per business, first come) ──
+  app.get("/api/map/businesses", async (): Promise<MapBusiness[]> => {
+    const rows = await app.db
+      .select({ plotId: businessPlots.plotId, b: businesses })
+      .from(businessPlots)
+      .innerJoin(businesses, eq(businesses.id, businessPlots.businessId))
+      .where(eq(businesses.status, "published"));
+    const items = rows.length
+      ? await app.db.select().from(products).where(and(inArray(products.businessId, rows.map((r) => r.b.id)), eq(products.status, "published")))
+      : [];
+    return rows.map(({ plotId, b }) => ({
+      plotId,
+      businessId: b.id,
+      name: b.name,
+      kind: b.kind as MapBusiness["kind"],
+      category: b.category,
+      verified: b.verifiedAt !== null,
+      description: b.description,
+      serviceArea: b.serviceArea,
+      pickupAddress: b.pickupAddress,
+      contactPhone: b.contactPhone,
+      products: items.filter((p) => p.businessId === b.id).slice(0, 6).map((p) => ({ name: p.name, priceKobo: p.priceKobo })),
+    }));
+  });
+
+  /** The owner's business, published (only live businesses get a building). */
+  const ownBusiness = async (userId: string, businessId: string) => {
+    const [row] = await app.db
+      .select({ b: businesses })
+      .from(businesses)
+      .innerJoin(businessMembers, eq(businessMembers.businessId, businesses.id))
+      .where(and(eq(businesses.id, businessId), eq(businessMembers.userId, userId), eq(businessMembers.role, "owner")));
+    if (!row) throw notFound("Business");
+    if (row.b.status !== "published") throw new AppError(409, "not_live", "Your business needs to be approved before it can have a building.");
+    return row.b;
+  };
+
+  app.put<{ Params: { id: string } }>("/api/businesses/:id/plot", async (request) => {
+    const user = requireUser(request);
+    const businessId = z.uuid().parse(request.params.id);
+    const plotId = plotParam(z.object({ plotId: z.string().max(60) }).parse(request.body).plotId);
+    await ownBusiness(user.id, businessId);
+    await app.db.transaction(async (tx) => {
+      const [taken] = await tx.select().from(businessPlots).where(eq(businessPlots.plotId, plotId));
+      if (taken && taken.businessId !== businessId) throw new AppError(409, "plot_taken", "Another business is already on that plot.");
+      // Moving: one building per business.
+      await tx.delete(businessPlots).where(eq(businessPlots.businessId, businessId));
+      await tx.insert(businessPlots).values({ businessId, plotId });
+    });
+    return { ok: true, plotId };
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/businesses/:id/plot", async (request) => {
+    const user = requireUser(request);
+    const businessId = z.uuid().parse(request.params.id);
+    await ownBusiness(user.id, businessId);
+    await app.db.delete(businessPlots).where(eq(businessPlots.businessId, businessId));
+    return { ok: true };
   });
 }

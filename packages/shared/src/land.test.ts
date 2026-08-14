@@ -9,6 +9,7 @@ describe("land", () => {
   });
   it("accepts map plot ids only", () => {
     expect(PLOT_ID.test("lekki-gardens-c2+12")).toBe(true);
+    expect(PLOT_ID.test("junction-101-A+0")).toBe(true);
     expect(PLOT_ID.test("../etc")).toBe(false);
   });
 });

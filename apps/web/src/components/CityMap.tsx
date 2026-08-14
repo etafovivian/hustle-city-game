@@ -1,11 +1,11 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, type AvatarConfig, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, businessArt, type AvatarConfig, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { LandPlot, LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
-import { LandCard, LandList } from "./Land.js";
+import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
@@ -31,6 +31,7 @@ import {
   DRIVEWAYS,
   STREETS,
   FOR_SALE,
+  siteOf,
   FORESTS,
   GRASS,
   RUNWAY,
@@ -262,6 +263,17 @@ export function CityMap({
     }
   });
   const [landList, setLandList] = useState(false);
+  // Real businesses with a building on a plot (free in the beta).
+  const [mapBiz, setMapBiz] = useState<MapBusiness[]>([]);
+  const [bizOpen, setBizOpen] = useState<MapBusiness | null>(null);
+  const loadMapBiz = () =>
+    api<MapBusiness[]>("GET", "/api/map/businesses")
+      .then(setMapBiz)
+      .catch(() => undefined);
+  useEffect(() => {
+    void loadMapBiz();
+  }, []);
+  const bizByPlot = new Map(mapBiz.map((b) => [b.plotId, b]));
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -372,9 +384,28 @@ export function CityMap({
       if (v && inView(spot.x, spot.y))
         depthItems.push({ key: `venue-${spot.key}`, y: spot.y, node: <VenueBuilding venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> });
     }
-    for (const l of FOR_SALE)
-      if (inView(l.x, l.y))
+    for (const l of FOR_SALE) {
+      if (!inView(l.x, l.y)) continue;
+      const biz = bizByPlot.get(l.id);
+      if (biz) {
+        // A real business's building, standing on its plot.
+        const scale = l.hh / 60;
+        const foot = l.y + siteOf(scale).lift;
+        const art = businessArt(biz.category);
+        const box = buildingBox(art, l.x, foot, scale);
         depthItems.push({
+          key: l.id,
+          y: foot,
+          node: (
+            <g className="hotspot venue" role="button" tabIndex={0} aria-label={`${biz.name}, a real business. Open.`} onClick={() => !pz.wasDragged() && setBizOpen(biz)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setBizOpen(biz))}>
+              <ellipse cx={l.x} cy={foot} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
+              <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
+            </g>
+          ),
+        });
+        continue;
+      }
+      depthItems.push({
           key: l.id,
           y: l.y + l.hh,
           node: (
@@ -384,6 +415,7 @@ export function CityMap({
             </g>
           ),
         });
+    }
     PLOTS.forEach((p, i) => {
       const shop = neighbours[i];
       if (!shop) return;
@@ -821,6 +853,24 @@ export function CityMap({
                       <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y - 36 : buildingBox(v.art, spot.x, spot.y, spot.scale).y - 20} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
                     ) : null;
                   })}
+                {/* Real businesses: a small storefront pill with the name (and a tick when verified) */}
+                {k >= 0.35 &&
+                  mapBiz.map((b) => {
+                    const l = FOR_SALE.find((p) => p.id === b.plotId);
+                    if (!l || !inView(l.x, l.y)) return null;
+                    const scale = l.hh / 60;
+                    const top = buildingBox(businessArt(b.category), l.x, l.y + siteOf(scale).lift, scale).y;
+                    const label = `🏪 ${b.name}${b.verified ? " ✓" : ""}`;
+                    const w = label.length * 8.6 + 22;
+                    return (
+                      <g key={`bizl-${b.plotId}`} className="venue-badge" transform={`translate(${l.x} ${top - 8}) scale(${Math.min(plateScale, 4)})`} onClick={() => !pz.wasDragged() && setBizOpen(b)}>
+                        <rect x={-w / 2} y="-26" width={w} height="26" rx="13" fill="#0e3b2a" stroke="#7ef0b0" strokeWidth="2" />
+                        <text y="-8" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#e8fff2">
+                          {label}
+                        </text>
+                      </g>
+                    );
+                  })}
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
                   <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
                     {d.name}
@@ -980,6 +1030,7 @@ export function CityMap({
           )}
           {landList && (
             <LandList
+              taken={new Set(mapBiz.map((b) => b.plotId))}
               onClose={() => setLandList(false)}
               onPick={(p) => {
                 setLandList(false);
@@ -988,8 +1039,24 @@ export function CityMap({
               }}
             />
           )}
-          {landOpen && !landList && (
+          {bizOpen && (
+            <BusinessCard
+              biz={bizOpen}
+              onClose={() => setBizOpen(null)}
+              onGo={() => {
+                const l = FOR_SALE.find((p) => p.id === bizOpen.plotId);
+                setBizOpen(null);
+                if (l) goTo({ x: l.x, y: l.y + l.hh }, bizOpen.name);
+              }}
+              onQuote={() => {
+                setBizOpen(null);
+                onDistrict("artisans");
+              }}
+            />
+          )}
+          {landOpen && !landList && !bizByPlot.has(landOpen) && (
             <LandCard
+              onBuilt={() => void loadMapBiz()}
               plotId={landOpen}
               onClose={() => setLandOpen(null)}
               notify={notify}

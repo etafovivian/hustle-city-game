@@ -30,7 +30,7 @@ export function landPrice(area: string, road: LandRoad, halfSide: number): numbe
 export const PRIME_AREAS = ["Island Heights", "Lekki Gardens"];
 
 /** Plot ids from the area generator, e.g. "lekki-gardens-c2+4" (area, street line, side, index). */
-export const PLOT_ID = /^[a-z0-9-]{3,40}[+-]\d{1,4}$/;
+export const PLOT_ID = /^[a-zA-Z0-9-]{3,40}[+-]\d{1,4}$/;
 
 export interface LandInterestView {
   /** Players interested in each plot (only plots with at least one). */
@@ -38,3 +38,43 @@ export interface LandInterestView {
   /** Plots this player asked about. */
   mine: string[];
 }
+
+/** A business's building on a map plot. */
+export interface MapBusiness {
+  plotId: string;
+  businessId: string;
+  name: string;
+  kind: "artisan" | "retail" | "office";
+  category: string;
+  verified: boolean;
+  description: string;
+  serviceArea: string;
+  pickupAddress: string | null;
+  contactPhone: string | null;
+  products: { name: string; priceKobo: number }[];
+}
+
+/** The building drawn for a business, by what it does. */
+export const BUSINESS_ART: Record<string, string> = {
+  generator_repair: "mechanic",
+  phone_repair: "phone-shop",
+  laptop_repair: "laptop-shop",
+  ac_repair: "mechanic",
+  electrician: "shop-house",
+  plumber: "shop-house",
+  tailor: "tailor-shop",
+  event_decor: "shop-house",
+  catering: "restaurant-terrace",
+  hair_beauty: "salon",
+  provisions: "shop-house",
+  food_drinks: "restaurant-terrace",
+  fashion_fabrics: "tailor-shop",
+  phones_gadgets: "phone-shop",
+  electronics: "gadget-kiosk",
+  beauty_supplies: "salon",
+  building_materials: "warehouse",
+  books_stationery: "cyber-cafe",
+  baby_kids: "shop-house",
+  home_kitchen: "commercial-block",
+};
+export const businessArt = (category: string) => `/art/buildings/${BUSINESS_ART[category] ?? "shop-house"}.webp`;
