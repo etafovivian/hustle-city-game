@@ -2,7 +2,7 @@
 
 import { businesses, products, reviews } from "@hc/db";
 import type { BusinessSummary, ProductSummary } from "@hc/shared";
-import { and, asc, avg, count, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, asc, avg, count, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { lockProfile } from "../lib/db.js";
@@ -36,7 +36,13 @@ export async function marketRoutes(app: FastifyInstance) {
       filters.push(or(ilike(businesses.name, like), ilike(businesses.description, like), ilike(businesses.category, like))!);
     }
 
-    const bizRows = await app.db.select().from(businesses).where(and(...filters)).orderBy(asc(businesses.name)).limit(50);
+    // Verified businesses first, then by name.
+    const bizRows = await app.db
+      .select()
+      .from(businesses)
+      .where(and(...filters))
+      .orderBy(sql`${businesses.verifiedAt} is null`, asc(businesses.name))
+      .limit(50);
     if (!bizRows.length) return [];
     const productRows = await app.db
       .select()
@@ -58,6 +64,8 @@ export async function marketRoutes(app: FastifyInstance) {
       pickupAddress: b.pickupAddress,
       description: b.description,
       isMock: b.isMock,
+      verified: b.verifiedAt !== null,
+      contactPhone: b.contactPhone,
       products: productRows.filter((p) => p.businessId === b.id).map(toProduct),
       rating: (() => {
         const r = ratings.find((x) => x.businessId === b.id);

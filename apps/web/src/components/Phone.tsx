@@ -21,13 +21,13 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "standings", label: "Standings", Icon: Trophy, tint: "#df382b" },
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
-  { key: "workshop", label: "Workshop", Icon: Hammer, tint: "#8a3fa0" },
+  { key: "workshop", label: "Business", Icon: Hammer, tint: "#8a3fa0" },
   { key: "ads", label: "Ads", Icon: Megaphone, tint: "#c2410c" },
   { key: "account", label: "Account", Icon: Settings, tint: "#4b5563" },
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Workshop", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,

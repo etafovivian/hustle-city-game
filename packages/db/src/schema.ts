@@ -222,6 +222,10 @@ export const businesses = pgTable(
     // Shown to the owner when admin review rejects or hides the listing.
     reviewNote: text("review_note"),
     isMock: boolean("is_mock").notNull().default(false),
+    /** WhatsApp / phone the owner chose to show customers. */
+    contactPhone: text("contact_phone"),
+    /** Set by an admin after checking the business (phone, and CAC for bigger ones); null means not verified. */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [

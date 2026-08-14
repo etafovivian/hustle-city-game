@@ -85,6 +85,10 @@ export interface BusinessSummary {
   pickupAddress: string | null;
   description: string;
   isMock: boolean;
+  /** Checked by the Hustle City team (phone, and registration for bigger businesses). */
+  verified: boolean;
+  /** The business's WhatsApp / phone, shown only because the owner chose to list it. */
+  contactPhone: string | null;
   products: ProductSummary[];
   /** Reviews from completed quote requests only. */
   rating: { average: number; count: number } | null;

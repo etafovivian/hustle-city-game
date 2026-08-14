@@ -1,5 +1,5 @@
-import { ARTISAN_CATEGORIES, LAGOS_AREAS, type BusinessSummary } from "@hc/shared";
-import { AlertCircle, CircleCheck, CircleDot, CircleX, MapPin, MessageSquarePlus, Search, SearchX, Star } from "lucide-react";
+import { ARTISAN_CATEGORIES, LAGOS_AREAS, RETAIL_CATEGORIES, type BusinessSummary } from "@hc/shared";
+import { AlertCircle, BadgeCheck, CircleCheck, MessageCircle, CircleDot, CircleX, MapPin, MessageSquarePlus, Search, SearchX, Star } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, formatNaira } from "../api.js";
 
@@ -9,7 +9,9 @@ const STOCK = {
   out_of_stock: { label: "Out of stock", Icon: CircleX, cls: "warn" },
 } as const;
 
-const CATEGORIES = [{ key: "", label: "All" }, { key: "electronics", label: "Electronics" }, ...ARTISAN_CATEGORIES];
+const CATEGORIES = [{ key: "", label: "All" }, ...RETAIL_CATEGORIES, ...ARTISAN_CATEGORIES];
+/** wa.me link for a Nigerian number (0803… → 234803…). */
+const whatsapp = (phone: string) => `https://wa.me/${phone.replace(/^\+/, "").replace(/^0/, "234")}`;
 
 const KIND_LABEL = { retail: "Shop", artisan: "Artisan", office: "Office" } as const;
 
@@ -153,6 +155,11 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
             <div className="spread">
               <h3 id={`biz-${b.id}`}>{b.name}</h3>
               <div className="row">
+                {b.verified && (
+                  <span className="tag verified-tag" title="Checked by the Hustle City team">
+                    <BadgeCheck size={13} aria-hidden="true" /> Verified
+                  </span>
+                )}
                 <span className="tag">{KIND_LABEL[b.kind]}</span>
                 {b.isMock && <span className="tag demo">Demo listing</span>}
               </div>
@@ -166,6 +173,11 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
               <p className="small row" style={{ gap: 4 }}>
                 <Star size={15} fill="currentColor" aria-hidden="true" className="gold" /> {b.rating.average.toFixed(1)} · {b.rating.count} review{b.rating.count === 1 ? "" : "s"} from completed jobs
               </p>
+            )}
+            {b.contactPhone && (
+              <a className="btn sm" style={{ justifySelf: "start" }} href={whatsapp(b.contactPhone)} target="_blank" rel="noopener noreferrer">
+                <MessageCircle size={16} aria-hidden="true" /> WhatsApp {b.name.split(" ")[0]}
+              </a>
             )}
             {b.kind === "artisan" &&
               (signedIn ? (
@@ -199,7 +211,7 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
                     <span className={`tag ${s.cls}`}>
                       <s.Icon size={13} aria-hidden="true" /> {s.label}
                     </span>{" "}
-                    {b.kind === "artisan" ? "Starting price. Request a quote for your exact job." : "Pickup reservations open in the private beta."}
+                    {b.kind === "artisan" ? "Starting price. Request a quote for your exact job." : b.contactPhone ? "Price from the shop. WhatsApp them to order or check stock." : "Price from the shop. Visit them to buy."}
                   </span>
                 )}
               </button>

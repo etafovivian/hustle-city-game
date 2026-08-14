@@ -16,7 +16,26 @@ export const ARTISAN_CATEGORIES = [
   { key: "hair_beauty", label: "Hair and beauty" },
 ] as const;
 export const ARTISAN_CATEGORY_KEYS: readonly string[] = ARTISAN_CATEGORIES.map((c) => c.key);
-export const categoryLabel = (key: string) => ARTISAN_CATEGORIES.find((c) => c.key === key)?.label ?? key.replace(/_/g, " ");
+/** Shops that sell things (retail listings): customers see products and prices, and go to the shop or WhatsApp it. */
+export const RETAIL_CATEGORIES = [
+  { key: "provisions", label: "Provisions and groceries" },
+  { key: "food_drinks", label: "Food and drinks" },
+  { key: "fashion_fabrics", label: "Fashion and fabrics" },
+  { key: "phones_gadgets", label: "Phones and gadgets" },
+  { key: "electronics", label: "Electronics and appliances" },
+  { key: "beauty_supplies", label: "Beauty and hair supplies" },
+  { key: "building_materials", label: "Building materials" },
+  { key: "books_stationery", label: "Books and stationery" },
+  { key: "baby_kids", label: "Baby and kids" },
+  { key: "home_kitchen", label: "Home and kitchen" },
+] as const;
+export const RETAIL_CATEGORY_KEYS: readonly string[] = RETAIL_CATEGORIES.map((c) => c.key);
+export type ListingKind = "artisan" | "retail";
+export const categoryLabel = (key: string) =>
+  [...ARTISAN_CATEGORIES, ...RETAIL_CATEGORIES].find((c) => c.key === key)?.label ?? key.replace(/_/g, " ");
+/** Nigerian mobile number, as typed: 080…, +234 80…, or 234 80… (spaces and dashes allowed). */
+export const NG_PHONE = /^(\+?234|0)[789][01]\d{8}$/;
+export const normalisePhone = (raw: string) => raw.replace(/[\s-]/g, "");
 
 export const LAGOS_AREAS = [
   "Yaba",
@@ -164,6 +183,8 @@ export interface ServiceRequestDetail extends ServiceRequestSummary {
 export interface MyBusiness {
   id: string;
   name: string;
+  kind: ListingKind | "office";
+  verified: boolean;
   category: string;
   serviceArea: string;
   status: "draft" | "pending_review" | "published" | "hidden" | "rejected";
