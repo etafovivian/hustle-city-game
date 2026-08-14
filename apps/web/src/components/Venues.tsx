@@ -65,8 +65,11 @@ export function VenueCard({
   onChanged,
   notify,
   onApp,
+  branch,
 }: {
   venueKey: string;
+  /** A branch of this place (same room and activities, its own name and area). */
+  branch?: { name: string; area: string; key: string };
   onClose: () => void;
   onWalk: () => void;
   onFindReal: () => void;
@@ -75,7 +78,8 @@ export function VenueCard({
   /** Open a phone app (the school opens the Academy). */
   onApp?: (app: "academy") => void;
 }) {
-  const venue = VENUES_BY_KEY.get(venueKey)!;
+  const base = VENUES_BY_KEY.get(venueKey)!;
+  const venue = branch ? { ...base, name: branch.name, area: branch.area } : base;
   const [done, setDone] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -154,12 +158,16 @@ export function VenueCard({
         <div className={`venue-layout ${venue.interior ? "has-room" : ""}`}>
         {venue.interior && (
           <div className="venue-room">
-            <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]} seed={venue.key.length} />
+            <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]} seed={(branch?.key ?? venue.key).length} />
           </div>
         )}
         <div className="venue-info">
         <p>{venue.blurb}</p>
-        <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
+        {branch ? (
+          <p className="small muted">Same things to do as {base.name} in {base.area}.</p>
+        ) : (
+          <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
+        )}
 
         <p className={`venue-hours small ${open ? "open" : "closed"}`}>
           <Clock size={14} aria-hidden="true" /> {hoursLabel(venue, hour)}

@@ -32,6 +32,8 @@ import {
   STREETS,
   FOR_SALE,
   siteOf,
+  BRANCHES,
+  BRANCH_BY_KEY,
   FORESTS,
   GRASS,
   RUNWAY,
@@ -86,6 +88,8 @@ const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
 /** Street furniture: stalls, shelters, poles and lamps. */
 const STREET_PROPS = [...PROPS, ...PORT_AND_PLANES, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
 
+/** Branch buildings by their scenery key (they open like places). */
+const BRANCH_BY_BUILDING = new Map(BRANCHES.map((b) => [b.key.slice(b.key.indexOf("@") + 1), b]));
 /** Buildings, trees and street furniture in one back-to-front list so nearer things cover farther ones. */
 const WORLD_OBJECTS = [
   ...ALL_SCENERY.map((b) => ({ ...b, type: "building" as const, box: buildingBox(b.art, b.x, b.y, b.scale) })),
@@ -352,7 +356,15 @@ export function CityMap({
     // Zoomed far out, only each area's signature buildings are drawn (hundreds of houses would be dots anyway).
     if (!inView(o.x, o.y) || (far && (o.type !== "building" || !o.landmark))) continue;
     let node: ReactNode;
-    if (o.type === "building" || o.type === "prop") node = <image href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} aria-hidden="true" />;
+    const branch = o.type === "building" ? BRANCH_BY_BUILDING.get(o.key) : undefined;
+    if (branch && o.type === "building")
+      // A branch (a repeated buka, salon, hotel…): tap it to go in.
+      node = (
+        <g className="hotspot venue" role="button" tabIndex={0} aria-label={`${branch.name}, ${branch.area}. Open.`} onClick={() => !pz.wasDragged() && setVenueOpen(branch.key)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setVenueOpen(branch.key))}>
+          <image href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
+        </g>
+      );
+    else if (o.type === "building" || o.type === "prop") node = <image href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} aria-hidden="true" />;
     else {
       const n = NATURE[o.kind];
       const b = n ? propBox(n.art, o.x, o.y + 10, n.w) : null;
@@ -853,6 +865,23 @@ export function CityMap({
                       <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y - 36 : buildingBox(v.art, spot.x, spot.y, spot.scale).y - 20} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
                     ) : null;
                   })}
+                {/* Branches: the original's icon over the roof, and the branch's own name up close */}
+                {k >= 0.35 &&
+                  BRANCHES.filter((b) => inView(b.x, b.y)).map((b) => {
+                    const v = VENUES_BY_KEY.get(b.base);
+                    if (!v) return null;
+                    return (
+                      <VenueBadge
+                        key={b.key}
+                        venue={{ ...v, name: b.name }}
+                        x={b.x}
+                        y={buildingBox(b.art, b.x, b.y, b.scale).y - 12}
+                        scale={Math.min(plateScale, 4) * 0.8}
+                        showName={k >= 0.6}
+                        onOpen={() => !pz.wasDragged() && setVenueOpen(b.key)}
+                      />
+                    );
+                  })}
                 {/* Real businesses: a small storefront pill with the name (and a tick when verified) */}
                 {k >= 0.35 &&
                   mapBiz.map((b) => {
@@ -1068,13 +1097,15 @@ export function CityMap({
           )}
           {venueOpen && (
         <VenueCard
-          venueKey={venueOpen}
+          venueKey={BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen}
+          branch={BRANCH_BY_KEY.get(venueOpen)}
           onClose={() => setVenueOpen(null)}
           onWalk={() => {
-            const spot = VENUE_SPOTS.find((v) => v.key === venueOpen);
+            const branchAt = BRANCH_BY_KEY.get(venueOpen);
+            const spot = branchAt ?? VENUE_SPOTS.find((v) => v.key === venueOpen);
             const v = VENUES_BY_KEY.get(venueOpen);
             setVenueOpen(null);
-            if (spot) goTo({ x: spot.x, y: spot.y + 30 }, v?.name ?? "there", venueOpen);
+            if (spot) goTo({ x: spot.x, y: spot.y + 30 }, branchAt?.name ?? v?.name ?? "there", venueOpen);
           }}
           onFindReal={() => {
             setVenueOpen(null);

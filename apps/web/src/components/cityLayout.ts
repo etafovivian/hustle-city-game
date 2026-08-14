@@ -1635,3 +1635,82 @@ export function roadRoute(from: P, to: P, pavement = false): P[] | null {
   }
   return [...pts, to];
 }
+
+// ── Branches ──
+// Repeated buildings that already have a room inside (bukas, salons, hotels, churches…) are places too: each gets
+// its own name and badge and opens the same room and activities as the original. Names are seeded by plot, so a
+// branch keeps its name on every visit.
+const BRANCH_OF: Record<string, string> = {
+  buka: "mama_nkechi_buka",
+  salon: "glory_hair_salon",
+  hotel: "grand_lagoon_hotel",
+  school: "lampnet_academy",
+  mosque: "central_mosque",
+  church: "grace_chapel",
+  "tailor-shop": "tailors_row",
+  "viewing-centre": "viewing_centre",
+  "event-centre": "royal_event_centre",
+  "car-showroom": "island_motors",
+  "skyline-lounge": "skyline_lounge",
+  gym: "fit_lagos",
+};
+const FIRST = ["Bisi", "Ngozi", "Tunde", "Chioma", "Emeka", "Funke", "Kemi", "Uche", "Sade", "Ifeoma", "Yemi", "Aisha", "Bola", "Femi", "Halima", "Nneka", "Segun", "Zainab", "Dayo", "Amaka"];
+const BRANCH_NAMES: Record<string, string[]> = {
+  mama_nkechi_buka: ["Mama {n}'s Buka", "Iya {n} Amala Spot", "{a} Mama Put", "{n}'s Kitchen", "Correct Taste Buka"],
+  glory_hair_salon: ["{n}'s Hair Palace", "{a} Glam Salon", "Classic Touch Salon", "{n} Beauty Hub", "Queen {n} Braids"],
+  grand_lagoon_hotel: ["{a} Suites", "Royal {n} Hotel", "Ocean Breeze Hotel", "{a} Guest House"],
+  lampnet_academy: ["Lampnet Academy, {a}", "{a} Tech School", "Bright Minds School, {a}"],
+  central_mosque: ["{a} Central Mosque", "Al-Noor Mosque, {a}", "{a} Juma'at Mosque"],
+  grace_chapel: ["{a} Grace Chapel", "Living Faith Chapel, {a}", "Christ Light Church, {a}"],
+  tailors_row: ["{n}'s Fashion House", "{a} Tailors", "Stitches by {n}", "{n} Couture"],
+  viewing_centre: ["{a} Viewing Centre", "Goal Zone, {a}"],
+  royal_event_centre: ["{a} Event Hall", "Grand {n} Event Centre"],
+  island_motors: ["{a} Motors", "{n} Autos", "Prime Motors, {a}"],
+  skyline_lounge: ["{a} Rooftop", "Cloud 9 Lounge"],
+  fit_lagos: ["{a} Fitness", "Iron {n} Gym", "Body Shape Gym, {a}"],
+};
+/** Short area name for branch names ("Lekki", "Island", "Apapa"). */
+const SHORT_AREA: Record<string, string> = {
+  "Junction 101": "Junction",
+  "Tech Mile": "Tech Mile",
+  "Danfo Terminal": "Danfo",
+  "Owambe Gardens": "Owambe",
+  "Apapa Port": "Apapa",
+  "Airport Ridge": "Airport",
+  "Marina Wharf": "Marina",
+  "Island Heights": "Island",
+  "Lekki Gardens": "Lekki",
+};
+export interface Branch {
+  /** "<base venue>@<building>": the base venue's room, activities and once-a-day limits. */
+  key: string;
+  base: string;
+  name: string;
+  area: string;
+  x: number;
+  y: number;
+  scale: number;
+  art: string;
+}
+export const BRANCHES: Branch[] = (() => {
+  const used = new Set<string>();
+  return ALL_SCENERY.flatMap((b) => {
+    const kind = b.art.split("/").pop()!.replace(".webp", "");
+    const base = BRANCH_OF[kind];
+    if (!base) return [];
+    const near = DISTRICTS.reduce((best, d) => (Math.hypot(d.x - b.x, d.y - b.y) < Math.hypot(best.x - b.x, best.y - b.y) ? d : best));
+    const area = near.name;
+    const templates = BRANCH_NAMES[base]!;
+    // Pick a name that isn't taken yet (a few tries), so two branches don't share one.
+    let name = "";
+    for (let i = 0; i < 6 && (!name || used.has(name)); i++) {
+      const r = seeded(`${b.key}:name:${i}`);
+      const t = templates[Math.floor(r * templates.length)]!;
+      name = t.replace("{n}", FIRST[Math.floor(seeded(`${b.key}:who:${i}`) * FIRST.length)]!).replace("{a}", SHORT_AREA[area] ?? area);
+    }
+    if (used.has(name)) name = `${name} ${used.size}`;
+    used.add(name);
+    return [{ key: `${base}@${b.key}`, base, name, area, x: b.x, y: b.y, scale: b.scale, art: b.art }];
+  });
+})();
+export const BRANCH_BY_KEY: ReadonlyMap<string, Branch> = new Map(BRANCHES.map((b) => [b.key, b]));

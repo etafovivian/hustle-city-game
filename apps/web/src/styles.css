@@ -606,8 +606,8 @@ textarea.input { min-height: 0; resize: vertical; padding-top: 10px; padding-bot
 @media (min-width: 900px) {
   .visit-sheet.venue-card { overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); height: min(860px, calc(100dvh - 24px)); }
   .venue-layout.has-room { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); min-height: 0; }
-  .venue-layout.has-room .venue-room { display: grid; align-items: center; min-height: 0; }
-  .venue-layout.has-room .venue-room .interior-scene { width: min(100%, calc(100dvh - 140px)); margin: 0 auto; }
+  .venue-layout.has-room .venue-room { display: grid; align-items: center; min-height: 0; overflow: hidden; }
+  .venue-layout.has-room .venue-room .interior-scene { width: min(100%, calc(min(860px, 100dvh - 24px) - 150px)); margin: 0 auto; }
   .venue-layout.has-room .venue-info { overflow-y: auto; min-height: 0; padding-right: 4px; }
 }
 @media (max-width: 899px) {
