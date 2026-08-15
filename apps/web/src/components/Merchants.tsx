@@ -2,6 +2,7 @@ import { ARTISAN_CATEGORIES, LAGOS_AREAS, RETAIL_CATEGORIES, type BusinessSummar
 import { AlertCircle, BadgeCheck, CircleCheck, MessageCircle, CircleDot, CircleX, MapPin, MessageSquarePlus, Search, SearchX, Star } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, formatNaira } from "../api.js";
+import { DealList } from "./Deals.js";
 
 const STOCK = {
   in_stock: { label: "In stock", Icon: CircleCheck, cls: "ok" },
@@ -174,6 +175,7 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
                 <Star size={15} fill="currentColor" aria-hidden="true" className="gold" /> {b.rating.average.toFixed(1)} · {b.rating.count} review{b.rating.count === 1 ? "" : "s"} from completed jobs
               </p>
             )}
+            <DealList businessId={b.id} signedIn={signedIn} />
             {b.contactPhone && (
               <a className="btn sm" style={{ justifySelf: "start" }} href={whatsapp(b.contactPhone)} target="_blank" rel="noopener noreferrer">
                 <MessageCircle size={16} aria-hidden="true" /> WhatsApp {b.name.split(" ")[0]}

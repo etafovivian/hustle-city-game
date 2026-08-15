@@ -1,8 +1,8 @@
 // Land interest: players say which plot they want; the owner sees who to contact when ownership opens.
 
-import { businessMembers, businessPlots, businesses, landInterest, products, users } from "@hc/db";
+import { businessMembers, businessPlots, businesses, deals, landInterest, products, users } from "@hc/db";
 import { PLOT_ID, type LandInterestView, type MapBusiness } from "@hc/shared";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { AppError, notFound } from "../lib/errors.js";
@@ -62,7 +62,15 @@ export async function landRoutes(app: FastifyInstance) {
     const items = rows.length
       ? await app.db.select().from(products).where(and(inArray(products.businessId, rows.map((r) => r.b.id)), eq(products.status, "published")))
       : [];
+    const live = rows.length
+      ? await app.db
+          .select({ businessId: deals.businessId, n: count() })
+          .from(deals)
+          .where(and(inArray(deals.businessId, rows.map((r) => r.b.id)), eq(deals.status, "live"), gt(deals.endsAt, new Date())))
+          .groupBy(deals.businessId)
+      : [];
     return rows.map(({ plotId, b }) => ({
+      deals: Number(live.find((x) => x.businessId === b.id)?.n ?? 0),
       plotId,
       businessId: b.id,
       name: b.name,

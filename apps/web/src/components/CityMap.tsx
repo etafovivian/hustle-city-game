@@ -889,7 +889,7 @@ export function CityMap({
                     if (!l || !inView(l.x, l.y)) return null;
                     const scale = l.hh / 60;
                     const top = buildingBox(businessArt(b.category), l.x, l.y + siteOf(scale).lift, scale).y;
-                    const label = `🏪 ${b.name}${b.verified ? " ✓" : ""}`;
+                    const label = `🏪 ${b.name}${b.verified ? " ✓" : ""}${b.deals ? " · 🏷️ Deal" : ""}`;
                     const w = label.length * 8.6 + 22;
                     return (
                       <g key={`bizl-${b.plotId}`} className="venue-badge" transform={`translate(${l.x} ${top - 8}) scale(${Math.min(plateScale, 4)})`} onClick={() => !pz.wasDragged() && setBizOpen(b)}>
@@ -1071,6 +1071,7 @@ export function CityMap({
           {bizOpen && (
             <BusinessCard
               biz={bizOpen}
+              notify={notify}
               onClose={() => setBizOpen(null)}
               onGo={() => {
                 const l = FOR_SALE.find((p) => p.id === bizOpen.plotId);

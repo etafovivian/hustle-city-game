@@ -52,6 +52,8 @@ export interface MapBusiness {
   pickupAddress: string | null;
   contactPhone: string | null;
   products: { name: string; priceKobo: number }[];
+  /** Live deals right now. */
+  deals: number;
 }
 
 /** The building drawn for a business, by what it does. */

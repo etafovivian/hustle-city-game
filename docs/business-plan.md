@@ -81,9 +81,9 @@ Pricing idea (owner to decide): packages from ₦250,000 a month (one branded pl
 
 | Step | Scope | Size |
 |---|---|---|
-| 1 | Retail and office listings (extend B1 onboarding); "Verified" badge set by an admin | S |
-| 2 | Business on the map: link a published business to a plot; building, name and card with real contact | M |
-| 3 | Deals: create, show in the card, single-use codes, redeem on the business's phone, coins to the player | M |
+| 1 | Retail and office listings (extend B1 onboarding); "Verified" badge set by an admin (**retail built 2026-10-12**) | S |
+| 2 | Business on the map: link a published business to a plot; building, name and card with real contact (**built 2026-10-12, free**) | M |
+| 3 | Deals: create, show in the card, single-use codes, redeem on the business's phone, coins to the player (**built 2026-10-12**) | M |
 | 4 | Sponsored place and quest kit for corporates (admin builds it; sponsor sees a report) | M |
 | 5 | Business dashboard: leads, views, redemptions, billboard stats in one place | M |
 | 6 | Jobs board (Stage B2) and Academy hiring | L |

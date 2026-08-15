@@ -677,3 +677,45 @@ export const businessPlots = pgTable(
   },
   (t) => [uniqueIndex("business_plots_plot_uq").on(t.plotId)],
 );
+
+/** Discounts a business honours in real life (owner decision: deals only, no airtime or cash rewards). */
+export const deals = pgTable(
+  "deals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    terms: text("terms").notNull().default(""),
+    // pending_review | live | rejected | ended
+    status: text("status").notNull().default("pending_review"),
+    maxClaims: integer("max_claims").notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    reviewNote: text("review_note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("deals_business_idx").on(t.businessId),
+    check("deals_status_valid", sql`${t.status} in ('pending_review','live','rejected','ended')`),
+  ],
+);
+
+/** A player's one-time code for a deal; the business marks it used at the counter. */
+export const dealClaims = pgTable(
+  "deal_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("deal_claims_code_uq").on(t.code), uniqueIndex("deal_claims_deal_user_uq").on(t.dealId, t.userId)],
+);

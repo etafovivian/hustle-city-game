@@ -5,6 +5,7 @@ import { BadgeCheck, Check, Heart, LandPlot, MapPinned, MessageCircle, Share2, S
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins, formatNaira } from "../api.js";
 import { FOR_SALE, type LandPlot as Plot } from "./cityLayout.js";
+import { DealList } from "./Deals.js";
 
 const ROAD_LABEL: Record<LandRoad, string> = {
   arterial: "On the main road",
@@ -218,7 +219,7 @@ export function LandList({ onClose, onPick, taken }: { onClose: () => void; onPi
 }
 
 /** A real business's building on the map: what it is, what it sells, and how to reach it. */
-export function BusinessCard({ biz, onClose, onGo, onQuote }: { biz: MapBusiness; onClose: () => void; onGo: () => void; onQuote: () => void }) {
+export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: MapBusiness; onClose: () => void; onGo: () => void; onQuote: () => void; notify?: (m: string) => void }) {
   const sheet = useRef<HTMLDivElement>(null);
   useEscape(onClose, sheet);
   const wa = biz.contactPhone ? `https://wa.me/${biz.contactPhone.replace(/^\+/, "").replace(/^0/, "234")}` : null;
@@ -261,6 +262,7 @@ export function BusinessCard({ biz, onClose, onGo, onQuote }: { biz: MapBusiness
             ))}
           </ul>
         )}
+        <DealList businessId={biz.businessId} notify={notify} />
         <p className="tiny muted">A real Lagos business on Hustle City. Prices are theirs; you pay them directly.</p>
         <div className="row">
           {wa && (

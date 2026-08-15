@@ -13,3 +13,4 @@ export * from "./venues.js";
 export * from "./academy.js";
 export * from "./land.js";
 export * from "./rides.js";
+export * from "./deals.js";

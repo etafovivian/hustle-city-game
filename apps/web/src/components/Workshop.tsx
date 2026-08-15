@@ -4,6 +4,7 @@ import { ARTISAN_CATEGORIES, LAGOS_AREAS, RETAIL_CATEGORIES, categoryLabel, type
 import { AlertCircle, BadgeCheck, CheckCircle2, Clock, Plus, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, formatNaira } from "../api.js";
+import { OwnerDeals } from "./Deals.js";
 
 const STATUS: Record<MyBusiness["status"], { label: string; Icon: typeof Clock }> = {
   pending_review: { label: "Waiting for review", Icon: Clock },
@@ -54,6 +55,7 @@ export function Workshop({ notify }: { notify: (m: string) => void }) {
             </span>
             {b.reviewNote && <span className="small muted">Moderator note: {b.reviewNote}</span>}
             {b.status === "published" && b.kind !== "retail" && <span className="tiny muted">Requests arrive in Phone → Messages.</span>}
+            {b.status === "published" && <OwnerDeals businessId={b.id} verified={b.verified} notify={notify} />}
           </div>
         );
       })}

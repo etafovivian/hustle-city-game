@@ -85,6 +85,13 @@
       "when": 1791836342230,
       "tag": "0011_business_plots",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791837012189,
+      "tag": "0012_deals",
+      "breakpoints": true
     }
   ]
 }
