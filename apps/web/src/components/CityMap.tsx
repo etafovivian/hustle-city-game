@@ -2,10 +2,11 @@
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, businessArt, type AvatarConfig, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { LandPlot, LocateFixed, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
+import { LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
+import { CityOverview } from "./Overview.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
@@ -267,6 +268,7 @@ export function CityMap({
     }
   });
   const [landList, setLandList] = useState(false);
+  const [overview, setOverview] = useState(false);
   // "Go fix it" from the needs panel opens a place's card here.
   useEffect(() => {
     const open = (e: Event) => setVenueOpen((e as CustomEvent<string>).detail);
@@ -1012,6 +1014,9 @@ export function CityMap({
           <LocateFixed size={18} aria-hidden="true" />
         </button>
       </div>
+      <button type="button" className="map-land map-overview-btn" onClick={() => setOverview(true)}>
+        <MapIcon size={15} aria-hidden="true" /> City map
+      </button>
       <button type="button" className="map-land" onClick={() => setLandList(true)}>
         <LandPlot size={15} aria-hidden="true" /> Land for sale
       </button>
@@ -1050,6 +1055,26 @@ export function CityMap({
           {boardSheet && (
         <BillboardSheet boards={boards} boardKey={boardSheet.key} signedIn onPick={(key) => setBoardSheet({ key })} onClose={() => setBoardSheet(null)} />
       )}
+          {overview && (
+            <CityOverview
+              me={meAt.current}
+              mapBiz={mapBiz}
+              onClose={() => setOverview(false)}
+              onShow={(spot) => {
+                setOverview(false);
+                pz.flyTo(spot.x, spot.y, spot.kind === "area" ? 0.4 : 0.75);
+                if (spot.venue) window.setTimeout(() => setVenueOpen(spot.venue!), 500);
+                if (spot.kind === "business") {
+                  const b = mapBiz.find((m) => `biz-${m.plotId}` === spot.key);
+                  if (b) window.setTimeout(() => setBizOpen(b), 500);
+                }
+              }}
+              onGo={(spot) => {
+                setOverview(false);
+                goTo({ x: spot.x, y: spot.y + 30 }, spot.label, spot.venue);
+              }}
+            />
+          )}
           {ridePick && (
             <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} />
           )}
