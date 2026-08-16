@@ -38,6 +38,8 @@ describe("deals", () => {
     const deal = (await app.inject({ method: "GET", url: `/api/deals?businessId=${shop}` })).json()[0];
     expect(deal).toMatchObject({ title: "10% off a bag of rice", left: 50 });
 
+    expect((await owner.call("GET", `/api/deals?businessId=${shop}`)).json()[0].own).toBe(true);
+    expect((await buyer.call("GET", `/api/deals?businessId=${shop}`)).json()[0].own).toBe(false);
     expect((await owner.call("POST", `/api/deals/${deal.id}/claim`)).statusCode).toBe(409); // own deal
     const claim = (await buyer.call("POST", `/api/deals/${deal.id}/claim`)).json();
     expect(claim.code).toMatch(/^HC-[A-Z2-9]{6}$/);

@@ -35,6 +35,8 @@ export interface DealView {
   terms: string;
   endsAt: string;
   left: number;
+  /** The viewer runs this business (owners can't claim their own deals). */
+  own: boolean;
   /** The viewer's code, if they claimed one. */
   myCode: { code: string; expiresAt: string; redeemed: boolean } | null;
 }

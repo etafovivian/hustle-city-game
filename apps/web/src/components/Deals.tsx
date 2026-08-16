@@ -49,7 +49,9 @@ export function DealList({ businessId, signedIn = true, notify }: { businessId: 
               Until {shortDate(d.endsAt)} · {d.left} code{d.left === 1 ? "" : "s"} left · +{DEAL_REWARD.coins} coins when you use it
             </span>
           </span>
-          {d.myCode ? (
+          {d.own ? (
+            <span className="tag">Your deal</span>
+          ) : d.myCode ? (
             <span className={`deal-code ${d.myCode.redeemed ? "used" : ""}`}>{d.myCode.redeemed ? "Used" : d.myCode.code}</span>
           ) : signedIn ? (
             <button type="button" className="btn sm go" disabled={busy !== null || d.left === 0} onClick={() => void claim(d)}>

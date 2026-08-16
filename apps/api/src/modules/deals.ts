@@ -184,6 +184,16 @@ export async function dealRoutes(app: FastifyInstance) {
     const mine = request.user
       ? await app.db.select().from(dealClaims).where(and(inArray(dealClaims.dealId, ids), eq(dealClaims.userId, request.user.id)))
       : [];
+    const ownBiz = request.user
+      ? new Set(
+          (
+            await app.db
+              .select({ id: businessMembers.businessId })
+              .from(businessMembers)
+              .where(and(eq(businessMembers.userId, request.user.id), inArray(businessMembers.businessId, rows.map((r) => r.d.businessId))))
+          ).map((r) => r.id),
+        )
+      : new Set<string>();
     return rows.map(({ d, name }) => {
       const c = mine.find((m) => m.dealId === d.id);
       return {
@@ -194,6 +204,7 @@ export async function dealRoutes(app: FastifyInstance) {
         terms: d.terms,
         endsAt: d.endsAt.toISOString(),
         left: Math.max(0, d.maxClaims - Number(claimed.find((x) => x.dealId === d.id)?.n ?? 0)),
+        own: ownBiz.has(d.businessId),
         myCode: c ? { code: c.code, expiresAt: c.expiresAt.toISOString(), redeemed: c.redeemedAt !== null } : null,
       };
     });
