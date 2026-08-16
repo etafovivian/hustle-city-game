@@ -267,6 +267,12 @@ export function CityMap({
     }
   });
   const [landList, setLandList] = useState(false);
+  // "Go fix it" from the needs panel opens a place's card here.
+  useEffect(() => {
+    const open = (e: Event) => setVenueOpen((e as CustomEvent<string>).detail);
+    window.addEventListener("hc:open-venue", open);
+    return () => window.removeEventListener("hc:open-venue", open);
+  }, []);
   // Real businesses with a building on a plot (free in the beta).
   const [mapBiz, setMapBiz] = useState<MapBusiness[]>([]);
   const [bizOpen, setBizOpen] = useState<MapBusiness | null>(null);
@@ -406,7 +412,7 @@ export function CityMap({
         const art = businessArt(biz.category);
         const box = buildingBox(art, l.x, foot, scale);
         depthItems.push({
-          key: l.id,
+          key: `biz-${l.id}`,
           y: foot,
           node: (
             <g className="hotspot venue" role="button" tabIndex={0} aria-label={`${biz.name}, a real business. Open.`} onClick={() => !pz.wasDragged() && setBizOpen(biz)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setBizOpen(biz))}>
@@ -418,7 +424,7 @@ export function CityMap({
         continue;
       }
       depthItems.push({
-          key: l.id,
+          key: `sale-${l.id}`,
           y: l.y + l.hh,
           node: (
             <g className="hotspot land-plot" role="button" tabIndex={0} aria-label={`Land for sale in ${l.area}. Open.`} onClick={() => !pz.wasDragged() && setLandOpen(l.id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setLandOpen(l.id))}>

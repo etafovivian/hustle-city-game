@@ -414,6 +414,10 @@ describe("venue activities", () => {
     const res = await p.call("POST", "/api/game/venues/mama_nkechi_buka/amala");
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ gained: 10, done: ["mama_nkechi_buka:amala"] });
+    // Amala fills Food and Social by 25 from where they were.
+    const needs = (await p.call("GET", "/api/game/needs")).json();
+    expect(needs.needs.food).toBeGreaterThan(90);
+    expect(needs.mood.label).toBeTruthy();
     const after = (await p.call("GET", "/api/me")).json();
     expect(after.coins).toBe(before.coins - 300);
     expect(after.xp).toBe(before.xp + 10);
@@ -426,7 +430,10 @@ describe("venue activities", () => {
 
   it("keeps the free action off the server, prices the flex, and keeps opening hours", async () => {
     const p = await registerPlayer(app);
-    expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/free")).statusCode).toBe(404);
+    // The free action costs nothing and lifts the place's needs a little, once an hour.
+    const free = (await p.call("POST", "/api/game/venues/mama_nkechi_buka/free")).json();
+    expect(free.filled).toBe(true);
+    expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/free")).json().filled).toBe(false);
     // A new player can't afford the flex (25,000 coins), and nothing is charged.
     const before = (await p.call("GET", "/api/me")).json().coins;
     expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/flex")).statusCode).toBeGreaterThanOrEqual(400);

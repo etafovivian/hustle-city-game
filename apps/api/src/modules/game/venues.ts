@@ -2,7 +2,8 @@
 // The ledger reference makes each activity once a day; doing it again is refused before any charge.
 
 import { gameLedgerEntries, profiles } from "@hc/db";
-import { VENUES_BY_KEY, activityRef, clockHour, dayKey, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
+import { FREE_COOLDOWN_MS, NEED_GAIN, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
+import { loadNeeds, needsView, saveNeeds } from "./needs.js";
 import { and, eq, like, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -37,5 +38,25 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
     .where(eq(profiles.userId, userId))
     .returning({ xp: profiles.xp });
   await recordEvents(tx, userId, [{ type: "activity_done", key: `${venue.key}:${activity.key}` }], now, timeZone);
-  return { balance: posting.balance, xp: p!.xp, gained: activity.xp, ...(await venueDay(ctx)) };
+  // The activity fills the needs its tags name.
+  const { needs } = await loadNeeds(tx, userId, now);
+  const filled = fillNeeds(needs, activity.gives, activity.kind === "flex" ? NEED_GAIN.flex : NEED_GAIN.paid);
+  await saveNeeds(tx, userId, filled, now);
+  return { balance: posting.balance, xp: p!.xp, gained: activity.xp, ...(await venueDay(ctx)), ...needsView(filled) };
+}
+
+/** The free thing to do at a place: no coins or XP, a small lift to its needs (once an hour per place). */
+export async function doFree(ctx: ShopCtx, venueKey: string) {
+  const { tx, userId, now } = ctx;
+  const venue = VENUES_BY_KEY.get(venueKey);
+  const free = venue ? venueActions(venue).find((a) => a.kind === "free") : undefined;
+  if (!venue || !free) throw notFound("Place");
+  if (!isOpenAt(venue, lagosHourOf(now))) throw new AppError(409, "closed", `${venue.name} is closed now.`);
+  await lockProfile(tx, userId);
+  const { needs, freeAt } = await loadNeeds(tx, userId, now);
+  const last = freeAt[venue.key] ? new Date(freeAt[venue.key]!).getTime() : 0;
+  const fresh = now.getTime() - last >= FREE_COOLDOWN_MS;
+  const filled = fresh ? fillNeeds(needs, free.gives, NEED_GAIN.free) : needs;
+  await saveNeeds(tx, userId, filled, now, fresh ? { ...freeAt, [venue.key]: now.toISOString() } : freeAt);
+  return { filled: fresh, ...needsView(filled) };
 }

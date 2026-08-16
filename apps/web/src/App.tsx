@@ -1,4 +1,4 @@
-import { LOCATIONS, type LocationKey, type Me, type QuestBoard, type ShopView } from "@hc/shared";
+import { LOCATIONS, type LocationKey, type Me, type NeedsView, type QuestBoard, type ShopView } from "@hc/shared";
 import { ArrowLeft, Coins, ListChecks, LogOut, Map as MapIcon, Search, ShoppingBag, Smartphone, Sparkles, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, formatCoins } from "./api.js";
@@ -8,6 +8,7 @@ import { CityMap } from "./components/CityMap.js";
 import { Decorate } from "./components/Decorate.js";
 import { Hangout, WorkHub } from "./components/Locations.js";
 import { Merchants } from "./components/Merchants.js";
+import { MoodChip, NeedsPanel } from "./components/Needs.js";
 import { Phone, type PhoneApp } from "./components/Phone.js";
 import { Quests } from "./components/Quests.js";
 import { ResetPassword } from "./components/Password.js";
@@ -62,11 +63,26 @@ export function App() {
     setTimeout(() => setToast(null), 2600);
   }, []);
 
+  const [needs, setNeeds] = useState<NeedsView | null>(null);
+  const [needsOpen, setNeedsOpen] = useState(false);
   const refresh = useCallback(async () => {
     const [m, b] = await Promise.all([api<Me>("GET", "/api/me"), api<QuestBoard>("GET", "/api/game/quests")]);
     setMe(m);
     setBoard(b);
+    api<NeedsView>("GET", "/api/game/needs")
+      .then(setNeeds)
+      .catch(() => undefined);
   }, []);
+  // Needs run down in real time: look again every few minutes.
+  useEffect(() => {
+    if (!me) return;
+    const id = window.setInterval(() => {
+      api<NeedsView>("GET", "/api/game/needs")
+        .then(setNeeds)
+        .catch(() => undefined);
+    }, 180_000);
+    return () => window.clearInterval(id);
+  }, [!!me]);
 
   useEffect(() => {
     // Not signed in (401) or API unreachable: show the welcome screen.
@@ -198,6 +214,7 @@ export function App() {
             <span className="num">{formatCoins(me.coins)}</span>
             <span className="unit hide-sm">City Coins</span>
           </span>
+          {needs && <MoodChip view={needs} onOpen={() => setNeedsOpen(true)} />}
           <span className="xp hide-sm row" style={{ gap: 4 }}>
             <Sparkles size={15} aria-hidden="true" /> {me.xp} XP
           </span>
@@ -207,6 +224,18 @@ export function App() {
           </button>
         </div>
       </header>
+      {needsOpen && needs && (
+        <NeedsPanel
+          view={needs}
+          onClose={() => setNeedsOpen(false)}
+          onGo={(key) => {
+            setNeedsOpen(false);
+            goMap();
+            // The map opens the place's card (it may need a moment to mount after switching views).
+            window.setTimeout(() => window.dispatchEvent(new CustomEvent("hc:open-venue", { detail: key })), 50);
+          }}
+        />
+      )}
 
       {(view.kind === "map" || !location) && <Selvedge rule="City Coins are game money — no cash value" />}
 

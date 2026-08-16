@@ -9,7 +9,8 @@ import { claimQuest, questBoard, recordEvents } from "./quests.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
-import { doActivity, venueDay } from "./venues.js";
+import { doActivity, doFree, venueDay } from "./venues.js";
+import { loadNeeds, needsView } from "./needs.js";
 import { settleStop, startRide } from "./rides.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
@@ -222,5 +223,15 @@ export async function gameRoutes(app: FastifyInstance) {
     const { choice } = stopBody.parse(request.body);
     const id = z.uuid().parse(request.params.id);
     return inTx(user.id, (ctx) => settleStop(ctx, id, choice as never));
+  });
+
+  app.get("/api/game/needs", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, async ({ tx, now }) => needsView((await loadNeeds(tx, user.id, now)).needs));
+  });
+
+  app.post<{ Params: { venue: string } }>("/api/game/venues/:venue/free", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, (ctx) => doFree(ctx, request.params.venue.slice(0, 40)));
   });
 }

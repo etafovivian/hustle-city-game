@@ -123,6 +123,9 @@ export function VenueCard({
   const act = async (a: VenueAction) => {
     setError(null);
     if (a.kind === "free") {
+      // Free: no coins or XP, but it lifts the place's needs a little (once an hour per place).
+      const r = await api<{ filled: boolean }>("POST", `/api/game/venues/${venue.key}/free`).catch(() => ({ filled: false }));
+      if (r.filled) onChanged();
       setRunning({ action: a, started: Date.now(), gained: 0 });
       return;
     }

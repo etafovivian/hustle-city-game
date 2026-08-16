@@ -925,9 +925,10 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
 /** The Junction 101 neighbourhood's front lines: both arterials' frontages and every quarter street. */
 const J101_LINES: FrontLine[] = [
   A_ROAD(ZEBRA_AT + 40, STREET_LEN),
-  A_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)),
+  // The west and south halves need their own ids, or their plots would repeat the east and north halves' ids.
+  { ...A_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)), id: "Aw" },
   B_ROAD(ZEBRA_AT + 40, STREET_LEN),
-  B_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)),
+  { ...B_ROAD(-STREET_LEN, -(ZEBRA_AT + 40)), id: "Bs" },
   ...QUARTERS.flatMap(([sa, sb]) =>
     STREET_DEFS.map((d): FrontLine =>
       d.fixed === "u" ? st(`${d.id}${sa}${sb}`, "a", sa * d.at, sb * d.from, sb * d.to, d.cls) : st(`${d.id}${sa}${sb}`, "b", sb * d.at, sa * d.from, sa * d.to, d.cls),

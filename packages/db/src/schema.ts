@@ -719,3 +719,13 @@ export const dealClaims = pgTable(
   },
   (t) => [uniqueIndex("deal_claims_code_uq").on(t.code), uniqueIndex("deal_claims_deal_user_uq").on(t.dealId, t.userId)],
 );
+
+/** A player's needs as last saved (they run down from `updated_at`), and when each place's free action last filled them. */
+export const playerNeeds = pgTable("player_needs", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  needs: jsonb("needs").notNull(),
+  freeAt: jsonb("free_at").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
