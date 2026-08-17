@@ -110,6 +110,7 @@ export function DmThreadView({ nick }: { nick: string }) {
 export function Chats({ open: initial }: { open?: string | null }) {
   const [threads, setThreads] = useState<DmThread[] | null>(null);
   const [open, setOpen] = useState<string | null>(initial ?? null);
+  const [to, setTo] = useState("");
   useEffect(() => {
     if (open) return;
     api<DmThread[]>("GET", "/api/chat/dm")
@@ -130,8 +131,21 @@ export function Chats({ open: initial }: { open?: string | null }) {
     <div className="stack account-form">
       <div className="stack" style={{ gap: 2 }}>
         <h2 style={{ fontSize: 20 }}>Chats</h2>
-        <p className="small muted">Message players you've met. Tap someone on the map to start. Links and phone numbers are blocked to keep scams out.</p>
+        <p className="small muted">Message any player by their @name, or tap someone on the map. Links and phone numbers are blocked to keep scams out.</p>
       </div>
+      <form
+        className="chat-compose"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = to.trim().replace(/^@/, "");
+          if (n) setOpen(n);
+        }}
+      >
+        <input className="input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="Message a player: type their @name" aria-label="Player's name" maxLength={30} />
+        <button type="submit" className="btn sm go" disabled={!to.trim()}>
+          Open
+        </button>
+      </form>
       {threads?.length === 0 && <p className="small muted">No chats yet.</p>}
       {threads?.map((t) => (
         <button key={t.with} type="button" className="ov-row chat-thread" onClick={() => setOpen(t.with)}>

@@ -26,34 +26,35 @@ export interface PresenceReply {
 }
 
 /**
- * Rooms in each kind of home: the first is where you arrive. Bigger houses have more rooms; rooms without their own
- * art yet reuse the closest one until the Stitch batch for them lands (docs/stitch/queue.md, batch 32).
+ * Rooms in each kind of home: the first is where you arrive. Bigger houses have more rooms; art from Stitch zip 16 (batches 32-33).
  */
 export const HOME_ROOMS: Record<string, { key: string; label: string; art: string }[]> = {
   starter: [{ key: "room", label: "Your room", art: "home-face-me" }],
   bungalow: [
     { key: "parlour", label: "Parlour", art: "home-self-contain" },
-    { key: "bedroom", label: "Bedroom", art: "home-mini-flat" },
+    { key: "bedroom", label: "Bedroom", art: "home-bedroom" },
   ],
   storey_house: [
     { key: "parlour", label: "Parlour", art: "home-mini-flat" },
-    { key: "bedroom", label: "Bedroom", art: "home-self-contain" },
+    { key: "bedroom", label: "Bedroom", art: "home-bedroom" },
+    { key: "kitchen", label: "Kitchen", art: "home-kitchen" },
   ],
   family_compound: [
     { key: "parlour", label: "Parlour", art: "home-mini-flat" },
-    { key: "bedroom", label: "Bedroom", art: "home-self-contain" },
-    { key: "yard", label: "Compound yard", art: "home-face-me" },
+    { key: "bedroom", label: "Bedroom", art: "home-bedroom" },
+    { key: "yard", label: "Compound yard", art: "home-compound-yard" },
   ],
   terrace_duplex: [
     { key: "living", label: "Living room", art: "home-duplex" },
-    { key: "bedroom", label: "Master bedroom", art: "home-mini-flat" },
-    { key: "kitchen", label: "Kitchen", art: "home-self-contain" },
+    { key: "bedroom", label: "Master bedroom", art: "home-duplex-bedroom" },
+    { key: "kitchen", label: "Kitchen", art: "home-kitchen" },
   ],
   villa: [
     { key: "living", label: "Grand living room", art: "home-mansion" },
-    { key: "lounge", label: "Lounge", art: "home-duplex" },
-    { key: "bedroom", label: "Master suite", art: "home-crazy" },
-    { key: "kitchen", label: "Kitchen", art: "home-mini-flat" },
+    { key: "suite", label: "Master suite", art: "home-villa-suite" },
+    { key: "kitchen", label: "Kitchen", art: "home-villa-kitchen" },
+    { key: "cinema", label: "Cinema", art: "home-villa-cinema" },
+    { key: "pool", label: "Pool deck", art: "home-villa-pool" },
   ],
 };
 

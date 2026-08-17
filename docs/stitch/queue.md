@@ -213,6 +213,8 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 3. Cutaway interior of a provision shop: shelves of tins, sachets, bags of rice and detergent with plain coloured labels, a counter with a till, a fridge. No logos or brand names anywhere, plain labels only.
 4. An aircraft hangar (exterior): a big curved-roof hangar with its doors open and a small plane half inside, a tow tractor in front. (It was missing from zip 14.)
 
+**Done (zip 16):** batches 32–33 (bungalow bedroom, duplex bedroom, kitchen, compound yard, villa suite, villa kitchen, cinema, pool deck).
+
 ## Batch 32: rooms for bigger houses (homes get several rooms; these replace the stand-ins)
 For each, add: "Isometric cutaway room: two back walls and a floor, no front walls or ceiling, warm interior lighting. Leave a clear open walkway across the middle of the floor. No people. Draw the room a bit bigger than usual."
 1. Bedroom in a Lagos bungalow: a double bed with an Ankara bedspread, a wardrobe, a small standing fan, a mirror, a mosquito net tied up.

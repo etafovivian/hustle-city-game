@@ -158,7 +158,11 @@ export function Phone({
             (thread ? (
               <RequestThread id={thread} onBack={() => setThread(null)} notify={notify} onChanged={refreshTurns} />
             ) : (
-              <RequestList onOpen={setThread} />
+              <div className="stack">
+                <Chats />
+                <h2 style={{ fontSize: 18 }}>Quote requests</h2>
+                <RequestList onOpen={setThread} />
+              </div>
             ))}
           {app === "workshop" && <Workshop notify={notify} />}
           {app === "deals" && <MyDeals />}
