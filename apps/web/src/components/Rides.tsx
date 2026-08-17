@@ -6,7 +6,10 @@ import {
   isRushHour,
   rideFare,
   rideSeconds,
+  VEHICLES,
+  fuelCost,
   type RideMode,
+  type VehicleKind,
   type StopChoice,
   type StopResult,
 } from "@hc/shared";
@@ -29,17 +32,20 @@ export function RidePicker({
   to,
   onPick,
   onClose,
+  vehicles = [],
 }: {
+  /** Vehicles the player owns (drive yourself for fuel). */
+  vehicles?: VehicleKind[];
   /** Trip length in map units along the route. */
   units: number;
   hour: number;
   coins: number | null;
   /** Where to, for the title. */
   to: string;
-  onPick: (mode: RideMode) => Promise<void>;
+  onPick: (mode: RideMode | "own", vehicle?: VehicleKind) => Promise<void>;
   onClose: () => void;
 }) {
-  const [busy, setBusy] = useState<RideMode | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sheet = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -51,11 +57,11 @@ export function RidePicker({
   const rush = isRushHour(hour);
   const km = (units / 1000).toFixed(1);
 
-  const pick = async (mode: RideMode) => {
-    setBusy(mode);
+  const pick = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
+    setBusy(vehicle ?? mode);
     setError(null);
     try {
-      await onPick(mode);
+      await onPick(mode, vehicle);
     } catch (e) {
       setError((e as Error).message);
       setBusy(null);
@@ -75,6 +81,30 @@ export function RidePicker({
           </span>
         </div>
         <ul className="ride-list">
+          {VEHICLES.filter((v) => vehicles.includes(v.kind)).map((v) => {
+            const fuel = fuelCost(v.kind, units);
+            return (
+              <li key={v.kind}>
+                <button type="button" className="ride-option own" disabled={busy !== null} onClick={() => void pick("own", v.kind)}>
+                  <span className="ride-art" aria-hidden="true">
+                    <img src={v.image} alt="" />
+                  </span>
+                  <span className="ride-text">
+                    <strong>Drive your {v.label.toLowerCase()}</strong>
+                    <span className="tiny muted">Yours: just fuel</span>
+                  </span>
+                  <span className="ride-meta">
+                    <span className="ride-fare">
+                      <Coins size={13} aria-hidden="true" /> {formatCoins(fuel)}
+                    </span>
+                    <span className="tiny muted">
+                      <Timer size={11} aria-hidden="true" /> {Math.max(3, Math.round(units / v.speed))}s
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
           {RIDE_MODES.map((m) => {
             const fare = rideFare(m.mode, units, hour);
             const short = coins !== null && fare > coins;

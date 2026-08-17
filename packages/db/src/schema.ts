@@ -729,3 +729,44 @@ export const playerNeeds = pgTable("player_needs", {
   freeAt: jsonb("free_at").notNull().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Shifts worked at each place's job (the rung follows from the count). */
+export const playerJobs = pgTable(
+  "player_jobs",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    venue: text("venue").notNull(),
+    shifts: integer("shifts").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.venue] })],
+);
+
+/** A player's own home: a plot bought with City Coins and the house built on it (one each for now). */
+export const playerHomes = pgTable(
+  "player_homes",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    plotId: text("plot_id").notNull(),
+    design: text("design").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("player_homes_plot_uq").on(t.plotId)],
+);
+
+/** Vehicles a player owns. */
+export const playerVehicles = pgTable(
+  "player_vehicles",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.kind] })],
+);

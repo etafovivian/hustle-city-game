@@ -1,6 +1,6 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { AcademyApp, AdminAcademy } from "./Academy.js";
@@ -10,10 +10,11 @@ import { ChangePassword } from "./Password.js";
 import { RequestList, RequestThread } from "./Requests.js";
 import { AdminReview, Workshop } from "./Workshop.js";
 import { AdminDeals, MyDeals } from "./Deals.js";
+import { Garage } from "./Home.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
@@ -23,13 +24,14 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
   { key: "deals", label: "Deals", Icon: Ticket, tint: "#15803d" },
+  { key: "garage", label: "Garage", Icon: Car, tint: "#334155" },
   { key: "workshop", label: "Business", Icon: Hammer, tint: "#8a3fa0" },
   { key: "ads", label: "Ads", Icon: Megaphone, tint: "#c2410c" },
   { key: "account", label: "Account", Icon: Settings, tint: "#4b5563" },
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", garage: "Garage", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -158,6 +160,7 @@ export function Phone({
             ))}
           {app === "workshop" && <Workshop notify={notify} />}
           {app === "deals" && <MyDeals />}
+          {app === "garage" && <Garage notify={notify} onChanged={onChanged} />}
           {app === "admin" && isAdmin && (
             <div className="stack">
               <AdminAcademy notify={notify} />

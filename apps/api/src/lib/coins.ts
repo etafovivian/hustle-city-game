@@ -22,6 +22,11 @@ export type CoinKind =
   | "ride"
   | "area_boys"
   | "deal_reward"
+  | "shift_pay"
+  | "land"
+  | "house"
+  | "vehicle"
+  | "fuel"
   | "admin_adjustment";
 
 export interface PostingResult {

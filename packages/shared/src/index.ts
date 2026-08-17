@@ -15,3 +15,7 @@ export * from "./land.js";
 export * from "./rides.js";
 export * from "./deals.js";
 export * from "./needs.js";
+export * from "./plots.gen.js";
+export * from "./jobs.js";
+export * from "./homes.js";
+export * from "./vehicles.js";

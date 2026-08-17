@@ -832,3 +832,17 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
   .overview-layout { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); }
   .ov-list { max-height: 56dvh; }
 }
+/* Jobs, homes, garage */
+.work-box { display: grid; gap: 6px; padding: 12px; border-radius: 14px; background: #1b2a52; border: 1px solid #3b5bdb; }
+.work-box .spread { justify-content: space-between; align-items: center; gap: 8px; }
+.land-buy { display: grid; gap: 8px; }
+.house-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.house-option { width: 100%; height: 100%; display: grid; gap: 4px; justify-items: center; padding: 10px; border-radius: 14px; border: 1.5px solid var(--rule); background: var(--sheet-2); color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.house-option:hover:not(:disabled) { border-color: var(--yellow); }
+.house-option.current { border-color: #4ade80; }
+.house-option img { width: 100%; height: 80px; object-fit: contain; }
+.garage { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.garage-item { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.garage-item img { width: 70px; height: 50px; object-fit: contain; }
+.ride-option.own { border-color: #4ade80; }
+.home-ctl { background: #ffc72c; color: #0a0f24; }

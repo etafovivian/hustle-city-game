@@ -1,11 +1,12 @@
 // Land for sale: tap a dashed plot on the map (or pick one from the list) to see its size, road and price,
 // share it, or say you want it. Ownership opens later; the owner contacts interested players first.
 import { PRIME_AREAS, businessArt, categoryLabel, landPrice, plotSquareMetres, type LandInterestView, type LandRoad, type MapBusiness, type MyBusiness } from "@hc/shared";
-import { BadgeCheck, Check, Heart, LandPlot, MapPinned, MessageCircle, Share2, Store, X } from "lucide-react";
+import { BadgeCheck, Check, Heart, Home as HomeIcon, LandPlot, MapPinned, MessageCircle, Share2, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins, formatNaira } from "../api.js";
 import { FOR_SALE, type LandPlot as Plot } from "./cityLayout.js";
 import { DealList } from "./Deals.js";
+import { HousePicker } from "./Home.js";
 
 const ROAD_LABEL: Record<LandRoad, string> = {
   arterial: "On the main road",
@@ -40,7 +41,39 @@ function useEscape(onClose: () => void, focus: React.RefObject<HTMLDivElement | 
   }, [onClose, focus]);
 }
 
-export function LandCard({ plotId, onClose, notify, onList, onBuilt }: { plotId: string; onClose: () => void; notify: (m: string) => void; onList: () => void; onBuilt?: () => void }) {
+export function LandCard({
+  plotId,
+  onClose,
+  notify,
+  onList,
+  onBuilt,
+  hasHome,
+  onBought,
+}: {
+  plotId: string;
+  onClose: () => void;
+  notify: (m: string) => void;
+  onList: () => void;
+  onBuilt?: () => void;
+  /** The player already owns a home (one each for now). */
+  hasHome?: boolean;
+  onBought?: () => void;
+}) {
+  const [buying, setBuying] = useState(false);
+  const [buyBusy, setBuyBusy] = useState(false);
+  const buyWith = async (design: string) => {
+    setBuyBusy(true);
+    try {
+      await api("POST", `/api/land/${encodeURIComponent(plotId)}/buy`, { design });
+      notify("Congratulations, landlord! Your house is going up.");
+      onBought?.();
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBuyBusy(false);
+    }
+  };
   const [mine, setMine] = useState<MyBusiness[]>([]);
   useEffect(() => {
     api<MyBusiness[]>("GET", "/api/businesses/mine")
@@ -129,10 +162,24 @@ export function LandCard({ plotId, onClose, notify, onList, onBuilt }: { plotId:
           </div>
         </dl>
         <p className="small muted">
-          Build a shop, a home or rent it out. Ownership opens soon: say you want it and you're first in line.
+          Buy it with City Coins and build your house, or put your real business here.
           {others > 0 && ` ${others} other player${others === 1 ? "" : "s"} also want${others === 1 ? "s" : ""} this plot.`}
         </p>
         {error && <p className="alert small">{error}</p>}
+        {!hasHome && (
+          <div className="land-buy">
+            {buying ? (
+              <>
+                <strong className="small">Pick your house (land + house):</strong>
+                <HousePicker plotId={plotId} onPick={(k) => void buyWith(k)} busy={buyBusy} />
+              </>
+            ) : (
+              <button type="button" className="btn go" onClick={() => setBuying(true)}>
+                <HomeIcon size={16} aria-hidden="true" /> Buy this plot and build your house
+              </button>
+            )}
+          </div>
+        )}
         {mine.length > 0 && (
           <div className="land-build">
             <strong className="small">Got a real business? Put it here for free.</strong>

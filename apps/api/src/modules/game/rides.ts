@@ -1,8 +1,8 @@
 // Rides: the fare is charged when the trip starts, and the server decides there and then whether the area boys
 // stop it. The player picks how to handle the stop; the server rolls the outcome and settles it once.
 
-import { profiles, rides } from "@hc/db";
-import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, lagosHourOf, rideFare, type RideMode, type RideStart, type StopChoice, type StopResult } from "@hc/shared";
+import { playerVehicles, profiles, rides } from "@hc/db";
+import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rideFare, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { postCoins, type PostingResult } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -11,6 +11,22 @@ import type { ShopCtx } from "./shop.js";
 
 /** Dice for stops and their outcomes (tests swap it for fixed rolls). */
 export const dice = { roll: () => Math.random() };
+
+/** Driving yourself: fuel instead of a fare, and the vehicle's own (lower) chance of a stop. */
+export async function startDrive({ tx, userId }: ShopCtx, kind: VehicleKind, units: number): Promise<RideStart> {
+  const v = VEHICLE_BY_KIND.get(kind);
+  if (!v) throw new AppError(400, "bad_vehicle", "Pick one of your vehicles.");
+  if (!Number.isInteger(units) || units < 1 || units > MAX_RIDE_UNITS) throw new AppError(400, "bad_distance", "That trip is off the map.");
+  const [owned] = await tx.select().from(playerVehicles).where(and(eq(playerVehicles.userId, userId), eq(playerVehicles.kind, kind)));
+  if (!owned) throw new AppError(409, "not_owned", "You don't own that yet. Buy one in Phone → Garage.");
+  const profile = await lockProfile(tx, userId);
+  const fuel = fuelCost(kind, units);
+  if (profile.coinBalance < fuel) throw new AppError(422, "insufficient_coins", `You need ${fuel} coins of fuel.`);
+  const stop = dice.roll() < v.stopChance;
+  const [ride] = await tx.insert(rides).values({ userId, mode: `own:${kind}`, units, fare: fuel, stop }).returning({ id: rides.id });
+  const posting = await postCoins(tx, userId, -fuel, "fuel", `fuel:${ride!.id}`);
+  return { rideId: ride!.id, fare: fuel, stop, balance: posting.balance };
+}
 
 export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, units: number): Promise<RideStart> {
   const info = RIDE_BY_MODE.get(mode);

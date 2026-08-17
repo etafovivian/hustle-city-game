@@ -1,12 +1,13 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, businessArt, type AvatarConfig, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, businessArt, type AvatarConfig, type HomeView, type MapHome, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
+import { HomeCard } from "./Home.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
@@ -35,6 +36,7 @@ import {
   siteOf,
   BRANCHES,
   BRANCH_BY_KEY,
+  starterRoom,
   FORESTS,
   GRASS,
   RUNWAY,
@@ -242,8 +244,18 @@ export function CityMap({
     if (units < RIDE_PICK_FROM) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
     else setRidePick({ ...to, units: Math.round(units), to: label, venue });
   };
-  const ride = async (mode: RideMode) => {
+  const ride = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
     const pick = ridePick!;
+    if (mode === "own") {
+      const r = await api<RideStart>("POST", "/api/game/rides", { mode, vehicle, units: Math.min(pick.units, MAX_RIDE_UNITS) });
+      setRidePick(null);
+      onVisited();
+      notify(`Driving to ${pick.to}: ${formatCoins(r.fare)} coins of fuel`);
+      setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode, vehicle, rideId: r.rideId, stop: r.stop });
+      const me = meAt.current;
+      if (pz.view) pz.flyTo(me.x + (pick.x - me.x) * 0.6, me.y + (pick.y - me.y) * 0.6, Math.min(pz.view.k, 0.6));
+      return;
+    }
     if (mode === "walk") {
       setRidePick(null);
       setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode });
@@ -286,6 +298,30 @@ export function CityMap({
     void loadMapBiz();
   }, []);
   const bizByPlot = new Map(mapBiz.map((b) => [b.plotId, b]));
+  // Homes: yours (starter room or your own plot) and other players' houses on their plots.
+  const [home, setHome] = useState<HomeView | null>(null);
+  const [homes, setHomes] = useState<MapHome[]>([]);
+  const [homeOpen, setHomeOpen] = useState(false);
+  const [vehicles, setVehicles] = useState<VehicleKind[]>([]);
+  const loadHomes = () => {
+    api<HomeView>("GET", "/api/game/home")
+      .then(setHome)
+      .catch(() => undefined);
+    api<MapHome[]>("GET", "/api/map/homes")
+      .then(setHomes)
+      .catch(() => undefined);
+    api<VehicleKind[]>("GET", "/api/game/vehicles")
+      .then(setVehicles)
+      .catch(() => undefined);
+  };
+  useEffect(() => {
+    loadHomes();
+  }, []);
+  const homeByPlot = new Map(homes.map((h) => [h.plotId, h]));
+  const room = starterRoom(nickname);
+  const myPlot = home?.plotId ? FOR_SALE.find((p) => p.id === home.plotId) : undefined;
+  /** Where "home" is: your plot, or your room in the face-me block. */
+  const homeSpot = myPlot ? { x: myPlot.x, y: myPlot.y + myPlot.hh } : { x: room.x, y: room.y + 30 };
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -365,6 +401,18 @@ export function CityMap({
     if (!inView(o.x, o.y) || (far && (o.type !== "building" || !o.landmark))) continue;
     let node: ReactNode;
     const branch = o.type === "building" ? BRANCH_BY_BUILDING.get(o.key) : undefined;
+    if (o.type === "building" && !myPlot && o.key === room.key) {
+      depthItems.push({
+        key: o.key,
+        y: o.y,
+        node: (
+          <g className="hotspot venue" role="button" tabIndex={0} aria-label="Your room. Open." onClick={() => !pz.wasDragged() && setHomeOpen(true)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setHomeOpen(true))}>
+            <image href={o.art} x={o.box.x} y={o.box.y} width={o.box.w} height={o.box.h} />
+          </g>
+        ),
+      });
+      continue;
+    }
     if (branch && o.type === "building")
       // A branch (a repeated buka, salon, hotel…): tap it to go in.
       node = (
@@ -406,6 +454,30 @@ export function CityMap({
     }
     for (const l of FOR_SALE) {
       if (!inView(l.x, l.y)) continue;
+      const owned = homeByPlot.get(l.id);
+      if (owned) {
+        // A player's house on their own plot.
+        const scale = l.hh / 60;
+        const foot = l.y + siteOf(scale).lift;
+        const art = `/art/buildings/${HOUSE_BY_KEY.get(owned.design)?.art ?? "bungalow"}.webp`;
+        const box = buildingBox(art, l.x, foot, scale);
+        depthItems.push({
+          key: `home-${l.id}`,
+          y: foot,
+          node: owned.mine ? (
+            <g className="hotspot venue" role="button" tabIndex={0} aria-label="Your home. Open." onClick={() => !pz.wasDragged() && setHomeOpen(true)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setHomeOpen(true))}>
+              <ellipse cx={l.x} cy={foot} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
+              <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
+            </g>
+          ) : (
+            <g aria-hidden="true">
+              <ellipse cx={l.x} cy={foot} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
+              <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
+            </g>
+          ),
+        });
+        continue;
+      }
       const biz = bizByPlot.get(l.id);
       if (biz) {
         // A real business's building, standing on its plot.
@@ -812,7 +884,8 @@ export function CityMap({
                   posOut={meAt}
                   onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
                   onArrive={() => {
-                    if (arriveAt.current) setVenueOpen(arriveAt.current);
+                    if (arriveAt.current === "__home") setHomeOpen(true);
+                    else if (arriveAt.current) setVenueOpen(arriveAt.current);
                     arriveAt.current = null;
                   }}
                 />
@@ -890,6 +963,41 @@ export function CityMap({
                       />
                     );
                   })}
+                {/* Homes: yours in yellow (always), other players' when close */}
+                {(() => {
+                  const top = myPlot
+                    ? buildingBox(`/art/buildings/${HOUSE_BY_KEY.get(home?.design ?? "")?.art ?? "bungalow"}.webp`, myPlot.x, myPlot.y + siteOf(myPlot.hh / 60).lift, myPlot.hh / 60).y
+                    : buildingBox(room.art, room.x, room.y, room.scale).y;
+                  const x = myPlot ? myPlot.x : room.x;
+                  const label = myPlot ? "🏠 Your home" : "🏠 Your room";
+                  return (
+                    <g className="venue-badge" transform={`translate(${x} ${top - 6}) scale(${Math.min(plateScale, 4)})`} onClick={() => !pz.wasDragged() && setHomeOpen(true)}>
+                      <rect x="-58" y="-28" width="116" height="28" rx="14" fill="#ffc72c" stroke="#0a0f24" strokeWidth="2" />
+                      <text y="-9" textAnchor="middle" fontSize="14" fontWeight="900" fill="#0a0f24">
+                        {label}
+                      </text>
+                    </g>
+                  );
+                })()}
+                {k >= 0.45 &&
+                  homes
+                    .filter((h) => !h.mine)
+                    .map((h) => {
+                      const l = FOR_SALE.find((p) => p.id === h.plotId);
+                      if (!l || !inView(l.x, l.y)) return null;
+                      const scale = l.hh / 60;
+                      const top = buildingBox(`/art/buildings/${HOUSE_BY_KEY.get(h.design)?.art ?? "bungalow"}.webp`, l.x, l.y + siteOf(scale).lift, scale).y;
+                      const text = `🏠 @${h.nickname}`;
+                      const w = text.length * 8 + 20;
+                      return (
+                        <g key={`home-l-${h.plotId}`} aria-hidden="true" transform={`translate(${l.x} ${top - 6}) scale(${Math.min(plateScale, 4)})`}>
+                          <rect x={-w / 2} y="-24" width={w} height="24" rx="12" fill="#0a0f24" stroke="#ffc72c" strokeWidth="1.5" />
+                          <text y="-7" textAnchor="middle" fontSize="12.5" fontWeight="800" fill="#fff">
+                            {text}
+                          </text>
+                        </g>
+                      );
+                    })}
                 {/* Real businesses: a small storefront pill with the name (and a tick when verified) */}
                 {k >= 0.35 &&
                   mapBiz.map((b) => {
@@ -1004,6 +1112,9 @@ export function CityMap({
         <button type="button" className="map-ctl" onClick={() => setBoardSheet({ key: null })} aria-label="Billboards: advertise your business">
           <Megaphone size={18} aria-hidden="true" />
         </button>
+        <button type="button" className="map-ctl home-ctl" onClick={() => goTo(homeSpot, "home", "__home")} aria-label="Go home" title="Go home">
+          <HomeIcon size={18} aria-hidden="true" />
+        </button>
         <button type="button" className="map-ctl" onClick={() => pz.zoomBy(1.4)} aria-label="Zoom in">
           <Plus size={18} aria-hidden="true" />
         </button>
@@ -1058,12 +1169,14 @@ export function CityMap({
           {overview && (
             <CityOverview
               me={meAt.current}
+              home={homeSpot}
               mapBiz={mapBiz}
               onClose={() => setOverview(false)}
               onShow={(spot) => {
                 setOverview(false);
+                if (spot.key === "home") window.setTimeout(() => setHomeOpen(true), 500);
                 pz.flyTo(spot.x, spot.y, spot.kind === "area" ? 0.4 : 0.75);
-                if (spot.venue) window.setTimeout(() => setVenueOpen(spot.venue!), 500);
+                if (spot.venue && spot.venue !== "__home") window.setTimeout(() => setVenueOpen(spot.venue!), 500);
                 if (spot.kind === "business") {
                   const b = mapBiz.find((m) => `biz-${m.plotId}` === spot.key);
                   if (b) window.setTimeout(() => setBizOpen(b), 500);
@@ -1076,7 +1189,7 @@ export function CityMap({
             />
           )}
           {ridePick && (
-            <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} />
+            <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} vehicles={vehicles} />
           )}
           {stopFor && (
             <AreaBoys
@@ -1090,7 +1203,7 @@ export function CityMap({
           )}
           {landList && (
             <LandList
-              taken={new Set(mapBiz.map((b) => b.plotId))}
+              taken={new Set([...mapBiz.map((b) => b.plotId), ...homes.map((h) => h.plotId)])}
               onClose={() => setLandList(false)}
               onPick={(p) => {
                 setLandList(false);
@@ -1115,8 +1228,29 @@ export function CityMap({
               }}
             />
           )}
-          {landOpen && !landList && !bizByPlot.has(landOpen) && (
+          {homeOpen && home && (
+            <HomeCard
+              home={home}
+              label={myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}
+              onClose={() => setHomeOpen(false)}
+              onChanged={() => {
+                loadHomes();
+                onVisited();
+              }}
+              notify={notify}
+              onBuyLand={() => {
+                setHomeOpen(false);
+                setLandList(true);
+              }}
+            />
+          )}
+          {landOpen && !landList && !bizByPlot.has(landOpen) && !homeByPlot.has(landOpen) && (
             <LandCard
+              hasHome={!!home?.plotId}
+              onBought={() => {
+                loadHomes();
+                onVisited();
+              }}
               onBuilt={() => void loadMapBiz()}
               plotId={landOpen}
               onClose={() => setLandOpen(null)}

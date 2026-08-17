@@ -11,7 +11,7 @@ import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
 import { doActivity, doFree, venueDay } from "./venues.js";
 import { loadNeeds, needsView } from "./needs.js";
-import { settleStop, startRide } from "./rides.js";
+import { settleStop, startDrive, startRide } from "./rides.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -25,7 +25,11 @@ const decorBuyBody = z.object({
   rotation: z.number().int(),
   requestId: z.uuid(),
 });
-const rideBody = z.object({ mode: z.enum(RIDE_MODES.map((m) => m.mode) as [string, ...string[]]), units: z.number().int() });
+const rideBody = z.object({
+  mode: z.enum(["own", ...RIDE_MODES.map((m) => m.mode)] as [string, ...string[]]),
+  units: z.number().int(),
+  vehicle: z.enum(["bike", "keke", "saloon", "suv"]).optional(),
+});
 const stopBody = z.object({ choice: z.enum(AREA_BOYS_OPTIONS.map((o) => o.choice) as [string, ...string[]]) });
 const dreamClaimBody = z.object({ at: z.number().int().positive() });
 const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });
@@ -214,7 +218,8 @@ export async function gameRoutes(app: FastifyInstance) {
 
   app.post("/api/game/rides", async (request) => {
     const user = requireUser(request);
-    const { mode, units } = rideBody.parse(request.body);
+    const { mode, units, vehicle } = rideBody.parse(request.body);
+    if (mode === "own") return inTx(user.id, (ctx) => startDrive(ctx, vehicle ?? "bike", units));
     return inTx(user.id, (ctx) => startRide(ctx, mode as never, units));
   });
 

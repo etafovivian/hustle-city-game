@@ -55,12 +55,14 @@ const KIND_LABEL: Record<Spot["kind"], string> = { area: "Areas", place: "Places
 
 export function CityOverview({
   me,
+  home,
   mapBiz,
   onClose,
   onShow,
   onGo,
 }: {
   me: { x: number; y: number };
+  home: { x: number; y: number };
   mapBiz: MapBusiness[];
   onClose: () => void;
   /** Fly the camera there (and open the place). */
@@ -68,7 +70,8 @@ export function CityOverview({
   /** Ride or walk there. */
   onGo: (s: Spot) => void;
 }) {
-  const spots = useSpots(mapBiz);
+  const base = useSpots(mapBiz);
+  const spots = useMemo(() => [{ key: "home", label: "Your home", sub: "Rest and change your house", icon: "🏠", x: home.x, y: home.y, kind: "place" as const, venue: "__home" }, ...base], [base, home.x, home.y]);
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<Spot | null>(null);
   const sheet = useRef<HTMLDivElement>(null);

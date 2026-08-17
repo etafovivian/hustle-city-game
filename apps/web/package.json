@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/check-clearance.ts"
+    "test": "node scripts/check-clearance.ts && node scripts/export-plots.ts --check"
   },
   "dependencies": {
     "@hc/shared": "workspace:*",

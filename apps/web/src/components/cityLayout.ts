@@ -1715,3 +1715,8 @@ export const BRANCHES: Branch[] = (() => {
   });
 })();
 export const BRANCH_BY_KEY: ReadonlyMap<string, Branch> = new Map(BRANCHES.map((b) => [b.key, b]));
+
+// ── Starter homes ──
+/** Everyone starts with a rented room in a face-me-I-face-you block; which block follows from their name. */
+export const STARTER_BLOCKS = ALL_SCENERY.filter((b) => b.art.endsWith("/face-me-block.webp"));
+export const starterRoom = (nickname: string) => STARTER_BLOCKS[Math.floor(seeded(`room:${nickname.toLowerCase()}`) * STARTER_BLOCKS.length)] ?? STARTER_BLOCKS[0]!;

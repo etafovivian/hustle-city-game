@@ -1,7 +1,7 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { VENUES_BY_KEY, VIBE_LABEL, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
-import { CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
+import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
@@ -112,13 +112,38 @@ export function VenueCard({
       if (remain > 0) return;
       window.clearInterval(id);
       const vibes = running.action.gives.map((g) => `+${VIBE_LABEL[g]}`).join(" ");
-      notify(running.gained ? `+${running.gained} XP ${vibes} at ${venue.name}` : `${vibes} at ${venue.name}`);
+      if (running.action.key !== "shift") notify(running.gained ? `+${running.gained} XP ${vibes} at ${venue.name}` : `${vibes} at ${venue.name}`);
       setRunning(null);
     };
     const id = window.setInterval(tick, 200);
     tick();
     return () => window.clearInterval(id);
   }, [running, notify, venue.name]);
+
+  // Work here: the place's job ladder, one shift at a time.
+  const job = JOB_BY_VENUE.get(venue.key);
+  const [work, setWork] = useState<JobView | null>(null);
+  useEffect(() => {
+    if (!job) return;
+    api<JobView>("GET", `/api/game/jobs/${venue.key}`)
+      .then(setWork)
+      .catch(() => undefined);
+  }, [venue.key]);
+  const shift = async () => {
+    setBusy("shift");
+    setError(null);
+    try {
+      const r = await api<{ pay: number; xp: number; promoted: string | null; job: JobView }>("POST", `/api/game/jobs/${venue.key}/shift`);
+      setWork(r.job);
+      onChanged();
+      setRunning({ action: { key: "shift", label: "Shift", cost: 0, xp: 0, kind: "paid", seconds: SHIFT_SECONDS, gives: [] }, started: Date.now(), gained: 0 });
+      notify(r.promoted ? `Promoted to ${r.promoted}! +${formatCoins(r.pay)} coins` : `Shift done: +${formatCoins(r.pay)} coins, +${r.xp} XP`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const act = async (a: VenueAction) => {
     setError(null);
@@ -227,6 +252,31 @@ export function VenueCard({
             );
           })}
         </ul>
+        {job && work && (
+          <div className="work-box">
+            <strong className="small row" style={{ gap: 6 }}>
+              <Briefcase size={15} aria-hidden="true" /> Work here: {work.title}
+            </strong>
+            <span className="tiny muted">
+              {job.task}. {formatCoins(work.pay)} coins + {work.xp} XP a shift · uses {SHIFT_COST.energy} energy
+            </span>
+            {work.nextTitle && (
+              <span className="act-progress" aria-label={`${work.toNext} shifts to ${work.nextTitle}`}>
+                <span style={{ width: `${(100 * (work.shifts - [0, 4, 12, 25][work.rung]!)) / ([4, 12, 25, 25][work.rung]! - [0, 4, 12, 25][work.rung]!)}%` }} />
+              </span>
+            )}
+            <span className="row spread">
+              <span className="tiny muted">{work.nextTitle ? `${work.toNext} more shift${work.toNext === 1 ? "" : "s"} to ${work.nextTitle}` : "Top of the ladder"} · {work.shiftsLeftToday} shifts left today</span>
+              {running?.action.key === "shift" ? (
+                <span className="small muted">{Math.ceil(left)}s</span>
+              ) : (
+                <button type="button" className="btn sm go" disabled={busy !== null || running !== null || !open || work.shiftsLeftToday === 0} onClick={() => void shift()}>
+                  {busy === "shift" ? "…" : "Start shift"}
+                </button>
+              )}
+            </span>
+          </div>
+        )}
         {error && <p className="alert small">{error}</p>}
 
         <div className="row">

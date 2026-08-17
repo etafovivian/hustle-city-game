@@ -1,6 +1,6 @@
 // The player's avatar on the map: tap the ground to walk there (like a street walk).
 // Animates on its own, so the big map doesn't re-render while you walk.
-import { RIDE_BY_MODE, bodyOf, type AvatarConfig, type RideMode } from "@hc/shared";
+import { RIDE_BY_MODE, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type VehicleKind } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { roadRoute, walkRoute } from "./cityLayout.js";
@@ -9,7 +9,7 @@ import { walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } fr
 
 type Point = { x: number; y: number };
 /** Where to go, and how: on foot, or a paid ride (which the area boys may stop partway). */
-export type Trip = Point & { seq: number; mode?: RideMode; rideId?: string; stop?: boolean };
+export type Trip = Point & { seq: number; mode?: RideMode | "own"; vehicle?: VehicleKind; rideId?: string; stop?: boolean };
 
 const SPEED = 230; // world units per second
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
@@ -71,7 +71,8 @@ export function AvatarWalker({
   const posRef = useRef(pos);
   posRef.current = pos;
   if (posOut) posOut.current = pos;
-  const [riding, setRiding] = useState<RideMode>("walk");
+  /** The vehicle art being ridden ("walk" on foot). */
+  const [riding, setRiding] = useState<string>("walk");
   const face = useRef(avatarUri(avatar));
   face.current = avatarUri(avatar);
 
@@ -85,7 +86,9 @@ export function AvatarWalker({
     }
     const path = [...route];
     const mode = target.mode ?? "walk";
-    const speed = RIDE_BY_MODE.get(mode)?.speed ?? SPEED;
+    const own = mode === "own" ? VEHICLE_BY_KIND.get(target.vehicle ?? "bike") : undefined;
+    const speed = own?.speed ?? RIDE_BY_MODE.get(mode as RideMode)?.speed ?? SPEED;
+    const art = own?.art ?? RIDE_BY_MODE.get(mode as RideMode)?.vehicle ?? "walk";
     let total = 0;
     for (let i = 0, prev = posRef.current; i < path.length; prev = path[i]!, i++) total += Math.hypot(path[i]!.x - prev.x, path[i]!.y - prev.y);
     let travelled = 0;
@@ -94,7 +97,7 @@ export function AvatarWalker({
     let cancelled = false;
     let last = performance.now();
     setWalking(true);
-    setRiding(mode);
+    setRiding(art);
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -161,7 +164,7 @@ export function AvatarWalker({
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
         {walking && riding !== "walk" ? (
           (() => {
-            const v = vehicleView(RIDE_BY_MODE.get(riding)!.vehicle!, facing);
+            const v = vehicleView(riding, facing);
             const w = v.w * 1.25;
             const h = v.h * 1.25;
             return (
