@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, formatCoins } from "../api.js";
 import { InteriorScene, ROOMS } from "./Interior.js";
+import { RoomChat } from "./Chat.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -72,7 +73,10 @@ export function HomeCard({
   onChanged,
   notify,
   onBuyLand,
+  chatPlace,
 }: {
+  /** The presence/chat key for your home ("home:<plot>" or your room). */
+  chatPlace?: string;
   home: HomeView;
   /** "Room 4, face-me block" or the house name. */
   label: string;
@@ -159,6 +163,7 @@ export function HomeCard({
           </>
         )}
         {error && <p className="alert small">{error}</p>}
+        {chatPlace && <RoomChat place={chatPlace} />}
       </div>
     </div>,
     document.body,

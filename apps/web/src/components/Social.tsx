@@ -1,7 +1,7 @@
 // Meeting people: other players on the map (and their card: wave, buy a drink, go to them, visit their home),
 // and visiting someone's house.
 import { HOME_INTERIOR, HOUSE_BY_KEY, VENUES_BY_KEY, type MapHome, type PresencePlayer } from "@hc/shared";
-import { Beer, Hand, Home as HomeIcon, Navigation, X } from "lucide-react";
+import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
@@ -9,6 +9,7 @@ import { Avatar } from "./Avatar.js";
 import { variantFor } from "./AvatarWalker.js";
 import { InteriorScene, ROOMS } from "./Interior.js";
 import { BRANCH_BY_KEY } from "./cityLayout.js";
+import { DmThreadView, RoomChat } from "./Chat.js";
 import { walkerSheet, walkerSize } from "./walkers.js";
 
 const WALK = walkerSize(70);
@@ -79,6 +80,7 @@ export function PlayerCard({
 }) {
   const sheet = useSheet(onClose);
   const [busy, setBusy] = useState(false);
+  const [talking, setTalking] = useState(false);
   const send = async (what: "wave" | "treat") => {
     setBusy(true);
     try {
@@ -114,6 +116,9 @@ export function PlayerCard({
           <button type="button" className="btn go" disabled={busy || !near} onClick={() => void send("treat")} title={near ? undefined : "Go to where they are first"}>
             <Beer size={16} aria-hidden="true" /> Buy a drink ({TREAT_COINS} coins)
           </button>
+          <button type="button" className="btn" onClick={() => setTalking((x) => !x)}>
+            <MessageCircle size={16} aria-hidden="true" /> Message
+          </button>
           <button type="button" className="btn quiet" onClick={onGo}>
             <Navigation size={16} aria-hidden="true" /> Go to them
           </button>
@@ -123,6 +128,7 @@ export function PlayerCard({
             </button>
           )}
         </div>
+        {talking && <DmThreadView nick={player.nickname} />}
         {!near && <p className="tiny muted">Meet up first: go to the same place (or stand close) to buy them a drink. A drink lifts Social and Fun for both of you.</p>}
       </div>
     </div>,
@@ -137,7 +143,7 @@ export function VisitHome({
   onClose,
   notify,
 }: {
-  home: { nickname: string; design: string | null; mine?: boolean };
+  home: { plotId: string; nickname: string; design: string | null; mine?: boolean };
   /** Players in this home right now. */
   inside: PresencePlayer[];
   onClose: () => void;
@@ -175,6 +181,7 @@ export function VisitHome({
           </div>
           <div className="venue-info">
             <p className="small">Make yourself at home. {ownerIn ? `@${home.nickname} is in: say hello!` : `@${home.nickname} isn't in. Knock and they'll see it next time they look.`}</p>
+            <RoomChat place={`home:${home.plotId}`} />
             <div className="row">
               <button type="button" className="btn go" onClick={() => void knock()}>
                 <Hand size={16} aria-hidden="true" /> {ownerIn ? "Say hello" : "Knock"}

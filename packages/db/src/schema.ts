@@ -770,3 +770,21 @@ export const playerVehicles = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.kind] })],
 );
+
+/** Private messages between players. */
+export const directMessages = pgTable(
+  "direct_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fromId: uuid("from_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    toId: uuid("to_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("dm_to_created_idx").on(t.toId, t.createdAt), index("dm_from_created_idx").on(t.fromId, t.createdAt)],
+);

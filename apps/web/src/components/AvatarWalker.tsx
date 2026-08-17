@@ -11,7 +11,7 @@ type Point = { x: number; y: number };
 /** Where to go, and how: on foot, or a paid ride (which the area boys may stop partway). */
 export type Trip = Point & { seq: number; mode?: RideMode | "own"; vehicle?: VehicleKind; rideId?: string; stop?: boolean };
 
-const SPEED = 230; // world units per second
+const SPEED = 300; // world units per second (walking)
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
 const WALK = walkerSize(84);
 

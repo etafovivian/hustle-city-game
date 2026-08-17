@@ -209,7 +209,9 @@ export function BillboardSheet({ boards, boardKey, signedIn, onPick, onClose }: 
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  useEffect(() => setBooking(false), [boardKey]);
+  useEffect(() => {
+    setBooking(false);
+  }, [boardKey]);
 
   return (
     <div className="phone-backdrop" onClick={onClose}>

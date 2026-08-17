@@ -229,6 +229,28 @@ export function CityMap({
   const [walkTo, setWalkTo] = useState<Trip | null>(null);
   /** Where the player is now (kept by AvatarWalker), for pricing rides. */
   const meAt = useRef({ x: CX - 120, y: CY + 150 });
+  // The camera follows you while you walk or ride: when you near the edge of the screen it glides to keep you in view.
+  const [travelling, setTravelling] = useState(false);
+  const pzRef = useRef<ReturnType<typeof usePanZoom> | null>(null);
+  useEffect(() => {
+    if (walkTo) setTravelling(true);
+  }, [walkTo?.seq]);
+  useEffect(() => {
+    if (!travelling) return;
+    const id = window.setInterval(() => {
+      const pz = pzRef.current;
+      if (!pz) return;
+      const v = pz.view;
+      const el = ref.current;
+      if (!v || !el) return;
+      const sx = meAt.current.x * v.k + v.x;
+      const sy = meAt.current.y * v.k + v.y;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (sx < w * 0.25 || sx > w * 0.75 || sy < h * 0.3 || sy > h * 0.75) pz.flyTo(meAt.current.x, meAt.current.y - 40, v.k);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [travelling]);
   const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string } | null>(null);
   const [stopFor, setStopFor] = useState<{ rideId: string; done: () => void } | null>(null);
   /** A place to open on arrival (trips started from its card). */
@@ -253,8 +275,6 @@ export function CityMap({
       onVisited();
       notify(`Driving to ${pick.to}: ${formatCoins(r.fare)} coins of fuel`);
       setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode, vehicle, rideId: r.rideId, stop: r.stop });
-      const me = meAt.current;
-      if (pz.view) pz.flyTo(me.x + (pick.x - me.x) * 0.6, me.y + (pick.y - me.y) * 0.6, Math.min(pz.view.k, 0.6));
       return;
     }
     if (mode === "walk") {
@@ -267,9 +287,7 @@ export function CityMap({
     onVisited();
     notify(`${RIDE_BY_MODE.get(mode)!.label} to ${pick.to}: ${formatCoins(r.fare)} coins`);
     setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode, rideId: r.rideId, stop: r.stop });
-    // Look ahead to where you're going, so you watch your ride pull in (and the area boys, if they come).
-    const me = meAt.current;
-    if (pz.view) pz.flyTo(me.x + (pick.x - me.x) * 0.6, me.y + (pick.y - me.y) * 0.6, Math.min(pz.view.k, 0.6));
+
   };
   const [venueOpen, setVenueOpen] = useState<string | null>(null);
   // A shared plot link (?plot=<id>) opens that plot's card.
@@ -328,6 +346,7 @@ export function CityMap({
   /** Where you are for other players: inside a place or a home, or out in the city. */
   const place = homeOpen ? `home:${home?.plotId ?? `room-${nickname}`}` : visitHome ? `home:${visitHome.plotId}` : venueOpen;
   const placeRef = useRef(place);
+  const unreadRef = useRef(0);
   placeRef.current = place;
   useEffect(() => {
     let stop = false;
@@ -337,7 +356,10 @@ export function CityMap({
         .then((r) => {
           if (stop) return;
           setOthers(r.players);
-          for (const p of r.pings) notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : `🍻 @${p.from} bought you a drink! +Social +Fun`);
+          if (r.unread > unreadRef.current) notify(`💬 New message${r.unread - unreadRef.current > 1 ? "s" : ""}: Phone → Chats`);
+          unreadRef.current = r.unread;
+          for (const p of r.pings)
+            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
           if (r.pings.some((p) => p.kind === "drink")) onVisited();
         })
         .catch(() => undefined);
@@ -368,9 +390,19 @@ export function CityMap({
   const at = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("at") : null;
   const xy = at && /^\d+,\d+$/.test(at) ? { x: Number(at.split(",")[0]), y: Number(at.split(",")[1]) } : undefined;
   const spot = xy ?? (at ? DISTRICTS.find((d) => d.name.toLowerCase().replace(/\s+/g, "-") === at) : undefined);
-  const centre = spot ?? { x: CX, y: CY + 60 };
+  // Open the map where you are (your last spot), unless a link points somewhere.
+  const lastSpot = (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("hc_avatar_pos") ?? "null") as { x: number; y: number } | null;
+      return v && Number.isFinite(v.x) && Number.isFinite(v.y) ? v : null;
+    } catch {
+      return null;
+    }
+  })();
+  const centre = spot ?? lastSpot ?? { x: CX, y: CY + 60 };
   const HOME = narrow ? { x: centre.x - 430, y: centre.y - 580, w: 860, h: 1100 } : { x: centre.x - 680, y: centre.y - 680, w: 1360, h: 1420 };
   const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
+  pzRef.current = pz;
 
   // Banners take turns every 15 s. Each turn counts a view for boards actually on screen (close enough to
   // read, tab visible); counts are sent in batches every minute for advertiser reports.
@@ -912,10 +944,14 @@ export function CityMap({
                   start={{ x: CX - 120, y: CY + 150 }}
                   target={walkTo}
                   plateScale={plateScale}
-                  onBlocked={() => notify("You can't walk on water. Take the bridge to the Island.")}
+                  onBlocked={() => {
+                    setTravelling(false);
+                    notify("You can't walk on water. Take the bridge to the Island.");
+                  }}
                   posOut={meAt}
                   onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
                   onArrive={() => {
+                    setTravelling(false);
                     if (arriveAt.current === "__home") setHomeOpen(true);
                     else if (arriveAt.current) setVenueOpen(arriveAt.current);
                     arriveAt.current = null;
@@ -1153,7 +1189,7 @@ export function CityMap({
         <button type="button" className="map-ctl" onClick={() => pz.zoomBy(1 / 1.4)} aria-label="Zoom out">
           <Minus size={18} aria-hidden="true" />
         </button>
-        <button type="button" className="map-ctl" onClick={pz.fitHome} aria-label="Back to Junction 101">
+        <button type="button" className="map-ctl" onClick={() => pz.flyTo(meAt.current.x, meAt.current.y - 40, Math.max(pz.view?.k ?? 0.7, 0.7))} aria-label="Find me" title="Find me">
           <LocateFixed size={18} aria-hidden="true" />
         </button>
       </div>
@@ -1264,7 +1300,7 @@ export function CityMap({
             <PlayerCard
               player={playerOpen}
               near={(!!place && place === playerOpen.place) || Math.hypot(playerOpen.x - meAt.current.x, playerOpen.y - meAt.current.y) < 900}
-              home={homes.find((h) => h.nickname === playerOpen.nickname)}
+              home={homes.find((h) => h.nickname === playerOpen.nickname) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false }}
               onClose={() => setPlayerOpen(null)}
               notify={notify}
               onChanged={onVisited}
@@ -1274,9 +1310,10 @@ export function CityMap({
                 goTo({ x: p.x, y: p.y + 20 }, `@${p.nickname}`, p.place && !p.place.startsWith("home:") ? p.place : undefined);
               }}
               onVisitHome={() => {
-                const h = homes.find((x) => x.nickname === playerOpen.nickname);
+                // Their own house, or their room in a face-me block.
+                const h = homes.find((x) => x.nickname === playerOpen.nickname) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false };
                 setPlayerOpen(null);
-                if (h) setVisitHome(h);
+                setVisitHome(h);
               }}
             />
           )}
@@ -1285,6 +1322,7 @@ export function CityMap({
           )}
           {homeOpen && home && (
             <HomeCard
+              chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}
               home={home}
               label={myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}
               onClose={() => setHomeOpen(false)}

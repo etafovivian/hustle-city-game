@@ -2,10 +2,10 @@
 // buy each other a drink. Kept in memory (one API process); a player counts as online for a minute after their
 // last report. Nothing here is stored except the coins and needs a drink moves.
 
-import { gameLedgerEntries, profiles } from "@hc/db";
-import { NEED_GAIN, dayKey, fillNeeds, type AvatarConfig, type PresenceReply, type PresencePlayer } from "@hc/shared";
+import { directMessages, gameLedgerEntries, profiles } from "@hc/db";
+import { NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
 import { randomUUID } from "node:crypto";
-import { and, count, eq, like } from "drizzle-orm";
+import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { postCoins } from "../lib/coins.js";
@@ -32,14 +32,32 @@ interface Seen {
 interface Ping {
   id: string;
   from: string;
-  kind: "wave" | "drink";
+  kind: "wave" | "drink" | "join";
+  text?: string;
   place: string | null;
   at: number;
 }
 
+/** Who's where right now (shared with the activity code, for "together" bonuses). */
+const seen = new Map<string, Seen>();
+const inbox = new Map<string, Ping[]>();
+
+/** Other players online at the same place (a branch counts as its original). */
+export function companionsAt(userId: string, baseVenue: string): { userId: string; nickname: string }[] {
+  const now = Date.now();
+  const me = seen.get(userId);
+  if (!me?.place || me.place.split("@")[0] !== baseVenue) return [];
+  return [...seen.values()].filter((s) => s.userId !== userId && now - s.at < ONLINE_MS && s.place === me.place).map((s) => ({ userId: s.userId, nickname: s.nickname }));
+}
+
+/** Tell someone about something (shown as a toast next time their game reports in). */
+export function sendPing(toUserId: string, ping: { from: string; kind: Ping["kind"]; place: string | null; text?: string }) {
+  const list = inbox.get(toUserId) ?? [];
+  list.push({ ...ping, id: randomUUID(), at: Date.now() });
+  inbox.set(toUserId, list.slice(-20));
+}
+
 export async function presenceRoutes(app: FastifyInstance) {
-  const seen = new Map<string, Seen>();
-  const inbox = new Map<string, Ping[]>();
   const tz = app.config.GAME_TIMEZONE;
 
   const online = (now: number) => [...seen.values()].filter((s) => now - s.at < ONLINE_MS);
@@ -75,11 +93,16 @@ export async function presenceRoutes(app: FastifyInstance) {
     for (const [id, s] of seen) if (now - s.at > 10 * ONLINE_MS) seen.delete(id);
     const pings = inbox.get(user.id) ?? [];
     inbox.delete(user.id);
+    const [{ n: unread }] = (await app.db
+      .select({ n: count() })
+      .from(directMessages)
+      .where(and(eq(directMessages.toId, user.id), isNull(directMessages.readAt)))) as [{ n: number }];
     return {
+      unread: Number(unread),
       players: online(now)
         .filter((s) => s.userId !== user.id)
         .map(view),
-      pings: pings.map((p) => ({ from: p.from, kind: p.kind, place: p.place })),
+      pings: pings.map((p) => ({ from: p.from, kind: p.kind, place: p.place, ...(p.text ? { text: p.text } : {}) })),
     };
   });
 
@@ -121,4 +144,96 @@ export async function presenceRoutes(app: FastifyInstance) {
     push(them.userId, { from: me.nickname, kind: "drink", place: me.place });
     return { ok: true };
   });
+
+  // ── Room chat: whoever is at a place can talk there (kept in memory: the last 50 messages, for two hours) ──
+  const rooms = new Map<string, { id: string; userId: string; from: string; body: string; at: number }[]>();
+  const ROOM_TTL = 2 * 60 * 60_000;
+  const roomMessages = (place: string, viewer: string): ChatMessage[] => {
+    const now = Date.now();
+    const list = (rooms.get(place) ?? []).filter((m) => now - m.at < ROOM_TTL);
+    rooms.set(place, list);
+    return list.map((m) => ({ id: m.id, from: m.from, body: m.body, at: new Date(m.at).toISOString(), mine: m.userId === viewer }));
+  };
+  const placeParam = (raw: string) => {
+    if (!/^[a-zA-Z0-9_@:+-]{2,80}$/.test(raw)) throw new AppError(400, "bad_place", "Unknown place.");
+    return raw;
+  };
+
+  app.get<{ Params: { place: string } }>("/api/chat/place/:place", async (request) => {
+    const user = requireUser(request);
+    return roomMessages(placeParam(request.params.place), user.id);
+  });
+
+  app.post<{ Params: { place: string } }>(
+    "/api/chat/place/:place",
+    { config: { rateLimit: { max: 12 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } },
+    async (request) => {
+      const user = requireUser(request);
+      const place = placeParam(request.params.place);
+      const { body } = z.object({ body: z.string().max(400) }).parse(request.body);
+      const problem = chatProblem(body);
+      if (problem) throw new AppError(400, "bad_message", problem);
+      const me = seen.get(user.id);
+      if (!me || me.place !== place) throw new AppError(409, "not_here", "Go inside first to talk here.");
+      const list = rooms.get(place) ?? [];
+      list.push({ id: randomUUID(), userId: user.id, from: me.nickname, body: body.trim(), at: Date.now() });
+      rooms.set(place, list.slice(-50));
+      return roomMessages(place, user.id);
+    },
+  );
+
+  // ── Private messages ──
+  const userByNick = async (nick: string) => {
+    const [p] = await app.db
+      .select({ userId: profiles.userId, nickname: profiles.nickname })
+      .from(profiles)
+      .where(sql`lower(${profiles.nickname}) = lower(${nick})`);
+    if (!p) throw notFound("Player");
+    return p;
+  };
+
+  app.get("/api/chat/dm", async (request): Promise<DmThread[]> => {
+    const user = requireUser(request);
+    const rows = await app.db
+      .select({ m: directMessages, fromNick: sql<string>`(select nickname from profiles where user_id = ${directMessages.fromId})`, toNick: sql<string>`(select nickname from profiles where user_id = ${directMessages.toId})` })
+      .from(directMessages)
+      .where(or(eq(directMessages.fromId, user.id), eq(directMessages.toId, user.id)))
+      .orderBy(desc(directMessages.createdAt))
+      .limit(300);
+    const threads = new Map<string, DmThread>();
+    for (const { m, fromNick, toNick } of rows) {
+      const other = m.fromId === user.id ? toNick : fromNick;
+      const t = threads.get(other) ?? { with: other, last: m.body, at: m.createdAt.toISOString(), unread: 0 };
+      if (m.toId === user.id && !m.readAt) t.unread++;
+      threads.set(other, t);
+    }
+    return [...threads.values()];
+  });
+
+  app.get<{ Params: { nick: string } }>("/api/chat/dm/:nick", async (request): Promise<ChatMessage[]> => {
+    const user = requireUser(request);
+    const other = await userByNick(request.params.nick.slice(0, 30));
+    const pair = or(and(eq(directMessages.fromId, user.id), eq(directMessages.toId, other.userId)), and(eq(directMessages.fromId, other.userId), eq(directMessages.toId, user.id)));
+    const rows = await app.db.select().from(directMessages).where(pair).orderBy(desc(directMessages.createdAt)).limit(100);
+    await app.db
+      .update(directMessages)
+      .set({ readAt: new Date() })
+      .where(and(eq(directMessages.fromId, other.userId), eq(directMessages.toId, user.id), isNull(directMessages.readAt)));
+    return rows.reverse().map((m) => ({ id: m.id, from: m.fromId === user.id ? "you" : other.nickname, body: m.body, at: m.createdAt.toISOString(), mine: m.fromId === user.id }));
+  });
+
+  app.post<{ Params: { nick: string } }>(
+    "/api/chat/dm/:nick",
+    { config: { rateLimit: { max: 20 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const user = requireUser(request);
+      const other = await userByNick(request.params.nick.slice(0, 30));
+      if (other.userId === user.id) throw new AppError(400, "self", "That's you!");
+      const { body } = z.object({ body: z.string().max(400) }).parse(request.body);
+      const problem = chatProblem(body);
+      if (problem) throw new AppError(400, "bad_message", problem);
+      await app.db.insert(directMessages).values({ fromId: user.id, toId: other.userId, body: body.trim() });
+      return reply.code(201).send({ ok: true });
+    },
+  );
 }

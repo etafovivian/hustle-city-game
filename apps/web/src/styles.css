@@ -853,3 +853,12 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .here-now { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .player-card { width: min(520px, 100%); }
 .home-card { width: min(640px, 100%); }
+/* Chat */
+.chat-box { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: var(--sheet-2); }
+.chat-list { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; align-content: start; }
+.chat-msg { display: grid; gap: 1px; justify-self: start; max-width: 85%; padding: 6px 10px; border-radius: 12px 12px 12px 4px; background: var(--sheet); font-size: 14px; }
+.chat-msg.mine { justify-self: end; border-radius: 12px 12px 4px 12px; background: #1e4fd6; color: #fff; }
+.chat-time { font-size: 10px; opacity: 0.6; justify-self: end; }
+.chat-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.chat-error { grid-column: 1 / -1; color: var(--danger); }
+.unread-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5b4b; color: #fff; font-size: 11px; font-weight: 900; }

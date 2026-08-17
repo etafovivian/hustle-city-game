@@ -20,3 +20,4 @@ export * from "./jobs.js";
 export * from "./homes.js";
 export * from "./vehicles.js";
 export * from "./presence.js";
+export * from "./chat.js";

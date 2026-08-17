@@ -4,6 +4,7 @@
 import { gameLedgerEntries, profiles } from "@hc/db";
 import { FREE_COOLDOWN_MS, NEED_GAIN, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
+import { companionsAt, sendPing } from "../presence.js";
 import { and, eq, like, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -32,17 +33,22 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
   await lockProfile(tx, userId);
   const posting = await postCoins(tx, userId, -activity.cost, "activity", activityRef(dayKey(now, timeZone), venue.key, activity.key));
   if (!posting.applied) throw new AppError(409, "done_today", "You've done that here today. Come back tomorrow.");
+  // Better together: friends at the same place make it count for more (+50% XP, and more Social).
+  const friends = companionsAt(userId, venue.key);
+  const gained = friends.length ? Math.round(activity.xp * 1.5) : activity.xp;
   const [p] = await tx
     .update(profiles)
-    .set({ xp: sql`${profiles.xp} + ${activity.xp}` })
+    .set({ xp: sql`${profiles.xp} + ${gained}` })
     .where(eq(profiles.userId, userId))
-    .returning({ xp: profiles.xp });
+    .returning({ xp: profiles.xp, nickname: profiles.nickname });
+  for (const f of friends) sendPing(f.userId, { from: p!.nickname, kind: "join", place: venue.key, text: `${activity.label} at ${venue.name}` });
   await recordEvents(tx, userId, [{ type: "activity_done", key: `${venue.key}:${activity.key}` }], now, timeZone);
   // The activity fills the needs its tags name.
   const { needs } = await loadNeeds(tx, userId, now);
-  const filled = fillNeeds(needs, activity.gives, activity.kind === "flex" ? NEED_GAIN.flex : NEED_GAIN.paid);
+  let filled = fillNeeds(needs, activity.gives, activity.kind === "flex" ? NEED_GAIN.flex : NEED_GAIN.paid);
+  if (friends.length) filled = fillNeeds(filled, ["social"], 10);
   await saveNeeds(tx, userId, filled, now);
-  return { balance: posting.balance, xp: p!.xp, gained: activity.xp, ...(await venueDay(ctx)), ...needsView(filled) };
+  return { balance: posting.balance, xp: p!.xp, gained, together: friends.map((f) => f.nickname), ...(await venueDay(ctx)), ...needsView(filled) };
 }
 
 /** The free thing to do at a place: no coins or XP, a small lift to its needs (once an hour per place). */

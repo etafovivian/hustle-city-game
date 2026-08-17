@@ -12,11 +12,15 @@ export interface PresencePlayer {
 
 export interface PresencePing {
   from: string;
-  kind: "wave" | "drink";
+  kind: "wave" | "drink" | "join";
+  /** For "join": what they're doing ("Dance till late at Skyline Lounge"). */
+  text?: string;
   place: string | null;
 }
 
 export interface PresenceReply {
+  /** Unread private messages. */
+  unread: number;
   players: PresencePlayer[];
   pings: PresencePing[];
 }

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS } from "./Interior.js";
+import { RoomChat } from "./Chat.js";
 import { useLagosLight } from "./lagosTime.js";
 import { buildingBox } from "./sprites.js";
 
@@ -162,7 +163,8 @@ export function VenueCard({
     setBusy(a.key);
     try {
       // Pay first (the server checks hours, coins and once-a-day), then the room plays it out.
-      const r = await api<VenueDay & { gained: number }>("POST", `/api/game/venues/${venue.key}/${a.key}`);
+      const r = await api<VenueDay & { gained: number; together?: string[] }>("POST", `/api/game/venues/${venue.key}/${a.key}`);
+      if (r.together?.length) notify(`Together with ${r.together.map((n) => `@${n}`).join(", ")}: +50% XP and extra Social`);
       setDone(new Set(r.done));
       onChanged();
       setRunning({ action: a, started: Date.now(), gained: r.gained });
@@ -203,7 +205,7 @@ export function VenueCard({
         )}
 
         {here.length > 0 && (
-          <div className="here-now">
+          <div className="here-now" title="Do an activity while they're here: +50% XP and extra Social for you">
             <span className="tiny muted">
               <span className="online-dot" aria-hidden="true" /> Here now
             </span>
@@ -295,6 +297,7 @@ export function VenueCard({
           </div>
         )}
         {error && <p className="alert small">{error}</p>}
+        <RoomChat place={branch?.key ?? venue.key} />
 
         <div className="row">
           <button type="button" className="btn" onClick={onWalk}>

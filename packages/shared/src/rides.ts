@@ -22,11 +22,11 @@ export interface RideModeInfo {
 }
 
 export const RIDE_MODES: readonly RideModeInfo[] = [
-  { mode: "walk", label: "Trek", note: "Free, slow, good for your legs", base: 0, perKm: 0, speed: 230, rush: 1, stopChance: 0 },
-  { mode: "danfo", label: "Danfo", note: "Cheapest ride. Stops everywhere", base: 30, perKm: 15, speed: 420, rush: 1, stopChance: 0.12, vehicle: "danfo" },
-  { mode: "keke", label: "Keke", note: "Quick on short trips", base: 50, perKm: 25, speed: 480, rush: 1, stopChance: 0.15, vehicle: "keke" },
-  { mode: "okada", label: "Okada", note: "Fastest through go-slow, a bit risky", base: 60, perKm: 30, speed: 640, rush: 1.25, stopChance: 0.25, vehicle: "okada" },
-  { mode: "cab", label: "Cab", note: "AC, comfort, surge in rush hour", base: 200, perKm: 70, speed: 560, rush: 1.5, stopChance: 0.05, vehicle: "taxi" },
+  { mode: "walk", label: "Trek", note: "Free, slow, good for your legs", base: 0, perKm: 0, speed: 300, rush: 1, stopChance: 0 },
+  { mode: "danfo", label: "Danfo", note: "Cheapest ride. Stops everywhere", base: 30, perKm: 15, speed: 330, rush: 1, stopChance: 0.12, vehicle: "danfo" },
+  { mode: "keke", label: "Keke", note: "Quick on short trips", base: 50, perKm: 25, speed: 360, rush: 1, stopChance: 0.15, vehicle: "keke" },
+  { mode: "okada", label: "Okada", note: "Fastest through go-slow, a bit risky", base: 60, perKm: 30, speed: 440, rush: 1.25, stopChance: 0.25, vehicle: "okada" },
+  { mode: "cab", label: "Cab", note: "AC, comfort, surge in rush hour", base: 200, perKm: 70, speed: 400, rush: 1.5, stopChance: 0.05, vehicle: "taxi" },
 ];
 export const RIDE_BY_MODE: ReadonlyMap<RideMode, RideModeInfo> = new Map(RIDE_MODES.map((m) => [m.mode, m]));
 
