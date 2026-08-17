@@ -212,3 +212,16 @@ Send me each zip as it's done; I'll cut out and place them while you start the n
 2. Cutaway interior of a viewing centre: a big wall screen showing only a green football pitch, rows of plastic chairs and benches, a drinks cooler with plain bottles, a chalkboard that says "MATCH TONIGHT". No club names or badges.
 3. Cutaway interior of a provision shop: shelves of tins, sachets, bags of rice and detergent with plain coloured labels, a counter with a till, a fridge. No logos or brand names anywhere, plain labels only.
 4. An aircraft hangar (exterior): a big curved-roof hangar with its doors open and a small plane half inside, a tow tractor in front. (It was missing from zip 14.)
+
+## Batch 32: rooms for bigger houses (homes get several rooms; these replace the stand-ins)
+For each, add: "Isometric cutaway room: two back walls and a floor, no front walls or ceiling, warm interior lighting. Leave a clear open walkway across the middle of the floor. No people. Draw the room a bit bigger than usual."
+1. Bedroom in a Lagos bungalow: a double bed with an Ankara bedspread, a wardrobe, a small standing fan, a mirror, a mosquito net tied up.
+2. Master bedroom in a modern duplex: a king bed with plain grey bedding, bedside lamps, a wall TV, a dressing table, curtains.
+3. Kitchen in a Lagos duplex: gas cooker with pots, a fridge, a counter with a blender and yam, a small dining table with four chairs.
+4. Compound yard: a cemented yard between rooms, a water tank on a stand, plastic chairs under a mango tree, a clothes line, a generator in a cage.
+
+## Batch 33: luxury rooms (villa)
+1. Villa master suite: a huge bed with gold headboard, a sitting area with two armchairs, a walk-in wardrobe door, a balcony door to the pool.
+2. Villa kitchen: an island counter with bar stools, chrome appliances, a big fridge, plants.
+3. Villa cinema / lounge: a big screen, a sectional sofa, popcorn machine, soft lights.
+4. Villa pool deck (outdoor): a pool with loungers, an umbrella, a small bar, palms.

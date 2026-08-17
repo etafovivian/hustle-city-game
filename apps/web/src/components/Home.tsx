@@ -1,6 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
-  HOME_INTERIOR,
+  HOME_ROOMS,
   HOUSE_BY_KEY,
   HOUSE_DESIGNS,
   REBUILD_CREDIT,
@@ -133,10 +133,7 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
-        {(() => {
-          const room = HOME_INTERIOR[home.design ?? "starter"] ?? "home-face-me";
-          return <InteriorScene src={`/art/interiors/${room}.webp`} alt="Inside your home" room={ROOMS[room]} seed={3} />;
-        })()}
+        <HomeRooms design={home.design} who="your" />
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."
@@ -230,6 +227,27 @@ export function Garage({ notify, onChanged }: { notify: (m: string) => void; onC
         })}
       </ul>
       {error && <p className="alert small">{error}</p>}
+    </div>
+  );
+}
+
+/** The rooms of a home with tabs to move between them (bigger houses have more rooms). */
+export function HomeRooms({ design, who }: { design: string | null; who: string }) {
+  const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
+  const [at, setAt] = useState(0);
+  const room = rooms[Math.min(at, rooms.length - 1)]!;
+  return (
+    <div className="home-rooms">
+      {rooms.length > 1 && (
+        <div className="row" role="tablist" aria-label="Rooms">
+          {rooms.map((r, i) => (
+            <button key={r.key} type="button" role="tab" className="chip" aria-selected={i === at} aria-pressed={i === at} onClick={() => setAt(i)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <InteriorScene key={room.key} src={`/art/interiors/${room.art}.webp`} alt={`Inside ${who} ${room.label.toLowerCase()}`} room={ROOMS[room.art]} seed={3 + at} />
     </div>
   );
 }

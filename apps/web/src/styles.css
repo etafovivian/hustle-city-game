@@ -862,3 +862,4 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .chat-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
 .chat-error { grid-column: 1 / -1; color: var(--danger); }
 .unread-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5b4b; color: #fff; font-size: 11px; font-weight: 900; }
+.home-rooms { display: grid; gap: 8px; }

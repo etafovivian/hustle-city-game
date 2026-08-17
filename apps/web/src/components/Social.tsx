@@ -1,15 +1,15 @@
 // Meeting people: other players on the map (and their card: wave, buy a drink, go to them, visit their home),
 // and visiting someone's house.
-import { HOME_INTERIOR, HOUSE_BY_KEY, VENUES_BY_KEY, type MapHome, type PresencePlayer } from "@hc/shared";
+import { HOUSE_BY_KEY, VENUES_BY_KEY, type MapHome, type PresencePlayer } from "@hc/shared";
 import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
 import { Avatar } from "./Avatar.js";
 import { variantFor } from "./AvatarWalker.js";
-import { InteriorScene, ROOMS } from "./Interior.js";
 import { BRANCH_BY_KEY } from "./cityLayout.js";
 import { DmThreadView, RoomChat } from "./Chat.js";
+import { HomeRooms } from "./Home.js";
 import { walkerSheet, walkerSize } from "./walkers.js";
 
 const WALK = walkerSize(70);
@@ -150,7 +150,6 @@ export function VisitHome({
   notify: (m: string) => void;
 }) {
   const sheet = useSheet(onClose);
-  const room = HOME_INTERIOR[home.design ?? "starter"] ?? "home-face-me";
   const ownerIn = inside.some((p) => p.nickname === home.nickname);
   const knock = async () => {
     try {
@@ -177,7 +176,7 @@ export function VisitHome({
         </div>
         <div className="venue-layout has-room">
           <div className="venue-room">
-            <InteriorScene src={`/art/interiors/${room}.webp`} alt={`Inside @${home.nickname}'s home`} room={ROOMS[room]} seed={home.nickname.length} />
+            <HomeRooms design={home.design} who={`@${home.nickname}'s`} />
           </div>
           <div className="venue-info">
             <p className="small">Make yourself at home. {ownerIn ? `@${home.nickname} is in: say hello!` : `@${home.nickname} isn't in. Knock and they'll see it next time they look.`}</p>
