@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -37,7 +37,7 @@ export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue
 
 /** Icon badge floating above the roof (`y` is the roof top), with the name beside it (drawn above the night tint). */
 export function VenueBadge({ venue, x, y, scale, showName, onOpen }: { venue: Venue; x: number; y: number; scale: number; showName: boolean; onOpen: () => void }) {
-  const nameW = venue.name.length * 9.5 + 30;
+  const nameW = venue.name.length * 7.2 + 22;
   return (
     <g className="venue-badge" transform={`translate(${x} ${y - 16}) scale(${scale})`} onClick={onOpen} aria-hidden="true">
       <line x1="0" y1="18" x2="0" y2="34" stroke="#fff" strokeWidth="3" opacity=".8" />
@@ -46,9 +46,9 @@ export function VenueBadge({ venue, x, y, scale, showName, onOpen }: { venue: Ve
         {venue.icon}
       </text>
       {showName && (
-        <g transform="translate(26 -15)">
-          <rect width={nameW} height="30" rx="15" fill="#fff" stroke={INK.indigoDeep} strokeWidth="2" />
-          <text x={nameW / 2} y="20" textAnchor="middle" fontSize="15" fontWeight="800" fill={INK.indigoDeep}>
+        <g transform="translate(24 -11)">
+          <rect width={nameW} height="22" rx="11" fill="#fff" fillOpacity=".7" stroke={INK.indigoDeep} strokeOpacity=".4" strokeWidth="1" />
+          <text x={nameW / 2} y="15" textAnchor="middle" fontSize="11.5" fontWeight="800" fill={INK.indigoDeep}>
             {venue.name}
           </text>
         </g>
@@ -66,7 +66,12 @@ export function VenueCard({
   notify,
   onApp,
   branch,
+  here = [],
+  onPlayer,
 }: {
+  /** Players at this place right now. */
+  here?: PresencePlayer[];
+  onPlayer?: (p: PresencePlayer) => void;
   venueKey: string;
   /** A branch of this place (same room and activities, its own name and area). */
   branch?: { name: string; area: string; key: string };
@@ -197,6 +202,18 @@ export function VenueCard({
           <p className="small muted">Regulars here: {venue.regulars.join(", ")}</p>
         )}
 
+        {here.length > 0 && (
+          <div className="here-now">
+            <span className="tiny muted">
+              <span className="online-dot" aria-hidden="true" /> Here now
+            </span>
+            {here.map((p) => (
+              <button key={p.nickname} type="button" className="chip" onClick={() => onPlayer?.(p)}>
+                @{p.nickname}
+              </button>
+            ))}
+          </div>
+        )}
         <p className={`venue-hours small ${open ? "open" : "closed"}`}>
           <Clock size={14} aria-hidden="true" /> {hoursLabel(venue, hour)}
           {!open && <span className="muted"> · come back tonight or tomorrow</span>}

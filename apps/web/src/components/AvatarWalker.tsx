@@ -16,7 +16,7 @@ const SPEED = 230; // world units per second
 const WALK = walkerSize(84);
 
 /** The rendered walker closest to the player's chosen look. */
-function variantFor(a: AvatarConfig): WalkerVariant {
+export function variantFor(a: AvatarConfig): WalkerVariant {
   if (bodyOf(a) === "woman") return a.outfit === "peplum_coral" || a.hairStyle === "gele" ? "woman_gele" : "woman_buba";
   return ["agbada_white", "kaftan_gold", "ankara_green"].includes(a.outfit) ? "man_kaftan" : "man_casual";
 }

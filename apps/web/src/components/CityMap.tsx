@@ -1,13 +1,14 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, businessArt, type AvatarConfig, type HomeView, type MapHome, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, businessArt, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
 import { HomeCard } from "./Home.js";
+import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
@@ -155,13 +156,13 @@ function Hotspot({ part, id, label, art, x, y, w, h, visited, plateScale, onOpen
       onOpen(id);
     }
   };
-  const plateW = label.length * 13 + 40;
+  const plateW = label.length * 8.5 + 26;
   if (part === "label")
     return (
       <g transform={`translate(${x} ${y})`} aria-hidden="true" className="map-label">
         <g transform={`translate(${w / 2} ${h + 6}) scale(${plateScale}) translate(${-plateW / 2} 0)`}>
-          <rect width={plateW} height="38" rx="19" fill={INK.indigoDeep} stroke={INK.yellow} strokeOpacity=".55" strokeWidth="1.5" />
-          <text x={plateW / 2} y="25" textAnchor="middle" fontSize="20" fontWeight="800" fill="#fff">
+          <rect width={plateW} height="26" rx="13" fill={INK.indigoDeep} fillOpacity=".55" stroke={INK.yellow} strokeOpacity=".35" strokeWidth="1" />
+          <text x={plateW / 2} y="17.5" textAnchor="middle" fontSize="13" fontWeight="800" fill="#fff" fillOpacity=".92">
             {label}
           </text>
         </g>
@@ -318,8 +319,36 @@ export function CityMap({
     loadHomes();
   }, []);
   const homeByPlot = new Map(homes.map((h) => [h.plotId, h]));
+  // Other players online (presence), whoever's card is open, and a house you're visiting.
+  const [others, setOthers] = useState<PresencePlayer[]>([]);
+  const [playerOpen, setPlayerOpen] = useState<PresencePlayer | null>(null);
+  const [visitHome, setVisitHome] = useState<MapHome | null>(null);
   const room = starterRoom(nickname);
   const myPlot = home?.plotId ? FOR_SALE.find((p) => p.id === home.plotId) : undefined;
+  /** Where you are for other players: inside a place or a home, or out in the city. */
+  const place = homeOpen ? `home:${home?.plotId ?? `room-${nickname}`}` : visitHome ? `home:${visitHome.plotId}` : venueOpen;
+  const placeRef = useRef(place);
+  placeRef.current = place;
+  useEffect(() => {
+    let stop = false;
+    const report = () => {
+      if (document.visibilityState !== "visible") return;
+      api<PresenceReply>("POST", "/api/presence", { x: Math.round(meAt.current.x), y: Math.round(meAt.current.y), place: placeRef.current ?? null })
+        .then((r) => {
+          if (stop) return;
+          setOthers(r.players);
+          for (const p of r.pings) notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : `🍻 @${p.from} bought you a drink! +Social +Fun`);
+          if (r.pings.some((p) => p.kind === "drink")) onVisited();
+        })
+        .catch(() => undefined);
+    };
+    report();
+    const id = window.setInterval(report, 5000);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+    };
+  }, [place]);
   /** Where "home" is: your plot, or your room in the face-me block. */
   const homeSpot = myPlot ? { x: myPlot.x, y: myPlot.y + myPlot.hh } : { x: room.x, y: room.y + 30 };
   useEffect(() => {
@@ -470,7 +499,7 @@ export function CityMap({
               <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
             </g>
           ) : (
-            <g aria-hidden="true">
+            <g className="hotspot venue" role="button" tabIndex={0} aria-label={`@${owned.nickname}'s home. Visit.`} onClick={() => !pz.wasDragged() && setVisitHome(owned)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setVisitHome(owned))}>
               <ellipse cx={l.x} cy={foot} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
               <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
             </g>
@@ -872,6 +901,9 @@ export function CityMap({
                 <DepthSorted items={depthItems} people={!far} />
               </g>
 
+              {/* Other players online right now */}
+              {!far && <OtherPlayers players={others} plateScale={plateScale} onOpen={(p) => !pz.wasDragged() && setPlayerOpen(p)} />}
+
               {/* You: tap the ground to walk */}
               {!far && (
                 <AvatarWalker
@@ -1228,6 +1260,29 @@ export function CityMap({
               }}
             />
           )}
+          {playerOpen && (
+            <PlayerCard
+              player={playerOpen}
+              near={(!!place && place === playerOpen.place) || Math.hypot(playerOpen.x - meAt.current.x, playerOpen.y - meAt.current.y) < 900}
+              home={homes.find((h) => h.nickname === playerOpen.nickname)}
+              onClose={() => setPlayerOpen(null)}
+              notify={notify}
+              onChanged={onVisited}
+              onGo={() => {
+                const p = playerOpen;
+                setPlayerOpen(null);
+                goTo({ x: p.x, y: p.y + 20 }, `@${p.nickname}`, p.place && !p.place.startsWith("home:") ? p.place : undefined);
+              }}
+              onVisitHome={() => {
+                const h = homes.find((x) => x.nickname === playerOpen.nickname);
+                setPlayerOpen(null);
+                if (h) setVisitHome(h);
+              }}
+            />
+          )}
+          {visitHome && (
+            <VisitHome home={visitHome} inside={others.filter((p) => p.place === `home:${visitHome.plotId}`)} onClose={() => setVisitHome(null)} notify={notify} />
+          )}
           {homeOpen && home && (
             <HomeCard
               home={home}
@@ -1263,6 +1318,8 @@ export function CityMap({
           )}
           {venueOpen && (
         <VenueCard
+          here={others.filter((p) => p.place === venueOpen)}
+          onPlayer={(p) => setPlayerOpen(p)}
           venueKey={BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen}
           branch={BRANCH_BY_KEY.get(venueOpen)}
           onClose={() => setVenueOpen(null)}

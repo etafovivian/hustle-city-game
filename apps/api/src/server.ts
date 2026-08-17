@@ -14,6 +14,7 @@ import { academyRoutes } from "./modules/academy.js";
 import { landRoutes } from "./modules/land.js";
 import { dealRoutes } from "./modules/deals.js";
 import { lifeRoutes } from "./modules/game/life.js";
+import { presenceRoutes } from "./modules/presence.js";
 import { gameRoutes } from "./modules/game/routes.js";
 import { marketRoutes } from "./modules/market.js";
 import { meRoutes } from "./modules/me.js";
@@ -88,6 +89,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(landRoutes);
   await app.register(dealRoutes);
   await app.register(lifeRoutes);
+  await app.register(presenceRoutes);
 
   return app;
 }

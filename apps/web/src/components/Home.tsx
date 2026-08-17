@@ -1,5 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
+  HOME_INTERIOR,
   HOUSE_BY_KEY,
   HOUSE_DESIGNS,
   REBUILD_CREDIT,
@@ -14,6 +15,7 @@ import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, X } from "lucid
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, formatCoins } from "../api.js";
+import { InteriorScene, ROOMS } from "./Interior.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -127,6 +129,10 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
+        {(() => {
+          const room = HOME_INTERIOR[home.design ?? "starter"] ?? "home-face-me";
+          return <InteriorScene src={`/art/interiors/${room}.webp`} alt="Inside your home" room={ROOMS[room]} seed={3} />;
+        })()}
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."

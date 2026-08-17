@@ -27,6 +27,7 @@ export type CoinKind =
   | "house"
   | "vehicle"
   | "fuel"
+  | "treat"
   | "admin_adjustment";
 
 export interface PostingResult {

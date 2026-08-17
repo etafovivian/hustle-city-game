@@ -19,3 +19,4 @@ export * from "./plots.gen.js";
 export * from "./jobs.js";
 export * from "./homes.js";
 export * from "./vehicles.js";
+export * from "./presence.js";
