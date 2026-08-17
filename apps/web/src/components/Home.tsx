@@ -1,5 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
+  HOME_ITEMS,
   HOME_ROOMS,
   HOUSE_BY_KEY,
   HOUSE_DESIGNS,
@@ -11,7 +12,7 @@ import {
   type NeedsView,
   type VehicleKind,
 } from "@hc/shared";
-import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, X } from "lucide-react";
+import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, formatCoins } from "../api.js";
@@ -109,7 +110,7 @@ export function HomeCard({
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ paid: number }>("POST", "/api/game/home/design", { design });
+      const r = await api<{ paid: number }>("POST", `/api/plots/${encodeURIComponent(home.plotId!)}/build`, { design });
       notify(`Rebuilt as a ${HOUSE_BY_KEY.get(design)!.label.toLowerCase()} (${formatCoins(r.paid)} coins)`);
       onChanged();
       onClose();
@@ -133,7 +134,7 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
-        <HomeRooms design={home.design} who="your" />
+        <HomeRooms design={home.design} who="your" items={home.items} />
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."
@@ -141,7 +142,7 @@ export function HomeCard({
         </p>
         <div className="row">
           <button type="button" className="btn go" disabled={busy || restLeft > 0} onClick={() => void rest()}>
-            <BedDouble size={16} aria-hidden="true" /> {restLeft > 0 ? `Rest again in ${Math.ceil(restLeft / 60_000)} min` : `Rest (+${REST.energy} energy)`}
+            <BedDouble size={16} aria-hidden="true" /> {restLeft > 0 ? `Rest again in ${Math.ceil(restLeft / 60_000)} min` : `Sleep (+${home.restEnergy} energy)`}
           </button>
           {home.plotId ? (
             <button type="button" className="btn" onClick={() => setRebuild((x) => !x)}>
@@ -153,6 +154,7 @@ export function HomeCard({
             </button>
           )}
         </div>
+        <HomeShop home={home} notify={notify} onChanged={onChanged} />
         {rebuild && home.plotId && (
           <>
             <p className="tiny muted">Rebuilding gives you back half of what your current house cost.</p>
@@ -232,7 +234,19 @@ export function Garage({ notify, onChanged }: { notify: (m: string) => void; onC
 }
 
 /** The rooms of a home with tabs to move between them (bigger houses have more rooms). */
-export function HomeRooms({ design, who }: { design: string | null; who: string }) {
+/** Where furniture stands in a room (front of the floor, fractions of the image). */
+const ITEM_SPOTS: [number, number][] = [
+  [0.24, 0.8],
+  [0.76, 0.8],
+  [0.38, 0.9],
+  [0.62, 0.9],
+  [0.14, 0.68],
+  [0.86, 0.68],
+  [0.5, 0.95],
+  [0.3, 0.7],
+];
+
+export function HomeRooms({ design, who, items = [] }: { design: string | null; who: string; items?: string[] }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
   const room = rooms[Math.min(at, rooms.length - 1)]!;
@@ -247,7 +261,151 @@ export function HomeRooms({ design, who }: { design: string | null; who: string 
           ))}
         </div>
       )}
-      <InteriorScene key={room.key} src={`/art/interiors/${room.art}.webp`} alt={`Inside ${who} ${room.label.toLowerCase()}`} room={ROOMS[room.art]} seed={3 + at} />
+      <div className="home-room-frame">
+        <InteriorScene key={room.key} src={`/art/interiors/${room.art}.webp`} alt={`Inside ${who} ${room.label.toLowerCase()}`} room={ROOMS[room.art]} seed={3 + at} />
+        {/* Your things: spread through the rooms, a few per room */}
+        {items
+          .filter((_, i) => i % rooms.length === at)
+          .map((k, i) => {
+            const item = HOME_ITEMS.find((x) => x.key === k);
+            const [x, y] = ITEM_SPOTS[i % ITEM_SPOTS.length]!;
+            return item ? <img key={k} className="home-item" src={item.art} alt={item.name} title={item.name} style={{ left: `${x * 100}%`, top: `${y * 100}%` }} /> : null;
+          })}
+      </div>
     </div>
+  );
+}
+
+/** Things for the house: buy each once; they appear in your rooms and make sleeping at home better. */
+function HomeShop({ home, notify, onChanged }: { home: HomeView; notify: (m: string) => void; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const buy = async (key: string) => {
+    setBusy(key);
+    try {
+      await api("POST", "/api/game/home/items", { key });
+      notify("Delivered! It's in your house now.");
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="home-shop">
+      <button type="button" className="btn sm" onClick={() => setOpen((x) => !x)}>
+        <Sofa size={15} aria-hidden="true" /> Things for your house ({home.items.length}/{HOME_ITEMS.length})
+      </button>
+      {open && (
+        <ul className="garage">
+          {HOME_ITEMS.map((it) => {
+            const owned = home.items.includes(it.key);
+            return (
+              <li key={it.key} className="quote-card garage-item">
+                <img src={it.art} alt="" />
+                <span className="stack" style={{ gap: 2 }}>
+                  <strong>{it.name}</strong>
+                  <span className="tiny muted">+{it.comfort} energy every sleep</span>
+                </span>
+                {owned ? (
+                  <span className="notice small">
+                    <Check size={14} aria-hidden="true" /> Yours
+                  </span>
+                ) : (
+                  <button type="button" className="btn sm go" disabled={busy !== null} onClick={() => void buy(it.key)}>
+                    {busy === it.key ? "…" : `${formatCoins(it.price)} coins`}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** One of your plots: build or rebuild a house, make it home, or go inside. */
+export function PlotCard({
+  plot,
+  area,
+  onClose,
+  onChanged,
+  notify,
+}: {
+  plot: { plotId: string; design: string | null; isHome: boolean };
+  area: string;
+  onClose: () => void;
+  onChanged: () => void;
+  notify: (m: string) => void;
+}) {
+  const sheet = useSheet(onClose);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(!plot.design);
+  const build = async (design: string) => {
+    setBusy(true);
+    try {
+      const r = await api<{ paid: number }>("POST", `/api/plots/${encodeURIComponent(plot.plotId)}/build`, { design });
+      notify(`${HOUSE_BY_KEY.get(design)!.label} built (${formatCoins(r.paid)} coins)`);
+      onChanged();
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const makeHome = async () => {
+    setBusy(true);
+    try {
+      await api("POST", `/api/plots/${encodeURIComponent(plot.plotId)}/home`);
+      notify("This is home now");
+      onChanged();
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return createPortal(
+    <div className="phone-backdrop" onClick={onClose}>
+      <div ref={sheet} className="visit-sheet home-card" role="dialog" aria-modal="true" aria-label="Your plot" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="phone-close visit-close" onClick={onClose} aria-label="Close">
+          <X size={18} aria-hidden="true" />
+        </button>
+        <div className="venue-head">
+          <img className="biz-art" src={plot.design ? houseArt(plot.design) : "/art/props/for-sale-sign.webp"} alt="" />
+          <div>
+            <h2>{plot.design ? `Your ${HOUSE_BY_KEY.get(plot.design)?.label.toLowerCase()}` : "Your land"}</h2>
+            <span className="small muted">
+              {area}
+              {plot.isHome ? " · your home" : ""}
+            </span>
+          </div>
+        </div>
+        {plot.design && <HomeRooms design={plot.design} who="your" />}
+        <div className="row">
+          {plot.design && !plot.isHome && (
+            <button type="button" className="btn go" disabled={busy} onClick={() => void makeHome()}>
+              <HomeIcon size={16} aria-hidden="true" /> Make this my home
+            </button>
+          )}
+          {plot.design && (
+            <button type="button" className="btn" onClick={() => setPicking((x) => !x)}>
+              <Hammer size={16} aria-hidden="true" /> Change house
+            </button>
+          )}
+        </div>
+        {picking && (
+          <>
+            <p className="tiny muted">{plot.design ? "Rebuilding gives you back half of what this house cost." : "Pick a house to build on your land."}</p>
+            <HousePicker current={plot.design} onPick={(k) => void build(k)} busy={busy} />
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }

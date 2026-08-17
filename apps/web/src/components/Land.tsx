@@ -1,10 +1,10 @@
 // Land for sale: tap a dashed plot on the map (or pick one from the list) to see its size, road and price,
 // share it, or say you want it. Ownership opens later; the owner contacts interested players first.
-import { PRIME_AREAS, businessArt, categoryLabel, landPrice, plotSquareMetres, type LandInterestView, type LandRoad, type MapBusiness, type MyBusiness } from "@hc/shared";
+import { MAX_PLOTS, PRIME_AREAS, VENUES_BY_KEY, businessArt, categoryLabel, landPrice, plotSquareMetres, type LandInterestView, type LandRoad, type MapBusiness, type MyBusiness } from "@hc/shared";
 import { BadgeCheck, Check, Heart, Home as HomeIcon, LandPlot, MapPinned, MessageCircle, Share2, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins, formatNaira } from "../api.js";
-import { FOR_SALE, type LandPlot as Plot } from "./cityLayout.js";
+import { FOR_SALE, VENUE_SPOTS, type LandPlot as Plot } from "./cityLayout.js";
 import { DealList } from "./Deals.js";
 import { HousePicker } from "./Home.js";
 
@@ -47,7 +47,7 @@ export function LandCard({
   notify,
   onList,
   onBuilt,
-  hasHome,
+  ownedCount = 0,
   onBought,
 }: {
   plotId: string;
@@ -55,17 +55,17 @@ export function LandCard({
   notify: (m: string) => void;
   onList: () => void;
   onBuilt?: () => void;
-  /** The player already owns a home (one each for now). */
-  hasHome?: boolean;
+  /** Plots the player owns already (there's a limit). */
+  ownedCount?: number;
   onBought?: () => void;
 }) {
   const [buying, setBuying] = useState(false);
   const [buyBusy, setBuyBusy] = useState(false);
-  const buyWith = async (design: string) => {
+  const buyWith = async (design?: string) => {
     setBuyBusy(true);
     try {
-      await api("POST", `/api/land/${encodeURIComponent(plotId)}/buy`, { design });
-      notify("Congratulations, landlord! Your house is going up.");
+      await api("POST", `/api/land/${encodeURIComponent(plotId)}/buy`, design ? { design } : {});
+      notify(design ? "Congratulations, landlord! Your house is going up." : "The land is yours! Tap it any time to build.");
       onBought?.();
       onClose();
     } catch (e) {
@@ -166,19 +166,27 @@ export function LandCard({
           {others > 0 && ` ${others} other player${others === 1 ? "" : "s"} also want${others === 1 ? "s" : ""} this plot.`}
         </p>
         {error && <p className="alert small">{error}</p>}
-        {!hasHome && (
+        {ownedCount < MAX_PLOTS ? (
           <div className="land-buy">
             {buying ? (
               <>
-                <strong className="small">Pick your house (land + house):</strong>
+                <strong className="small">Pick your house (price shown is land + house):</strong>
                 <HousePicker plotId={plotId} onPick={(k) => void buyWith(k)} busy={buyBusy} />
               </>
             ) : (
-              <button type="button" className="btn go" onClick={() => setBuying(true)}>
-                <HomeIcon size={16} aria-hidden="true" /> Buy this plot and build your house
-              </button>
+              <div className="row">
+                <button type="button" className="btn go" disabled={buyBusy} onClick={() => void buyWith()}>
+                  <LandPlot size={16} aria-hidden="true" /> Buy the land ({formatCoins(plotPrice(plot))})
+                </button>
+                <button type="button" className="btn" onClick={() => setBuying(true)}>
+                  <HomeIcon size={16} aria-hidden="true" /> Buy and build a house
+                </button>
+              </div>
             )}
+            <span className="tiny muted">You own {ownedCount} of {MAX_PLOTS} plots you can have.</span>
           </div>
+        ) : (
+          <p className="small muted">You own {MAX_PLOTS} plots already, the most for now.</p>
         )}
         {mine.length > 0 && (
           <div className="land-build">
@@ -220,7 +228,21 @@ export function LandList({ onClose, onPick, taken }: { onClose: () => void; onPi
       .map(([area, plots]) => ({ area, plots: plots.sort((a, b) => plotPrice(b) - plotPrice(a)) }))
       .sort((a, b) => rank(a.area) - rank(b.area) || b.plots.length - a.plots.length);
   }, []);
-  const [open, setOpen] = useState(areas[0]?.area ?? "");
+  const [open, setOpen] = useState("__best");
+  // Best picks: prime area, a busy frontage, and places to enjoy within a short walk.
+  const best = useMemo(() => {
+    const roadScore: Record<string, number> = { arterial: 25, collector: 18, local: 10, alley: 4 };
+    return FOR_SALE.filter((p) => !taken?.has(p.id))
+      .map((p) => {
+        const near = VENUE_SPOTS.filter((v) => Math.hypot(v.x - p.x, v.y - p.y) < 1400)
+          .map((v) => VENUES_BY_KEY.get(v.key))
+          .filter((v): v is NonNullable<typeof v> => !!v);
+        const score = (PRIME_AREAS.includes(p.area) ? 35 : 0) + (roadScore[p.road] ?? 0) + near.length * 8;
+        return { p, near, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+  }, [taken]);
 
   return (
     <div className="phone-backdrop" onClick={onClose}>
@@ -235,12 +257,36 @@ export function LandList({ onClose, onPick, taken }: { onClose: () => void; onPi
           </span>
         </div>
         <div className="chips" role="tablist" aria-label="Areas">
+          <button type="button" role="tab" className="chip" aria-selected={open === "__best"} aria-pressed={open === "__best"} onClick={() => setOpen("__best")}>
+            ⭐ Best picks
+          </button>
           {areas.map(({ area, plots }) => (
             <button key={area} type="button" role="tab" className="chip" aria-selected={open === area} aria-pressed={open === area} onClick={() => setOpen(area)}>
               {area} · {plots.length}
             </button>
           ))}
         </div>
+        {open === "__best" && (
+          <ul className="land-rows">
+            {best.map(({ p, near, score }) => (
+              <li key={p.id}>
+                <span>
+                  <strong>
+                    {p.area} · Plot {plotNo(p)} <span className="tiny muted">score {score}</span>
+                  </strong>
+                  <span className="tiny muted">
+                    {plotSquareMetres(p.hh).toLocaleString()} m² · {ROAD_LABEL[p.road as LandRoad]}
+                    {near.length ? ` · Near ${near.slice(0, 3).map((v) => v.name).join(", ")}` : ""}
+                  </span>
+                </span>
+                <span className="land-price">{formatCoins(plotPrice(p))}</span>
+                <button type="button" className="btn sm" onClick={() => onPick(p)}>
+                  Show
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <ul className="land-rows">
           {areas
             .find((a) => a.area === open)

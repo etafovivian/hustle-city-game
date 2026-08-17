@@ -40,25 +40,40 @@ describe("jobs", () => {
 });
 
 describe("homes", () => {
-  it("buys a plot with a house, rebuilds, rests, and shows on the map", async () => {
+  it("buys land, builds and rebuilds, owns several plots, furnishes, rests, and shows on the map", async () => {
     const p = await registerPlayer(app);
     const other = await registerPlayer(app);
     await rich(p);
     await rich(other);
-    const [plotId] = PLOTS_FOR_SALE[0]!;
-    expect((await p.call("GET", "/api/game/home")).json()).toMatchObject({ plotId: null });
+    const [plotA] = PLOTS_FOR_SALE[0]!;
+    const [plotB] = PLOTS_FOR_SALE[1]!;
+    const enc = encodeURIComponent;
+    expect((await p.call("GET", "/api/game/home")).json()).toMatchObject({ plotId: null, plots: [] });
     const before = (await p.call("GET", "/api/me")).json().coins;
-    const bought = await p.call("POST", `/api/land/${encodeURIComponent(plotId)}/buy`, { design: "bungalow" });
-    expect(bought.statusCode).toBe(201);
-    expect((await p.call("GET", "/api/me")).json().coins).toBe(before - plotPriceOf(plotId)! - 30_000);
-    expect((await other.call("POST", `/api/land/${encodeURIComponent(plotId)}/buy`, { design: "villa" })).statusCode).toBe(409);
-    expect((await p.call("POST", `/api/land/${encodeURIComponent(PLOTS_FOR_SALE[1]![0])}/buy`, { design: "villa" })).statusCode).toBe(409); // one home
-    expect((await p.call("POST", "/api/game/home/design", { design: "storey_house" })).json()).toMatchObject({ design: "storey_house", paid: 70_000 - 15_000 });
+    // Land only first: no home yet
+    const land = await p.call("POST", `/api/land/${enc(plotA)}/buy`, {});
+    expect(land.statusCode).toBe(201);
+    expect(land.json().home).toMatchObject({ plotId: null, plots: [{ plotId: plotA, design: null, isHome: false }] });
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before - plotPriceOf(plotA)!);
+    expect((await other.call("POST", `/api/land/${enc(plotA)}/buy`, {})).statusCode).toBe(409);
+    // Build: the first house becomes home
+    expect((await p.call("POST", `/api/plots/${enc(plotA)}/build`, { design: "bungalow" })).json().home).toMatchObject({ plotId: plotA, design: "bungalow" });
+    // Second plot with a villa straight away; make it home
+    expect((await p.call("POST", `/api/land/${enc(plotB)}/buy`, { design: "villa" })).statusCode).toBe(201);
+    expect((await p.call("POST", `/api/plots/${enc(plotB)}/home`)).json()).toMatchObject({ plotId: plotB, design: "villa" });
+    // Rebuild with half credit
+    expect((await p.call("POST", `/api/plots/${enc(plotA)}/build`, { design: "storey_house" })).json()).toMatchObject({ paid: 70_000 - 15_000 });
+    expect((await other.call("POST", `/api/plots/${enc(plotA)}/build`, { design: "villa" })).statusCode).toBe(404);
+    // Furniture makes resting better
+    const furnished = (await p.call("POST", "/api/game/home/items", { key: "standing_fan" })).json();
+    expect(furnished).toMatchObject({ items: ["standing_fan"], restEnergy: 49 });
+    expect((await p.call("POST", "/api/game/home/items", { key: "standing_fan" })).statusCode).toBe(409);
     const map = (await other.call("GET", "/api/map/homes")).json();
-    expect(map).toEqual([expect.objectContaining({ plotId, design: "storey_house", mine: false })]);
+    expect(map).toHaveLength(2);
+    expect(map.find((h: { plotId: string }) => h.plotId === plotB)).toMatchObject({ design: "villa", isHome: true, mine: false });
     expect((await p.call("POST", "/api/game/home/rest")).statusCode).toBe(200);
     expect((await p.call("POST", "/api/game/home/rest")).statusCode).toBe(409);
-    expect((await p.call("POST", "/api/land/not-a-plot+1/buy", { design: "villa" })).statusCode).toBe(400);
+    expect((await p.call("POST", "/api/land/not-a-plot+1/buy", {})).statusCode).toBe(400);
   });
 });
 

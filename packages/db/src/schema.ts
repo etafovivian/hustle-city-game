@@ -788,3 +788,32 @@ export const directMessages = pgTable(
   },
   (t) => [index("dm_to_created_idx").on(t.toId, t.createdAt), index("dm_from_created_idx").on(t.fromId, t.createdAt)],
 );
+
+/** Plots players own (up to a few each): empty land or a house; one of them can be their home. */
+export const playerPlots = pgTable(
+  "player_plots",
+  {
+    plotId: text("plot_id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** House design, or null for empty land. */
+    design: text("design"),
+    isHome: boolean("is_home").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("player_plots_user_idx").on(t.userId)],
+);
+
+/** Things a player has bought for their home (furniture and appliances). */
+export const homeItems = pgTable(
+  "home_items",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemKey: text("item_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.itemKey] })],
+);

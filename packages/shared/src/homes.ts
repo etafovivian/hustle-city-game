@@ -36,17 +36,56 @@ export const REST = { energy: 45, everyMs: 2 * 60 * 60_000 };
 /** Changing your house design later costs the new design's price less this share of the old one. */
 export const REBUILD_CREDIT = 0.5;
 
+/** Plots one player can own at once (land or houses). */
+export const MAX_PLOTS = 5;
+
+export interface HomeItem {
+  key: string;
+  name: string;
+  price: number;
+  /** Extra energy every rest at home. */
+  comfort: number;
+  art: string;
+}
+/** Things for the house: bought once each, shown in your rooms, and each makes resting a bit better. */
+export const HOME_ITEMS: readonly HomeItem[] = [
+  { key: "plastic_chairs", name: "Plastic chairs", price: 2_000, comfort: 1, art: "/art/furniture/plastic-chair-classic.webp" },
+  { key: "bucket_set", name: "Bucket and bowl set", price: 1_500, comfort: 1, art: "/art/furniture/bucket-set.webp" },
+  { key: "standing_fan", name: "Standing fan", price: 8_000, comfort: 4, art: "/art/furniture/standing-fan.webp" },
+  { key: "sofa_ankara", name: "Sofa with Ankara cushions", price: 25_000, comfort: 5, art: "/art/furniture/sofa-ankara-cushions.webp" },
+  { key: "generator_small", name: "Small generator (I better pass my neighbour)", price: 35_000, comfort: 6, art: "/art/furniture/generator-small.webp" },
+  { key: "adire_sofa_set", name: "Adire lounge set", price: 90_000, comfort: 8, art: "/art/furniture/adire-sofa-set.webp" },
+  { key: "big_generator", name: "Big generator (24/7 light)", price: 150_000, comfort: 10, art: "/art/furniture/generator-34.webp" },
+  { key: "water_tank", name: "Water tank (no more fetching)", price: 60_000, comfort: 6, art: "/art/props/water-tank.webp" },
+];
+export const HOME_ITEM_BY_KEY: ReadonlyMap<string, HomeItem> = new Map(HOME_ITEMS.map((i) => [i.key, i]));
+/** Energy from resting at home with these things. */
+export const restEnergy = (items: readonly string[]) => Math.min(80, REST.energy + items.reduce((n, k) => n + (HOME_ITEM_BY_KEY.get(k)?.comfort ?? 0), 0));
+
+export interface OwnedPlot {
+  plotId: string;
+  /** House design, or null for empty land. */
+  design: string | null;
+  isHome: boolean;
+}
+
 export interface HomeView {
-  /** null: still in the starter room. */
+  /** Your home plot; null while you're still in the starter room. */
   plotId: string | null;
   design: string | null;
+  plots: OwnedPlot[];
+  items: string[];
+  /** Energy a rest gives you now. */
+  restEnergy: number;
   /** When resting will work again (ISO), or null if now. */
   restAgainAt: string | null;
 }
 
 export interface MapHome {
   plotId: string;
-  design: string;
+  /** House design, or null for land bought but not built on. */
+  design: string | null;
   nickname: string;
   mine: boolean;
+  isHome: boolean;
 }

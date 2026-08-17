@@ -1,6 +1,6 @@
 // Land interest: players say which plot they want; the owner sees who to contact when ownership opens.
 
-import { businessMembers, businessPlots, businesses, deals, landInterest, playerHomes, products, users } from "@hc/db";
+import { businessMembers, businessPlots, businesses, deals, landInterest, playerPlots, products, users } from "@hc/db";
 import { PLOT_ID, type LandInterestView, type MapBusiness } from "@hc/shared";
 import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -105,7 +105,7 @@ export async function landRoutes(app: FastifyInstance) {
     await app.db.transaction(async (tx) => {
       const [taken] = await tx.select().from(businessPlots).where(eq(businessPlots.plotId, plotId));
       if (taken && taken.businessId !== businessId) throw new AppError(409, "plot_taken", "Another business is already on that plot.");
-      const [home] = await tx.select().from(playerHomes).where(eq(playerHomes.plotId, plotId));
+      const [home] = await tx.select().from(playerPlots).where(eq(playerPlots.plotId, plotId));
       if (home) throw new AppError(409, "plot_taken", "A player already owns that plot.");
       // Moving: one building per business.
       await tx.delete(businessPlots).where(eq(businessPlots.businessId, businessId));

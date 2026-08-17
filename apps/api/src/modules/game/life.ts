@@ -1,10 +1,12 @@
 // Life in the city: jobs at places (shifts, pay, promotions), your home (starter room or a house on a plot you
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
-import { businessPlots, gameLedgerEntries, playerHomes, playerJobs, playerVehicles, profiles } from "@hc/db";
+import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
+  HOME_ITEM_BY_KEY,
   HOUSE_BY_KEY,
   JOB_BY_VENUE,
+  MAX_PLOTS,
   MIN_ENERGY,
   PLOT_ID,
   REBUILD_CREDIT,
@@ -19,6 +21,7 @@ import {
   jobView,
   lagosHourOf,
   plotPriceOf,
+  restEnergy,
   rungFor,
   shiftPay,
   venueHours,
@@ -95,16 +98,28 @@ export async function lifeRoutes(app: FastifyInstance) {
     });
   });
 
-  // ── Home ──
+  // ── Home and land ──
+  /** Your plots (land and houses), your home among them, and your furniture. */
+  const homeView = async (tx: Tx, userId: string, now: Date): Promise<HomeView> => {
+    const plots = await tx.select().from(playerPlots).where(eq(playerPlots.userId, userId));
+    const items = (await tx.select({ k: homeItems.itemKey }).from(homeItems).where(eq(homeItems.userId, userId))).map((r) => r.k);
+    const home = plots.find((p) => p.isHome && p.design);
+    const { freeAt } = await loadNeeds(tx, userId, now);
+    const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
+    const again = last + REST.everyMs;
+    return {
+      plotId: home?.plotId ?? null,
+      design: home?.design ?? null,
+      plots: plots.map((p) => ({ plotId: p.plotId, design: p.design, isHome: p.isHome })),
+      items,
+      restEnergy: restEnergy(items),
+      restAgainAt: again > now.getTime() ? new Date(again).toISOString() : null,
+    };
+  };
+
   app.get("/api/game/home", async (request): Promise<HomeView> => {
     const user = requireUser(request);
-    return inTx(async (tx, now) => {
-      const [home] = await tx.select().from(playerHomes).where(eq(playerHomes.userId, user.id));
-      const { freeAt } = await loadNeeds(tx, user.id, now);
-      const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
-      const again = last + REST.everyMs;
-      return { plotId: home?.plotId ?? null, design: home?.design ?? null, restAgainAt: again > now.getTime() ? new Date(again).toISOString() : null };
-    });
+    return inTx((tx, now) => homeView(tx, user.id, now));
   });
 
   app.post("/api/game/home/rest", async (request) => {
@@ -114,61 +129,100 @@ export async function lifeRoutes(app: FastifyInstance) {
       const { needs, freeAt } = await loadNeeds(tx, user.id, now);
       const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
       if (now.getTime() - last < REST.everyMs) throw new AppError(409, "rested", "You rested not long ago. Go and enjoy the city.");
-      const rested = { ...needs, energy: Math.min(100, needs.energy + REST.energy) };
+      const items = (await tx.select({ k: homeItems.itemKey }).from(homeItems).where(eq(homeItems.userId, user.id))).map((r) => r.k);
+      const rested = { ...needs, energy: Math.min(100, needs.energy + restEnergy(items)) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
       return needsView(rested);
     });
   });
 
-  // Buy a plot for sale and build a house on it (City Coins). One home per player for now.
+  /** A plot you own, or 404. */
+  const ownPlot = async (tx: Tx, userId: string, plotId: string) => {
+    const [p] = await tx.select().from(playerPlots).where(and(eq(playerPlots.plotId, plotId), eq(playerPlots.userId, userId)));
+    if (!p) throw notFound("Plot");
+    return p;
+  };
+
+  // Buy a plot for sale with City Coins: land only, or land and a house in one go. Up to MAX_PLOTS each.
   app.post<{ Params: { plotId: string } }>("/api/land/:plotId/buy", async (request, reply) => {
     const user = requireUser(request);
     const plotId = request.params.plotId;
-    const { design } = z.object({ design: z.string().max(40) }).parse(request.body);
-    const house = HOUSE_BY_KEY.get(design);
+    const { design } = z.object({ design: z.string().max(40).optional() }).parse(request.body ?? {});
+    const house = design ? HOUSE_BY_KEY.get(design) : undefined;
     const land = PLOT_ID.test(plotId) ? plotPriceOf(plotId) : null;
     if (land === null) throw new AppError(400, "bad_plot", "That plot isn't for sale.");
-    if (!house) throw new AppError(400, "bad_design", "Pick a house from the list.");
-    const result = await inTx(async (tx) => {
+    if (design && !house) throw new AppError(400, "bad_design", "Pick a house from the list.");
+    const result = await inTx(async (tx, now) => {
       await lockProfile(tx, user.id);
-      const [mine] = await tx.select().from(playerHomes).where(eq(playerHomes.userId, user.id));
-      if (mine) throw new AppError(409, "has_home", "You already own a home. Sell it first (coming soon) or rebuild it.");
-      const [takenHome] = await tx.select().from(playerHomes).where(eq(playerHomes.plotId, plotId));
+      const mine = await tx.select().from(playerPlots).where(eq(playerPlots.userId, user.id));
+      if (mine.length >= MAX_PLOTS) throw new AppError(409, "too_many_plots", `You can own up to ${MAX_PLOTS} plots for now.`);
+      const [takenPlot] = await tx.select().from(playerPlots).where(eq(playerPlots.plotId, plotId));
       const [takenBiz] = await tx.select().from(businessPlots).where(eq(businessPlots.plotId, plotId));
-      if (takenHome || takenBiz) throw new AppError(409, "plot_taken", "Someone already owns that plot.");
-      await postCoins(tx, user.id, -land, "land", `land:${plotId}`);
-      const posting = await postCoins(tx, user.id, -house.price, "house", `house:${user.id}:${plotId}:${house.key}`);
-      await tx.insert(playerHomes).values({ userId: user.id, plotId, design: house.key });
-      return { plotId, design: house.key, paid: land + house.price, balance: posting.balance };
+      if (takenPlot || takenBiz) throw new AppError(409, "plot_taken", "Someone already owns that plot.");
+      let posting = await postCoins(tx, user.id, -land, "land", `land:${plotId}:${randomUUID()}`);
+      if (house) posting = await postCoins(tx, user.id, -house.price, "house", `house:${plotId}:${house.key}:${randomUUID()}`);
+      // Your first house becomes your home.
+      const isHome = !!house && !mine.some((p) => p.isHome);
+      await tx.insert(playerPlots).values({ userId: user.id, plotId, design: house?.key ?? null, isHome });
+      return { plotId, design: house?.key ?? null, paid: land + (house?.price ?? 0), balance: posting.balance, home: await homeView(tx, user.id, now) };
     });
     return reply.code(201).send(result);
   });
 
-  // Rebuild: a different house on your plot (pay the new design, get half the old one back).
-  app.post("/api/game/home/design", async (request) => {
+  // Build (or rebuild) a house on a plot you own; rebuilding gives back half of the old house.
+  app.post<{ Params: { plotId: string } }>("/api/plots/:plotId/build", async (request) => {
     const user = requireUser(request);
     const { design } = z.object({ design: z.string().max(40) }).parse(request.body);
     const house = HOUSE_BY_KEY.get(design);
     if (!house) throw new AppError(400, "bad_design", "Pick a house from the list.");
-    return inTx(async (tx) => {
+    return inTx(async (tx, now) => {
       await lockProfile(tx, user.id);
-      const [home] = await tx.select().from(playerHomes).where(eq(playerHomes.userId, user.id));
-      if (!home) throw new AppError(409, "no_home", "Buy a plot first.");
-      if (home.design === house.key) return { design: house.key, paid: 0 };
-      const credit = Math.round(HOUSE_BY_KEY.get(home.design)!.price * REBUILD_CREDIT);
+      const plot = await ownPlot(tx, user.id, request.params.plotId);
+      if (plot.design === house.key) return { design: house.key, paid: 0, home: await homeView(tx, user.id, now) };
+      const credit = plot.design ? Math.round((HOUSE_BY_KEY.get(plot.design)?.price ?? 0) * REBUILD_CREDIT) : 0;
       const cost = Math.max(0, house.price - credit);
-      if (cost > 0) await postCoins(tx, user.id, -cost, "house", `house:${user.id}:${home.plotId}:${house.key}:${randomUUID()}`);
-      await tx.update(playerHomes).set({ design: house.key }).where(eq(playerHomes.userId, user.id));
-      return { design: house.key, paid: cost };
+      if (cost > 0) await postCoins(tx, user.id, -cost, "house", `house:${plot.plotId}:${house.key}:${randomUUID()}`);
+      const hasHome = (await tx.select().from(playerPlots).where(and(eq(playerPlots.userId, user.id), eq(playerPlots.isHome, true)))).length > 0;
+      await tx.update(playerPlots).set({ design: house.key, ...(hasHome ? {} : { isHome: true }) }).where(eq(playerPlots.plotId, plot.plotId));
+      return { design: house.key, paid: cost, home: await homeView(tx, user.id, now) };
     });
+  });
+
+  // Choose which of your houses is home.
+  app.post<{ Params: { plotId: string } }>("/api/plots/:plotId/home", async (request) => {
+    const user = requireUser(request);
+    return inTx(async (tx, now) => {
+      const plot = await ownPlot(tx, user.id, request.params.plotId);
+      if (!plot.design) throw new AppError(409, "no_house", "Build a house there first.");
+      await tx.update(playerPlots).set({ isHome: false }).where(eq(playerPlots.userId, user.id));
+      await tx.update(playerPlots).set({ isHome: true }).where(eq(playerPlots.plotId, plot.plotId));
+      return homeView(tx, user.id, now);
+    });
+  });
+
+  // Things for the house.
+  app.post("/api/game/home/items", async (request, reply) => {
+    const user = requireUser(request);
+    const { key } = z.object({ key: z.string().max(40) }).parse(request.body);
+    const item = HOME_ITEM_BY_KEY.get(key);
+    if (!item) throw notFound("Item");
+    const result = await inTx(async (tx, now) => {
+      await lockProfile(tx, user.id);
+      const [owned] = await tx.select().from(homeItems).where(and(eq(homeItems.userId, user.id), eq(homeItems.itemKey, key)));
+      if (owned) throw new AppError(409, "owned", "You already have that.");
+      await postCoins(tx, user.id, -item.price, "home_item", `home_item:${user.id}:${key}`);
+      await tx.insert(homeItems).values({ userId: user.id, itemKey: key });
+      return homeView(tx, user.id, now);
+    });
+    return reply.code(201).send(result);
   });
 
   app.get("/api/map/homes", async (request): Promise<MapHome[]> => {
     const rows = await app.db
-      .select({ plotId: playerHomes.plotId, design: playerHomes.design, userId: playerHomes.userId, nickname: profiles.nickname, hidden: profiles.nicknameHidden })
-      .from(playerHomes)
-      .innerJoin(profiles, eq(profiles.userId, playerHomes.userId));
-    return rows.map((r) => ({ plotId: r.plotId, design: r.design, nickname: r.hidden ? "a player" : r.nickname, mine: r.userId === request.user?.id }));
+      .select({ plotId: playerPlots.plotId, design: playerPlots.design, isHome: playerPlots.isHome, userId: playerPlots.userId, nickname: profiles.nickname, hidden: profiles.nicknameHidden })
+      .from(playerPlots)
+      .innerJoin(profiles, eq(profiles.userId, playerPlots.userId));
+    return rows.map((r) => ({ plotId: r.plotId, design: r.design, isHome: r.isHome, nickname: r.hidden ? "a player" : r.nickname, mine: r.userId === request.user?.id }));
   });
 
   // ── Vehicles ──

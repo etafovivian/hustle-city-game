@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type S
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
-import { HomeCard } from "./Home.js";
+import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import type { Trip } from "./AvatarWalker.js";
@@ -321,6 +321,8 @@ export function CityMap({
   const [home, setHome] = useState<HomeView | null>(null);
   const [homes, setHomes] = useState<MapHome[]>([]);
   const [homeOpen, setHomeOpen] = useState(false);
+  /** One of your other plots (land or a house that isn't home). */
+  const [plotOpen, setPlotOpen] = useState<string | null>(null);
   const [vehicles, setVehicles] = useState<VehicleKind[]>([]);
   const loadHomes = () => {
     api<HomeView>("GET", "/api/game/home")
@@ -516,17 +518,33 @@ export function CityMap({
     for (const l of FOR_SALE) {
       if (!inView(l.x, l.y)) continue;
       const owned = homeByPlot.get(l.id);
+      if (owned && !owned.design) {
+        // Land a player bought but hasn't built on yet: a fenced plot with a sold sign.
+        const open = () => !pz.wasDragged() && (owned.mine ? setPlotOpen(l.id) : undefined);
+        depthItems.push({
+          key: `land-${l.id}`,
+          y: l.y + l.hh,
+          node: (
+            <g className={owned.mine ? "hotspot land-plot" : undefined} role={owned.mine ? "button" : undefined} aria-label={owned.mine ? "Your land. Open." : `@${owned.nickname}'s land`} onClick={open}>
+              <Diamond x={l.x} y={l.y} w={l.hh * 4} h={l.hh * 2} fill={owned.mine ? "rgb(255 199 44 / 22%)" : "rgb(90 169 255 / 14%)"} stroke={owned.mine ? "#ffc72c" : "#5aa9ff"} strokeWidth="4" />
+              <image href="/art/props/for-sale-sign.webp" x={l.x - l.hh * 0.6 - 40} y={l.y + l.hh * 0.25 - 87} width="82" height="89" opacity=".85" />
+            </g>
+          ),
+        });
+        continue;
+      }
       if (owned) {
         // A player's house on their own plot.
         const scale = l.hh / 60;
         const foot = l.y + siteOf(scale).lift;
-        const art = `/art/buildings/${HOUSE_BY_KEY.get(owned.design)?.art ?? "bungalow"}.webp`;
+        const art = `/art/buildings/${HOUSE_BY_KEY.get(owned.design ?? "")?.art ?? "bungalow"}.webp`;
+        const openMine = () => (owned.isHome ? setHomeOpen(true) : setPlotOpen(l.id));
         const box = buildingBox(art, l.x, foot, scale);
         depthItems.push({
           key: `home-${l.id}`,
           y: foot,
           node: owned.mine ? (
-            <g className="hotspot venue" role="button" tabIndex={0} aria-label="Your home. Open." onClick={() => !pz.wasDragged() && setHomeOpen(true)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setHomeOpen(true))}>
+            <g className="hotspot venue" role="button" tabIndex={0} aria-label={owned.isHome ? "Your home. Open." : "Your house. Open."} onClick={() => !pz.wasDragged() && openMine()} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openMine())}>
               <ellipse cx={l.x} cy={foot} rx={box.w * 0.42} ry={box.w * 0.09} fill="rgb(0 0 0 / 28%)" />
               <image href={art} x={box.x} y={box.y} width={box.w} height={box.h} />
             </g>
@@ -1049,13 +1067,13 @@ export function CityMap({
                 })()}
                 {k >= 0.45 &&
                   homes
-                    .filter((h) => !h.mine)
+                    .filter((h) => !(h.mine && h.isHome))
                     .map((h) => {
                       const l = FOR_SALE.find((p) => p.id === h.plotId);
                       if (!l || !inView(l.x, l.y)) return null;
                       const scale = l.hh / 60;
-                      const top = buildingBox(`/art/buildings/${HOUSE_BY_KEY.get(h.design)?.art ?? "bungalow"}.webp`, l.x, l.y + siteOf(scale).lift, scale).y;
-                      const text = `🏠 @${h.nickname}`;
+                      const top = h.design ? buildingBox(`/art/buildings/${HOUSE_BY_KEY.get(h.design)?.art ?? "bungalow"}.webp`, l.x, l.y + siteOf(scale).lift, scale).y : l.y - 70;
+                      const text = h.mine ? (h.design ? "🏠 Your house" : "📍 Your land") : h.design ? `🏠 @${h.nickname}` : `📍 @${h.nickname}'s land`;
                       const w = text.length * 8 + 20;
                       return (
                         <g key={`home-l-${h.plotId}`} aria-hidden="true" transform={`translate(${l.x} ${top - 6}) scale(${Math.min(plateScale, 4)})`}>
@@ -1300,7 +1318,7 @@ export function CityMap({
             <PlayerCard
               player={playerOpen}
               near={(!!place && place === playerOpen.place) || Math.hypot(playerOpen.x - meAt.current.x, playerOpen.y - meAt.current.y) < 900}
-              home={homes.find((h) => h.nickname === playerOpen.nickname) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false }}
+              home={homes.find((h) => h.nickname === playerOpen.nickname && h.isHome) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false, isHome: true }}
               onClose={() => setPlayerOpen(null)}
               notify={notify}
               onChanged={onVisited}
@@ -1311,7 +1329,7 @@ export function CityMap({
               }}
               onVisitHome={() => {
                 // Their own house, or their room in a face-me block.
-                const h = homes.find((x) => x.nickname === playerOpen.nickname) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false };
+                const h = homes.find((x) => x.nickname === playerOpen.nickname && x.isHome) ?? { plotId: `room-${playerOpen.nickname}`, design: "starter", nickname: playerOpen.nickname, mine: false, isHome: true };
                 setPlayerOpen(null);
                 setVisitHome(h);
               }}
@@ -1320,6 +1338,22 @@ export function CityMap({
           {visitHome && (
             <VisitHome home={visitHome} inside={others.filter((p) => p.place === `home:${visitHome.plotId}`)} onClose={() => setVisitHome(null)} notify={notify} />
           )}
+          {plotOpen && home && (() => {
+            const mine = home.plots.find((p) => p.plotId === plotOpen);
+            const l = FOR_SALE.find((p) => p.id === plotOpen);
+            return mine && l ? (
+              <PlotCard
+                plot={mine}
+                area={l.area}
+                onClose={() => setPlotOpen(null)}
+                onChanged={() => {
+                  loadHomes();
+                  onVisited();
+                }}
+                notify={notify}
+              />
+            ) : null;
+          })()}
           {homeOpen && home && (
             <HomeCard
               chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}
@@ -1339,7 +1373,7 @@ export function CityMap({
           )}
           {landOpen && !landList && !bizByPlot.has(landOpen) && !homeByPlot.has(landOpen) && (
             <LandCard
-              hasHome={!!home?.plotId}
+              ownedCount={home?.plots.length ?? 0}
               onBought={() => {
                 loadHomes();
                 onVisited();

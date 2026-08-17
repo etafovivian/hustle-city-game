@@ -863,3 +863,6 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .chat-error { grid-column: 1 / -1; color: var(--danger); }
 .unread-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5b4b; color: #fff; font-size: 11px; font-weight: 900; }
 .home-rooms { display: grid; gap: 8px; }
+.home-room-frame { position: relative; }
+.home-item { position: absolute; width: 16%; transform: translate(-50%, -85%); pointer-events: auto; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 45%)); z-index: 900; }
+.home-shop { display: grid; gap: 8px; }
