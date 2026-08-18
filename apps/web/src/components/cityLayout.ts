@@ -27,7 +27,7 @@ const island = (x: number) => 4300 + 0.5 * (x - 3800);
 
 export const ROADS: Segment[] = [
   // Road A: Danfo Terminal (NW) → Junction 101 → Tech Mile → bridge head
-  { id: "a", x0: 1600, y0: CY + 0.5 * (1600 - CX), x1: 7200, y1: CY + 0.5 * (7200 - CX) },
+  { id: "a", x0: 900, y0: CY + 0.5 * (900 - CX), x1: 7200, y1: CY + 0.5 * (7200 - CX) },
   // Road B: Apapa Port (SW) → Owambe Gardens → Junction 101 → Airport Ridge (NE)
   { id: "b", x0: 1500, y0: CY - 0.5 * (1500 - CX), x1: 7600, y1: CY - 0.5 * (7600 - CX) },
   // Third Mainland Bridge: from the bridge head down-left across the lagoon to the Island
@@ -936,18 +936,44 @@ const J101_LINES: FrontLine[] = [
   ),
 ];
 
+/** Forest reserves on the open land between areas (drawn and planted further down); the city doesn't grow into them. */
+const FOREST_RECTS = [
+  { name: "Ikeja Forest Reserve", a0: -3100, a1: -1500, b0: 1550, b1: 3000 },
+  { name: "Lagoon Forest", a0: 1600, a1: 3400, b0: 2850, b1: 4300 },
+  { name: "Badagry Creek Forest", a0: -1500, a1: 300, b0: -4600, b1: -3450 },
+];
+const inForest = (x: number, y: number, hh: number) => {
+  const p = toIso(x, y);
+  return FOREST_RECTS.some((f) => p.a + hh > f.a0 && p.a - hh < f.a1 && p.b + hh > f.b0 && p.b - hh < f.b1);
+};
+/** On the map, with room for a tree's crown above its foot. */
+const onMap = (x: number, y: number) => x > 30 && x < WORLD.w - 30 && y > 110 && y < WORLD.h - 30;
+/** Well inside the map's edges, with room for a building's art above its plot (growth only). */
+const inWorld = (x: number, y: number, hh = 0) => x - 2 * hh > 60 && x + 2 * hh < WORLD.w - 60 && y - hh - 210 > 0 && y + hh < WORLD.h - 60;
+
+interface FillOpts {
+  /** Lines that count as crossings (for corners); defaults to the lines being filled. */
+  context?: FrontLine[];
+  /** Share of plots kept as land for sale, instead of the area's. */
+  forSale?: number;
+  /** Plot half-side, instead of the area's (infill plots squeeze into the gaps left between bigger ones). */
+  plotHalf?: number;
+  /** Growth: plots must sit well inside the map. */
+  growing?: boolean;
+}
 /**
  * The area generator: plots on both sides of every front line, shops on busy frontages and corners, homes and
  * civic buildings behind, a share kept as land for sale. Seeded per plot id, so the same on every visit.
  */
-function fillArea(area: string, lines: FrontLine[]) {
+function fillArea(area: string, lines: FrontLine[], opts: FillOpts = {}) {
+  const { context = lines, forSale: forSaleShare, growing = false } = opts;
   const P = AREA_PRESETS[area]!;
   const slug = area.toLowerCase().replace(/\s+/g, "-");
   const houses: Building[] = [];
-  const driveways: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  const driveways: { x0: number; y0: number; x1: number; y1: number; key: string }[] = [];
   for (const l of lines) {
     const clear = l.cls === "arterial" ? HALF + PAVEMENT + 8 : STREET_CLASS[l.cls].half + STREET_CLASS[l.cls].pav + 6;
-    const crossings = lines.filter((o) => o.fixed !== l.fixed).map((o) => o.at);
+    const crossings = context.filter((o) => o.fixed !== l.fixed).map((o) => o.at);
     const [lo, hi] = [Math.min(l.from, l.to), Math.max(l.from, l.to)];
     for (const side of [1, -1] as const) {
       let n = 0;
@@ -958,13 +984,14 @@ function fillArea(area: string, lines: FrontLine[]) {
         const nearJunction = area === "Junction 101" && l.cls === "arterial" && Math.abs(t) < 700;
         const pull = PULL[l.cls] * (corner ? 1.5 : 1) * (nearJunction ? 1.25 : 1);
         const shop = r < Math.min(0.92, P.commercial * pull);
-        const hh = shop ? P.plotHalf - 4 : P.plotHalf;
+        const half = opts.plotHalf ?? P.plotHalf;
+        const hh = shop ? half - 4 : half;
         const off = l.at + side * (clear + hh + 2);
         const c = l.fixed === "b" ? iso(t, off) : iso(off, t);
-        if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh, 22)) continue;
+        if ((growing && (!inWorld(c.x, c.y, hh) || inForest(c.x, c.y, hh))) || !onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh, 22)) continue;
         n++;
         t += hh * 2;
-        const forSale = seeded(id + ":land") < P.forSale;
+        const forSale = seeded(id + ":land") < (forSaleShare ?? P.forSale);
         const plot: LandPlot = { id, x: c.x, y: c.y, hh, area, use: forSale ? "for-sale" : shop ? "shop" : "home", road: l.cls };
         LAND.push(plot);
         if (forSale) {
@@ -981,7 +1008,7 @@ function fillArea(area: string, lines: FrontLine[]) {
           const half = STREET_CLASS[l.cls].half;
           const p0 = l.fixed === "b" ? iso(t - hh * 2, l.at + side * half) : iso(l.at + side * half, t - hh * 2);
           const p1 = l.fixed === "b" ? iso(t - hh * 2, off - side * hh) : iso(off - side * hh, t - hh * 2);
-          driveways.push({ x0: p0.x, y0: p0.y, x1: p1.x, y1: p1.y });
+          driveways.push({ x0: p0.x, y0: p0.y, x1: p1.x, y1: p1.y, key: id });
         }
       }
     }
@@ -990,8 +1017,375 @@ function fillArea(area: string, lines: FrontLine[]) {
 }
 
 const FILLED = [fillArea("Junction 101", J101_LINES), ...AREA_GRIDS.map((g) => fillArea(g.area, g.lines))];
-const AREA_HOUSES = FILLED.flatMap((f) => f.houses);
-export const DRIVEWAYS = FILLED.flatMap((f) => f.driveways);
+/** The plots for sale before the city grew (these never move or go). */
+const ORIGINAL_SALE = new Set(FOR_SALE.map((l) => l.id));
+
+// ── Growth: the newer streets ──
+// The city grows outwards after everything above is placed, so every older plot keeps its id (area + line + side +
+// index) and its spot: the grids above are never edited, new streets get new line ids, and they are laid only where
+// they keep off everything already built (a street stops short of the first plot in its way; a link between two
+// streets is laid whole or not at all). Their plots are claimed after all the older ones, so they are appended to
+// LAND and FOR_SALE in order.
+type GrowLine = FrontLine & { whole?: boolean };
+/** A link: a short street joining the end of one street to another, laid whole or not at all. */
+const link = (id: string, fixed: "a" | "b", at: number, from: number, to: number, cls: StreetClass = "local"): GrowLine => ({ ...st(id, fixed, at, from, to, cls), whole: true });
+/** Collectors every 600 along the Island road (Island Heights, then Lekki); the drives link their far ends. */
+const ISLAND_COLLECTORS = [...range(2850, 4650, 600), ...range(5150, 10100, 600)];
+/** The beach drive runs just inside the Island's south shore, south of the last row of plots. */
+const BEACH_B = -3310;
+/** The lagoon drive runs along the Island's north shore, behind the plots and landmarks on the Island road. */
+const LAGOON_B = -2058;
+/** The north collectors stop short of the lagoon drive: a link carries each one on to it. */
+const LAGOON_STUB = -2180;
+/** Drive pieces between consecutive collectors (each laid whole or not at all). */
+const drive = (tag: string, b: number, ats: number[]) => ats.flatMap((a, i) => (i ? [link(`${tag}${i}`, "b", b, ats[i - 1]!, a)] : []));
+const GROWTH: { area: string; forSale?: number; lines: GrowLine[] }[] = [
+  {
+    // Danfo Terminal grows west along Road A (which now runs on towards the edge of the map), in blocks between two
+    // long locals, and south to meet Owambe Gardens' new streets.
+    area: "Danfo Terminal",
+    lines: [
+      { ...A_ROAD(-3850, -2750), id: "Ax" },
+      ...collectors("dtx", "a", [-2950, -3350], 0, [800, -800]),
+      st("dtxc2s", "a", -3750, 0, -800, "collector", true),
+      st("dtl0x", "b", 800, -2670, -3350, "local"),
+      st("dtl1x", "b", -800, -2670, -3750, "local"),
+      st("dtc0x", "a", -2050, -1340, -2600, "collector"),
+      st("dtc1x", "a", -2500, -1340, -2300, "collector"),
+      // Along the top: the north ends of the flyover street and both collectors, joined up
+      link("dtl2x", "b", 1400, -1650, -2500),
+      link("dtfsx", "a", -1650, -1340, -1750),
+    ],
+  },
+  {
+    // Owambe Gardens' collectors carry on west to Danfo Terminal's new streets, and a third runs back east from the
+    // end of Danfo's, linked to Apapa Port's.
+    area: "Owambe Gardens",
+    lines: [
+      st("owc0w", "b", -1750, -1340, -2500, "collector"),
+      st("owc1w", "b", -2150, -1340, -2550, "collector"),
+      st("owc2w", "b", -2550, -2050, -60, "collector"),
+      link("owl0x", "a", -1200, -2550, -2900),
+      link("owl1x", "a", -700, -2550, -2900),
+    ],
+  },
+  {
+    // Airport Ridge's collectors carry on east towards the lagoon forest, Tech Mile's run north to meet them, and the
+    // west ends are joined up along the Ikeja forest.
+    area: "Airport Ridge",
+    lines: [
+      ...[1750, 2200, 2650].map((b, i) => st(`arc${i}x`, "b", b, 1340, 2700, "collector")),
+      st("tmc0x", "a", 1650, 1420, 2650, "local"),
+      st("tmc1x", "a", 2050, 1420, 2650, "local"),
+      link("arl2x", "a", 2700, 1750, 2650),
+      link("arl3x", "a", -1400, 1750, 2650),
+    ],
+  },
+  {
+    // Tech Mile's locals meet at their east ends.
+    area: "Tech Mile",
+    lines: [link("tml3x", "a", 2290, 800, 1250)],
+  },
+  {
+    // Marina Wharf's north collectors carry on to the lagoon drive too.
+    area: "Marina Wharf",
+    lines: [...drive("mwnd", LAGOON_B, [1850, 2200, 2850]), ...[1850, 2200].map((a, i) => link(`mwc${i}nx`, "a", a, LAGOON_STUB, LAGOON_B, "collector"))],
+  },
+  {
+    // The lagoon drive along the Island's north shore links the far ends of Island Heights' and Lekki's north
+    // collectors, and the beach drive along the south shore Lekki's south ones (Island Heights' landmarks stand on
+    // the beach side, so its south collectors still end in turning circles).
+    area: "Island Heights",
+    lines: [
+      ...drive("ihnd", LAGOON_B, ISLAND_COLLECTORS.slice(0, 4)),
+      ...ISLAND_COLLECTORS.slice(0, 4).map((a, i) => link(`ihc${i}nx`, "a", a, LAGOON_STUB, LAGOON_B, "collector")),
+    ],
+  },
+  {
+    area: "Lekki Gardens",
+    lines: [
+      ...drive("lkbd", BEACH_B, ISLAND_COLLECTORS.slice(3)),
+      ...drive("lknd", LAGOON_B, ISLAND_COLLECTORS.slice(3)),
+      ...ISLAND_COLLECTORS.slice(4).map((a, i) => link(`lkc${i}nx`, "a", a, LAGOON_STUB, LAGOON_B, "collector")),
+    ],
+  },
+];
+/** Lays a growth street: it runs from its start until the land, the map's edge or something already built stops it. */
+function growLine(l: GrowLine): FrontLine | null {
+  if (l.cls === "arterial") return l;
+  const { half, pav } = STREET_CLASS[l.cls];
+  const dir = Math.sign(l.to - l.from);
+  const pt = (t: number) => (l.fixed === "a" ? iso(l.at, t) : iso(t, l.at));
+  const blocked = (t: number) =>
+    TAKEN.some((p) => {
+      const [fixed, run] = l.fixed === "a" ? [p.a, p.b] : [p.b, p.a];
+      return Math.abs(fixed - l.at) < p.hh + half + pav + 6 && Math.abs(run - t) < p.hh + half * 2.4 + 4;
+    });
+  const start = l.offRoad ? l.from + dir * (HALF - 4) : l.from;
+  if (blocked(start)) return null;
+  let end = start;
+  let stopped = false;
+  for (let t = start + dir * 20; dir > 0 ? t <= l.to : t >= l.to; t += dir * 20) {
+    const p = pt(t);
+    if (!onLand(p.x, p.y + 40) || !inWorld(p.x, p.y)) {
+      stopped = true;
+      end -= dir * 60;
+      break;
+    }
+    if ((stopped = blocked(t))) break;
+    end = t;
+  }
+  if (l.whole) return stopped ? null : { id: l.id, fixed: l.fixed, at: l.at, from: l.from, to: l.to, cls: l.cls };
+  return Math.abs(end - l.from) < 200 ? null : { id: l.id, fixed: l.fixed, at: l.at, from: l.from, to: end, cls: l.cls, offRoad: l.offRoad };
+}
+const GROWN_GRIDS = GROWTH.map((g) => ({ ...g, lines: g.lines.flatMap((l) => growLine(l) ?? []) }));
+// From here on, everything keeps off the new streets too.
+STREETS.push(...GROWN_GRIDS.flatMap((g) => g.lines.filter((l) => l.cls !== "arterial").map(streetOf)));
+const contextOf = (area: string) => [...(area === "Junction 101" ? J101_LINES : (AREA_GRIDS.find((o) => o.area === area)?.lines ?? [])), ...GROWN_GRIDS.filter((g) => g.area === area).flatMap((g) => g.lines)];
+const GROWN = [
+  ...GROWN_GRIDS.map((g) => fillArea(g.area, g.lines, { context: contextOf(g.area), forSale: g.forSale, growing: true })),
+  // Infill: smaller plots, all for sale, in the gaps the bigger plots left along Island Heights' and Lekki's streets
+  // (each street again, under a new line id ending in "i").
+  ...(["Island Heights", "Lekki Gardens"] as const).map((area) =>
+    fillArea(
+      area,
+      [...AREA_GRIDS.find((g) => g.area === area)!.lines, ...GROWN_GRIDS.filter((g) => g.area === area).flatMap((g) => g.lines)].map((l) => ({ ...l, id: `${l.id}i` })),
+      { context: contextOf(area), forSale: 1, plotHalf: 44, growing: true },
+    ),
+  ),
+];
+
+/** Buildings of the city before it grew. */
+const ORIGINAL_HOUSES = FILLED.flatMap((f) => f.houses);
+/** Their order back to front as it was then (starter rooms and branch names follow it, whatever changes below). */
+const ORIGINAL_ORDER = new Map([...DISTRICT_SCENERY, ...ORIGINAL_HOUSES].sort((a, b) => a.y - b.y).map((b, i) => [b.key, i]));
+
+// ── Art: what each sprite hides ──
+// Plots never overlap on the ground, but the art stands up from them: a tall building can hide most of the one behind
+// it. Each sprite is modelled by its silhouette (not its image rectangle; the art is cut out on a transparent ground):
+// a building is its footprint diamond extruded up to the top of its image, a tree its crown, a sign its board. The
+// pass below keeps every building from hiding more than MAX_COVER of another (scripts/audit-layout.ts checks it).
+/** Height / width of each building's art, as in artSizes.ts (check-clearance keeps the two in step). */
+export const ART_ASPECT: Record<string, number> = {
+  "airport-terminal": 0.75, atm: 0.85, "bank-crown-savings": 0.9, "bank-eko-trust": 0.94, "bank-lagoon-capital": 1.08, barbershop: 0.96, buka: 0.94,
+  bungalow: 0.83, "bus-terminal": 0.67, "car-showroom": 0.8, chemist: 0.89, church: 0.92, clinic: 0.8, "colonial-block": 1.01, "commercial-block": 0.91,
+  "container-port": 0.92, "control-tower": 1.2, "crazy-house": 0.81, "cyber-cafe": 0.87, "estate-gate": 0.75, "event-centre": 0.94, "face-me-block": 0.8,
+  "family-compound": 0.72, "ferry-jetty": 0.77, "filling-station": 0.8, "gadget-kiosk": 1.13, "golf-club": 0.72, gym: 0.89, "high-court": 0.87,
+  hospital: 0.89, hotel: 1, "laptop-shop": 0.89, library: 0.92, mall: 0.89, "market-hall": 0.8, mechanic: 0.86, "mixed-use-block": 0.91, mosque: 1.24,
+  "motor-park": 0.72, "office-tower": 1.23, "phone-shop": 0.96, "police-station": 0.9, "polytechnic-gate": 0.84, "radio-station": 1.33,
+  "residential-block": 0.88, "residential-tower": 1.06, "restaurant-terrace": 0.88, salon: 1.11, school: 0.79, "shop-house": 0.99, "skyline-lounge": 0.83,
+  snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82,
+  "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
+};
+export type Pt = [number, number];
+const artName = (art: string) => art.split("/").pop()!.replace(".webp", "");
+/** Silhouette and footprint of building art `BASE * scale` wide with its foot at (x, y) (`h`: drawn height, if not the art's own). */
+export function buildingShape(art: string, x: number, y: number, scale: number, h?: number) {
+  const w = BASE * scale;
+  const height = h ?? w * (ART_ASPECT[artName(art)] ?? 0.94);
+  const inset = w * 0.06;
+  const [l, r] = [x - w / 2 + inset, x + w / 2 - inset];
+  const bottom = y + w / 12 - inset / 2;
+  const top = y + w / 12 - height + inset;
+  const q = (r - l) / 4;
+  const foot: Pt[] = [[x, bottom], [r, bottom - q], [x, bottom - 2 * q], [l, bottom - q]];
+  const wall = Math.min(bottom - q, top + q);
+  const poly: Pt[] = [[x, bottom], [r, bottom - q], [r, wall], [x, top], [l, wall], [l, bottom - q]];
+  return { poly, foot };
+}
+/** An image box `w` × `h` standing on (x, y), inset by `inset` of its size for the transparent margin. */
+export function boxShape(x: number, y: number, w: number, h: number, inset = 0.2): Pt[] {
+  const [dx, dy] = [(w * inset) / 2, (h * inset) / 2];
+  return [[x - w / 2 + dx, y - h + dy], [x + w / 2 - dx, y - h + dy], [x + w / 2 - dx, y - dy / 2], [x - w / 2 + dx, y - dy / 2]];
+}
+/** Plants as CityMap draws them: art, drawn width and height / width (palms and bushes are vector symbols). */
+export const PLANT_SIZE: Record<TreeKind, [number, number]> = {
+  mango: [130, 640 / 542], almond: [140, 640 / 571], neem: [100, 640 / 436], leafy: [100, 640 / 436], plantain: [100, 640 / 597],
+  hedge: [120, 640 / 752], bougainvillea: [120, 640 / 662], palm: [120, 170 / 120], bush: [72, 40 / 72],
+};
+export function treeShape(x: number, y: number, kind: TreeKind): Pt[] {
+  const [w, k] = PLANT_SIZE[kind];
+  const foot = kind === "bush" ? 4 : kind === "palm" ? 5 : 10;
+  return boxShape(x, y + foot, w, w * k, kind === "palm" ? 0.45 : kind === "bush" ? 0.2 : 0.3);
+}
+/** The for-sale sign on an open plot, as CityMap draws it (82 × 89, left of the plot's centre). */
+export const signShape = (l: { x: number; y: number; hh: number }): Pt[] => boxShape(l.x - l.hh * 0.6 + 1, l.y + l.hh * 0.25 + 2, 82, 89, 0.25);
+export const polyArea = (p: Pt[]) => Math.abs(p.reduce((s, [x, y], i) => s + x * p[(i + 1) % p.length]![1] - p[(i + 1) % p.length]![0] * y, 0)) / 2;
+/** Intersection of two convex polygons (Sutherland-Hodgman). */
+function clipPoly(subject: Pt[], by: Pt[]): Pt[] {
+  const sign = Math.sign(by.reduce((s, [x, y], i) => s + x * by[(i + 1) % by.length]![1] - by[(i + 1) % by.length]![0] * y, 0)) || 1;
+  let out = subject;
+  for (let i = 0; i < by.length && out.length; i++) {
+    const [ax, ay] = by[i]!;
+    const [bx, bY] = by[(i + 1) % by.length]!;
+    const inside = ([x, y]: Pt) => sign * ((bx - ax) * (y - ay) - (bY - ay) * (x - ax)) >= 0;
+    const cross = ([px, py]: Pt, [qx, qy]: Pt): Pt => {
+      const [a1, b1] = [bY - ay, ax - bx];
+      const [a2, b2] = [qy - py, px - qx];
+      const [c1, c2] = [a1 * ax + b1 * ay, a2 * px + b2 * py];
+      const d = a1 * b2 - a2 * b1;
+      return [(b2 * c1 - b1 * c2) / d, (a1 * c2 - a2 * c1) / d];
+    };
+    const input = out;
+    out = [];
+    for (let k = 0; k < input.length; k++) {
+      const [cur, prev] = [input[k]!, input[(k + input.length - 1) % input.length]!];
+      if (inside(cur)) {
+        if (!inside(prev)) out.push(cross(prev, cur));
+        out.push(cur);
+      } else if (inside(prev)) out.push(cross(prev, cur));
+    }
+  }
+  return out;
+}
+export const overlapArea = (p: Pt[], q: Pt[]) => {
+  const c = clipPoly(p, q);
+  return c.length > 2 ? polyArea(c) : 0;
+};
+/** Share of `back` hidden by `front`. */
+export const coverShare = (back: Pt[], front: Pt[]) => overlapArea(back, front) / polyArea(back);
+export const inPoly = ([x, y]: Pt, p: Pt[]) => {
+  let c = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [[xi, yi], [xj, yj]] = [p[i]!, p[j]!];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+};
+/** Most of a building another building may hide (neighbours along a street overlap a little). */
+export const MAX_COVER = 0.2;
+/** Most of a building a tree in front of it may hide, and of a for-sale sign a building may hide. */
+export const MAX_TREE_COVER = 0.3;
+export const MAX_SIGN_COVER = 0.4;
+const bounds = (p: Pt[]) => [Math.min(...p.map((q) => q[0])), Math.min(...p.map((q) => q[1])), Math.max(...p.map((q) => q[0])), Math.max(...p.map((q) => q[1]))] as const;
+/** Things kept apart by the pass below, bucketed by x for quick neighbour lookups. */
+class ShapeGrid<T extends { poly: Pt[] }> {
+  private cells = new Map<number, T[]>();
+  add(s: T) {
+    const [x0, , x1] = bounds(s.poly);
+    for (let i = Math.floor(x0 / 300); i <= Math.floor(x1 / 300); i++) (this.cells.get(i) ?? this.cells.set(i, []).get(i)!).push(s);
+  }
+  near(poly: Pt[]) {
+    const [x0, y0, x1, y1] = bounds(poly);
+    const out = new Set<T>();
+    for (let i = Math.floor(x0 / 300); i <= Math.floor(x1 / 300); i++)
+      for (const s of this.cells.get(i) ?? []) {
+        const [a0, b0, a1, b1] = bounds(s.poly);
+        if (a0 < x1 && x0 < a1 && b0 < y1 && y0 < b1) out.add(s);
+      }
+    return [...out];
+  }
+}
+
+/** Venues placed by spot (not by district) and the art they are drawn with. */
+const SPOT_VENUE_ART: Record<string, string> = { mama_nkechi_buka: "buka", sharp_cuts: "barbershop", junction_motor_park: "motor-park" };
+/** Buildings that may not change: everyone's starter room (face-me blocks) and branches keep their art and key. */
+const KEEP_ART = new Set(["face-me-block", "buka", "salon", "hotel", "school", "mosque", "church", "tailor-shop", "viewing-centre", "event-centre", "car-showroom", "skyline-lounge", "gym"]);
+interface Shaped {
+  name: string;
+  /** "fixed": places, venues, landmarks; "house": an area building; "sign": an open plot's for-sale sign. */
+  kind: "fixed" | "house" | "sign";
+  fy: number;
+  poly: Pt[];
+  foot?: Pt[];
+  house?: Building;
+  /** Something drawn at a scale that may be made a little smaller (a building, landmark or venue). */
+  sized?: { x: number; y: number; scale: number };
+  plot?: LandPlot;
+  /** Placed when the city grew (may be dropped to keep the art clear). */
+  grown: boolean;
+}
+/** What the declutter pass changed, for the audit's report. */
+export const DECLUTTER = { shrunk: [] as string[], dropped: [] as string[], cleared: [] as string[], left: [] as string[] };
+const GROWN_HOUSES = new Set(GROWN.flatMap((f) => f.houses));
+const ALL_HOUSES = [...ORIGINAL_HOUSES, ...GROWN_HOUSES];
+const DROPPED = new Set<Building>();
+const fixedShapes: Shaped[] = [
+  ...PLACES.map((p) => ({ name: `place ${p.id}`, kind: "fixed" as const, fy: p.y + p.h - p.w / 12, grown: false, ...buildingShape(p.art, p.x + p.w / 2, p.y + p.h - p.w / 12, p.w / BASE, p.h) })),
+  { name: "park", kind: "fixed", fy: PARK.y + PARK.h, grown: false, ...buildingShape("park", PARK.x + PARK.w / 2, PARK.y + PARK.h - PARK.w / 12, PARK.w / BASE, PARK.h) },
+  ...VENUE_SPOTS.flatMap((v) => {
+    const art = VENUE_ART[v.key] ?? SPOT_VENUE_ART[v.key];
+    return art ? [{ name: `venue ${v.key}`, kind: "fixed" as const, fy: v.y, grown: false, sized: v, ...buildingShape(art, v.x, v.y, v.scale) }] : [];
+  }),
+  ...DISTRICT_SCENERY.map((b) => ({ name: `${b.key} ${artName(b.art)}`, kind: "fixed" as const, fy: b.y, grown: false, sized: b, ...buildingShape(b.art, b.x, b.y, b.scale) })),
+];
+/** Recomputes a fixed shape after its building was made smaller. */
+const reshape = (f: Shaped) => {
+  const v = VENUE_SPOTS.find((vv) => vv === f.sized);
+  const art = v ? (VENUE_ART[v.key] ?? SPOT_VENUE_ART[v.key])! : (f.sized as Building).art;
+  const x = f.sized!.x;
+  Object.assign(f, { fy: f.sized!.y, ...buildingShape(art, x, f.sized!.y, f.sized!.scale) });
+};
+/** Scale each thing was first drawn at: nothing is made smaller than about two thirds of it. */
+const FIRST_SCALE = new Map<object, number>();
+const shapeOfHouse = (h: Building): Shaped => ({ name: `${h.key} ${artName(h.art)}`, kind: "house", fy: h.y, grown: GROWN_HOUSES.has(h), house: h, sized: h, ...buildingShape(h.art, h.x, h.y, h.scale) });
+const removePlot = (id: string) => {
+  for (const list of [LAND, FOR_SALE]) {
+    const i = list.findIndex((l) => l.id === id);
+    if (i >= 0) list.splice(i, 1);
+  }
+};
+for (let round = 0; round < 8; round++) {
+  const shapes: Shaped[] = [
+    ...fixedShapes,
+    ...ALL_HOUSES.filter((h) => !DROPPED.has(h)).map(shapeOfHouse),
+    ...FOR_SALE.map((l) => ({ name: `land ${l.id}`, kind: "sign" as const, fy: l.y + l.hh * 0.25, poly: signShape(l), plot: l, grown: !ORIGINAL_SALE.has(l.id) })),
+  ];
+  const grid = new ShapeGrid<Shaped>();
+  for (const s of shapes) grid.add(s);
+  const touched = new Set<Shaped>();
+  let changed = false;
+  for (const p of shapes) {
+    if (p.kind === "sign") continue;
+    for (const q of grid.near(p.poly)) {
+      // p is the building in front; q anything behind it.
+      if (q === p || q.fy > p.fy || (q.fy === p.fy && q.name >= p.name) || touched.has(p) || touched.has(q)) continue;
+      const cover = coverShare(q.poly, p.poly);
+      if (cover <= (q.kind === "sign" ? MAX_SIGN_COVER : MAX_COVER)) continue;
+      // Resolve: drop what the city grew first, then make the front building a little smaller, then clear the plot
+      // behind (it stays a plot with its id, without the building), and only then leave it.
+      let done = true;
+      if (p.grown && p.house) {
+        DROPPED.add(p.house);
+        removePlot(p.house.key);
+        DECLUTTER.dropped.push(p.name);
+      } else if (q.grown && (q.house || q.plot)) {
+        if (q.house) DROPPED.add(q.house);
+        removePlot(q.house?.key ?? q.plot!.id);
+        DECLUTTER.dropped.push(q.name);
+      } else if (p.sized && p.sized.scale * 0.88 >= (FIRST_SCALE.get(p.sized) ?? FIRST_SCALE.set(p.sized, p.sized.scale).get(p.sized)!) * 0.68) {
+        // Smaller on the same plot: the plot's centre stays put, the foot point moves up with the smaller art.
+        const o = p.sized;
+        const centre = o.y - siteOf(o.scale).lift;
+        o.scale = Math.round(o.scale * 0.88 * 1000) / 1000;
+        o.y = centre + siteOf(o.scale).lift;
+        if (p.kind === "fixed") reshape(p);
+        if (!DECLUTTER.shrunk.includes(p.name)) DECLUTTER.shrunk.push(p.name);
+      } else if (q.kind === "house" && !KEEP_ART.has(artName(q.house!.art))) {
+        DROPPED.add(q.house!);
+        DECLUTTER.cleared.push(q.name);
+      } else done = false;
+      if (!done && !DECLUTTER.left.includes(`${p.name} / ${q.name}`)) DECLUTTER.left.push(`${p.name} / ${q.name}`);
+      if (done) {
+        touched.add(p).add(q);
+        changed = true;
+      }
+    }
+  }
+  if (!changed) break;
+}
+
+const AREA_HOUSES = ALL_HOUSES.filter((h) => !DROPPED.has(h));
+const DROPPED_KEYS = new Set([...DROPPED].filter((h) => GROWN_HOUSES.has(h)).map((h) => h.key));
+export const DRIVEWAYS = [...FILLED, ...GROWN].flatMap((f) => f.driveways.filter((d) => !DROPPED_KEYS.has(d.key)));
+/** Building silhouettes after the pass above: trees keep from hiding them. */
+const BUILDING_SHAPES = new ShapeGrid<Shaped>();
+for (const s of [...fixedShapes, ...AREA_HOUSES.map(shapeOfHouse)]) BUILDING_SHAPES.add(s);
+/** A tree may stand here: not inside a building's footprint, and not hiding much of one from in front. */
+const treeClear = (x: number, y: number, kind: TreeKind) => {
+  const poly = treeShape(x, y, kind);
+  return BUILDING_SHAPES.near(poly).every((b) => !inPoly([x, y], b.foot!) && (b.fy > y || coverShare(b.poly, poly) <= MAX_TREE_COVER));
+};
 
 // ── Street furniture ──
 export interface Prop {
@@ -1132,7 +1526,7 @@ export const PORT_AND_PLANES: Prop[] = (() => {
 const EXTRA_TREES = [
   ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
     const y = island(x) + (i % 2 ? 150 : -150);
-    return onIsland(x, y) && claim(x, y, 16, 6) ? [{ x, y, kind: "palm" as TreeKind, key: `isle-${i}` }] : [];
+    return onIsland(x, y) && onMap(x, y) && treeClear(x, y, "palm") && claim(x, y, 16, 6) ? [{ x, y, kind: "palm" as TreeKind, key: `isle-${i}` }] : [];
   }),
   ...DISTRICTS.flatMap((d, i) =>
     [
@@ -1140,7 +1534,7 @@ const EXTRA_TREES = [
       { x: d.x + 520, y: d.y + 280 },
       { x: d.x + 140, y: d.y - 420 },
     ]
-      .filter((p) => onLand(p.x, p.y) && claim(p.x, p.y, 16, 6))
+      .filter((p) => onLand(p.x, p.y) && onMap(p.x, p.y) && treeClear(p.x, p.y, "almond") && claim(p.x, p.y, 16, 6))
       .map((p, j) => ({ ...p, kind: (i + j) % 2 ? ("palm" as TreeKind) : ("leafy" as TreeKind), key: `dt-${i}-${j}` })),
   ),
 ];
@@ -1156,6 +1550,13 @@ const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: numbe
     const bs = g.lines.flatMap((l) => (l.fixed === "b" ? [l.at] : [l.from, l.to]));
     return { name: g.area, a0: Math.min(...as) - 200, a1: Math.max(...as) + 200, b0: Math.min(...bs) - 200, b1: Math.max(...bs) + 200, green: GREEN_SHARE[g.area] ?? 0.15 };
   }),
+  // The new streets on the mainland get their share of green too.
+  ...GROWN_GRIDS.filter((g) => ["Danfo Terminal", "Owambe Gardens", "Airport Ridge"].includes(g.area) && g.lines.length).map((g) => {
+    const ls = g.lines.filter((l) => l.cls !== "arterial");
+    const as = ls.flatMap((l) => (l.fixed === "a" ? [l.at] : [l.from, l.to]));
+    const bs = ls.flatMap((l) => (l.fixed === "b" ? [l.at] : [l.from, l.to]));
+    return { name: `${g.area} new`, a0: Math.min(...as) - 150, a1: Math.max(...as) + 150, b0: Math.min(...bs) - 150, b1: Math.max(...bs) + 150, green: GREEN_SHARE[g.area] ?? 0.15 };
+  }),
 ];
 /** Grass patches: flat on the ground, under everything. */
 export const GRASS: { x: number; y: number; r: number; key: string }[] = [];
@@ -1168,7 +1569,7 @@ const SCATTER = GREEN_AREAS.flatMap((g) => {
       const r = seeded(key);
       if (r > g.green) continue;
       const c = iso(a + (seeded(key + "x") - 0.5) * 50, b + (seeded(key + "y") - 0.5) * 50);
-      if (!onLand(c.x, c.y)) continue;
+      if (!onLand(c.x, c.y) || !onMap(c.x, c.y)) continue;
       const kind = pick<TreeKind | "grass">(
         seeded(key + "k"),
         premium
@@ -1181,17 +1582,13 @@ const SCATTER = GREEN_AREAS.flatMap((g) => {
         continue;
       }
       const hh = kind === "hedge" || kind === "bougainvillea" ? 28 : kind === "bush" ? 12 : 16;
-      if (claim(c.x, c.y, hh, 4)) out.push({ ...c, kind, key });
+      if (treeClear(c.x, c.y, kind) && claim(c.x, c.y, hh, 4)) out.push({ ...c, kind, key });
     }
   return out;
 });
 // ── Forests ──
 /** Forest reserves on the open land between areas: dark ground packed with trees. */
-export const FORESTS = [
-  { name: "Ikeja Forest Reserve", a0: -3100, a1: -1500, b0: 1550, b1: 3000 },
-  { name: "Lagoon Forest", a0: 1600, a1: 3400, b0: 2850, b1: 4300 },
-  { name: "Badagry Creek Forest", a0: -1500, a1: 300, b0: -4600, b1: -3450 },
-].map((f) => ({ ...f, path: isoRect(f.a0, f.a1, f.b0, f.b1) }));
+export const FORESTS = FOREST_RECTS.map((f) => ({ ...f, path: isoRect(f.a0, f.a1, f.b0, f.b1) }));
 const FOREST_TREES = FORESTS.flatMap((f) => {
   const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
   for (let a = f.a0 + 40; a <= f.a1 - 40; a += 62)
@@ -1199,9 +1596,9 @@ const FOREST_TREES = FORESTS.flatMap((f) => {
       const key = `${f.name}:${a}:${b}`;
       if (seeded(key) > 0.86) continue;
       const c = iso(a + (seeded(key + "x") - 0.5) * 44, b + (seeded(key + "y") - 0.5) * 44);
-      if (!onLand(c.x, c.y)) continue;
+      if (!onLand(c.x, c.y) || !onMap(c.x, c.y)) continue;
       const kind = pick<TreeKind>(seeded(key + "k"), [["almond", 3], ["mango", 3], ["neem", 3], ["palm", 2], ["plantain", 1], ["bush", 2], ["leafy", 1]]);
-      if (claim(c.x, c.y, kind === "bush" ? 10 : 13, 2)) out.push({ ...c, kind, key });
+      if (treeClear(c.x, c.y, kind) && claim(c.x, c.y, kind === "bush" ? 10 : 13, 2)) out.push({ ...c, kind, key });
     }
   return out;
 });
@@ -1209,6 +1606,8 @@ const FOREST_TREES = FORESTS.flatMap((f) => {
 export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES].sort((a, b) => a.y - b.y);
 
 export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES].sort((a, b) => a.y - b.y);
+/** The buildings that stood before the city grew, back to front as they were then. */
+const ORIGINAL_SCENERY = ALL_SCENERY.filter((b) => ORIGINAL_ORDER.has(b.key)).sort((a, b) => ORIGINAL_ORDER.get(a.key)! - ORIGINAL_ORDER.get(b.key)!);
 
 /** Every placed building and plot, for the layout check (scripts/check-clearance.ts). */
 export const PLACED = { scenery: ALL_SCENERY, venues: VENUE_SPOTS, plots: PLOTS, plotHalf: PLOT_HH, props: PROPS, trees: TREES, land: LAND, plotCentre };
@@ -1418,8 +1817,18 @@ export const bandPath = (s: Segment, half = HALF) =>
 export const kerbPath = (s: Segment, off: number) => `M${s.x0} ${s.y0 + off} L${s.x1} ${s.y1 + off}`;
 export const centrePath = (s: Segment) => `M${s.x0} ${s.y0} L${s.x1} ${s.y1}`;
 
+/** Distance from a point to a segment. */
+const distTo = (l: Segment, p: { x: number; y: number }) => {
+  const dx = l.x1 - l.x0;
+  const dy = l.y1 - l.y0;
+  const t = Math.max(0, Math.min(1, ((p.x - l.x0) * dx + (p.y - l.y0) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(l.x0 + dx * t - p.x, l.y0 + dy * t - p.y);
+};
 /** Street ends away from the main roads: turning circles sized to the street (alleys just stop). */
-export const STREET_ENDS = STREETS.filter((s) => s.cls !== "alley").map((s) => ({ ...s.end, key: s.id, half: s.half, pav: s.pav }));
+export const STREET_ENDS = STREETS.filter((s) => s.cls !== "alley")
+  // A street that ends on another one (a T-junction) needs no turning circle.
+  .filter((s) => !STREETS.some((o) => o !== s && distTo(o, s.end) < o.half))
+  .map((s) => ({ ...s.end, key: s.id, half: s.half, pav: s.pav }));
 
 // ── Road drawing paths ──
 // Roads are drawn as stroked centre lines, layer by layer (pavement, kerb, asphalt), so every junction and
@@ -1695,7 +2104,8 @@ export interface Branch {
 }
 export const BRANCHES: Branch[] = (() => {
   const used = new Set<string>();
-  return ALL_SCENERY.flatMap((b) => {
+  const first = new Set(ORIGINAL_SCENERY.map((b) => b.key));
+  return [...ORIGINAL_SCENERY, ...ALL_SCENERY.filter((b) => !first.has(b.key))].flatMap((b) => {
     const kind = b.art.split("/").pop()!.replace(".webp", "");
     const base = BRANCH_OF[kind];
     if (!base) return [];
@@ -1718,5 +2128,6 @@ export const BRANCH_BY_KEY: ReadonlyMap<string, Branch> = new Map(BRANCHES.map((
 
 // ── Starter homes ──
 /** Everyone starts with a rented room in a face-me-I-face-you block; which block follows from their name. */
-export const STARTER_BLOCKS = ALL_SCENERY.filter((b) => b.art.endsWith("/face-me-block.webp"));
+// Only the blocks that stood before the city grew, so everyone keeps the room they had.
+export const STARTER_BLOCKS = ORIGINAL_SCENERY.filter((b) => b.art.endsWith("/face-me-block.webp"));
 export const starterRoom = (nickname: string) => STARTER_BLOCKS[Math.floor(seeded(`room:${nickname.toLowerCase()}`) * STARTER_BLOCKS.length)] ?? STARTER_BLOCKS[0]!;

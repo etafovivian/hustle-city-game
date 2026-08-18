@@ -1,6 +1,7 @@
 // Layout check: nothing on the map stands on a road, kerb, pavement or street, and buildings don't overlap.
 // Run: node scripts/check-clearance.ts (Node 24 runs TypeScript directly). Exits 1 on any problem.
 import * as L from "../src/components/cityLayout.ts";
+import { audit, STRICT } from "./audit-layout.ts";
 
 type Box = { name: string; cx: number; cy: number; hh: number };
 const boxes: Box[] = [];
@@ -30,6 +31,10 @@ for (let i = 0; i < sq.length; i++)
 const { nodes, links } = L.FOOTPATHS;
 const lonely = nodes.filter((_, i) => links[i]!.length === 0).length;
 if (lonely) bad.push(`${lonely} footpath nodes have no links`);
+
+// The art: no building hides much of another, no tree stands in or in front of one, nothing in the water or off the
+// map, no name plates on top of each other (scripts/audit-layout.ts has the rules and the full report).
+for (const f of audit().found) if (STRICT.includes(f.kind)) bad.push(`${f.kind}: ${f.msg}`);
 
 console.log(bad.length ? bad.join("\n") : "all clear");
 console.log(`${boxes.length} things checked, ${L.PROPS.length} props, ${nodes.length} footpath nodes, ${L.ZEBRAS.length} zebras`);
