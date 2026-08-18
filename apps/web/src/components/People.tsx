@@ -3,7 +3,10 @@
 // building is drawn over it and one walking behind it is hidden by it. Walkers follow the footpath network
 // (cityLayout FOOTPATHS): pavements, corners and zebras. One animation loop moves them by setting attributes
 // directly; React only re-renders a few times a second when a walker passes another object's depth.
+// Beyond Junction 101 every area has its own walkers on its street pavements (areaWalks.ts). Only walkers in view
+// (or near it) are moved on screen; the rest are hidden and just keep their place in the walk, so phones stay smooth.
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AREA_WALKERS, areaCrowd, pointOn, type WalkPath } from "./areaWalks.js";
 import { FOOTPATHS, PRESETS } from "./cityLayout.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, walkerSize, type WalkDir } from "./walkers.js";
 
@@ -16,7 +19,10 @@ export interface DepthItem {
 
 // Walkers: drawn 64 world units tall; children are smaller inside the same frames.
 const WALK = walkerSize(64);
-const WALKERS = PRESETS.mainland.walkers;
+const JUNCTION_WALKERS = PRESETS.mainland.walkers;
+const WALKERS = JUNCTION_WALKERS + Object.values(AREA_WALKERS).reduce((a, b) => a + b, 0);
+/** Walkers this far (world units) outside the visible part of the map are hidden and not drawn. */
+const VIEW_MARGIN = 160;
 /** One full walk cycle (8 frames, two steps) covers this much ground, so feet don't slide. */
 const STRIDE = 58;
 
@@ -64,45 +70,102 @@ export function DepthSorted({ items, people }: { items: DepthItem[]; people: boo
   const sheets = useRef<(SVGImageElement | null)[]>([]);
   const [slots, setSlots] = useState<number[]>(() => Array.from({ length: WALKERS }, () => 0));
 
+  const probe = useRef<SVGGElement | null>(null);
+
   useEffect(() => {
     if (!walking) return;
     const { nodes, links } = FOOTPATHS;
     // Same start every visit (a seeded shuffle), different choices as they go.
     let seed = 20261012;
     const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
-    const crowd = Array.from({ length: WALKERS }, (_, i) => {
+    type Walker = {
+      x: number;
+      y: number;
+      dx: number;
+      dy: number;
+      walked: number;
+      speed: number;
+      variant: (typeof WALKER_VARIANTS)[number];
+      dir: WalkDir | "";
+      shown: boolean;
+      // On Junction 101's footpath network: between nodes `from` and `to`, `t` of the way.
+      from: number;
+      to: number;
+      t: number;
+      // On an area path: distance `s` along it.
+      path?: WalkPath;
+      s: number;
+    };
+    const base = (i: number) => ({ x: 0, y: 0, dx: 0, dy: 1, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, dir: "" as WalkDir | "", shown: true, from: 0, to: 0, t: 0, s: 0 });
+    const crowd: Walker[] = Array.from({ length: JUNCTION_WALKERS }, (_, i) => {
       const from = Math.floor(rnd() * nodes.length);
       const to = links[from]![Math.floor(rnd() * links[from]!.length)]!;
-      return { from, to, t: rnd(), y: 0, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, dir: "" as WalkDir | "" };
+      return { ...base(i), from, to, t: rnd() };
     });
+    for (const [j, w] of areaCrowd(rnd).entries()) crowd.push({ ...base(JUNCTION_WALKERS + j * 5), path: w.path, s: w.s });
+
+    // The visible part of the map, in world units (refreshed a few times a second; null = unknown, show everyone).
+    let view: { x0: number; y0: number; x1: number; y1: number } | null = null;
+    const measure = () => {
+      const g = probe.current;
+      const svg = g?.ownerSVGElement;
+      const m = g?.getScreenCTM();
+      if (!g || !svg || !m) return (view = null);
+      const r = svg.getBoundingClientRect();
+      const [l, t, rt, b] = [Math.max(r.left, 0), Math.max(r.top, 0), Math.min(r.right, window.innerWidth), Math.min(r.bottom, window.innerHeight)];
+      const inv = m.inverse();
+      const p = new DOMPoint(l, t).matrixTransform(inv);
+      const q = new DOMPoint(rt, b).matrixTransform(inv);
+      view = { x0: Math.min(p.x, q.x) - VIEW_MARGIN, y0: Math.min(p.y, q.y) - VIEW_MARGIN, x1: Math.max(p.x, q.x) + VIEW_MARGIN, y1: Math.max(p.y, q.y) + VIEW_MARGIN * 1.5 };
+    };
+    const inView = (p: Walker) => !view || (p.x >= view.x0 && p.x <= view.x1 && p.y >= view.y0 && p.y <= view.y1);
+
+    const move = (p: Walker, dt: number) => {
+      p.walked += p.speed * dt;
+      if (p.path) {
+        p.s += p.speed * dt;
+        const q = pointOn(p.path, p.s);
+        [p.x, p.y, p.dx, p.dy] = [q.x, q.y, q.dx, q.dy];
+        return;
+      }
+      let a = nodes[p.from]!;
+      let b = nodes[p.to]!;
+      let len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      p.t += (p.speed * dt) / len;
+      while (p.t >= 1) {
+        // At a corner: carry on any way but back (unless it's a dead end).
+        const ways = links[p.to]!.filter((n) => n !== p.from);
+        const next = ways.length ? ways[Math.floor(rnd() * ways.length)]! : p.from;
+        const over = (p.t - 1) * len;
+        [p.from, p.to] = [p.to, next];
+        a = nodes[p.from]!;
+        b = nodes[p.to]!;
+        len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        p.t = over / len;
+      }
+      p.x = a.x + (b.x - a.x) * p.t;
+      p.y = a.y + (b.y - a.y) * p.t;
+      [p.dx, p.dy] = [b.x - a.x, b.y - a.y];
+    };
+
     let last = performance.now();
     let raf = 0;
     const step = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       for (const [i, p] of crowd.entries()) {
-        let a = nodes[p.from]!;
-        let b = nodes[p.to]!;
-        let len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        p.t += (p.speed * dt) / len;
-        p.walked += p.speed * dt;
-        while (p.t >= 1) {
-          // At a corner: carry on any way but back (unless it's a dead end).
-          const ways = links[p.to]!.filter((n) => n !== p.from);
-          const next = ways.length ? ways[Math.floor(rnd() * ways.length)]! : p.from;
-          const over = (p.t - 1) * len;
-          [p.from, p.to] = [p.to, next];
-          a = nodes[p.from]!;
-          b = nodes[p.to]!;
-          len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-          p.t = over / len;
+        move(p, dt);
+        const group = groups.current[i];
+        const shown = inView(p);
+        if (shown !== p.shown) {
+          p.shown = shown;
+          group?.setAttribute("display", shown ? "inline" : "none");
         }
-        const x = a.x + (b.x - a.x) * p.t;
-        p.y = a.y + (b.y - a.y) * p.t;
-        groups.current[i]?.setAttribute("transform", `translate(${x.toFixed(1)} ${p.y.toFixed(1)})`);
+        if (!shown) continue;
+        group?.setAttribute("transform", `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`);
         const img = sheets.current[i];
         if (!img) continue;
-        const dir = walkDir(b.x - a.x, b.y - a.y);
+        const dir = walkDir(p.dx, p.dy);
         if (dir !== p.dir) {
           p.dir = dir;
           img.setAttribute("href", walkerSheet(p.variant, dir));
@@ -113,11 +176,16 @@ export function DepthSorted({ items, people }: { items: DepthItem[]; people: boo
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    // A few times a second, move walkers whose depth slot changed (React re-orders their nodes).
+    // A few times a second, re-measure the view and move walkers whose depth slot changed (React re-orders their
+    // nodes). Hidden walkers keep their old slot, so they never cause a re-render.
     const resort = window.setInterval(() => {
-      const next = crowd.map((p) => slotOf(ys.current, p.y));
-      setSlots((prev) => (prev.length === next.length && prev.every((s, i) => s === next[i]) ? prev : next));
+      measure();
+      setSlots((prev) => {
+        const next = crowd.map((p, i) => (p.shown ? slotOf(ys.current, p.y) : (prev[i] ?? 0)));
+        return prev.length === next.length && prev.every((s, i) => s === next[i]) ? prev : next;
+      });
     }, 250);
+    measure();
     return () => {
       cancelAnimationFrame(raf);
       window.clearInterval(resort);
@@ -132,7 +200,7 @@ export function DepthSorted({ items, people }: { items: DepthItem[]; people: boo
       </svg>
     </g>
   );
-  const out: ReactNode[] = [];
+  const out: ReactNode[] = [<g key="walkers-probe" ref={(el) => void (probe.current = el)} />];
   const byslot = new Map<number, number[]>();
   if (walking) slots.forEach((s, i) => byslot.set(Math.min(s, sorted.length), [...(byslot.get(Math.min(s, sorted.length)) ?? []), i]));
   sorted.forEach((item, idx) => {
