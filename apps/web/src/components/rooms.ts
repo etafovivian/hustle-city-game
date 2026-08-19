@@ -1,0 +1,412 @@
+// Hand-marked interior rooms (public/art/interiors), used by InteriorScene. Positions are fractions of the image:
+// where a person's feet touch the floor (for lying people: the middle of the body on the mattress).
+//   walkway  open floor, in order: walkers go back and forth along it, and the player walks on it (taps snap to it);
+//   stations people who stay put and do something (pose sheets in public/art/life/poses);
+//   spots    where the player goes for each thing they can do in the room (door = where they come in).
+import type { WalkerVariant } from "./walkers.js";
+
+/** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
+export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk" | "sleep";
+/** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
+export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
+  dance: ["woman_gele", "man_kaftan", "woman_buba", "man_casual"],
+  serve: ["woman_buba", "man_casual"],
+  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"],
+  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+  sleep: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+};
+/** Pose sheet frames: 96x160 standing/seated (feet 16 px above the bottom); lying sheets are 192x112, centred. */
+export const POSE_FRAME = { w: 96, h: 160, ground: 16 };
+export const SLEEP_FRAME = { w: 192, h: 112 };
+
+export type Pt = [number, number];
+export type Facing = "se" | "sw";
+/** What the player is doing in a room. */
+export type PlayerAction = "walk" | "sit" | "eat" | "sleep" | "dance" | "chair" | "stand";
+/** Marked places for the player: door (where they come in) and one per action that fits the room. */
+export type SpotKey = "door" | Exclude<PlayerAction, "walk">;
+export interface Spot {
+  at: Pt;
+  dir: Facing;
+  /** The pose played there, when not the usual one for the action (e.g. standing in a prayer row). */
+  pose?: PoseAction;
+}
+export interface Room {
+  /** Open floor, in order: walkers go back and forth along it, pausing at each spot. */
+  walkway: Pt[];
+  walkers: number;
+  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant }[];
+  spots?: Partial<Record<SpotKey, Spot>>;
+}
+
+/** Hand-marked rooms, keyed by interior art name (public/art/interiors). Every room has 2-5 people. */
+export const ROOMS: Record<string, Room> = {
+  buka: {
+    walkway: [[0.25, 0.74], [0.33, 0.8], [0.44, 0.85], [0.54, 0.9], [0.64, 0.86]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.56, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.4, 0.75], dir: "se" },
+      { action: "sit_eat", at: [0.24, 0.66], dir: "se", variant: "man_kaftan" },
+      { action: "sit_eat", at: [0.38, 0.57], dir: "se", variant: "woman_gele" },
+    ],
+    spots: { door: { at: [0.54, 0.9], dir: "se" }, eat: { at: [0.3, 0.6], dir: "se" }, stand: { at: [0.33, 0.8], dir: "se" } },
+  },
+  "event-centre": {
+    walkway: [[0.36, 0.63], [0.46, 0.71], [0.56, 0.75], [0.62, 0.67], [0.52, 0.5]],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.45, 0.56], dir: "se" },
+      { action: "dance", at: [0.53, 0.62], dir: "sw" },
+      { action: "dance", at: [0.58, 0.55], dir: "se" },
+      { action: "dance", at: [0.47, 0.65], dir: "sw" },
+    ],
+    spots: { door: { at: [0.56, 0.75], dir: "se" }, dance: { at: [0.62, 0.68], dir: "sw" }, stand: { at: [0.36, 0.63], dir: "se" } },
+  },
+  "viewing-centre": {
+    // Rows of chairs fill the floor: everyone is seated watching, one person by the cooler. The only open floor is
+    // the strip in front of the screen.
+    walkway: [[0.18, 0.6], [0.28, 0.55], [0.38, 0.5]],
+    walkers: 0,
+    stations: [
+      { action: "sit_talk", at: [0.2, 0.68], dir: "se" },
+      { action: "sit_talk", at: [0.36, 0.6], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.54, 0.6], dir: "se", variant: "man_casual" },
+      { action: "sit_talk", at: [0.46, 0.82], dir: "se" },
+      { action: "stand_idle", at: [0.7, 0.55], dir: "sw", variant: "man_casual" },
+    ],
+    spots: { door: { at: [0.18, 0.6], dir: "se" }, sit: { at: [0.3, 0.72], dir: "se" }, stand: { at: [0.28, 0.55], dir: "se" } },
+  },
+  barbershop: {
+    walkway: [[0.36, 0.86], [0.48, 0.88], [0.6, 0.8], [0.7, 0.72]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.62, 0.65], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.42, 0.78], dir: "se" },
+    ],
+    spots: { door: { at: [0.48, 0.88], dir: "se" }, chair: { at: [0.54, 0.63], dir: "se" }, sit: { at: [0.78, 0.6], dir: "sw" }, stand: { at: [0.6, 0.8], dir: "sw" } },
+  },
+  "tailor-shop": {
+    walkway: [[0.28, 0.78], [0.4, 0.85], [0.52, 0.89], [0.62, 0.81], [0.73, 0.74]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.22, 0.66], dir: "se", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.57, 0.76], dir: "sw", variant: "woman_gele" },
+    ],
+    // Stand by the dress form to be measured.
+    spots: { door: { at: [0.52, 0.89], dir: "se" }, chair: { at: [0.45, 0.8], dir: "se", pose: "stand_idle" }, stand: { at: [0.45, 0.8], dir: "se" } },
+  },
+  "bank-hall": {
+    walkway: [[0.25, 0.75], [0.4, 0.82], [0.55, 0.85], [0.7, 0.76], [0.78, 0.67]],
+    walkers: 2,
+    stations: [
+      { action: "stand_idle", at: [0.57, 0.67], dir: "se" },
+      { action: "stand_idle", at: [0.73, 0.63], dir: "sw" },
+      { action: "sit_talk", at: [0.32, 0.64], dir: "se" },
+    ],
+    spots: { door: { at: [0.55, 0.85], dir: "se" }, sit: { at: [0.25, 0.6], dir: "se" }, stand: { at: [0.66, 0.68], dir: "sw" } },
+  },
+  gym: {
+    walkway: [[0.62, 0.84], [0.68, 0.78], [0.74, 0.72], [0.8, 0.64]],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.67, 0.71], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.78, 0.62], dir: "sw", variant: "man_casual" },
+      { action: "stand_idle", at: [0.5, 0.76], dir: "se", variant: "man_kaftan" },
+    ],
+    spots: { door: { at: [0.62, 0.84], dir: "se" }, dance: { at: [0.72, 0.8], dir: "sw" }, stand: { at: [0.74, 0.72], dir: "sw" } },
+  },
+  "boat-deck": {
+    walkway: [[0.36, 0.56], [0.46, 0.62], [0.56, 0.58], [0.64, 0.5]],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.48, 0.52], dir: "se" },
+      { action: "dance", at: [0.56, 0.47], dir: "sw" },
+      { action: "serve", at: [0.62, 0.38], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.36, 0.46], dir: "se", variant: "woman_gele" },
+    ],
+    spots: { door: { at: [0.36, 0.56], dir: "se" }, dance: { at: [0.52, 0.6], dir: "se" }, stand: { at: [0.64, 0.5], dir: "sw" } },
+  },
+  church: {
+    walkway: [[0.32, 0.74], [0.42, 0.7], [0.52, 0.66], [0.6, 0.6]],
+    walkers: 0,
+    stations: [
+      { action: "stand_idle", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.71, 0.7], dir: "sw", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.77, 0.75], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.55, 0.85], dir: "se", variant: "woman_gele" },
+    ],
+    spots: { door: { at: [0.32, 0.76], dir: "se" }, sit: { at: [0.27, 0.73], dir: "se" }, stand: { at: [0.42, 0.7], dir: "se" } },
+  },
+  salon: {
+    walkway: [[0.4, 0.82], [0.5, 0.76], [0.58, 0.68], [0.66, 0.62]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.52, 0.6], dir: "sw", variant: "woman_buba" },
+      { action: "serve", at: [0.41, 0.7], dir: "se", variant: "man_casual" },
+      { action: "sit_talk", at: [0.87, 0.67], dir: "sw", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.74, 0.8], dir: "sw", variant: "schoolgirl" },
+    ],
+    spots: { door: { at: [0.4, 0.82], dir: "se" }, chair: { at: [0.27, 0.66], dir: "se" }, stand: { at: [0.58, 0.68], dir: "sw" } },
+  },
+  lounge: {
+    walkway: [[0.22, 0.7], [0.3, 0.63], [0.4, 0.58], [0.52, 0.62]],
+    walkers: 1,
+    stations: [
+      { action: "dance", at: [0.22, 0.69], dir: "se", variant: "woman_gele" },
+      { action: "dance", at: [0.29, 0.74], dir: "sw", variant: "man_kaftan" },
+      { action: "serve", at: [0.36, 0.41], dir: "sw", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_buba" },
+    ],
+    spots: { door: { at: [0.52, 0.62], dir: "sw" }, dance: { at: [0.36, 0.66], dir: "se" }, sit: { at: [0.62, 0.62], dir: "sw" }, stand: { at: [0.4, 0.58], dir: "se" } },
+  },
+  mosque: {
+    // Worshippers stand in a prayer row on the mats (there are no seats; the pose library has no floor sitting).
+    walkway: [[0.3, 0.7], [0.45, 0.78], [0.6, 0.82], [0.72, 0.72], [0.6, 0.62]],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.4, 0.62], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.55, 0.7], dir: "se", variant: "man_casual" },
+      { action: "stand_idle", at: [0.68, 0.64], dir: "sw", variant: "schoolboy" },
+    ],
+    spots: { door: { at: [0.6, 0.82], dir: "se" }, sit: { at: [0.47, 0.66], dir: "se", pose: "stand_idle" }, stand: { at: [0.47, 0.66], dir: "se" } },
+  },
+  "car-showroom": {
+    walkway: [[0.6, 0.83], [0.7, 0.76], [0.8, 0.68]],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.38, 0.56], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.47, 0.6], dir: "sw", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.82, 0.64], dir: "sw", variant: "man_casual" },
+    ],
+    spots: { door: { at: [0.6, 0.83], dir: "se" }, stand: { at: [0.7, 0.76], dir: "sw" } },
+  },
+  classroom: {
+    walkway: [],
+    walkers: 0,
+    stations: [
+      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "schoolboy" },
+      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
+    ],
+  },
+  "hotel-lobby": {
+    walkway: [[0.25, 0.72], [0.35, 0.8], [0.5, 0.86], [0.62, 0.8], [0.66, 0.73]],
+    walkers: 2,
+    stations: [
+      { action: "stand_idle", at: [0.3, 0.65], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.66, 0.63], dir: "sw", variant: "woman_gele" },
+    ],
+    spots: { door: { at: [0.5, 0.86], dir: "se" }, sit: { at: [0.78, 0.64], dir: "sw" }, stand: { at: [0.35, 0.8], dir: "se" } },
+  },
+  // Zip 15 (batches 29-31): rooms for the new places and clean redos.
+  "provision-shop": {
+    walkway: [[0.72, 0.63], [0.77, 0.71], [0.72, 0.78], [0.69, 0.82]],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.68, 0.67], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.76, 0.79], dir: "sw", variant: "man_casual" },
+    ],
+    spots: { door: { at: [0.69, 0.82], dir: "sw" }, stand: { at: [0.72, 0.74], dir: "sw" } },
+  },
+  "golf-lounge": {
+    walkway: [[0.6, 0.64], [0.68, 0.7], [0.78, 0.74], [0.72, 0.82]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.27, 0.6], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.18, 0.68], dir: "se", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.63, 0.66], dir: "sw" },
+    ],
+    spots: { door: { at: [0.72, 0.82], dir: "se" }, stand: { at: [0.68, 0.7], dir: "sw" } },
+  },
+  "stadium-room": {
+    walkway: [[0.45, 0.62], [0.6, 0.7], [0.72, 0.8], [0.55, 0.85], [0.4, 0.75]],
+    walkers: 2,
+    stations: [
+      { action: "sit_talk", at: [0.2, 0.62], dir: "se", variant: "man_casual" },
+      { action: "sit_talk", at: [0.35, 0.56], dir: "se", variant: "man_casual" },
+      { action: "stand_idle", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
+    ],
+    spots: { door: { at: [0.72, 0.8], dir: "sw" }, sit: { at: [0.27, 0.59], dir: "se" }, stand: { at: [0.6, 0.7], dir: "sw" } },
+  },
+  "snooker-room": {
+    walkway: [[0.18, 0.72], [0.3, 0.82], [0.48, 0.9], [0.62, 0.86], [0.76, 0.78], [0.82, 0.7]],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.2, 0.69], dir: "se", variant: "man_casual" },
+      { action: "stand_idle", at: [0.79, 0.72], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.66, 0.52], dir: "sw" },
+    ],
+    spots: { door: { at: [0.48, 0.9], dir: "se" }, sit: { at: [0.57, 0.48], dir: "sw" }, stand: { at: [0.62, 0.86], dir: "sw" } },
+  },
+  "police-desk": {
+    walkway: [[0.4, 0.62], [0.5, 0.72], [0.62, 0.8], [0.5, 0.88], [0.35, 0.78]],
+    walkers: 1,
+    stations: [
+      { action: "stand_idle", at: [0.47, 0.57], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.18, 0.62], dir: "se" },
+      { action: "stand_idle", at: [0.56, 0.66], dir: "sw", variant: "man_kaftan" },
+    ],
+    spots: { door: { at: [0.5, 0.88], dir: "se" }, sit: { at: [0.26, 0.66], dir: "se" }, stand: { at: [0.5, 0.72], dir: "sw" } },
+  },
+  "radio-studio": {
+    walkway: [[0.8, 0.65], [0.85, 0.72], [0.74, 0.78]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.35, 0.5], dir: "se", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.56, 0.6], dir: "sw", variant: "man_casual" },
+    ],
+    spots: { door: { at: [0.74, 0.78], dir: "sw" }, stand: { at: [0.8, 0.65], dir: "sw" } },
+  },
+  "hospital-ward": {
+    // Patients lying in two of the beds, a visitor at the middle one, a nurse by the desk.
+    walkway: [[0.42, 0.7], [0.5, 0.78], [0.58, 0.88], [0.62, 0.72]],
+    walkers: 1,
+    stations: [
+      { action: "sleep", at: [0.48, 0.42], dir: "sw", variant: "man_kaftan" },
+      { action: "sleep", at: [0.8, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.57, 0.67], dir: "se", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.43, 0.66], dir: "se", variant: "woman_buba" },
+    ],
+    spots: { door: { at: [0.58, 0.88], dir: "se" }, sleep: { at: [0.64, 0.5], dir: "sw" }, stand: { at: [0.5, 0.78], dir: "se" } },
+  },
+  "library-room": {
+    walkway: [[0.6, 0.62], [0.7, 0.72], [0.8, 0.78], [0.64, 0.83]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.18, 0.58], dir: "se", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.38, 0.72], dir: "se", variant: "schoolboy" },
+      { action: "stand_idle", at: [0.64, 0.58], dir: "sw", variant: "woman_buba" },
+    ],
+    spots: { door: { at: [0.64, 0.83], dir: "se" }, sit: { at: [0.28, 0.64], dir: "se" }, stand: { at: [0.7, 0.72], dir: "sw" } },
+  },
+  courtroom: {
+    walkway: [[0.56, 0.65], [0.62, 0.68], [0.55, 0.73]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.35, 0.41], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.62, 0.62], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.6, 0.83], dir: "se" },
+    ],
+    spots: { door: { at: [0.55, 0.73], dir: "se" }, sit: { at: [0.68, 0.8], dir: "se" }, stand: { at: [0.56, 0.66], dir: "se" } },
+  },
+  hangout: {
+    walkway: [[0.47, 0.5], [0.57, 0.5], [0.64, 0.61], [0.84, 0.66]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.5, 0.49], dir: "sw", variant: "man_casual" },
+      { action: "stand_idle", at: [0.66, 0.53], dir: "sw", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.3, 0.7], dir: "se" },
+      { action: "sit_eat", at: [0.4, 0.7], dir: "sw" },
+    ],
+    spots: { door: { at: [0.84, 0.66], dir: "sw" }, sit: { at: [0.49, 0.62], dir: "se" }, eat: { at: [0.58, 0.62], dir: "sw" }, dance: { at: [0.57, 0.5], dir: "se" }, stand: { at: [0.64, 0.61], dir: "sw" } },
+  },
+  // Homes (Home.tsx and visits): the player's own place, with family or friends about.
+  "home-face-me": {
+    // One room: a mattress on the floor, a plastic chair, a stove on the floor.
+    walkway: [[0.48, 0.73], [0.6, 0.72], [0.72, 0.76], [0.64, 0.84]],
+    walkers: 1,
+    stations: [{ action: "sit_talk", at: [0.38, 0.79], dir: "se", variant: "woman_buba" }],
+    spots: {
+      door: { at: [0.64, 0.84], dir: "sw" },
+      sleep: { at: [0.46, 0.54], dir: "sw" },
+      sit: { at: [0.38, 0.79], dir: "se" },
+      eat: { at: [0.38, 0.79], dir: "se" },
+      stand: { at: [0.6, 0.72], dir: "sw" },
+      dance: { at: [0.62, 0.78], dir: "se" },
+    },
+  },
+  "home-self-contain": {
+    // Bed on the left, kitchen counter at the back, TV on a stool.
+    walkway: [[0.6, 0.6], [0.62, 0.68], [0.58, 0.78], [0.5, 0.86]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.53, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.46, 0.72], dir: "se", variant: "man_casual" },
+    ],
+    spots: {
+      door: { at: [0.5, 0.86], dir: "se" },
+      sleep: { at: [0.28, 0.58], dir: "se" },
+      sit: { at: [0.46, 0.72], dir: "se" },
+      eat: { at: [0.46, 0.72], dir: "se" },
+      stand: { at: [0.62, 0.68], dir: "sw" },
+      dance: { at: [0.56, 0.8], dir: "se" },
+    },
+  },
+  "home-mini-flat": {
+    // Living room: sofa facing the TV, coffee table, fridge; no bed in view, so sleep is a nap on the sofa.
+    walkway: [[0.22, 0.73], [0.34, 0.8], [0.48, 0.86], [0.62, 0.82], [0.72, 0.72], [0.7, 0.64]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.4, 0.69], dir: "se", variant: "man_kaftan" },
+      { action: "sit_eat", at: [0.5, 0.645], dir: "se", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.78, 0.74], dir: "sw", variant: "schoolgirl" },
+    ],
+    spots: {
+      door: { at: [0.48, 0.86], dir: "se" },
+      sleep: { at: [0.43, 0.6], dir: "sw" },
+      sit: { at: [0.4, 0.69], dir: "se" },
+      eat: { at: [0.5, 0.645], dir: "se" },
+      stand: { at: [0.72, 0.72], dir: "sw" },
+      dance: { at: [0.62, 0.82], dir: "se" },
+    },
+  },
+  "home-duplex": {
+    // Sectional sofa round a coffee table, dining table on the left, stairs up, window on the right. Meals are
+    // on the sofa by the coffee table (a seat at the dining table would be drawn over the table top).
+    walkway: [[0.47, 0.92], [0.6, 0.88], [0.7, 0.8], [0.74, 0.7], [0.78, 0.63], [0.68, 0.52]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.4, 0.71], dir: "se", variant: "woman_gele" },
+      { action: "sit_eat", at: [0.5, 0.67], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.78, 0.64], dir: "sw", variant: "schoolgirl" },
+    ],
+    spots: {
+      door: { at: [0.6, 0.88], dir: "se" },
+      sleep: { at: [0.44, 0.64], dir: "sw" },
+      sit: { at: [0.4, 0.71], dir: "se" },
+      eat: { at: [0.5, 0.67], dir: "se" },
+      stand: { at: [0.74, 0.72], dir: "sw" },
+      dance: { at: [0.7, 0.8], dir: "se" },
+    },
+  },
+  "home-mansion": {
+    // Curved sofa round a glass table, armchair, fireplace; the pool is outside the glass.
+    walkway: [[0.62, 0.88], [0.7, 0.82], [0.8, 0.73], [0.73, 0.64], [0.62, 0.6]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.44, 0.635], dir: "se", variant: "woman_gele" },
+      { action: "sit_eat", at: [0.54, 0.6], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.68, 0.745], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.76, 0.66], dir: "sw", variant: "man_casual" },
+    ],
+    spots: {
+      door: { at: [0.62, 0.88], dir: "se" },
+      sleep: { at: [0.47, 0.575], dir: "sw" },
+      sit: { at: [0.44, 0.635], dir: "se" },
+      eat: { at: [0.54, 0.6], dir: "se" },
+      stand: { at: [0.73, 0.64], dir: "sw" },
+      dance: { at: [0.7, 0.82], dir: "se" },
+    },
+  },
+  "home-crazy": {
+    // A throne on a dais, an aquarium wall and a supercar behind glass: no bed or table in view.
+    walkway: [[0.5, 0.88], [0.58, 0.8], [0.55, 0.7], [0.65, 0.68], [0.75, 0.72], [0.68, 0.82]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.31, 0.665], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.62, 0.7], dir: "sw", variant: "woman_buba" },
+      { action: "dance", at: [0.6, 0.8], dir: "se", variant: "woman_gele" },
+    ],
+    spots: {
+      door: { at: [0.5, 0.88], dir: "se" },
+      sit: { at: [0.31, 0.665], dir: "se" },
+      stand: { at: [0.65, 0.72], dir: "sw" },
+      dance: { at: [0.66, 0.78], dir: "se" },
+    },
+  },
+};
