@@ -8,6 +8,7 @@ import {
   REST,
   VEHICLES,
   plotPriceOf,
+  type AvatarConfig,
   type HomeView,
   type NeedsView,
   type VehicleKind,
@@ -16,7 +17,7 @@ import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X } from 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, formatCoins } from "../api.js";
-import { InteriorScene, ROOMS } from "./Interior.js";
+import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { RoomChat } from "./Chat.js";
 
 function useSheet(onClose: () => void) {
@@ -75,7 +76,9 @@ export function HomeCard({
   notify,
   onBuyLand,
   chatPlace,
+  avatar,
 }: {
+  avatar?: AvatarConfig;
   /** The presence/chat key for your home ("home:<plot>" or your room). */
   chatPlace?: string;
   home: HomeView;
@@ -89,6 +92,7 @@ export function HomeCard({
   const sheet = useSheet(onClose);
   const [busy, setBusy] = useState(false);
   const [rebuild, setRebuild] = useState(false);
+  const [me, setMe] = useState<PlayerAction>("walk");
   const [error, setError] = useState<string | null>(null);
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
@@ -96,10 +100,10 @@ export function HomeCard({
     setBusy(true);
     setError(null);
     try {
+      setMe("sleep");
       await api<NeedsView>("POST", "/api/game/home/rest");
-      notify(`You rested. +${REST.energy} energy`);
+      notify(`Good night! +${home.restEnergy} energy`);
       onChanged();
-      onClose();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -134,7 +138,19 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
-        <HomeRooms design={home.design} who="your" items={home.items} />
+        <HomeRooms design={home.design} who="your" items={home.items} avatar={avatar} action={me} onAction={setMe} />
+        <div className="row home-acts">
+          <button type="button" className="btn sm" onClick={() => setMe("sit")}>
+            🛋️ Sit down
+          </button>
+          <button type="button" className="btn sm" onClick={() => setMe("eat")}>
+            🍲 Eat
+          </button>
+          <button type="button" className="btn sm" onClick={() => setMe("dance")}>
+            💃 Dance
+          </button>
+          <span className="tiny muted">Tap the floor to walk around.</span>
+        </div>
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."
@@ -246,9 +262,31 @@ const ITEM_SPOTS: [number, number][] = [
   [0.3, 0.7],
 ];
 
-export function HomeRooms({ design, who, items = [] }: { design: string | null; who: string; items?: string[] }) {
+export function HomeRooms({
+  design,
+  who,
+  items = [],
+  avatar,
+  action = "walk",
+  onAction,
+}: {
+  design: string | null;
+  who: string;
+  items?: string[];
+  /** You in the room (you walk around, sit, eat, sleep). */
+  avatar?: AvatarConfig;
+  action?: PlayerAction;
+  onAction?: (a: PlayerAction) => void;
+}) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
+  // Going to sleep takes you to the bedroom, eating to the kitchen (when the house has them).
+  useEffect(() => {
+    const want = action === "sleep" ? /bed|suite|room/ : action === "eat" ? /kitchen/ : action === "sit" ? /parlour|living|lounge|cinema/ : null;
+    if (!want) return;
+    const i = rooms.findIndex((r) => want.test(r.key));
+    if (i >= 0) setAt(i);
+  }, [action]);
   const room = rooms[Math.min(at, rooms.length - 1)]!;
   return (
     <div className="home-rooms">
@@ -262,7 +300,15 @@ export function HomeRooms({ design, who, items = [] }: { design: string | null; 
         </div>
       )}
       <div className="home-room-frame">
-        <InteriorScene key={room.key} src={`/art/interiors/${room.art}.webp`} alt={`Inside ${who} ${room.label.toLowerCase()}`} room={ROOMS[room.art]} seed={3 + at} />
+        <InteriorScene
+          key={room.key}
+          src={`/art/interiors/${room.art}.webp`}
+          alt={`Inside ${who} ${room.label.toLowerCase()}`}
+          room={ROOMS[room.art]}
+          seed={3 + at}
+          player={avatar ? { avatar, action } : undefined}
+          onPlayerWalk={() => onAction?.("walk")}
+        />
         {/* Your things: spread through the rooms, a few per room */}
         {items
           .filter((_, i) => i % rooms.length === at)

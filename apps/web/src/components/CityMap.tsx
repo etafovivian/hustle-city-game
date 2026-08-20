@@ -1336,7 +1336,7 @@ export function CityMap({
             />
           )}
           {visitHome && (
-            <VisitHome home={visitHome} inside={others.filter((p) => p.place === `home:${visitHome.plotId}`)} onClose={() => setVisitHome(null)} notify={notify} />
+            <VisitHome avatar={avatar} home={visitHome} inside={others.filter((p) => p.place === `home:${visitHome.plotId}`)} onClose={() => setVisitHome(null)} notify={notify} />
           )}
           {plotOpen && home && (() => {
             const mine = home.plots.find((p) => p.plotId === plotOpen);
@@ -1356,6 +1356,7 @@ export function CityMap({
           })()}
           {homeOpen && home && (
             <HomeCard
+              avatar={avatar}
               chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}
               home={home}
               label={myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}
@@ -1390,6 +1391,7 @@ export function CityMap({
           )}
           {venueOpen && (
         <VenueCard
+          avatar={avatar}
           here={others.filter((p) => p.place === venueOpen)}
           onPlayer={(p) => setPlayerOpen(p)}
           venueKey={BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen}

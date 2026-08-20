@@ -1,11 +1,11 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
-import { InteriorScene, ROOMS } from "./Interior.js";
+import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { RoomChat } from "./Chat.js";
 import { useLagosLight } from "./lagosTime.js";
 import { buildingBox } from "./sprites.js";
@@ -69,7 +69,10 @@ export function VenueCard({
   branch,
   here = [],
   onPlayer,
+  avatar,
 }: {
+  /** Your look, so you appear in the room. */
+  avatar?: AvatarConfig;
   /** Players at this place right now. */
   here?: PresencePlayer[];
   onPlayer?: (p: PresencePlayer) => void;
@@ -104,6 +107,17 @@ export function VenueCard({
   }, [onClose]);
 
   const hour = useLagosLight().hour;
+  // You in the room: you walk in, and each activity takes you to the right spot (a seat to eat, the dance floor…).
+  const [me, setMe] = useState<PlayerAction>("walk");
+  const actionFor = (a: VenueAction): PlayerAction => {
+    const k = `${a.key} ${a.label}`.toLowerCase();
+    if (/danc|party|rave|owambe/.test(k)) return "dance";
+    if (/sleep|nap|rest|suite|room/.test(k) && venue.key.includes("hotel")) return "sleep";
+    if (a.gives.includes("style") && /cut|trim|braid|hair|wig|measure|aso|fabric|style/.test(k)) return "chair";
+    if (a.gives.includes("food")) return "eat";
+    if (a.gives.includes("social") || a.gives.includes("fun") || a.gives.includes("faith") || a.gives.includes("brain") || a.gives.includes("rest")) return "sit";
+    return "stand";
+  };
   const open = isOpenAt(venue, hour);
   const actions = venueActions(venue);
   /** The activity playing now: the room plays for its seconds, then the result shows. */
@@ -142,6 +156,7 @@ export function VenueCard({
       const r = await api<{ pay: number; xp: number; promoted: string | null; job: JobView }>("POST", `/api/game/jobs/${venue.key}/shift`);
       setWork(r.job);
       onChanged();
+      setMe("stand");
       setRunning({ action: { key: "shift", label: "Shift", cost: 0, xp: 0, kind: "paid", seconds: SHIFT_SECONDS, gives: [] }, started: Date.now(), gained: 0 });
       notify(r.promoted ? `Promoted to ${r.promoted}! +${formatCoins(r.pay)} coins` : `Shift done: +${formatCoins(r.pay)} coins, +${r.xp} XP`);
     } catch (e) {
@@ -153,6 +168,7 @@ export function VenueCard({
 
   const act = async (a: VenueAction) => {
     setError(null);
+    setMe(actionFor(a));
     if (a.kind === "free") {
       // Free: no coins or XP, but it lifts the place's needs a little (once an hour per place).
       const r = await api<{ filled: boolean }>("POST", `/api/game/venues/${venue.key}/free`).catch(() => ({ filled: false }));
@@ -193,7 +209,14 @@ export function VenueCard({
         <div className={`venue-layout ${venue.interior ? "has-room" : ""}`}>
         {venue.interior && (
           <div className="venue-room">
-            <InteriorScene src={venue.interior} alt={`Inside ${venue.name}`} room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]} seed={(branch?.key ?? venue.key).length} />
+            <InteriorScene
+              src={venue.interior}
+              alt={`Inside ${venue.name}`}
+              room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]}
+              seed={(branch?.key ?? venue.key).length}
+              player={avatar ? { avatar, action: me } : undefined}
+              onPlayerWalk={() => setMe("walk")}
+            />
           </div>
         )}
         <div className="venue-info">

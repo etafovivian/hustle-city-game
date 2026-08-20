@@ -1,6 +1,6 @@
 // Meeting people: other players on the map (and their card: wave, buy a drink, go to them, visit their home),
 // and visiting someone's house.
-import { HOUSE_BY_KEY, VENUES_BY_KEY, type MapHome, type PresencePlayer } from "@hc/shared";
+import { HOUSE_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type MapHome, type PresencePlayer } from "@hc/shared";
 import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -10,6 +10,7 @@ import { variantFor } from "./AvatarWalker.js";
 import { BRANCH_BY_KEY } from "./cityLayout.js";
 import { DmThreadView, RoomChat } from "./Chat.js";
 import { HomeRooms } from "./Home.js";
+import type { PlayerAction } from "./Interior.js";
 import { walkerSheet, walkerSize } from "./walkers.js";
 
 const WALK = walkerSize(70);
@@ -142,7 +143,9 @@ export function VisitHome({
   inside,
   onClose,
   notify,
+  avatar,
 }: {
+  avatar?: AvatarConfig;
   home: { plotId: string; nickname: string; design: string | null; mine?: boolean };
   /** Players in this home right now. */
   inside: PresencePlayer[];
@@ -150,6 +153,7 @@ export function VisitHome({
   notify: (m: string) => void;
 }) {
   const sheet = useSheet(onClose);
+  const [me, setMe] = useState<PlayerAction>("walk");
   const ownerIn = inside.some((p) => p.nickname === home.nickname);
   const knock = async () => {
     try {
@@ -176,7 +180,18 @@ export function VisitHome({
         </div>
         <div className="venue-layout has-room">
           <div className="venue-room">
-            <HomeRooms design={home.design} who={`@${home.nickname}'s`} />
+            <HomeRooms design={home.design} who={`@${home.nickname}'s`} avatar={avatar} action={me} onAction={setMe} />
+            <div className="row home-acts">
+              <button type="button" className="btn sm" onClick={() => setMe("sit")}>
+                🛋️ Sit down
+              </button>
+              <button type="button" className="btn sm" onClick={() => setMe("eat")}>
+                🍲 Eat with them
+              </button>
+              <button type="button" className="btn sm" onClick={() => setMe("dance")}>
+                💃 Dance
+              </button>
+            </div>
           </div>
           <div className="venue-info">
             <p className="small">Make yourself at home. {ownerIn ? `@${home.nickname} is in: say hello!` : `@${home.nickname} isn't in. Knock and they'll see it next time they look.`}</p>
