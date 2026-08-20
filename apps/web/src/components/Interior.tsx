@@ -2,334 +2,59 @@
 // walkway through its open floor that walkers follow from spot to spot, and stations where people stay and do
 // something (the cook at the pots, the barber by the chair, dancers on the dance floor, people seated on the benches).
 // Positions are fractions of the image: where the person's feet touch the floor.
-import { useEffect, useRef, useState } from "react";
+// The player can be in the room too (`player`): their own character comes in at the door, walks along the walkway to
+// the spot for what they're doing (a seat, the bed, the dance floor, the barber's chair) and plays that pose there.
+// Tapping the floor walks them there (snapped to the walkway). The caller changes what they do with `player.action`.
+import type { AvatarConfig } from "@hc/shared";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
+import { variantFor } from "./AvatarWalker.js";
+import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
+import { POSE_VARIANTS, ROOMS, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
 
-/** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
-export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk";
-const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
-  dance: ["woman_gele", "man_kaftan", "woman_buba"],
-  serve: ["woman_buba", "man_casual"],
-  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
-  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele"],
-  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
-};
+export { ROOMS, type PlayerAction, type Room };
 
-type Pt = [number, number];
-export interface Room {
-  /** Open floor, in order: walkers go back and forth along it, pausing at each spot. */
-  walkway: Pt[];
-  walkers: number;
-  stations: { action: PoseAction; at: Pt; dir: "se" | "sw"; variant?: WalkerVariant }[];
+const poseSheet = (action: PoseAction, v: WalkerVariant, d: "se" | "sw") => `/art/life/poses/${action}-${v}-${d}.webp`;
+
+/** Box for a person `ph` tall: standing/seated frames are 96x160 with the feet 16 px up; lying frames are 192x112
+ * and centred on the middle of the body. */
+function spriteBox(ph: number, lying: boolean): CSSProperties {
+  return lying
+    ? { width: ph * 1.2, height: ph * 0.7, marginTop: 0, transform: "translate(-50%, -50%)" }
+    : { width: ph * 0.6, height: ph, marginTop: ph * 0.1 };
 }
 
-/** Hand-marked rooms, keyed by interior art name (public/art/interiors). */
-export const ROOMS: Record<string, Room> = {
-  buka: {
-    walkway: [
-      [0.25, 0.74],
-      [0.33, 0.8],
-      [0.44, 0.85],
-      [0.54, 0.9],
-      [0.64, 0.86],
-    ],
-    walkers: 2,
-    stations: [
-      { action: "serve", at: [0.56, 0.58], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.4, 0.75], dir: "se" },
-      { action: "sit_eat", at: [0.24, 0.66], dir: "se", variant: "man_kaftan" },
-      { action: "sit_eat", at: [0.38, 0.57], dir: "se", variant: "woman_gele" },
-    ],
-  },
-  "event-centre": {
-    walkway: [
-      [0.36, 0.63],
-      [0.46, 0.71],
-      [0.56, 0.75],
-      [0.62, 0.67],
-      [0.52, 0.5],
-    ],
-    walkers: 2,
-    stations: [
-      { action: "dance", at: [0.45, 0.56], dir: "se" },
-      { action: "dance", at: [0.53, 0.62], dir: "sw" },
-      { action: "dance", at: [0.58, 0.55], dir: "se" },
-      { action: "dance", at: [0.47, 0.65], dir: "sw" },
-    ],
-  },
-  "viewing-centre": {
-    // Rows of chairs fill the floor: everyone is seated watching, one person by the cooler.
-    walkway: [[0.8, 0.66], [0.86, 0.7]],
-    walkers: 0,
-    stations: [
-      { action: "sit_talk", at: [0.2, 0.68], dir: "se" },
-      { action: "sit_talk", at: [0.36, 0.6], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.54, 0.6], dir: "se", variant: "man_casual" },
-      { action: "sit_talk", at: [0.46, 0.82], dir: "se" },
-      { action: "stand_idle", at: [0.7, 0.55], dir: "sw", variant: "man_casual" },
-    ],
-  },
-  barbershop: {
-    walkway: [
-      [0.36, 0.86],
-      [0.48, 0.88],
-      [0.6, 0.8],
-      [0.7, 0.72],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.62, 0.65], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.42, 0.78], dir: "se" },
-    ],
-  },
-  "tailor-shop": {
-    walkway: [
-      [0.28, 0.78],
-      [0.4, 0.85],
-      [0.52, 0.89],
-      [0.62, 0.81],
-      [0.73, 0.74],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.22, 0.66], dir: "se", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.57, 0.76], dir: "sw", variant: "woman_gele" },
-    ],
-  },
-  "bank-hall": {
-    walkway: [
-      [0.25, 0.75],
-      [0.4, 0.82],
-      [0.55, 0.85],
-      [0.7, 0.76],
-      [0.78, 0.67],
-    ],
-    walkers: 2,
-    stations: [
-      { action: "stand_idle", at: [0.57, 0.67], dir: "se" },
-      { action: "stand_idle", at: [0.73, 0.63], dir: "sw" },
-      { action: "sit_talk", at: [0.32, 0.64], dir: "se" },
-    ],
-  },
-  gym: {
-    walkway: [
-      [0.42, 0.8],
-      [0.52, 0.86],
-      [0.62, 0.8],
-      [0.72, 0.7],
-      [0.8, 0.62],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "dance", at: [0.67, 0.71], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.78, 0.62], dir: "sw", variant: "man_casual" },
-      { action: "stand_idle", at: [0.5, 0.76], dir: "se", variant: "man_kaftan" },
-    ],
-  },
-  "boat-deck": {
-    walkway: [
-      [0.36, 0.56],
-      [0.46, 0.62],
-      [0.56, 0.58],
-      [0.64, 0.5],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "dance", at: [0.48, 0.52], dir: "se" },
-      { action: "dance", at: [0.56, 0.47], dir: "sw" },
-      { action: "serve", at: [0.62, 0.38], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.36, 0.46], dir: "se", variant: "woman_gele" },
-    ],
-  },
-  church: {
-    walkway: [
-      [0.32, 0.74],
-      [0.42, 0.7],
-      [0.52, 0.66],
-      [0.6, 0.6],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "stand_idle", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.73, 0.52], dir: "sw", variant: "man_casual" },
-      { action: "dance", at: [0.4, 0.63], dir: "se", variant: "woman_gele" },
-      { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.71, 0.7], dir: "sw" },
-    ],
-  },
-  salon: {
-    walkway: [
-      [0.4, 0.82],
-      [0.5, 0.76],
-      [0.58, 0.68],
-      [0.66, 0.62],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.52, 0.6], dir: "sw", variant: "woman_buba" },
-      { action: "serve", at: [0.41, 0.7], dir: "se", variant: "woman_gele" },
-      { action: "sit_talk", at: [0.87, 0.67], dir: "sw", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.74, 0.8], dir: "sw", variant: "schoolgirl" },
-    ],
-  },
-  lounge: {
-    walkway: [
-      [0.22, 0.7],
-      [0.3, 0.63],
-      [0.4, 0.58],
-      [0.52, 0.62],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.13, 0.5], dir: "se", variant: "man_casual" },
-      { action: "dance", at: [0.22, 0.69], dir: "se", variant: "woman_gele" },
-      { action: "dance", at: [0.29, 0.74], dir: "sw", variant: "man_kaftan" },
-      { action: "serve", at: [0.36, 0.41], dir: "sw", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_buba" },
-    ],
-  },
-  mosque: {
-    walkway: [
-      [0.3, 0.7],
-      [0.45, 0.78],
-      [0.6, 0.82],
-      [0.72, 0.72],
-      [0.6, 0.62],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "stand_idle", at: [0.4, 0.62], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.55, 0.7], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.68, 0.64], dir: "sw", variant: "schoolboy" },
-    ],
-  },
-  "car-showroom": {
-    walkway: [
-      [0.4, 0.88],
-      [0.52, 0.88],
-      [0.62, 0.82],
-      [0.8, 0.68],
-    ],
-    walkers: 1,
-    stations: [
-      { action: "stand_idle", at: [0.38, 0.43], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.47, 0.6], dir: "sw", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.82, 0.64], dir: "sw", variant: "man_casual" },
-    ],
-  },
-  classroom: {
-    walkway: [],
-    walkers: 0,
-    stations: [
-      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "schoolgirl" },
-      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "schoolboy" },
-      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
-    ],
-  },
-  "hotel-lobby": {
-    walkway: [
-      [0.25, 0.72],
-      [0.35, 0.8],
-      [0.5, 0.86],
-      [0.62, 0.8],
-      [0.66, 0.73],
-    ],
-    walkers: 2,
-    stations: [
-      { action: "stand_idle", at: [0.3, 0.65], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.66, 0.63], dir: "sw", variant: "woman_gele" },
-    ],
-  },
-  // Zip 15 (batches 29-31): rooms for the new places and clean redos.
-  "provision-shop": {
-    walkway: [[0.62, 0.62], [0.7, 0.7], [0.78, 0.76], [0.68, 0.8]],
-    walkers: 1,
-    stations: [{ action: "stand_idle", at: [0.6, 0.78], dir: "sw" }],
-  },
-  "golf-lounge": {
-    walkway: [[0.6, 0.64], [0.68, 0.7], [0.78, 0.74], [0.72, 0.82]],
-    walkers: 1,
-    stations: [
-      { action: "sit_talk", at: [0.27, 0.6], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.5, 0.76], dir: "se" },
-      { action: "stand_idle", at: [0.63, 0.66], dir: "sw" },
-    ],
-  },
-  "stadium-room": {
-    walkway: [[0.45, 0.62], [0.6, 0.7], [0.72, 0.8], [0.55, 0.85], [0.4, 0.75]],
-    walkers: 2,
-    stations: [
-      { action: "sit_talk", at: [0.2, 0.62], dir: "se", variant: "man_casual" },
-      { action: "sit_talk", at: [0.35, 0.56], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.62, 0.55], dir: "sw", variant: "man_kaftan" },
-    ],
-  },
-  "snooker-room": {
-    walkway: [[0.3, 0.7], [0.45, 0.8], [0.6, 0.85], [0.78, 0.78], [0.85, 0.68]],
-    walkers: 1,
-    stations: [
-      { action: "stand_idle", at: [0.42, 0.72], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.76, 0.63], dir: "sw", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.67, 0.46], dir: "se" },
-    ],
-  },
-  "police-desk": {
-    walkway: [[0.4, 0.62], [0.5, 0.72], [0.62, 0.8], [0.5, 0.88], [0.35, 0.78]],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.68, 0.45], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.18, 0.62], dir: "se" },
-      { action: "stand_idle", at: [0.52, 0.62], dir: "se" },
-    ],
-  },
-  "radio-studio": {
-    walkway: [[0.8, 0.65], [0.85, 0.72], [0.74, 0.78]],
-    walkers: 1,
-    stations: [
-      { action: "sit_talk", at: [0.35, 0.5], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.6, 0.46], dir: "sw", variant: "man_casual" },
-    ],
-  },
-  "hospital-ward": {
-    walkway: [[0.42, 0.62], [0.5, 0.72], [0.6, 0.8], [0.45, 0.85]],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.25, 0.52], dir: "se", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.66, 0.63], dir: "se", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.38, 0.72], dir: "sw" },
-    ],
-  },
-  "library-room": {
-    walkway: [[0.6, 0.62], [0.7, 0.72], [0.8, 0.78], [0.64, 0.83]],
-    walkers: 1,
-    stations: [
-      { action: "sit_talk", at: [0.18, 0.58], dir: "se", variant: "schoolgirl" },
-      { action: "sit_talk", at: [0.38, 0.72], dir: "se", variant: "schoolboy" },
-      { action: "serve", at: [0.8, 0.52], dir: "sw", variant: "woman_buba" },
-    ],
-  },
-  courtroom: {
-    walkway: [[0.5, 0.58], [0.6, 0.64], [0.55, 0.72]],
-    walkers: 1,
-    stations: [
-      { action: "sit_talk", at: [0.47, 0.38], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.62, 0.62], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.6, 0.83], dir: "se" },
-    ],
-  },
-  hangout: {
-    walkway: [[0.42, 0.6], [0.52, 0.62], [0.62, 0.57], [0.56, 0.66]],
-    walkers: 1,
-    stations: [
-      { action: "serve", at: [0.3, 0.45], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.72, 0.5], dir: "sw", variant: "woman_gele" },
-      { action: "sit_talk", at: [0.33, 0.72], dir: "se" },
-      { action: "sit_eat", at: [0.47, 0.82], dir: "se" },
-    ],
-  },
+/** The usual pose for each thing the player does at a spot. */
+const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
+  sit: "sit_talk",
+  eat: "sit_eat",
+  sleep: "sleep",
+  dance: "dance",
+  chair: "sit_talk",
+  stand: "stand_idle",
 };
+/** Where to go when a room has no spot for an action: eat or rest on a seat, dance where you'd stand. */
+const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
+  sit: ["sit", "chair", "eat"],
+  eat: ["eat", "sit"],
+  sleep: ["sleep", "sit"],
+  dance: ["dance", "stand"],
+  chair: ["chair", "sit"],
+  stand: ["stand"],
+};
+/** The spot and pose for an action in a room (null: stay where you are). */
+export function spotFor(room: Room | undefined, action: PlayerAction): { spot: Spot; pose: PoseAction } | null {
+  if (action === "walk" || !room?.spots) return null;
+  for (const key of FALLBACK[action]) {
+    const spot = room.spots[key];
+    if (!spot) continue;
+    // A stand-in spot keeps the action's own pose where it makes sense (eat on a seat, dance on the stand spot);
+    // resting on a seat (no bed) is sitting.
+    const pose = spot.pose ?? (action === "sleep" && key !== "sleep" ? "sit_talk" : POSE_OF[action]);
+    return { spot, pose };
+  }
+  return null;
+}
 
 function usePrefersReducedMotion() {
   const [reduce] = useState(() => {
@@ -342,7 +67,29 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: string; room: Room | undefined; seed?: number }) {
+export interface InteriorPlayer {
+  avatar: AvatarConfig;
+  /** What they're doing: they walk to the room's spot for it and play its pose ("walk": just come in). */
+  action: PlayerAction;
+}
+
+export function InteriorScene({
+  src,
+  alt,
+  room,
+  seed = 1,
+  player,
+  onPlayerWalk,
+}: {
+  src: string;
+  alt: string;
+  room: Room | undefined;
+  seed?: number;
+  /** The player's own character in the room. Change `action` to send them to another spot. */
+  player?: InteriorPlayer;
+  /** The player tapped the floor and is walking there (so the caller can show them as walking, not sitting). */
+  onPlayerWalk?: () => void;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const els = useRef<(HTMLDivElement | null)[]>([]);
   const posedEls = useRef<(HTMLDivElement | null)[]>([]);
@@ -352,8 +99,11 @@ export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: 
   const variants: WalkerVariant[] = walkway.length > 1 ? Array.from({ length: room!.walkers }, (_, i) => WALKER_VARIANTS[(i * 2 + seed) % WALKER_VARIANTS.length]!) : [];
   const posed = (room?.stations ?? []).map((s, i) => {
     const vs = POSE_VARIANTS[s.action];
-    return { ...s, variant: s.variant ?? vs[(i + seed) % vs.length]! };
+    // Only variants with a sheet for the pose (a marked variant without one falls back to the list).
+    return { ...s, variant: s.variant && vs.includes(s.variant) ? s.variant : vs[(i + seed) % vs.length]! };
   });
+  // Where the player has settled: whoever was posed there makes room.
+  const [taken, setTaken] = useState<Pt | null>(null);
 
   useEffect(() => {
     const el = box.current;
@@ -431,7 +181,7 @@ export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: 
       posed.forEach((p, i) => {
         const el = posedEls.current[i];
         if (!el) return;
-        const fps = p.action === "dance" ? 10 : 7;
+        const fps = p.action === "dance" ? 10 : p.action === "sleep" ? 3 : 7;
         const frame = (Math.floor(((now - t0) / 1000) * fps) + i * 3) % 8;
         el.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
       });
@@ -442,12 +192,36 @@ export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [h, src, reduce]);
 
+  // Tapping the floor walks the player there, kept to the walkway.
+  const [tap, setTap] = useState<{ at: Pt; seq: number } | null>(null);
+  const onTap = (e: MouseEvent<HTMLDivElement>) => {
+    if (!player || walkway.length < 2 || !box.current) return;
+    const r = box.current.getBoundingClientRect();
+    const p: Pt = [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+    const at = nearestOnPolyline(walkway, p, r.width / r.height).at;
+    setTap((t) => ({ at, seq: (t?.seq ?? 0) + 1 }));
+    onPlayerWalk?.();
+  };
+
   // People stand about a fifth of the room's height (sprite frames are 96×160, feet 16 px above the bottom).
   const ph = h * 0.21;
-  const size = { width: ph * 0.6, height: ph, marginTop: ph * 0.1 };
+  const size = spriteBox(ph, false);
   return (
-    <div ref={box} className="interior-scene">
+    <div ref={box} className="interior-scene" onClick={player ? onTap : undefined} style={player && walkway.length > 1 ? { cursor: "pointer" } : undefined}>
       <img src={src} alt={alt} />
+      {h > 0 && player && (
+        <PlayerInRoom
+          key={src}
+          room={room}
+          avatar={player.avatar}
+          action={player.action}
+          tap={tap}
+          ph={ph}
+          box={box}
+          reduce={reduce}
+          onSettle={(at) => setTaken((prev) => (prev === at || (prev && at && close(prev, at, 0.001)) ? prev : at))}
+        />
+      )}
       {h > 0 &&
         variants.map((v, i) => <div key={`${v}-${i}`} ref={(el) => void (els.current[i] = el)} className="interior-npc" aria-hidden="true" style={size} />)}
       {h > 0 &&
@@ -458,14 +232,178 @@ export function InteriorScene({ src, alt, room, seed = 1 }: { src: string; alt: 
             className="interior-npc"
             aria-hidden="true"
             style={{
-              ...size,
+              ...spriteBox(ph, p.action === "sleep"),
               left: `${p.at[0] * 100}%`,
               top: `${p.at[1] * 100}%`,
               zIndex: Math.round(p.at[1] * 1000),
-              backgroundImage: `url(/art/life/poses/${p.action}-${p.variant}-${p.dir}.webp)`,
+              backgroundImage: `url(${poseSheet(p.action, p.variant, p.dir)})`,
+              display: taken && close(taken, p.at) ? "none" : undefined,
             }}
           />
         ))}
+    </div>
+  );
+}
+
+/**
+ * The player's own character in a room: comes in at the door, walks the walkway to the spot for `action` (or to
+ * the last tapped point) and plays the pose there. Moves by setting styles in its own animation loop.
+ */
+function PlayerInRoom({
+  room,
+  avatar,
+  action,
+  tap,
+  ph,
+  box,
+  reduce,
+  onSettle,
+}: {
+  room: Room | undefined;
+  avatar: AvatarConfig;
+  action: PlayerAction;
+  tap: { at: Pt; seq: number } | null;
+  ph: number;
+  box: RefObject<HTMLDivElement | null>;
+  reduce: boolean;
+  onSettle: (at: Pt | null) => void;
+}) {
+  const el = useRef<HTMLDivElement>(null);
+  const variant = variantFor(avatar);
+  const walkway = room?.walkway ?? [];
+  const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
+  // Live state for the loop: where they are, the route ahead, and what to do on arrival.
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as "se" | "sw", lying: false, t0: 0, settled: false, free: false });
+  const [lying, setLying] = useState(false);
+
+  // A new action (or the first one): walk to its spot. "walk" just steps in from the door.
+  useEffect(() => {
+    const m = me.current;
+    // Walking about after a tap: "walk" (which the caller may set on that tap) leaves the route alone.
+    if (action === "walk" && m.free) return;
+    m.free = false;
+    const box0 = box.current;
+    const aspect = box0 && box0.clientHeight ? box0.clientWidth / box0.clientHeight : 1;
+    const target = spotFor(room, action);
+    const to: Pt = target ? target.spot.at : walkway.length > 1 ? nearestOnPolyline(walkway, m.at, aspect).at : m.at;
+    m.route = close(m.at, to, 0.002) ? [] : routeTo(walkway, m.at, to, aspect).slice(1);
+    m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
+    m.face = target?.spot.dir ?? m.face;
+    m.t0 = performance.now();
+    m.settled = false;
+    onSettle(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action, room]);
+
+  // A tap: walk there and stand.
+  useEffect(() => {
+    if (!tap) return;
+    const m = me.current;
+    const box0 = box.current;
+    const aspect = box0 && box0.clientHeight ? box0.clientWidth / box0.clientHeight : 1;
+    m.route = routeTo(walkway, m.at, tap.at, aspect).slice(1);
+    m.pose = "stand_idle";
+    m.free = true;
+    m.settled = false;
+    onSettle(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tap?.seq]);
+
+  useEffect(() => {
+    const m = me.current;
+    let raf = 0;
+    let last = performance.now();
+    m.t0 = last;
+    const draw = (now: number) => {
+      const node = el.current;
+      if (!node) return;
+      node.style.left = `${m.at[0] * 100}%`;
+      node.style.top = `${m.at[1] * 100}%`;
+      // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
+      node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
+      if (m.route.length) {
+        const frame = Math.floor(m.walked / 0.024) % 8;
+        node.style.backgroundImage = `url(${walkerSheet(variant, m.dir)})`;
+        node.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
+      } else {
+        const pose = m.pose ?? "stand_idle";
+        const fps = pose === "dance" ? 10 : pose === "sleep" ? 3 : 7;
+        const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % 8;
+        node.style.backgroundImage = `url(${poseSheet(pose, variant, m.face)})`;
+        node.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
+      }
+      const lie = !m.route.length && m.pose === "sleep";
+      if (lie !== m.lying) {
+        m.lying = lie;
+        setLying(lie);
+      }
+    };
+    const step = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const b = box.current;
+      const aspect = b && b.clientHeight ? b.clientWidth / b.clientHeight : 1;
+      if (m.route.length) {
+        if (reduce) {
+          m.at = m.route[m.route.length - 1]!;
+          m.route = [];
+        } else {
+          let left = 0.14 * dt; // image widths per second: brisker than the people milling about
+          while (left > 0 && m.route.length) {
+            const next = m.route[0]!;
+            const dx = (next[0] - m.at[0]) * aspect;
+            const dy = next[1] - m.at[1];
+            const d = Math.hypot(dx, dy);
+            if (d > 1e-6) m.dir = walkDir(dx, dy);
+            if (d <= left) {
+              m.at = next;
+              m.route.shift();
+              left -= d;
+              m.walked += d;
+            } else {
+              m.at = [m.at[0] + (dx / d / aspect) * left, m.at[1] + (dy / d) * left];
+              m.walked += left;
+              left = 0;
+            }
+          }
+        }
+        if (!m.route.length) {
+          m.t0 = now;
+          // Facing for standing after a walk: the way they were going (pose sheets face se or sw).
+          if (m.free || !spotFor(room, action)) m.face = m.dir === "sw" || m.dir === "nw" ? "sw" : "se";
+        }
+      }
+      if (!m.route.length && !m.settled) {
+        m.settled = true;
+        onSettle(m.at);
+      }
+      draw(now);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant, reduce]);
+
+  return (
+    <div ref={el} className="interior-npc interior-player" aria-label="You" style={{ ...spriteBox(ph, lying), left: `${door[0] * 100}%`, top: `${door[1] * 100}%` }}>
+      <span
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: lying ? "8%" : "4%",
+          transform: "translate(-50%, -100%)",
+          padding: "1px 6px",
+          borderRadius: 999,
+          background: "#ffd23f",
+          color: "#1b1410",
+          font: "800 11px/1.3 system-ui, sans-serif",
+          boxShadow: "0 1px 2px rgb(0 0 0 / 40%)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        You
+      </span>
     </div>
   );
 }

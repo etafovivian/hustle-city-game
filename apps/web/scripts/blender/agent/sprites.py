@@ -526,12 +526,18 @@ def render_variant(name, sex, fn, tmp):
 # ------------------------------------------------------------------ interior poses (POSE=1)
 # action -> (base clip, variants). Directions: se/sw only (interiors are seen from the front).
 POSES = {
-    "sit_eat": ("Sitting_Idle_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele"]),
+    "sit_eat": ("Sitting_Idle_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"]),
     "sit_talk": ("Sitting_Talking_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"]),
     "stand_idle": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"]),
     "serve": (os.environ.get("SERVE_BASE", "Idle_Talking_Loop"), ["woman_buba", "man_casual"]),
-    "dance": ("Dance_Loop", ["woman_gele", "man_kaftan", "woman_buba"]),
+    "dance": ("Dance_Loop", ["woman_gele", "man_kaftan", "woman_buba", "man_casual"]),
+    # The library has no lying clip: the first Idle_Loop frame is held and laid flat on its back (see lie_down),
+    # with the chest rising and falling once per loop.
+    "sleep": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"]),
 }
+# Lying sheets are wider than tall: 8 frames of 192x112, cropped so the middle of the body is the centre of the
+# frame (it is anchored on the middle of the mattress). Directions: se = feet towards the bottom right (head up-left), sw = feet bottom left.
+SLEEP_W, SLEEP_H = 192, 112
 POSE_DIRS = {"se": DIRS["se"], "sw": DIRS["sw"]}
 
 
@@ -623,12 +629,127 @@ def clip_yaw(arm, base):
     return math.degrees(math.atan2(f.x, -f.y))
 
 
+def lie_down(arm, base, sx, sy):
+    """Holds the first frame of `base` and lays the body flat on its back, feet towards screen direction (sx, sy),
+    with the middle of the body over the origin and its back on the ground plane (the mattress)."""
+    arm.location = (0, 0, 0)
+    arm.rotation_euler = (0, 0, 0)
+    act = bpy.data.actions[base]
+    set_action(arm, base, act.frame_range[0])
+    bpy.context.view_layer.update()
+    yaw = clip_yaw(arm, base)
+    set_action(arm, base, act.frame_range[0])
+    bpy.context.view_layer.update()
+    arm.animation_data.action = None  # keep the evaluated pose; breathing is set on the bones by hand
+    # Legs straight and together (the idle stance is wide): back to the rest pose from the hips down.
+    for b in ("pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r", "ball_l", "ball_r"):
+        pb = arm.pose.bones.get(b)
+        if pb:
+            pb.rotation_quaternion = (1, 0, 0, 0)
+            pb.rotation_euler = (0, 0, 0)
+            if b != "pelvis":
+                pb.location = (0, 0, 0)
+    bpy.context.view_layer.update()
+    # Rz(-yaw): face -Y; Rx(-90): head +Y, face up; Rz(phi): head away from the feet direction.
+    phi = math.radians(facing_angle(sx, sy))
+    rot = Matrix.Rotation(phi, 4, "Z") @ Matrix.Rotation(math.radians(-90), 4, "X") @ Matrix.Rotation(math.radians(-yaw), 4, "Z")
+    arm.matrix_world = rot @ Matrix.Diagonal(arm.scale.to_4d())
+    bpy.context.view_layer.update()
+    lo, hi = body_bounds()
+    arm.location = arm.location - Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))
+    bpy.context.view_layer.update()
+
+
+def body_bounds():
+    dg = bpy.context.evaluated_depsgraph_get()
+    lo, hi = Vector((1e9, 1e9, 1e9)), Vector((-1e9, -1e9, -1e9))
+    for o in bpy.data.objects:
+        if o.type != "MESH" or o.hide_render:
+            continue
+        ev = o.evaluated_get(dg)
+        m = ev.to_mesh()
+        mw = ev.matrix_world
+        for v in m.vertices:
+            w = mw @ v.co
+            lo = Vector(map(min, lo, w))
+            hi = Vector(map(max, hi, w))
+        ev.to_mesh_clear()
+    return lo, hi
+
+
+def breathe(arm, t):
+    """Chest up and down once per loop (the neck and arms keep their size)."""
+    s = math.sin(2 * math.pi * t)
+    for child in ("neck_01", "clavicle_l", "clavicle_r"):
+        if child in arm.data.bones:
+            arm.data.bones[child].inherit_scale = "NONE"
+    if "spine_03" in arm.pose.bones:
+        arm.pose.bones["spine_03"].scale = (1 + 0.03 * s, 1.0, 1 + 0.08 * s)
+    if "spine_02" in arm.pose.bones:
+        arm.pose.bones["spine_02"].scale = (1 + 0.01 * s, 1.0, 1 + 0.03 * s)
+    bpy.context.view_layer.update()
+
+
+def sleep_view(scene, on, keep={}):
+    """Switches the camera and frame size to the lying sheets (on) and back (off)."""
+    cam = scene.camera
+    if on:
+        keep.update(ortho=cam.data.ortho_scale, loc=cam.location.copy(), res=(scene.render.resolution_x, scene.render.resolution_y))
+        to_cam, _, _ = cam_axes()
+        # rendered twice as tall as the sheet frames, then cropped round the body (see render_sleep)
+        cam.data.ortho_scale = 2 * SLEEP_H / PPM
+        cam.location = to_cam * 20
+        k = scene.render.resolution_x // FW
+        scene.render.resolution_x, scene.render.resolution_y = SLEEP_W * k, 2 * SLEEP_H * k
+    else:
+        cam.data.ortho_scale = keep["ortho"]
+        cam.location = keep["loc"]
+        scene.render.resolution_x, scene.render.resolution_y = keep["res"]
+
+
+def render_sleep(arm, scene, look, name, tmp, first):
+    base = POSES["sleep"][0]
+    sleep_view(scene, True)
+    for d, (sx, sy) in POSE_DIRS.items():
+        lie_down(arm, base, sx, sy)
+        frames = []
+        for i in range(NF):
+            breathe(arm, i / NF)
+            p = os.path.join(tmp, f"sleep-{name}-{d}-{i}.png")
+            scene.render.filepath = p
+            bpy.ops.render.render(write_still=True)
+            a = read_png(p)
+            if look == "toon":
+                a = downsample(a)
+            frames.append(a)
+        # Crop every frame the same way: the body's visible middle (frame 0) becomes the frame centre, which is
+        # where the sprite is anchored (the middle of the mattress).
+        rows = np.where(frames[0][..., 3].max(axis=1) > 0.05)[0]
+        mid = (rows.min() + rows.max()) // 2 if len(rows) else SLEEP_H
+        y0 = int(min(max(mid - SLEEP_H // 2, 0), SLEEP_H))
+        sheet = np.zeros((SLEEP_H, SLEEP_W * NF, 4), dtype=np.float32)
+        for i, a in enumerate(frames):
+            sheet[:, i * SLEEP_W:(i + 1) * SLEEP_W] = a[y0:y0 + SLEEP_H]
+        first[("sleep", d)] = sheet[:, :SLEEP_W]
+        write_png(sheet, os.path.join(OUT, f"sleep-{name}-{d}.png"))
+        print("SHEET sleep", name, d)
+    breathe(arm, 0.0)
+    for pb in arm.pose.bones:
+        pb.scale = (1, 1, 1)
+    arm.location = (0, 0, 0)
+    sleep_view(scene, False)
+
+
 def render_poses(name, sex, fn, jobs, tmp):
     bases = sorted({POSES[a][0] for a in jobs})
     arm, scene, look = prepare_variant(name, sex, fn, extra_actions=[b for b in bases if b not in bpy.data.actions] if False else
                                         [b for b in bases if b == "Sitting_Talking_Loop"])
     first = {}
+    if "sleep" in jobs:
+        render_sleep(arm, scene, look, name, tmp, first)
     for action in jobs:
+        if action == "sleep":
+            continue
         base = POSES[action][0]
         yaw = clip_yaw(arm, base)
         print("CLIP", base, "body yaw", round(yaw, 1))
@@ -679,14 +800,32 @@ if os.environ.get("POSE"):
         if jobs:
             got[name] = render_poses(name, sex, fn, jobs, tmp)
     # contact sheet: one row per action, columns = variant x (se, sw) for that action
+    sleepers = [n for n in POSES["sleep"][1] if ("sleep", "se") in got.get(n, {})]
+    if sleepers:
+        # lying sheets have their own frame size: one row per variant, se then sw
+        cs = np.zeros((SLEEP_H * len(sleepers), SLEEP_W * 2, 4), dtype=np.float32)
+        cs[..., :3], cs[..., 3] = 0.9, 1
+        for r, n in enumerate(reversed(sleepers)):
+            for c, d in enumerate(POSE_DIRS):
+                a = got[n][("sleep", d)]
+                y0, x0 = r * SLEEP_H, c * SLEEP_W
+                al = a[..., 3:4]
+                cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] = a[..., :3] * al + cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] * (1 - al)
+                cs[y0 + SLEEP_H // 2, x0 + SLEEP_W // 2 - 3:x0 + SLEEP_W // 2 + 4, :3] = (0.8, 0.2, 0.2)  # anchor
+        write_png(cs, os.path.join(OUT, "sleep-contact.png"))
     cells = []
     for action in POSES:
+        if action == "sleep":
+            continue
         row = []
         for name in POSES[action][1]:
             for d in POSE_DIRS:
                 row.append(got.get(name, {}).get((action, d)))
         if any(x is not None for x in row):
             cells.append(row)
+    if not cells:
+        print("DONE poses")
+        sys.exit(0)
     ncols = max(len(r) for r in cells)
     cells = [r + [None] * (ncols - len(r)) for r in cells]
     contact_sheet(cells, ncols, os.path.join(OUT, "poses-contact.png"))
