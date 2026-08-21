@@ -409,4 +409,142 @@ export const ROOMS: Record<string, Room> = {
       dance: { at: [0.66, 0.78], dir: "se" },
     },
   },
+  // Stitch zip 16: more rooms of the homes.
+  "home-compound-yard": {
+    // Open yard: water tank on a stand, mango tree with two plastic chairs, generator cage, washing line.
+    walkway: [[0.15, 0.6], [0.3, 0.68], [0.45, 0.76], [0.56, 0.66], [0.5, 0.52], [0.38, 0.5]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.555, 0.44], dir: "sw", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.625, 0.48], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.3, 0.62], dir: "se", variant: "schoolboy" },
+    ],
+    spots: {
+      door: { at: [0.45, 0.82], dir: "se" },
+      sit: { at: [0.555, 0.44], dir: "sw" },
+      eat: { at: [0.625, 0.48], dir: "sw" },
+      stand: { at: [0.4, 0.62], dir: "se" },
+      dance: { at: [0.3, 0.7], dir: "se" },
+    },
+  },
+  "home-villa-pool": {
+    // Deck round the pool: two sun loungers, a tiki bar with stools, a cushioned bench on the pool's stone edge.
+    walkway: [[0.32, 0.44], [0.42, 0.44], [0.5, 0.5], [0.6, 0.53], [0.7, 0.56], [0.74, 0.68]],
+    walkers: 1,
+    stations: [
+      { action: "sleep", at: [0.26, 0.63], dir: "se", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.53, 0.47], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.78, 0.66], dir: "sw", variant: "woman_buba" },
+    ],
+    spots: {
+      door: { at: [0.32, 0.44], dir: "se" },
+      sleep: { at: [0.36, 0.575], dir: "se" },
+      sit: { at: [0.78, 0.66], dir: "sw" },
+      eat: { at: [0.62, 0.47], dir: "se" },
+      stand: { at: [0.45, 0.47], dir: "se" },
+      dance: { at: [0.5, 0.5], dir: "se" },
+    },
+  },
+  "home-bedroom": {
+    // Bed under a mosquito net, wardrobe, mirror shelf, standing fan; the rest is open floor.
+    walkway: [[0.45, 0.82], [0.55, 0.75], [0.6, 0.66], [0.7, 0.6], [0.8, 0.68]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.24, 0.7], dir: "sw", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.7, 0.58], dir: "sw", variant: "man_casual" },
+    ],
+    spots: {
+      door: { at: [0.5, 0.85], dir: "se" },
+      sleep: { at: [0.3, 0.56], dir: "se" },
+      sit: { at: [0.24, 0.7], dir: "sw" },
+      eat: { at: [0.24, 0.7], dir: "sw" },
+      stand: { at: [0.62, 0.66], dir: "sw" },
+      dance: { at: [0.55, 0.75], dir: "se" },
+    },
+  },
+  "home-kitchen": {
+    // Cooker and counters along the back, a dining table with chairs on the right, checkered floor.
+    walkway: [[0.35, 0.72], [0.45, 0.62], [0.55, 0.55], [0.6, 0.7], [0.5, 0.82], [0.4, 0.8]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.28, 0.68], dir: "se", variant: "woman_buba" },
+      { action: "sit_eat", at: [0.71, 0.63], dir: "se", variant: "man_kaftan" },
+    ],
+    spots: {
+      door: { at: [0.5, 0.85], dir: "se" },
+      eat: { at: [0.71, 0.63], dir: "se" },
+      sit: { at: [0.71, 0.63], dir: "se" },
+      stand: { at: [0.45, 0.62], dir: "se" },
+      dance: { at: [0.48, 0.75], dir: "se" },
+    },
+  },
+  "home-duplex-bedroom": {
+    // Big bed against the right wall, vanity with a stool, TV on the left wall; wide open floor.
+    walkway: [[0.35, 0.6], [0.3, 0.7], [0.4, 0.78], [0.52, 0.84], [0.65, 0.78], [0.75, 0.72]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.84, 0.7], dir: "sw", variant: "woman_buba" },
+      { action: "stand_idle", at: [0.3, 0.68], dir: "se", variant: "man_kaftan" },
+    ],
+    spots: {
+      door: { at: [0.52, 0.84], dir: "se" },
+      sleep: { at: [0.6, 0.54], dir: "sw" },
+      sit: { at: [0.57, 0.69], dir: "se" },
+      eat: { at: [0.57, 0.69], dir: "se" },
+      stand: { at: [0.65, 0.78], dir: "sw" },
+      dance: { at: [0.42, 0.75], dir: "se" },
+    },
+  },
+  "home-villa-suite": {
+    // Bed with a tall headboard, two armchairs round a glass table, arched doorway and pool view on the left.
+    walkway: [[0.2, 0.63], [0.32, 0.66], [0.45, 0.68], [0.55, 0.66], [0.62, 0.62], [0.5, 0.78]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.76, 0.72], dir: "sw", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.62, 0.84], dir: "se", variant: "man_kaftan" },
+    ],
+    spots: {
+      door: { at: [0.2, 0.63], dir: "se" },
+      sleep: { at: [0.68, 0.47], dir: "sw" },
+      sit: { at: [0.76, 0.72], dir: "sw" },
+      eat: { at: [0.62, 0.84], dir: "se" },
+      stand: { at: [0.45, 0.68], dir: "se" },
+      dance: { at: [0.4, 0.74], dir: "se" },
+    },
+  },
+  "home-villa-kitchen": {
+    // Fitted kitchen with an island and three bar stools, big fridge on the right.
+    walkway: [[0.3, 0.62], [0.4, 0.72], [0.52, 0.8], [0.65, 0.76], [0.75, 0.68], [0.8, 0.62]],
+    walkers: 1,
+    stations: [
+      { action: "serve", at: [0.37, 0.53], dir: "se", variant: "woman_buba" },
+      { action: "sit_eat", at: [0.48, 0.63], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.55, 0.67], dir: "sw", variant: "woman_gele" },
+    ],
+    spots: {
+      door: { at: [0.52, 0.82], dir: "se" },
+      eat: { at: [0.48, 0.63], dir: "sw" },
+      sit: { at: [0.55, 0.67], dir: "sw" },
+      stand: { at: [0.65, 0.76], dir: "sw" },
+      dance: { at: [0.42, 0.74], dir: "se" },
+    },
+  },
+  "home-villa-cinema": {
+    // Screen on the left wall, popcorn machine in the corner, an L-shaped sectional facing the screen.
+    walkway: [[0.3, 0.62], [0.42, 0.56], [0.52, 0.52], [0.58, 0.6], [0.48, 0.72], [0.42, 0.8]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.68, 0.58], dir: "sw", variant: "woman_gele" },
+      { action: "sit_eat", at: [0.76, 0.62], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.5, 0.53], dir: "se", variant: "schoolboy" },
+    ],
+    spots: {
+      door: { at: [0.42, 0.82], dir: "se" },
+      sleep: { at: [0.76, 0.54], dir: "se" },
+      sit: { at: [0.68, 0.58], dir: "sw" },
+      eat: { at: [0.76, 0.62], dir: "sw" },
+      stand: { at: [0.5, 0.55], dir: "se" },
+      dance: { at: [0.4, 0.66], dir: "se" },
+    },
+  },
 };

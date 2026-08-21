@@ -33,7 +33,7 @@ const AREA_OF_PREFIX: Record<string, string> = {
 const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to: number }[] = [
   { area: "Tech Mile", fixed: "b", at: 0, from: 1550, to: 2250 },
   { area: "Airport Ridge", fixed: "a", at: 0, from: 1550, to: 2750 },
-  { area: "Danfo Terminal", fixed: "b", at: 0, from: -2750, to: -1550 },
+  { area: "Danfo Terminal", fixed: "b", at: 0, from: -3850, to: -1550 },
   { area: "Owambe Gardens", fixed: "a", at: 0, from: -2350, to: -1550 },
   { area: "Apapa Port", fixed: "a", at: 0, from: -3250, to: -2550 },
   { area: "Marina Wharf", fixed: "b", at: ISLAND_B, from: 1450, to: 2300 },
@@ -43,13 +43,13 @@ const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to
 /** How many walkers each area gets: busy mainland areas more, the far ends of the map fewer. */
 export const AREA_WALKERS: Record<string, number> = {
   "Tech Mile": 7,
-  "Danfo Terminal": 8,
+  "Danfo Terminal": 10,
   "Owambe Gardens": 7,
-  "Airport Ridge": 5,
+  "Airport Ridge": 6,
   "Apapa Port": 4,
   "Marina Wharf": 6,
   "Island Heights": 6,
-  "Lekki Gardens": 6,
+  "Lekki Gardens": 8,
 };
 
 const kerbOf = (s: { half: number; pav: number }) => s.half + s.pav / 2;
