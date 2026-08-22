@@ -868,3 +868,13 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .home-shop { display: grid; gap: 8px; }
 .home-acts { align-items: center; }
 .wardrobe-preview { height: 300px; border-radius: 16px; background: radial-gradient(circle at 50% 60%, #2a3466, var(--sheet-2)); overflow: hidden; }
+/* Weather over the map */
+.map-rain, .map-haze { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.map-rain { background-image: repeating-linear-gradient(105deg, rgb(200 220 255 / 0%) 0 14px, rgb(200 220 255 / 35%) 14px 15px, rgb(200 220 255 / 0%) 15px 34px); background-size: 120px 120px; background-color: rgb(30 50 80 / 22%); animation: rain-fall 0.45s linear infinite; }
+.map-rain.storm { background-color: rgb(20 30 60 / 38%); animation-duration: 0.3s; }
+.map-rain.storm::after { content: ""; position: absolute; inset: 0; background: #fff; opacity: 0; animation: lightning 9s infinite; }
+@keyframes rain-fall { to { background-position: -30px 120px; } }
+@keyframes lightning { 0%, 93%, 100% { opacity: 0; } 94% { opacity: 0.35; } 95% { opacity: 0; } 96% { opacity: 0.2; } }
+.map-haze.cloudy { background: rgb(120 130 150 / 14%); }
+.map-haze.harmattan { background: rgb(230 200 150 / 26%); backdrop-filter: blur(0.6px); }
+@media (prefers-reduced-motion: reduce) { .map-rain, .map-rain.storm::after { animation: none; } }

@@ -1,12 +1,13 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, businessArt, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, businessArt, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
+import { SoundToggle } from "./Ambience.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
@@ -456,6 +457,21 @@ export function CityMap({
   const districtScale = districtNear ? 13 / (56 * k) : readable(k, 56, 16, 20);
   const far = k < 0.3;
   const light = useLagosLight();
+  // Weather: the same for everyone; re-checked every minute.
+  // (?weather=rain pins it, for screenshots, like ?hour=.)
+  const pinnedWeather = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get("weather") as Weather | null;
+    } catch {
+      return null;
+    }
+  })();
+  const [weather, setWeather] = useState<Weather>(() => pinnedWeather ?? weatherAt(new Date()));
+  useEffect(() => {
+    if (pinnedWeather) return;
+    const id = window.setInterval(() => setWeather(weatherAt(new Date())), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Everything that stands up on the buildings layer, with its foot point for depth order.
   const depthItems: DepthItem[] = [];
@@ -983,6 +999,8 @@ export function CityMap({
         {/* Lagos time of day: one multiply tint over every layer below (ground, traffic and buildings). It is a plain
             element between the layers so it blends with all of them; inside one layer it would only reach that layer. */}
         {light.phase !== "day" && <div className="map-tint-layer" style={{ background: light.tint }} aria-hidden="true" />}
+        {(weather === "rain" || weather === "storm") && <div className={`map-rain ${weather}`} aria-hidden="true" />}
+        {(weather === "cloudy" || weather === "harmattan") && <div className={`map-haze ${weather}`} aria-hidden="true" />}
         {/* Lit things and labels above the tint: billboards, lamps and windows, names. Only their buttons take taps. */}
         <svg className="map-layer map-overlay">
           {pz.view && (
@@ -1198,6 +1216,16 @@ export function CityMap({
         <button type="button" className="map-ctl" onClick={() => setBoardSheet({ key: null })} aria-label="Billboards: advertise your business">
           <Megaphone size={18} aria-hidden="true" />
         </button>
+        <SoundToggle
+          weather={weather}
+          hour={light.hour}
+          scene={(() => {
+            const base = venueOpen ? (BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen) : null;
+            if (base && ["skyline_lounge", "royal_event_centre", "lagoon_boat_cruise", "viewing_centre"].includes(base)) return "club";
+            if (base || homeOpen || visitHome) return "quiet";
+            return "street";
+          })()}
+        />
         <button type="button" className="map-ctl home-ctl" onClick={() => goTo(homeSpot, "home", "__home")} aria-label="Go home" title="Go home">
           <HomeIcon size={18} aria-hidden="true" />
         </button>
@@ -1218,7 +1246,7 @@ export function CityMap({
         <LandPlot size={15} aria-hidden="true" /> Land for sale
       </button>
       <p className="map-clock tiny" aria-live="off">
-        Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]}
+        Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
       </p>
       <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>
       {peek && (
