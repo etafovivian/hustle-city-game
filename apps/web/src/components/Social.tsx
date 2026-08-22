@@ -82,6 +82,18 @@ export function PlayerCard({
   const sheet = useSheet(onClose);
   const [busy, setBusy] = useState(false);
   const [talking, setTalking] = useState(false);
+  const invite = async () => {
+    setBusy(true);
+    try {
+      await api("POST", "/api/presence/invite", { to: player.nickname });
+      notify(`Invite sent. @${player.nickname} can tap you and Visit your home.`);
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const send = async (what: "wave" | "treat") => {
     setBusy(true);
     try {
@@ -116,6 +128,9 @@ export function PlayerCard({
           </button>
           <button type="button" className="btn go" disabled={busy || !near} onClick={() => void send("treat")} title={near ? undefined : "Go to where they are first"}>
             <Beer size={16} aria-hidden="true" /> Buy a drink ({TREAT_COINS} coins)
+          </button>
+          <button type="button" className="btn" disabled={busy} onClick={() => void invite()}>
+            <HomeIcon size={16} aria-hidden="true" /> Invite to my house
           </button>
           <button type="button" className="btn" onClick={() => setTalking((x) => !x)}>
             <MessageCircle size={16} aria-hidden="true" /> Message
@@ -180,7 +195,7 @@ export function VisitHome({
         </div>
         <div className="venue-layout has-room">
           <div className="venue-room">
-            <HomeRooms design={home.design} who={`@${home.nickname}'s`} avatar={avatar} action={me} onAction={setMe} />
+            <HomeRooms design={home.design} who={`@${home.nickname}'s`} avatar={avatar} action={me} onAction={setMe} guests={inside} />
             <div className="row home-acts">
               <button type="button" className="btn sm" onClick={() => setMe("sit")}>
                 🛋️ Sit down

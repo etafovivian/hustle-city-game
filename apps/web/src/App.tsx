@@ -347,6 +347,7 @@ export function App() {
 
       {phone && (
         <Phone
+          avatar={me.avatar}
           app={phone}
           setApp={setPhone}
           onClose={() => setPhone(null)}

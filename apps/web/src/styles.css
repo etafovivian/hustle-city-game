@@ -867,3 +867,4 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .home-item { position: absolute; width: 16%; transform: translate(-50%, -85%); pointer-events: auto; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 45%)); z-index: 900; }
 .home-shop { display: grid; gap: 8px; }
 .home-acts { align-items: center; }
+.wardrobe-preview { height: 300px; border-radius: 16px; background: radial-gradient(circle at 50% 60%, #2a3466, var(--sheet-2)); overflow: hidden; }

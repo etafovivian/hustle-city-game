@@ -17,7 +17,9 @@ import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X } from 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, formatCoins } from "../api.js";
-import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
+import { InteriorScene, ROOMS, type PlayerAction, type Room } from "./Interior.js";
+import type { PoseAction } from "./rooms.js";
+import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 
 function useSheet(onClose: () => void) {
@@ -77,7 +79,9 @@ export function HomeCard({
   onBuyLand,
   chatPlace,
   avatar,
+  guests = [],
 }: {
+  guests?: { avatar: AvatarConfig; nickname: string }[];
   avatar?: AvatarConfig;
   /** The presence/chat key for your home ("home:<plot>" or your room). */
   chatPlace?: string;
@@ -138,7 +142,7 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
-        <HomeRooms design={home.design} who="your" items={home.items} avatar={avatar} action={me} onAction={setMe} />
+        <HomeRooms design={home.design} who="your" items={home.items} avatar={avatar} action={me} onAction={setMe} guests={guests} />
         <div className="row home-acts">
           <button type="button" className="btn sm" onClick={() => setMe("sit")}>
             🛋️ Sit down
@@ -262,6 +266,31 @@ const ITEM_SPOTS: [number, number][] = [
   [0.3, 0.7],
 ];
 
+/**
+ * A private home: no strangers. A house help works in the kitchen, and guests (players visiting now) sit in the
+ * living rooms or at the kitchen table, each in their own seat. Bedrooms are just for the household.
+ */
+function privateRoom(room: Room | undefined, kind: string, guests: { avatar: AvatarConfig }[]): Room | undefined {
+  if (!room) return room;
+  const kitchen = /kitchen/.test(kind);
+  const social = /parlour|living|lounge|cinema|room|pool|yard/.test(kind);
+  const seats = [
+    ...(room.spots?.sit ? [room.spots.sit] : []),
+    ...(room.spots?.eat ? [room.spots.eat] : []),
+    ...room.stations.filter((s) => s.action === "sit_talk" || s.action === "sit_eat").map((s) => ({ at: s.at, dir: s.dir })),
+  ];
+  const help = kitchen ? room.stations.filter((s) => s.action === "serve").slice(0, 1) : [];
+  const guestSeats = kitchen || social ? guests.slice(0, seats.length) : [];
+  return {
+    ...room,
+    walkers: 0,
+    stations: [
+      ...help,
+      ...guestSeats.map((g, i) => ({ action: (kitchen ? "sit_eat" : "sit_talk") as PoseAction, at: seats[i]!.at, dir: seats[i]!.dir, variant: variantFor(g.avatar) })),
+    ],
+  };
+}
+
 export function HomeRooms({
   design,
   who,
@@ -269,7 +298,10 @@ export function HomeRooms({
   avatar,
   action = "walk",
   onAction,
+  guests = [],
 }: {
+  /** Players visiting this home right now. */
+  guests?: { avatar: AvatarConfig; nickname: string }[];
   design: string | null;
   who: string;
   items?: string[];
@@ -299,12 +331,13 @@ export function HomeRooms({
           ))}
         </div>
       )}
+      {guests.length > 0 && <p className="tiny muted">With you: {guests.map((g) => `@${g.nickname}`).join(", ")}</p>}
       <div className="home-room-frame">
         <InteriorScene
           key={room.key}
           src={`/art/interiors/${room.art}.webp`}
           alt={`Inside ${who} ${room.label.toLowerCase()}`}
-          room={ROOMS[room.art]}
+          room={privateRoom(ROOMS[room.art], room.key, guests)}
           seed={3 + at}
           player={avatar ? { avatar, action } : undefined}
           onPlayerWalk={() => onAction?.("walk")}

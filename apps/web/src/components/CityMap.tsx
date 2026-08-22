@@ -361,7 +361,7 @@ export function CityMap({
           if (r.unread > unreadRef.current) notify(`💬 New message${r.unread - unreadRef.current > 1 ? "s" : ""}: Phone → Chats`);
           unreadRef.current = r.unread;
           for (const p of r.pings)
-            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
+            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : p.kind === "invite" ? `🏠 @${p.from} invited you to their house. Tap them on the map, then Visit their home.` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
           if (r.pings.some((p) => p.kind === "drink")) onVisited();
         })
         .catch(() => undefined);
@@ -1357,6 +1357,7 @@ export function CityMap({
           {homeOpen && home && (
             <HomeCard
               avatar={avatar}
+              guests={others.filter((p) => p.place === `home:${home.plotId ?? `room-${nickname}`}`)}
               chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}
               home={home}
               label={myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}

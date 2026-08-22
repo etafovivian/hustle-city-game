@@ -12,7 +12,7 @@ export interface PresencePlayer {
 
 export interface PresencePing {
   from: string;
-  kind: "wave" | "drink" | "join";
+  kind: "wave" | "drink" | "join" | "invite";
   /** For "join": what they're doing ("Dance till late at Skyline Lounge"). */
   text?: string;
   place: string | null;

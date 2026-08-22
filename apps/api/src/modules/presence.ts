@@ -32,7 +32,7 @@ interface Seen {
 interface Ping {
   id: string;
   from: string;
-  kind: "wave" | "drink" | "join";
+  kind: "wave" | "drink" | "join" | "invite";
   text?: string;
   place: string | null;
   at: number;
@@ -115,6 +115,17 @@ export async function presenceRoutes(app: FastifyInstance) {
     const them = byNick(to, now);
     if (!me || !them || them.userId === user.id) throw new AppError(404, "not_here", "They're not around right now.");
     push(them.userId, { from: me.nickname, kind: "wave", place: me.place });
+    return { ok: true };
+  });
+
+  // Invite someone online to your house.
+  app.post("/api/presence/invite", { config: { rateLimit: { max: 20 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } }, async (request) => {
+    const user = requireUser(request);
+    const { to } = z.object({ to: z.string().max(30) }).parse(request.body);
+    const me = seen.get(user.id);
+    const them = byNick(to, Date.now());
+    if (!me || !them || them.userId === user.id) throw new AppError(404, "not_here", "They're not around right now.");
+    push(them.userId, { from: me.nickname, kind: "invite", place: null });
     return { ok: true };
   });
 
