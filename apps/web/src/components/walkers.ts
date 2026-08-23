@@ -1,9 +1,56 @@
 // Walk-cycle sprite sheets rendered from the 3D bodies (public/art/life/walkers, see its LICENSE.txt):
 // 8 frames of 96×160 px per direction; feet on a ground line 16 px above the frame bottom; 76 px per metre.
-export type WalkerVariant = "woman_buba" | "woman_gele" | "man_kaftan" | "man_casual" | "schoolgirl" | "schoolboy";
+/** The first six looks (street NPCs, children, and the fallback for players). */
+export type LegacyVariant = "woman_buba" | "woman_gele" | "man_kaftan" | "man_casual" | "schoolgirl" | "schoolboy";
+/** One look per body and outfit a player can wear (profile.ts LOOK_ORDER), painted in the outfit's own colours. */
+export const OUTFIT_VARIANTS = [
+  "man-agbada_white",
+  "man-kaftan_gold",
+  "man-ankara_green",
+  "man-jersey_red",
+  "man-tee_blue",
+  "man-hoodie_black",
+  "woman-buba_wrapper",
+  "woman-peplum_coral",
+  "woman-ankara_green",
+  "woman-kaftan_gold",
+  "woman-tee_blue",
+  "woman-jersey_red",
+  "woman-hoodie_black",
+] as const;
+export type OutfitVariant = (typeof OUTFIT_VARIANTS)[number];
+export type WalkerVariant = LegacyVariant | OutfitVariant;
 export type WalkDir = "se" | "sw" | "ne" | "nw";
 
-export const WALKER_VARIANTS: WalkerVariant[] = ["woman_buba", "man_kaftan", "schoolgirl", "man_casual", "woman_gele", "schoolboy"];
+const OUTFIT_SET = new Set<string>(OUTFIT_VARIANTS);
+/** The rendered look for a body and outfit, if there is one. */
+export const outfitVariant = (body: "man" | "woman", outfit: string): OutfitVariant | null =>
+  OUTFIT_SET.has(`${body}-${outfit}`) ? (`${body}-${outfit}` as OutfitVariant) : null;
+
+/**
+ * Who walks the streets (and rooms), in turn: half of them in modern clothes (tees and jeans, jerseys, hoodies), the
+ * rest in traditional dress, with school children among them.
+ */
+export const WALKER_VARIANTS: WalkerVariant[] = [
+  "man-tee_blue",
+  "woman_buba",
+  "woman-jersey_red",
+  "man_kaftan",
+  "man-hoodie_black",
+  "schoolgirl",
+  "woman-tee_blue",
+  "man-agbada_white",
+  "man_casual",
+  "woman-peplum_coral",
+  "woman-hoodie_black",
+  "schoolboy",
+  "man-jersey_red",
+  "woman-ankara_green",
+  "man-tee_blue",
+  "woman_gele",
+  "woman-jersey_red",
+  "man-ankara_green",
+];
 
 const FRAME_PX = { w: 96, h: 160, ground: 16 };
 /** World units per sprite pixel so an adult (~124 px) stands about `adultHeight` world units tall. */

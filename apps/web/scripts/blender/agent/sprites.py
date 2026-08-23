@@ -254,6 +254,84 @@ def v_schoolboy(arm, body):
     arm.scale = (0.72, 0.72, 0.72)
 
 
+# ------------------------------------------------------------------ the players' outfits (profile.ts AVATAR_OPTIONS)
+# One variant per body and outfit, named "<body>-<outfit>", painted with the outfit colours from Avatar3D.tsx OUTFITS
+# (sRGB hex). Loose garments come from the garment GLBs (recoloured); the woman's kaftan is built on her body here.
+def hexrgb(h):
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
+
+
+# top, sleeve (0..1 of shoulder to wrist), bottom, bottom length ("ankle" or "knee": shorts), feet, garment
+OUTFIT_LOOK = {
+    "ankara_green": ("#00a859", 0.28, "#1b2238", "ankle", "#6b3b1f", None),
+    "agbada_white": (None, 0, "#e4ddcb", "ankle", "#5a3a22", ("agbada", "#ece6d6")),
+    "kaftan_gold": (None, 0, "#c9921a", "ankle", "#5a3a22", ("kaftan", "#d9a21f")),
+    "jersey_red": ("#df382b", 0.28, "#151515", "knee", "#f2f2f2", None),
+    "tee_blue": ("#1e2a5e", 0.28, "#3b5b8a", "ankle", "#f2f2f2", None),
+    "hoodie_black": ("#25282b", 0.97, "#4a4f55", "ankle", "#f2f2f2", None),
+    "buba_wrapper": (None, 0, None, "ankle", "#c9921a", ("buba_wrapper", "#0f7b6c")),
+    "peplum_coral": (None, 0, None, "ankle", "#c9921a", ("peplum_gown", "#e4572e")),
+}
+OUTFIT_BODIES = {
+    "man": ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black"],
+    "woman": ["buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black"],
+}
+
+
+def recolour_new(before, rgb, name):
+    """Give every mesh imported since `before` one plain material of colour `rgb`."""
+    for o in bpy.data.objects:
+        if o in before or o.type != "MESH":
+            continue
+        mat = make_mat(name, rgb)
+        o.data.materials.clear()
+        o.data.materials.append(mat)
+
+
+def outfit_variant(body_key, outfit):
+    top, sleeve, bottom, length, feet, garment = OUTFIT_LOOK[outfit]
+
+    def fn(arm, body):
+        paint_body(body, DARK if body_key == "man" else MEDIUM)
+        if garment:
+            key, hexc = garment
+            path = os.path.join(GDIR, f"garment-{body_key}-{key}.glb")
+            if os.path.exists(path):
+                before = set(bpy.data.objects)
+                bind_garment(arm, path)
+                recolour_new(before, hexrgb(hexc), key)
+            else:  # no GLB for this body (the woman's kaftan): build it on this body
+                F = G.Fit(arm, body)
+                G.build_kaftan(F, make_mat(key, hexrgb(hexc)))
+                arm.animation_data.action = None
+                for pb in arm.pose.bones:
+                    pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
+
+        def rule(c, ds, L):
+            if shoes(c, ds, L, 0.04 if feet == "#f2f2f2" else 0.02):
+                return "feet"
+            if bottom and not is_arm(ds) and c.z < L["hip"] + 0.06:
+                if length == "knee" and c.z < L["knee"] - 0.02:
+                    return None
+                return "bottom"
+            if top and top_rule(c, ds, L, sleeve):
+                return "top"
+            return None
+        mats = {"feet": make_mat("feet", hexrgb(feet))}
+        if bottom:
+            mats["bottom"] = make_mat("bottom", hexrgb(bottom))
+        if top:
+            mats["top"] = make_mat("top", hexrgb(top))
+        region_paint(body, arm, rule, mats)
+        hair = "gele" if outfit == "peplum_coral" else ("low_cut" if body_key == "man" else "braids")
+        attach_hair(arm, os.path.join(HUSTLE, "hair-Male" if body_key == "man" else "hair-Female", f"hair-{hair}.glb"))
+    return fn
+
+
+OUTFIT_VARIANTS = [(f"{b}-{o}", "Male" if b == "man" else "Female", outfit_variant(b, o)) for b, os_ in OUTFIT_BODIES.items() for o in os_]
+OUTFIT_NAMES = [n for n, _, _ in OUTFIT_VARIANTS]
+
+
 VARIANTS = [
     ("woman_buba", "Female", v_woman_buba),
     ("woman_gele", "Female", v_woman_gele),
@@ -261,7 +339,7 @@ VARIANTS = [
     ("man_casual", "Male", v_man_casual),
     ("schoolgirl", "Female", v_schoolgirl),
     ("schoolboy", "Male", v_schoolboy),
-]
+] + OUTFIT_VARIANTS
 
 
 # ------------------------------------------------------------------ rendering
@@ -526,14 +604,14 @@ def render_variant(name, sex, fn, tmp):
 # ------------------------------------------------------------------ interior poses (POSE=1)
 # action -> (base clip, variants). Directions: se/sw only (interiors are seen from the front).
 POSES = {
-    "sit_eat": ("Sitting_Idle_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"]),
-    "sit_talk": ("Sitting_Talking_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"]),
-    "stand_idle": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"]),
+    "sit_eat": ("Sitting_Idle_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
+    "sit_talk": ("Sitting_Talking_Loop", ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
+    "stand_idle": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
     "serve": (os.environ.get("SERVE_BASE", "Idle_Talking_Loop"), ["woman_buba", "man_casual"]),
-    "dance": ("Dance_Loop", ["woman_gele", "man_kaftan", "woman_buba", "man_casual"]),
+    "dance": ("Dance_Loop", ["woman_gele", "man_kaftan", "woman_buba", "man_casual"] + OUTFIT_NAMES),
     # The library has no lying clip: the first Idle_Loop frame is held and laid flat on its back (see lie_down),
     # with the chest rising and falling once per loop.
-    "sleep": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"]),
+    "sleep": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
 }
 # Lying sheets are wider than tall: 8 frames of 192x112, cropped so the middle of the body is the centre of the
 # frame (it is anchored on the middle of the mattress). Directions: se = feet towards the bottom right (head up-left), sw = feet bottom left.

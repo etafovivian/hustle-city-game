@@ -3,18 +3,18 @@
 //   walkway  open floor, in order: walkers go back and forth along it, and the player walks on it (taps snap to it);
 //   stations people who stay put and do something (pose sheets in public/art/life/poses);
 //   spots    where the player goes for each thing they can do in the room (door = where they come in).
-import type { WalkerVariant } from "./walkers.js";
+import { OUTFIT_VARIANTS, type WalkerVariant } from "./walkers.js";
 
 /** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
 export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk" | "sleep";
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
 export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
-  dance: ["woman_gele", "man_kaftan", "woman_buba", "man_casual"],
+  dance: ["woman_gele", "man_kaftan", "woman_buba", "man_casual", ...OUTFIT_VARIANTS],
   serve: ["woman_buba", "man_casual"],
-  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
-  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy"],
-  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
-  sleep: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"],
+  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  sleep: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
 };
 /** Pose sheet frames: 96x160 standing/seated (feet 16 px above the bottom); lying sheets are 192x112, centred. */
 export const POSE_FRAME = { w: 96, h: 160, ground: 16 };
