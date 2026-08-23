@@ -1,5 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
+  GENERATORS,
   HOME_ITEMS,
   HOME_ROOMS,
   HOUSE_BY_KEY,
@@ -80,7 +81,12 @@ export function HomeCard({
   chatPlace,
   avatar,
   guests = [],
+  area,
+  hasLight = true,
 }: {
+  /** Your home's area (power cuts) and whether it has light right now. */
+  area?: string;
+  hasLight?: boolean;
   guests?: { avatar: AvatarConfig; nickname: string }[];
   avatar?: AvatarConfig;
   /** The presence/chat key for your home ("home:<plot>" or your room). */
@@ -105,8 +111,14 @@ export function HomeCard({
     setError(null);
     try {
       setMe("sleep");
-      await api<NeedsView>("POST", "/api/game/home/rest");
-      notify(`Good night! +${home.restEnergy} energy`);
+      const r = await api<NeedsView & { gained: number; light: boolean; generator: boolean }>("POST", "/api/game/home/rest", { area });
+      notify(
+        !r.light && !r.generator
+          ? `NEPA took light: hot night, only +${r.gained} energy. A generator would help.`
+          : !r.light
+            ? `NEPA took light, but your generator dey hum. +${r.gained} energy`
+            : `Good night! +${r.gained} energy`,
+      );
       onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -155,6 +167,13 @@ export function HomeCard({
           </button>
           <span className="tiny muted">Tap the floor to walk around.</span>
         </div>
+        <p className={`small power-line ${hasLight ? "on" : "off"}`}>
+          {hasLight
+            ? "💡 There's light."
+            : home.items.some((k) => GENERATORS.includes(k))
+              ? "🕯️ NEPA took light. Your generator is running."
+              : "🕯️ NEPA took light. Sleeping now gives half the energy (a generator fixes that)."}
+        </p>
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."

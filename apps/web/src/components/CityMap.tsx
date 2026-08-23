@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, businessArt, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -458,6 +458,18 @@ export function CityMap({
   const far = k < 0.3;
   const light = useLagosLight();
   // Weather: the same for everyone; re-checked every minute.
+  // Events on now and areas without light: re-checked every minute (the clock tick above re-renders too).
+  const [tickNow, setTickNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setTickNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const liveEvents = eventsOn(tickNow);
+  const liveAt = (venueKey: string) => liveEvents.find((e) => e.venues.includes(venueKey));
+  const dark = new Set(areasWithoutLight(tickNow));
+  /** The area a point belongs to (nearest area centre). */
+  const areaOf = (x: number, y: number) => DISTRICTS.reduce((b, d) => (Math.hypot(d.x - x, d.y - y) < Math.hypot(b.x - x, b.y - y) ? d : b)).name;
+  const lit = (x: number, y: number) => !dark.has(areaOf(x, y));
   // (?weather=rain pins it, for screenshots, like ?hour=.)
   const pinnedWeather = (() => {
     try {
@@ -1018,7 +1030,7 @@ export function CityMap({
                 <g aria-hidden="true" className="map-lights" opacity={light.lamps}>
                   {!far &&
                     BILLBOARD_SPOTS.map((spot) => <ellipse key={`bb-${spot.key}`} cx={spot.x} cy={spot.y - 200} rx="220" ry="110" fill="url(#window-glow)" />)}
-                  {LAMPS.filter((l) => inView(l.x, l.y)).map((l) => {
+                  {LAMPS.filter((l) => inView(l.x, l.y) && lit(l.x, l.y)).map((l) => {
                     // The lamp head hangs off its arm, up and to the right of the pole: a soft glow under the head,
                     // and a flat pool on the ground straight below it (squashed 2:1 like the ground).
                     const box = propBox(LAMP.art, l.x, l.y, LAMP.w);
@@ -1030,7 +1042,7 @@ export function CityMap({
                       </g>
                     );
                   })}
-                  {ALL_SCENERY.filter((b) => inView(b.x, b.y)).map((b) => {
+                  {ALL_SCENERY.filter((b) => inView(b.x, b.y) && lit(b.x, b.y)).map((b) => {
                     const box = buildingBox(b.art, b.x, b.y, b.scale);
                     return <ellipse key={b.key} cx={b.x} cy={box.y + box.h * 0.55} rx={box.w * 0.42} ry={box.h * 0.32} fill="url(#window-glow)" />;
                   })}
@@ -1047,7 +1059,7 @@ export function CityMap({
                 {VENUE_SPOTS.map((spot) => {
                     const v = VENUES_BY_KEY.get(spot.key);
                     return v ? (
-                      <VenueBadge key={spot.key} venue={v} x={spot.x} y={far ? spot.y - 36 : buildingBox(v.art, spot.x, spot.y, spot.scale).y - 20} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
+                      <VenueBadge key={spot.key} live={liveAt(spot.key)?.icon ?? null} venue={v} x={spot.x} y={far ? spot.y - 36 : buildingBox(v.art, spot.x, spot.y, spot.scale).y - 20} scale={Math.min(plateScale, 4)} showName={k >= 0.35} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} />
                     ) : null;
                   })}
                 {/* Branches: the original's icon over the roof, and the branch's own name up close */}
@@ -1058,6 +1070,7 @@ export function CityMap({
                     return (
                       <VenueBadge
                         key={b.key}
+                        live={liveAt(b.base)?.icon ?? null}
                         venue={{ ...v, name: b.name }}
                         x={b.x}
                         y={buildingBox(b.art, b.x, b.y, b.scale).y - 12}
@@ -1247,7 +1260,17 @@ export function CityMap({
       </button>
       <p className="map-clock tiny" aria-live="off">
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
+        {dark.size > 0 && ` · 🕯️ No light: ${[...dark].join(", ")}`}
       </p>
+      {liveEvents.length > 0 && (
+        <div className="map-events">
+          {liveEvents.slice(0, 2).map((e) => (
+            <button key={e.key} type="button" className="map-event" onClick={() => setVenueOpen(e.venues[0]!)}>
+              {e.icon} {e.name} on now · {VENUES_BY_KEY.get(e.venues[0]!)?.name}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>
       {peek && (
         <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
@@ -1384,6 +1407,8 @@ export function CityMap({
           })()}
           {homeOpen && home && (
             <HomeCard
+              area={myPlot?.area ?? areaOf(room.x, room.y)}
+              hasLight={!dark.has(myPlot?.area ?? areaOf(room.x, room.y))}
               avatar={avatar}
               guests={others.filter((p) => p.place === `home:${home.plotId ?? `room-${nickname}`}`)}
               chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}

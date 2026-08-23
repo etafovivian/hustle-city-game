@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { eventAt, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -37,12 +37,18 @@ export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue
 }
 
 /** Icon badge floating above the roof (`y` is the roof top), with the name beside it (drawn above the night tint). */
-export function VenueBadge({ venue, x, y, scale, showName, onOpen }: { venue: Venue; x: number; y: number; scale: number; showName: boolean; onOpen: () => void }) {
-  const nameW = venue.name.length * 7.2 + 22;
+export function VenueBadge({ venue, x, y, scale, showName, onOpen, live }: { venue: Venue; x: number; y: number; scale: number; showName: boolean; onOpen: () => void; live?: string | null }) {
+  const nameW = (venue.name.length + (live ? live.length + 3 : 0)) * 7.2 + 22;
   return (
     <g className="venue-badge" transform={`translate(${x} ${y - 16}) scale(${scale})`} onClick={onOpen} aria-hidden="true">
       <line x1="0" y1="18" x2="0" y2="34" stroke="#fff" strokeWidth="3" opacity=".8" />
-      <circle r="22" fill="#fff" stroke={INK.indigoDeep} strokeWidth="3" />
+      {live && (
+        <circle r="30" fill="none" stroke="#ffc72c" strokeWidth="5">
+          <animate attributeName="r" values="24;40;24" dur="1.6s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="1;0.2;1" dur="1.6s" repeatCount="indefinite" />
+        </circle>
+      )}
+      <circle r="22" fill="#fff" stroke={live ? "#ffc72c" : INK.indigoDeep} strokeWidth="3" />
       <text y="8" textAnchor="middle" fontSize="22">
         {venue.icon}
       </text>
@@ -50,6 +56,7 @@ export function VenueBadge({ venue, x, y, scale, showName, onOpen }: { venue: Ve
         <g transform="translate(24 -11)">
           <rect width={nameW} height="22" rx="11" fill="#fff" fillOpacity=".7" stroke={INK.indigoDeep} strokeOpacity=".4" strokeWidth="1" />
           <text x={nameW / 2} y="15" textAnchor="middle" fontSize="11.5" fontWeight="800" fill={INK.indigoDeep}>
+            {live ? `${live} · ` : ""}
             {venue.name}
           </text>
         </g>
@@ -119,6 +126,7 @@ export function VenueCard({
     return "stand";
   };
   const open = isOpenAt(venue, hour);
+  const liveEvent = eventAt(base.key, new Date());
   const actions = venueActions(venue);
   /** The activity playing now: the room plays for its seconds, then the result shows. */
   const [running, setRunning] = useState<{ action: VenueAction; started: number; gained: number } | null>(null);
@@ -179,7 +187,8 @@ export function VenueCard({
     setBusy(a.key);
     try {
       // Pay first (the server checks hours, coins and once-a-day), then the room plays it out.
-      const r = await api<VenueDay & { gained: number; together?: string[] }>("POST", `/api/game/venues/${venue.key}/${a.key}`);
+      const r = await api<VenueDay & { gained: number; together?: string[]; event?: string | null }>("POST", `/api/game/venues/${venue.key}/${a.key}`);
+      if (r.event) notify(`${r.event}: +50% XP`);
       if (r.together?.length) notify(`Together with ${r.together.map((n) => `@${n}`).join(", ")}: +50% XP and extra Social`);
       setDone(new Set(r.done));
       onChanged();
@@ -237,6 +246,14 @@ export function VenueCard({
                 @{p.nickname}
               </button>
             ))}
+          </div>
+        )}
+        {liveEvent && (
+          <div className="event-chip">
+            <strong>
+              {liveEvent.icon} {liveEvent.name} is on now
+            </strong>
+            <span className="tiny">{liveEvent.blurb} Everything here gives +50% XP and an extra lift.</span>
           </div>
         )}
         <p className={`venue-hours small ${open ? "open" : "closed"}`}>

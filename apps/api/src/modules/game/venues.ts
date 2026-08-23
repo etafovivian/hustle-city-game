@@ -2,7 +2,7 @@
 // The ledger reference makes each activity once a day; doing it again is refused before any charge.
 
 import { gameLedgerEntries, profiles } from "@hc/db";
-import { FREE_COOLDOWN_MS, NEED_GAIN, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
+import { EVENT_NEED_BONUS, EVENT_XP, FREE_COOLDOWN_MS, NEED_GAIN, eventAt, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
 import { companionsAt, sendPing } from "../presence.js";
 import { and, eq, like, sql } from "drizzle-orm";
@@ -35,7 +35,9 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
   if (!posting.applied) throw new AppError(409, "done_today", "You've done that here today. Come back tomorrow.");
   // Better together: friends at the same place make it count for more (+50% XP, and more Social).
   const friends = companionsAt(userId, venue.key);
-  const gained = friends.length ? Math.round(activity.xp * 1.5) : activity.xp;
+  // Events (owambe Saturday, match night…) make everything there count for more, and stack with friends.
+  const event = eventAt(venue.key, now);
+  const gained = Math.round(activity.xp * (friends.length ? 1.5 : 1) * (event ? EVENT_XP : 1));
   const [p] = await tx
     .update(profiles)
     .set({ xp: sql`${profiles.xp} + ${gained}` })
@@ -47,8 +49,9 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
   const { needs } = await loadNeeds(tx, userId, now);
   let filled = fillNeeds(needs, activity.gives, activity.kind === "flex" ? NEED_GAIN.flex : NEED_GAIN.paid);
   if (friends.length) filled = fillNeeds(filled, ["social"], 10);
+  if (event) filled = fillNeeds(filled, event.gives, EVENT_NEED_BONUS);
   await saveNeeds(tx, userId, filled, now);
-  return { balance: posting.balance, xp: p!.xp, gained, together: friends.map((f) => f.nickname), ...(await venueDay(ctx)), ...needsView(filled) };
+  return { balance: posting.balance, xp: p!.xp, gained, together: friends.map((f) => f.nickname), event: event?.name ?? null, ...(await venueDay(ctx)), ...needsView(filled) };
 }
 
 /** The free thing to do at a place: no coins or XP, a small lift to its needs (once an hour per place). */
@@ -62,7 +65,8 @@ export async function doFree(ctx: ShopCtx, venueKey: string) {
   const { needs, freeAt } = await loadNeeds(tx, userId, now);
   const last = freeAt[venue.key] ? new Date(freeAt[venue.key]!).getTime() : 0;
   const fresh = now.getTime() - last >= FREE_COOLDOWN_MS;
-  const filled = fresh ? fillNeeds(needs, free.gives, NEED_GAIN.free) : needs;
+  const event = eventAt(venue.key, now);
+  const filled = fresh ? fillNeeds(needs, [...free.gives, ...(event?.gives ?? [])], NEED_GAIN.free + (event ? EVENT_NEED_BONUS : 0)) : needs;
   await saveNeeds(tx, userId, filled, now, fresh ? { ...freeAt, [venue.key]: now.toISOString() } : freeAt);
   return { filled: fresh, ...needsView(filled) };
 }

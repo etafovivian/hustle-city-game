@@ -22,3 +22,5 @@ export * from "./vehicles.js";
 export * from "./presence.js";
 export * from "./chat.js";
 export * from "./weather.js";
+export * from "./events.js";
+export * from "./power.js";

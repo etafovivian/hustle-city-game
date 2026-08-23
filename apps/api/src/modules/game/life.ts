@@ -3,7 +3,11 @@
 
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
+  GENERATORS,
   HOME_ITEM_BY_KEY,
+  OUTAGE_CHANCE,
+  hasLight,
+  plotInfo,
   HOUSE_BY_KEY,
   JOB_BY_VENUE,
   MAX_PLOTS,
@@ -124,15 +128,23 @@ export async function lifeRoutes(app: FastifyInstance) {
 
   app.post("/api/game/home/rest", async (request) => {
     const user = requireUser(request);
+    // The starter room's area comes from the client (it's placed on the client's map); it only affects your own rest.
+    const { area } = z.object({ area: z.string().max(40).optional() }).parse(request.body ?? {});
     return inTx(async (tx, now) => {
       await lockProfile(tx, user.id);
       const { needs, freeAt } = await loadNeeds(tx, user.id, now);
       const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
       if (now.getTime() - last < REST.everyMs) throw new AppError(409, "rested", "You rested not long ago. Go and enjoy the city.");
       const items = (await tx.select({ k: homeItems.itemKey }).from(homeItems).where(eq(homeItems.userId, user.id))).map((r) => r.k);
-      const rested = { ...needs, energy: Math.min(100, needs.energy + restEnergy(items)) };
+      // NEPA: no light at home means a hot, short night, unless you have a generator.
+      const [homePlot] = await tx.select().from(playerPlots).where(and(eq(playerPlots.userId, user.id), eq(playerPlots.isHome, true)));
+      const homeArea = homePlot ? plotInfo(homePlot.plotId)?.area : area && OUTAGE_CHANCE[area] !== undefined ? area : undefined;
+      const light = homeArea ? hasLight(homeArea, now) : true;
+      const generator = items.some((k) => GENERATORS.includes(k));
+      const gain = !light && !generator ? Math.round(restEnergy(items) / 2) : restEnergy(items);
+      const rested = { ...needs, energy: Math.min(100, needs.energy + gain) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
-      return needsView(rested);
+      return { ...needsView(rested), gained: gain, light, generator };
     });
   });
 
