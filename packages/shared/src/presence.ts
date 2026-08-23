@@ -67,3 +67,13 @@ export const HOME_INTERIOR: Record<string, string> = {
   terrace_duplex: "home-duplex",
   villa: "home-mansion",
 };
+
+/** A saved contact, with where they are if they're online now. */
+export interface ContactView {
+  nickname: string;
+  avatar: AvatarConfig;
+  online: boolean;
+  place: string | null;
+  x: number | null;
+  y: number | null;
+}

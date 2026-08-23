@@ -1,6 +1,6 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { AvatarConfig, DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { AcademyApp, AdminAcademy } from "./Academy.js";
@@ -14,10 +14,11 @@ import { Garage } from "./Home.js";
 import { Chats } from "./Chat.js";
 import { Wardrobe } from "./Wardrobe.js";
 import { EventsApp } from "./Events.js";
+import { Contacts } from "./Contacts.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
@@ -27,6 +28,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
   { key: "market", label: "Market", Icon: Store, tint: "#b8860b" },
   { key: "events", label: "Events", Icon: CalendarDays, tint: "#d97706" },
+  { key: "contacts", label: "Contacts", Icon: Users, tint: "#0891b2" },
   { key: "chats", label: "Chats", Icon: MessagesSquare, tint: "#2563eb" },
   { key: "deals", label: "Deals", Icon: Ticket, tint: "#15803d" },
   { key: "garage", label: "Garage", Icon: Car, tint: "#334155" },
@@ -37,7 +39,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -173,6 +175,15 @@ export function Phone({
           {app === "workshop" && <Workshop notify={notify} />}
           {app === "deals" && <MyDeals />}
           {app === "chats" && <Chats />}
+          {app === "contacts" && (
+            <Contacts
+              notify={notify}
+              onGo={(c) => {
+                onClose();
+                window.setTimeout(() => window.dispatchEvent(new CustomEvent("hc:go-to", { detail: { x: c.x, y: c.y, label: `@${c.nickname}`, place: c.place } })), 50);
+              }}
+            />
+          )}
           {app === "events" && (
             <EventsApp
               onGo={(v) => {

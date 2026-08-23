@@ -1,7 +1,7 @@
 // Meeting people: other players on the map (and their card: wave, buy a drink, go to them, visit their home),
 // and visiting someone's house.
 import { HOUSE_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type MapHome, type PresencePlayer } from "@hc/shared";
-import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, X } from "lucide-react";
+import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api.js";
@@ -82,6 +82,14 @@ export function PlayerCard({
   const sheet = useSheet(onClose);
   const [busy, setBusy] = useState(false);
   const [talking, setTalking] = useState(false);
+  const addContact = async () => {
+    try {
+      await api("POST", `/api/contacts/${encodeURIComponent(player.nickname)}`);
+      notify(`@${player.nickname} added to Phone → Contacts`);
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  };
   const invite = async () => {
     setBusy(true);
     try {
@@ -128,6 +136,9 @@ export function PlayerCard({
           </button>
           <button type="button" className="btn go" disabled={busy || !near} onClick={() => void send("treat")} title={near ? undefined : "Go to where they are first"}>
             <Beer size={16} aria-hidden="true" /> Buy a drink ({TREAT_COINS} coins)
+          </button>
+          <button type="button" className="btn" disabled={busy} onClick={() => void addContact()}>
+            <UserPlus size={16} aria-hidden="true" /> Add contact
           </button>
           <button type="button" className="btn" disabled={busy} onClick={() => void invite()}>
             <HomeIcon size={16} aria-hidden="true" /> Invite to my house

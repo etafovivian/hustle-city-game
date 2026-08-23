@@ -37,6 +37,12 @@ describe("presence", () => {
     expect((await a.call("GET", "/api/chat/dm")).json()[0]).toMatchObject({ with: "alexander_t", unread: 1 });
     expect((await a.call("GET", "/api/chat/dm/alexander_t")).json()[0]).toMatchObject({ body: "Meet me at Skyline", mine: false });
     expect((await a.call("GET", "/api/chat/dm")).json()[0].unread).toBe(0);
+    // Contacts: add by @name, see them online and where
+    expect((await a.call("POST", "/api/contacts/@alexander_t")).statusCode).toBe(201);
+    expect((await a.call("GET", "/api/contacts")).json()[0]).toMatchObject({ nickname: "alexander_t", online: true, place: "general_hospital" });
+    expect((await a.call("POST", "/api/contacts/nobody_here_x")).statusCode).toBe(404);
+    expect((await a.call("DELETE", "/api/contacts/alexander_t")).statusCode).toBe(200);
+    expect((await a.call("GET", "/api/contacts")).json()).toEqual([]);
     // Too far for a drink
     await a.call("POST", "/api/presence", { x: 100, y: 100, place: null });
     expect((await b.call("POST", "/api/presence/treat", { to: "maro_test" })).statusCode).toBe(409);

@@ -227,6 +227,7 @@ export function CityMap({
   const [boards, setBoards] = useState<BillboardView[]>([]);
   const [boardSheet, setBoardSheet] = useState<{ key: string | null } | null>(null);
   const [tick, setTick] = useState(0);
+  const goToRef = useRef<((to: { x: number; y: number }, label: string, venue?: string) => void) | null>(null);
   const [walkTo, setWalkTo] = useState<Trip | null>(null);
   /** Where the player is now (kept by AvatarWalker), for pricing rides. */
   const meAt = useRef({ x: CX - 120, y: CY + 150 });
@@ -268,6 +269,7 @@ export function CityMap({
     if (units < RIDE_PICK_FROM) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
     else setRidePick({ ...to, units: Math.round(units), to: label, venue });
   };
+  goToRef.current = goTo;
   const ride = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
     const pick = ridePick!;
     if (mode === "own") {
@@ -301,6 +303,15 @@ export function CityMap({
   });
   const [landList, setLandList] = useState(false);
   const [overview, setOverview] = useState(false);
+  // "Go to them" from Contacts: ride or walk to where a friend is.
+  useEffect(() => {
+    const go = (e: Event) => {
+      const d = (e as CustomEvent<{ x: number; y: number; label: string; place: string | null }>).detail;
+      goToRef.current?.({ x: d.x, y: d.y + 20 }, d.label, d.place && !d.place.startsWith("home:") ? d.place : undefined);
+    };
+    window.addEventListener("hc:go-to", go);
+    return () => window.removeEventListener("hc:go-to", go);
+  }, []);
   // "Go fix it" from the needs panel opens a place's card here.
   useEffect(() => {
     const open = (e: Event) => setVenueOpen((e as CustomEvent<string>).detail);

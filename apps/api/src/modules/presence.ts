@@ -2,8 +2,8 @@
 // buy each other a drink. Kept in memory (one API process); a player counts as online for a minute after their
 // last report. Nothing here is stored except the coins and needs a drink moves.
 
-import { directMessages, gameLedgerEntries, profiles } from "@hc/db";
-import { NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
+import { contacts, directMessages, gameLedgerEntries, profiles } from "@hc/db";
+import { NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type ContactView, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -247,4 +247,40 @@ export async function presenceRoutes(app: FastifyInstance) {
       return reply.code(201).send({ ok: true });
     },
   );
+
+  // ── Contacts ──
+  app.get("/api/contacts", async (request): Promise<ContactView[]> => {
+    const user = requireUser(request);
+    const rows = await app.db
+      .select({ id: profiles.userId, nickname: profiles.nickname, avatar: profiles.avatar })
+      .from(contacts)
+      .innerJoin(profiles, eq(profiles.userId, contacts.contactId))
+      .where(eq(contacts.userId, user.id))
+      .orderBy(profiles.nickname);
+    const now = Date.now();
+    return rows.map((r) => {
+      const s = seen.get(r.id);
+      const on = !!s && now - s.at < ONLINE_MS;
+      return { nickname: r.nickname, avatar: r.avatar as AvatarConfig, online: on, place: on ? s!.place : null, x: on ? Math.round(s!.x) : null, y: on ? Math.round(s!.y) : null };
+    });
+  });
+
+  app.post<{ Params: { nick: string } }>("/api/contacts/:nick", async (request, reply) => {
+    const user = requireUser(request);
+    const other = await userByNick(request.params.nick.slice(0, 30).replace(/^@/, ""));
+    if (other.userId === user.id) throw new AppError(400, "self", "That's you!");
+    const [{ n }] = (await app.db.select({ n: count() }).from(contacts).where(eq(contacts.userId, user.id))) as [{ n: number }];
+    if (Number(n) >= 200) throw new AppError(409, "too_many", "You have 200 contacts already.");
+    await app.db.insert(contacts).values({ userId: user.id, contactId: other.userId }).onConflictDoNothing();
+    const me = seen.get(user.id);
+    if (me) push(other.userId, { from: me.nickname, kind: "wave", place: null });
+    return reply.code(201).send({ ok: true, nickname: other.nickname });
+  });
+
+  app.delete<{ Params: { nick: string } }>("/api/contacts/:nick", async (request) => {
+    const user = requireUser(request);
+    const other = await userByNick(request.params.nick.slice(0, 30));
+    await app.db.delete(contacts).where(and(eq(contacts.userId, user.id), eq(contacts.contactId, other.userId)));
+    return { ok: true };
+  });
 }

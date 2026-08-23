@@ -120,6 +120,13 @@
       "when": 1791842950614,
       "tag": "0016_player_plots",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791888118724,
+      "tag": "0017_contacts",
+      "breakpoints": true
     }
   ]
 }

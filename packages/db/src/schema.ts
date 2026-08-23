@@ -817,3 +817,18 @@ export const homeItems = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.itemKey] })],
 );
+
+/** A player's saved contacts (one-way: you add people you know). */
+export const contacts = pgTable(
+  "contacts",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.contactId] })],
+);
