@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
-import { walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
+import { outfitVariant, walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 type Point = { x: number; y: number };
 /** Where to go, and how: on foot, or a paid ride (which the area boys may stop partway). */
@@ -17,6 +17,9 @@ const WALK = walkerSize(84);
 
 /** The rendered walker closest to the player's chosen look. */
 export function variantFor(a: AvatarConfig): WalkerVariant {
+  // Their exact body and outfit; the older looks only for a combination that has no sheet.
+  const exact = outfitVariant(bodyOf(a), a.outfit);
+  if (exact) return exact;
   if (bodyOf(a) === "woman") return a.outfit === "peplum_coral" || a.hairStyle === "gele" ? "woman_gele" : "woman_buba";
   return ["agbada_white", "kaftan_gold", "ankara_green"].includes(a.outfit) ? "man_kaftan" : "man_casual";
 }
