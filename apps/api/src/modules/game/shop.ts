@@ -168,6 +168,32 @@ export async function restock(ctx: ShopCtx, itemKey: string, units: number, requ
   return view(tx, shop, recentSales, now);
 }
 
+/** Stock bought at Balogun Market at a haggled total price (instead of the usual wholesale cost). */
+export async function stockFromMarket(ctx: ShopCtx, itemKey: string, units: number, paid: number, requestId: string) {
+  const { tx, userId, now, timeZone } = ctx;
+  const item = itemOrThrow(itemKey);
+  if (!Number.isInteger(units) || units < 1 || units > ECONOMY.maxRestockUnits) {
+    throw badRequest("invalid_units", `Buy between 1 and ${ECONOMY.maxRestockUnits} units.`);
+  }
+  const { shop, recentSales } = await openShop(tx, userId, now, timeZone);
+  const [line] = await tx
+    .select()
+    .from(simInventory)
+    .where(and(eq(simInventory.shopId, shop.id), eq(simInventory.itemKey, item.key)));
+  if ((line?.quantity ?? 0) + units > ECONOMY.maxStockPerItem) {
+    throw badRequest("stock_limit", `You can hold at most ${ECONOMY.maxStockPerItem} of one item.`);
+  }
+  const posting = await postCoins(tx, userId, -paid, "restock", `market:${requestId}`);
+  if (posting.applied) {
+    await tx
+      .insert(simInventory)
+      .values({ shopId: shop.id, itemKey: item.key, quantity: units, price: item.referencePrice })
+      .onConflictDoUpdate({ target: [simInventory.shopId, simInventory.itemKey], set: { quantity: sql`${simInventory.quantity} + ${units}` } });
+    await recordEvents(tx, userId, [{ type: "stock_purchased" }], now, timeZone);
+  }
+  return view(tx, shop, recentSales, now);
+}
+
 export async function setPrice(ctx: ShopCtx, itemKey: string, price: number) {
   const { tx, userId, now, timeZone } = ctx;
   const item = itemOrThrow(itemKey);

@@ -32,6 +32,7 @@ export const JOBS: readonly Job[] = [
   { venue: "city_stadium", titles: ["Steward", "Ticket checker", "Ground manager", "Club scout"], task: "Check tickets and keep the stands safe", tier: 1 },
   { venue: "oga_snooker", titles: ["Table brusher", "Marker", "Hustler", "Spot manager"], task: "Rack the balls and mark the scores", tier: 0.9 },
   { venue: "lagoon_boat_cruise", titles: ["Deckhand", "Steward", "First mate", "Captain"], task: "Tie the ropes and serve the deck", tier: 1.2 },
+  { venue: "balogun_market", titles: ["Alabaru (load carrier)", "Shop boy", "Trader", "Market leader"], task: "Carry loads, call customers, close sales", tier: 1 },
   { venue: "high_court", titles: ["Messenger", "Court clerk", "Registrar", "Chief registrar"], task: "File the cause list and swear in witnesses", tier: 1.2 },
   { venue: "city_library", titles: ["Shelver", "Library assistant", "Librarian", "Head librarian"], task: "Shelve books and help students", tier: 1 },
   { venue: "city_fm", titles: ["Runner", "Producer", "OAP", "Station manager"], task: "Take calls and run the morning show", tier: 1.2 },

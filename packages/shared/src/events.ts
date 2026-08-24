@@ -25,7 +25,7 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "match_night", name: "Match night", icon: "⚽", blurb: "The big game on the big screen. Every goal shakes the street.", venues: ["viewing_centre", "city_stadium", "oga_snooker"], days: [2, 3, 6], hours: [18, 23], gives: ["fun", "social"] },
   { key: "friday_groove", name: "Friday Groove", icon: "🪩", blurb: "The DJ's best set of the week. Dress sharp.", venues: ["skyline_lounge"], days: [5], hours: [22, 4], gives: ["fun", "style"] },
   { key: "sunset_cruise", name: "Sunday sunset cruise", icon: "🌅", blurb: "Cocktails and Afrobeats on the lagoon as the sun goes down.", venues: ["lagoon_boat_cruise"], days: [0], hours: [16, 20], gives: ["fun", "rest"] },
-  { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
+  { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
 /** XP multiplier during an event. */

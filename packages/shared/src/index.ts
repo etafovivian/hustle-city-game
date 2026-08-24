@@ -24,3 +24,4 @@ export * from "./chat.js";
 export * from "./weather.js";
 export * from "./events.js";
 export * from "./power.js";
+export * from "./market.js";

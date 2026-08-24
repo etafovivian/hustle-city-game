@@ -1,7 +1,7 @@
 // Land interest: players say which plot they want; the owner sees who to contact when ownership opens.
 
 import { businessMembers, businessPlots, businesses, deals, landInterest, playerPlots, products, users } from "@hc/db";
-import { PLOT_ID, type LandInterestView, type MapBusiness } from "@hc/shared";
+import { PLOT_ID, STALLS, isStall, stallId, type LandInterestView, type MapBusiness } from "@hc/shared";
 import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -120,5 +120,21 @@ export async function landRoutes(app: FastifyInstance) {
     await ownBusiness(user.id, businessId);
     await app.db.delete(businessPlots).where(eq(businessPlots.businessId, businessId));
     return { ok: true };
+  });
+
+  // A free stall at Balogun Market (instead of a plot): the next free one.
+  app.post<{ Params: { id: string } }>("/api/businesses/:id/stall", async (request) => {
+    const user = requireUser(request);
+    const businessId = z.uuid().parse(request.params.id);
+    await ownBusiness(user.id, businessId);
+    return app.db.transaction(async (tx) => {
+      const taken = new Set((await tx.select({ p: businessPlots.plotId }).from(businessPlots)).map((r) => r.p).filter(isStall));
+      let n = 1;
+      while (n <= STALLS && taken.has(stallId(n))) n++;
+      if (n > STALLS) throw new AppError(409, "full", "Every stall is taken. Ask for a plot instead.");
+      await tx.delete(businessPlots).where(eq(businessPlots.businessId, businessId));
+      await tx.insert(businessPlots).values({ businessId, plotId: stallId(n) });
+      return { ok: true, stall: n };
+    });
   });
 }

@@ -7,6 +7,7 @@ import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { RoomChat } from "./Chat.js";
+import { Haggle, Stalls } from "./Market.js";
 import { useLagosLight } from "./lagosTime.js";
 import { buildingBox } from "./sprites.js";
 
@@ -336,6 +337,8 @@ export function VenueCard({
             </span>
           </div>
         )}
+        {base.key === "balogun_market" && open && <Haggle notify={notify} onChanged={onChanged} />}
+        {base.key === "balogun_market" && <Stalls notify={notify} />}
         {error && <p className="alert small">{error}</p>}
         <RoomChat place={branch?.key ?? venue.key} />
 

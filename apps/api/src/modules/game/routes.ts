@@ -1,9 +1,10 @@
 import { gameLedgerEntries, profiles, shopDecor, simShops, users } from "@hc/db";
-import { AREA_BOYS_OPTIONS, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
+import { AREA_BOYS_OPTIONS, HAGGLE_TRIES, askPrice, dayKey, haggleFloor, isOpenAt, lagosHourOf, VENUES_BY_KEY, type HaggleResult, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { lockProfile } from "../../lib/db.js";
+import { AppError } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { claimQuest, questBoard, recordEvents } from "./quests.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
@@ -12,7 +13,7 @@ import { visitShop } from "./visit.js";
 import { doActivity, doFree, venueDay } from "./venues.js";
 import { loadNeeds, needsView } from "./needs.js";
 import { settleStop, startDrive, startRide } from "./rides.js";
-import { collectTakings, fulfilOrder, getShop, restock, setPrice, type ShopCtx } from "./shop.js";
+import { collectTakings, fulfilOrder, getShop, restock, setPrice, stockFromMarket, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
 const restockBody = z.object({ itemKey: z.string(), units: z.number().int(), requestId: z.uuid() });
@@ -238,5 +239,34 @@ export async function gameRoutes(app: FastifyInstance) {
   app.post<{ Params: { venue: string } }>("/api/game/venues/:venue/free", async (request) => {
     const user = requireUser(request);
     return inTx(user.id, (ctx) => doFree(ctx, request.params.venue.slice(0, 40)));
+  });
+
+  // ── Balogun Market: haggle for wholesale stock (the floor stays on the server) ──
+  const tries = new Map<string, number>();
+  const haggleBody = z.object({ itemKey: z.string().max(40), units: z.number().int().min(1).max(500), offer: z.number().int().min(1), requestId: z.uuid() });
+  app.post("/api/market/haggle", { config: { rateLimit: { max: 30 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } }, async (request): Promise<HaggleResult & { shop?: unknown }> => {
+    const user = requireUser(request);
+    const { itemKey, units, offer, requestId } = haggleBody.parse(request.body);
+    const now = new Date();
+    const market = VENUES_BY_KEY.get("balogun_market")!;
+    if (!isOpenAt(market, lagosHourOf(now))) throw new AppError(409, "closed", "The market is closed. Traders are back at 7am.");
+    const day = dayKey(now, tz);
+    const floor = haggleFloor(user.id, day, itemKey, units);
+    const ask = askPrice(itemKey, units);
+    if (floor === null || ask === null) throw new AppError(404, "not_found", "Nobody sells that here.");
+    const key = `${user.id}|${day}|${itemKey}`;
+    const used = tries.get(key) ?? 0;
+    if (used >= HAGGLE_TRIES) throw new AppError(409, "no_more", "This trader has heard enough from you today. Try another item or come back tomorrow.");
+    if (offer >= floor) {
+      // A deal: pay what you offered (never more than the ask).
+      const paid = Math.min(offer, ask);
+      const shop = await inTx(user.id, (ctx) => stockFromMarket(ctx, itemKey, units, paid, requestId));
+      return { result: "deal", paid, saved: Math.round((ask / 1.1) - paid), triesLeft: HAGGLE_TRIES - used, shop };
+    }
+    tries.set(key, used + 1);
+    const left = HAGGLE_TRIES - used - 1;
+    if (offer < floor * 0.8) return { result: "walked", line: "Ah! Customer, you wan kill me? Go and come back.", triesLeft: left };
+    const counter = Math.max(floor, Math.round((offer + ask) / 2));
+    return { result: "counter", counter, line: `My last price na ${counter}. Last last.`, triesLeft: left };
   });
 }

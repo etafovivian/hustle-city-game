@@ -465,6 +465,7 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   // The boat cruise leaves from Marina's ferry jetty (drawn half over the lagoon)
   { key: "lagoon_boat_cruise", a: 1510, b: -2060 },
   { key: "high_court", district: "Marina Wharf" },
+  { key: "balogun_market", district: "Marina Wharf", scale: 1.2 },
   { key: "city_library", district: "Tech Mile" },
   { key: "city_fm", district: "Tech Mile" },
   { key: "general_hospital", district: "Airport Ridge", scale: 1.2 },
@@ -685,6 +686,7 @@ const VENUE_ART: Record<string, string> = {
   police_division: "police-station",
   oga_snooker: "snooker",
   high_court: "high-court",
+  balogun_market: "market-hall",
   city_library: "library",
   city_fm: "radio-station",
   general_hospital: "hospital",

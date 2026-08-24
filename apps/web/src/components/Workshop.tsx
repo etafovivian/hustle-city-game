@@ -56,6 +56,7 @@ export function Workshop({ notify }: { notify: (m: string) => void }) {
             </span>
             {b.reviewNote && <span className="small muted">Moderator note: {b.reviewNote}</span>}
             {b.status === "published" && b.kind !== "retail" && <span className="tiny muted">Requests arrive in Phone → Messages.</span>}
+            {b.status === "published" && <StallButton businessId={b.id} notify={notify} />}
             {b.status === "published" && <Dashboard businessId={b.id} />}
             {b.status === "published" && <OwnerDeals businessId={b.id} verified={b.verified} notify={notify} />}
           </div>
@@ -335,5 +336,26 @@ export function AdminReview({ notify }: { notify: (m: string) => void }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** Take a free stall at Balogun Market (small traders who don't need a whole plot). */
+function StallButton({ businessId, notify }: { businessId: string; notify: (m: string) => void }) {
+  const [done, setDone] = useState<number | null>(null);
+  const take = async () => {
+    try {
+      const r = await api<{ stall: number }>("POST", `/api/businesses/${businessId}/stall`);
+      setDone(r.stall);
+      notify(`You have stall ${r.stall} at Balogun Market`);
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  };
+  return done ? (
+    <span className="tiny muted">Stall {done} at Balogun Market is yours (free). It replaces any map plot.</span>
+  ) : (
+    <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => void take()}>
+      🛍️ Take a free stall at Balogun Market
+    </button>
   );
 }

@@ -227,3 +227,9 @@ For each, add: "Isometric cutaway room: two back walls and a floor, no front wal
 2. Villa kitchen: an island counter with bar stools, chrome appliances, a big fridge, plants.
 3. Villa cinema / lounge: a big screen, a sectional sofa, popcorn machine, soft lights.
 4. Villa pool deck (outdoor): a pool with loungers, an umbrella, a small bar, palms.
+
+## Batch 50: Balogun market (the market uses the provision-shop room for now)
+1. Cutaway interior of a busy Lagos market aisle: rows of stalls under tarpaulin, fabric bolts stacked high, shoes on boards, a narrow walkway down the middle. No brand names.
+2. Cutaway interior of a phone and gadget market stall row: glass counters with phones (no logos), chargers on hooks, a repair bench.
+3. A market stall row exterior: six small stalls in a line under colourful umbrellas, traders' stools, goods on tables.
+4. A market load carrier (alabaru) with a big sack on the head, standing pose, isometric single figure.
