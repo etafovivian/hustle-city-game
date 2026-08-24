@@ -31,6 +31,7 @@ import {
   yOn,
   walkRoute,
   roadRoute,
+  kerbsideOf,
   BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
@@ -391,7 +392,8 @@ export function CityMap({
     };
   }, [place]);
   /** Where "home" is: your plot, or your room in the face-me block. */
-  const homeSpot = myPlot ? { x: myPlot.x, y: myPlot.y + myPlot.hh } : { x: room.x, y: room.y + 30 };
+  // Home is reached on the pavement in front of the house, not on its roof.
+  const homeSpot = myPlot ? kerbsideOf({ x: myPlot.x, y: myPlot.y }) : kerbsideOf({ x: room.x, y: room.y });
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
       .then(setBoards)
@@ -466,7 +468,8 @@ export function CityMap({
   // Only draw what is on screen (with a margin; tall art stands above its foot, so more below).
   const box = pz.view && ref.current ? { x0: -pz.view.x / k - 350, y0: -pz.view.y / k - 250, x1: (ref.current.clientWidth - pz.view.x) / k + 350, y1: (ref.current.clientHeight - pz.view.y) / k + 650 } : null;
   const inView = (x: number, y: number) => !box || (x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1);
-  const plateScale = readable(k, 20, 14);
+  // Name plates keep about the same size on screen at every zoom (zoomed in they shrink in the world, not grow).
+  const plateScale = Math.min(8, Math.max(0.3, 14 / (20 * k)));
   // District names: big signs when zoomed out to find your way; up close a small pill (about 13 px) that doesn't
   // cover the streets and buildings you're looking at.
   const districtNear = k >= 0.45;

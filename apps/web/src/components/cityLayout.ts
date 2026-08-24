@@ -2133,3 +2133,19 @@ export const BRANCH_BY_KEY: ReadonlyMap<string, Branch> = new Map(BRANCHES.map((
 // Only the blocks that stood before the city grew, so everyone keeps the room they had.
 export const STARTER_BLOCKS = ORIGINAL_SCENERY.filter((b) => b.art.endsWith("/face-me-block.webp"));
 export const starterRoom = (nickname: string) => STARTER_BLOCKS[Math.floor(seeded(`room:${nickname.toLowerCase()}`) * STARTER_BLOCKS.length)] ?? STARTER_BLOCKS[0]!;
+
+/** The pavement point in front of a place: the nearest street's kerb on the place's side (where you stand to go in). */
+export function kerbsideOf(p: P): P {
+  const net = ROAD_NET();
+  let best = { q: p, d: Infinity, line: net.lines[0]! };
+  for (const l of net.lines) {
+    const dx = l.x1 - l.x0;
+    const dy = l.y1 - l.y0;
+    const t = Math.max(0, Math.min(1, ((p.x - l.x0) * dx + (p.y - l.y0) * dy) / (dx * dx + dy * dy)));
+    const q = { x: l.x0 + dx * t, y: l.y0 + dy * t };
+    const d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (d < best.d) best = { q, d, line: l };
+  }
+  const side = p.y >= best.q.y ? 1 : -1;
+  return { x: best.q.x, y: best.q.y + side * (best.line.half + best.line.pav / 2) };
+}

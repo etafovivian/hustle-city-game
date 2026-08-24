@@ -913,3 +913,5 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
   .ayo-store b { font-size: 18px; }
 }
 .ayo-pit { min-width: 0; }
+.home-room-frame.arranging { outline: 2px dashed #ffc72c; outline-offset: -2px; border-radius: 18px; }
+.home-room-frame.arranging .home-item { filter: drop-shadow(0 0 6px #ffc72c); touch-action: none; }

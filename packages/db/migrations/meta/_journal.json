@@ -134,6 +134,13 @@
       "when": 1791890097845,
       "tag": "0018_business_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791892323112,
+      "tag": "0019_home_item_place",
+      "breakpoints": true
     }
   ]
 }

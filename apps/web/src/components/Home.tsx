@@ -103,6 +103,7 @@ export function HomeCard({
   const [busy, setBusy] = useState(false);
   const [rebuild, setRebuild] = useState(false);
   const [me, setMe] = useState<PlayerAction>("walk");
+  const [placed, setPlaced] = useState(home.placements ?? {});
   const [error, setError] = useState<string | null>(null);
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
@@ -154,7 +155,20 @@ export function HomeCard({
             <span className="small muted">{label}</span>
           </div>
         </div>
-        <HomeRooms design={home.design} who="your" items={home.items} avatar={avatar} action={me} onAction={setMe} guests={guests} />
+        <HomeRooms
+          design={home.design}
+          who="your"
+          items={home.items}
+          avatar={avatar}
+          action={me}
+          onAction={setMe}
+          guests={guests}
+          placements={placed}
+          onPlace={(key, room, x, y) => {
+            setPlaced((p) => ({ ...p, [key]: { room, x, y } }));
+            void api("PATCH", `/api/game/home/items/${key}`, { room, x, y }).catch(() => notify("Couldn't save that spot"));
+          }}
+        />
         <div className="row home-acts">
           <button type="button" className="btn sm" onClick={() => setMe("sit")}>
             🛋️ Sit down
@@ -318,7 +332,12 @@ export function HomeRooms({
   action = "walk",
   onAction,
   guests = [],
+  placements = {},
+  onPlace,
 }: {
+  /** Where you put your things; with onPlace you can drag them (your own home). */
+  placements?: Record<string, { room: string; x: number; y: number }>;
+  onPlace?: (key: string, room: string, x: number, y: number) => void;
   /** Players visiting this home right now. */
   guests?: { avatar: AvatarConfig; nickname: string }[];
   design: string | null;
@@ -331,6 +350,9 @@ export function HomeRooms({
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
+  const [arranging, setArranging] = useState(false);
+  const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
   // Going to sleep takes you to the bedroom, eating to the kitchen (when the house has them).
   useEffect(() => {
     const want = action === "sleep" ? /bed|suite|room/ : action === "eat" ? /kitchen/ : action === "sit" ? /parlour|living|lounge|cinema/ : null;
@@ -351,7 +373,12 @@ export function HomeRooms({
         </div>
       )}
       {guests.length > 0 && <p className="tiny muted">With you: {guests.map((g) => `@${g.nickname}`).join(", ")}</p>}
-      <div className="home-room-frame">
+      {onPlace && items.length > 0 && (
+        <button type="button" className={`btn sm ${arranging ? "go" : ""}`} style={{ justifySelf: "start" }} onClick={() => setArranging((x) => !x)}>
+          {arranging ? "Done arranging" : "🪑 Arrange furniture"}
+        </button>
+      )}
+      <div className={`home-room-frame ${arranging ? "arranging" : ""}`} ref={frame}>
         <InteriorScene
           key={room.key}
           src={`/art/interiors/${room.art}.webp`}
@@ -363,11 +390,40 @@ export function HomeRooms({
         />
         {/* Your things: spread through the rooms, a few per room */}
         {items
-          .filter((_, i) => i % rooms.length === at)
-          .map((k, i) => {
+          .map((k, i) => ({ k, i, placed: placements[k] }))
+          // Placed things show in their room; the rest spread through the rooms at default spots.
+          .filter(({ i, placed }) => (placed ? placed.room === room.key : i % rooms.length === at))
+          .map(({ k, i, placed }) => {
             const item = HOME_ITEMS.find((x) => x.key === k);
-            const [x, y] = ITEM_SPOTS[i % ITEM_SPOTS.length]!;
-            return item ? <img key={k} className="home-item" src={item.art} alt={item.name} title={item.name} style={{ left: `${x * 100}%`, top: `${y * 100}%` }} /> : null;
+            const [x, y] = drag?.key === k ? [drag.x, drag.y] : placed ? [placed.x, placed.y] : ITEM_SPOTS[i % ITEM_SPOTS.length]!;
+            return item ? (
+              <img
+                key={k}
+                className="home-item"
+                src={item.art}
+                alt={item.name}
+                title={item.name}
+                draggable={false}
+                style={{ left: `${x * 100}%`, top: `${y * 100}%`, cursor: arranging ? "grab" : undefined, zIndex: Math.round(y * 1000) + 1 }}
+                onPointerDown={(e) => {
+                  if (!arranging) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                  setDrag({ key: k, x, y });
+                }}
+                onPointerMove={(e) => {
+                  if (!drag || drag.key !== k || !frame.current) return;
+                  const r = frame.current.getBoundingClientRect();
+                  setDrag({ key: k, x: Math.min(0.95, Math.max(0.05, (e.clientX - r.left) / r.width)), y: Math.min(0.98, Math.max(0.3, (e.clientY - r.top) / r.height)) });
+                }}
+                onPointerUp={() => {
+                  if (!drag || drag.key !== k) return;
+                  onPlace?.(k, room.key, drag.x, drag.y);
+                  setDrag(null);
+                }}
+              />
+            ) : null;
           })}
       </div>
     </div>

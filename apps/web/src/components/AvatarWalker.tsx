@@ -13,7 +13,7 @@ export type Trip = Point & { seq: number; mode?: RideMode | "own"; vehicle?: Veh
 
 const SPEED = 300; // world units per second (walking)
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
-const WALK = walkerSize(84);
+const WALK = walkerSize(70);
 
 /** The rendered walker closest to the player's chosen look. */
 export function variantFor(a: AvatarConfig): WalkerVariant {

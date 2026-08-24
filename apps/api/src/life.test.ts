@@ -68,6 +68,9 @@ describe("homes", () => {
     const furnished = (await p.call("POST", "/api/game/home/items", { key: "standing_fan" })).json();
     expect(furnished).toMatchObject({ items: ["standing_fan"], restEnergy: 49 });
     expect((await p.call("POST", "/api/game/home/items", { key: "standing_fan" })).statusCode).toBe(409);
+    expect((await p.call("PATCH", "/api/game/home/items/standing_fan", { room: "parlour", x: 0.4, y: 0.7 })).statusCode).toBe(200);
+    expect((await p.call("GET", "/api/game/home")).json().placements).toEqual({ standing_fan: { room: "parlour", x: 0.4, y: 0.7 } });
+    expect((await other.call("PATCH", "/api/game/home/items/standing_fan", { room: "parlour", x: 0.4, y: 0.7 })).statusCode).toBe(404);
     const map = (await other.call("GET", "/api/map/homes")).json();
     expect(map).toHaveLength(2);
     expect(map.find((h: { plotId: string }) => h.plotId === plotB)).toMatchObject({ design: "villa", isHome: true, mine: false });

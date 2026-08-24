@@ -9,6 +9,7 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -813,6 +814,10 @@ export const homeItems = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     itemKey: text("item_key").notNull(),
+    /** Where it stands: a room key of the home and a spot in it (fractions of the room image); null = default spot. */
+    room: text("room"),
+    x: doublePrecision("x"),
+    y: doublePrecision("y"),
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.itemKey] })],

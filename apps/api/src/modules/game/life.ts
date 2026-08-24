@@ -106,7 +106,9 @@ export async function lifeRoutes(app: FastifyInstance) {
   /** Your plots (land and houses), your home among them, and your furniture. */
   const homeView = async (tx: Tx, userId: string, now: Date): Promise<HomeView> => {
     const plots = await tx.select().from(playerPlots).where(eq(playerPlots.userId, userId));
-    const items = (await tx.select({ k: homeItems.itemKey }).from(homeItems).where(eq(homeItems.userId, userId))).map((r) => r.k);
+    const rows = await tx.select().from(homeItems).where(eq(homeItems.userId, userId));
+    const items = rows.map((r) => r.itemKey);
+    const placements = Object.fromEntries(rows.filter((r) => r.room && r.x !== null && r.y !== null).map((r) => [r.itemKey, { room: r.room!, x: r.x!, y: r.y! }]));
     const home = plots.find((p) => p.isHome && p.design);
     const { freeAt } = await loadNeeds(tx, userId, now);
     const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
@@ -116,6 +118,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       design: home?.design ?? null,
       plots: plots.map((p) => ({ plotId: p.plotId, design: p.design, isHome: p.isHome })),
       items,
+      placements,
       restEnergy: restEnergy(items),
       restAgainAt: again > now.getTime() ? new Date(again).toISOString() : null,
     };
@@ -227,6 +230,19 @@ export async function lifeRoutes(app: FastifyInstance) {
       return homeView(tx, user.id, now);
     });
     return reply.code(201).send(result);
+  });
+
+  // Arrange furniture: put an item you own in a room of your home, at a spot (fractions of the room image).
+  app.patch<{ Params: { key: string } }>("/api/game/home/items/:key", async (request) => {
+    const user = requireUser(request);
+    const { room, x, y } = z.object({ room: z.string().regex(/^[a-z_]{2,20}$/), x: z.number().min(0.05).max(0.95), y: z.number().min(0.3).max(0.98) }).parse(request.body);
+    const [row] = await app.db
+      .update(homeItems)
+      .set({ room, x, y })
+      .where(and(eq(homeItems.userId, user.id), eq(homeItems.itemKey, request.params.key.slice(0, 40))))
+      .returning({ k: homeItems.itemKey });
+    if (!row) throw notFound("Item");
+    return { ok: true };
   });
 
   app.get("/api/map/homes", async (request): Promise<MapHome[]> => {

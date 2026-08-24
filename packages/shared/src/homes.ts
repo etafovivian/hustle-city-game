@@ -75,6 +75,8 @@ export interface HomeView {
   design: string | null;
   plots: OwnedPlot[];
   items: string[];
+  /** Where you put each item (room key and spot); missing = its default spot. */
+  placements: Record<string, { room: string; x: number; y: number }>;
   /** Energy a rest gives you now. */
   restEnergy: number;
   /** When resting will work again (ISO), or null if now. */
