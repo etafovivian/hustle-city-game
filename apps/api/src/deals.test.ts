@@ -57,6 +57,15 @@ describe("deals", () => {
     const mine = (await buyer.call("GET", "/api/deals/mine")).json();
     expect(mine[0]).toMatchObject({ code: claim.code, businessName: "Mama Bisi Provisions" });
     expect(mine[0].redeemedAt).not.toBeNull();
+    // Dashboard: tracked actions count once per viewer a day
+    await buyer.call("POST", `/api/businesses/${shop}/track`, { kind: "card_open" });
+    await buyer.call("POST", `/api/businesses/${shop}/track`, { kind: "card_open" });
+    await buyer.call("POST", `/api/businesses/${shop}/track`, { kind: "whatsapp" });
+    const dash = (await owner.call("GET", `/api/businesses/${shop}/dashboard?days=7`)).json();
+    expect(dash.totals).toMatchObject({ card_open: 1, whatsapp: 1 });
+    expect(dash.daily).toHaveLength(7);
+    expect(dash.deals[0]).toMatchObject({ claimed: 1, redeemed: 1 });
+    expect((await buyer.call("GET", `/api/businesses/${shop}/dashboard`)).statusCode).toBe(404);
     const stats = (await owner.call("GET", `/api/businesses/${shop}/deals`)).json();
     expect(stats[0]).toMatchObject({ claimed: 1, redeemed: 1 });
   });

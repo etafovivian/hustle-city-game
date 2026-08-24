@@ -3,6 +3,7 @@ import { AlertCircle, BadgeCheck, CircleCheck, MessageCircle, CircleDot, CircleX
 import { useEffect, useState, type FormEvent } from "react";
 import { api, formatNaira } from "../api.js";
 import { DealList } from "./Deals.js";
+import { track } from "./Dashboard.js";
 
 const STOCK = {
   in_stock: { label: "In stock", Icon: CircleCheck, cls: "ok" },
@@ -88,6 +89,7 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
       api<BusinessSummary[]>("GET", `/api/market/businesses${params.size ? `?${params}` : ""}`)
         .then((r) => {
           setItems(r);
+          for (const b of r) if (!b.isMock) track(b.id, "search_view");
           setError(null);
         })
         .catch((e: Error) => setError(e.message));
@@ -177,7 +179,7 @@ export function Merchants({ onViewed, signedIn = false, onRequested }: { onViewe
             )}
             <DealList businessId={b.id} signedIn={signedIn} />
             {b.contactPhone && (
-              <a className="btn sm" style={{ justifySelf: "start" }} href={whatsapp(b.contactPhone)} target="_blank" rel="noopener noreferrer">
+              <a className="btn sm" style={{ justifySelf: "start" }} href={whatsapp(b.contactPhone)} target="_blank" rel="noopener noreferrer" onClick={() => track(b.id, "whatsapp")}>
                 <MessageCircle size={16} aria-hidden="true" /> WhatsApp {b.name.split(" ")[0]}
               </a>
             )}

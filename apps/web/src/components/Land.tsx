@@ -7,6 +7,7 @@ import { api, formatCoins, formatNaira } from "../api.js";
 import { FOR_SALE, VENUE_SPOTS, type LandPlot as Plot } from "./cityLayout.js";
 import { DealList } from "./Deals.js";
 import { HousePicker } from "./Home.js";
+import { track } from "./Dashboard.js";
 
 const ROAD_LABEL: Record<LandRoad, string> = {
   arterial: "On the main road",
@@ -315,6 +316,7 @@ export function LandList({ onClose, onPick, taken }: { onClose: () => void; onPi
 export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: MapBusiness; onClose: () => void; onGo: () => void; onQuote: () => void; notify?: (m: string) => void }) {
   const sheet = useRef<HTMLDivElement>(null);
   useEscape(onClose, sheet);
+  useEffect(() => track(biz.businessId, "card_open"), [biz.businessId]);
   const wa = biz.contactPhone ? `https://wa.me/${biz.contactPhone.replace(/^\+/, "").replace(/^0/, "234")}` : null;
   return (
     <div className="phone-backdrop" onClick={onClose}>
@@ -359,7 +361,7 @@ export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: Map
         <p className="tiny muted">A real Lagos business on Hustle City. Prices are theirs; you pay them directly.</p>
         <div className="row">
           {wa && (
-            <a className="btn go" href={wa} target="_blank" rel="noopener noreferrer">
+            <a className="btn go" href={wa} target="_blank" rel="noopener noreferrer" onClick={() => track(biz.businessId, "whatsapp")}>
               <MessageCircle size={16} aria-hidden="true" /> WhatsApp them
             </a>
           )}
@@ -368,7 +370,14 @@ export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: Map
               Request a quote
             </button>
           )}
-          <button type="button" className="btn quiet" onClick={onGo}>
+          <button
+            type="button"
+            className="btn quiet"
+            onClick={() => {
+              track(biz.businessId, "directions");
+              onGo();
+            }}
+          >
             Go there
           </button>
         </div>

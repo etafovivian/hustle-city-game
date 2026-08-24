@@ -2,8 +2,9 @@
 // counter; the business marks a code used and the player earns a small reward. Owner decision (2026-10-12): deals
 // only, no cash, airtime or data. Deals from verified businesses go live at once; others wait for admin review.
 
-import { auditEvents, businessMembers, businesses, dealClaims, deals, gameLedgerEntries, profiles } from "@hc/db";
+import { auditEvents, businessMembers, businessPlots, businessStats, businesses, dealClaims, deals, gameLedgerEntries, profiles, serviceRequests } from "@hc/db";
 import {
+  BUSINESS_EVENTS,
   DEAL_CODE,
   DEAL_CODE_ALPHABET,
   DEAL_LIMITS,
@@ -11,6 +12,8 @@ import {
   DEAL_REWARDS_PER_DAY,
   dayKey,
   normaliseDealCode,
+  type BusinessDashboard,
+  type BusinessEvent,
   type DealView,
   type MyDealCode,
   type OwnerDeal,
@@ -296,5 +299,73 @@ export async function dealRoutes(app: FastifyInstance) {
     });
     return { ok: true };
   });
-}
 
+  // ── Business dashboard: what players did with your business ──
+  /** Counted once per viewer, business, kind and Lagos day (so refreshing doesn't inflate it). */
+  const counted = new Set<string>();
+  app.post<{ Params: { id: string } }>(
+    "/api/businesses/:id/track",
+    { config: { rateLimit: { max: 120 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } },
+    async (request) => {
+      const businessId = z.uuid().parse(request.params.id);
+      const { kind } = z.object({ kind: z.enum(BUSINESS_EVENTS as unknown as [BusinessEvent, ...BusinessEvent[]]) }).parse(request.body);
+      const day = dayKey(new Date(), tz);
+      const who = request.user?.id ?? request.ip;
+      const key = `${who}|${businessId}|${kind}|${day}`;
+      if (counted.has(key)) return { ok: true };
+      if (counted.size > 200_000) counted.clear();
+      counted.add(key);
+      await app.db
+        .insert(businessStats)
+        .values({ businessId, day, kind, count: 1 })
+        .onConflictDoUpdate({ target: [businessStats.businessId, businessStats.day, businessStats.kind], set: { count: sql`${businessStats.count} + 1` } })
+        .catch(() => undefined); // unknown business id: ignore
+      return { ok: true };
+    },
+  );
+
+  app.get<{ Params: { id: string } }>("/api/businesses/:id/dashboard", async (request): Promise<BusinessDashboard> => {
+    const user = requireUser(request);
+    const businessId = z.uuid().parse(request.params.id);
+    const { days } = z.object({ days: z.coerce.number().int().min(1).max(90).default(30) }).parse(request.query);
+    const biz = await owned(user.id, businessId);
+    const now = new Date();
+    const dayList = Array.from({ length: days }, (_, i) => dayKey(new Date(now.getTime() - (days - 1 - i) * 86_400_000), tz));
+    const rows = await app.db.select().from(businessStats).where(and(eq(businessStats.businessId, businessId), sql`${businessStats.day} >= ${dayList[0]!}`));
+    const totals = Object.fromEntries(BUSINESS_EVENTS.map((k) => [k, 0])) as Record<BusinessEvent, number>;
+    const daily = dayList.map((day) => ({ day, card_open: 0, search_view: 0, whatsapp: 0, directions: 0 }));
+    for (const r of rows) {
+      const k = r.kind as BusinessEvent;
+      if (!(k in totals)) continue;
+      totals[k] += r.count;
+      const d = daily.find((x) => x.day === r.day);
+      if (d) d[k] += r.count;
+    }
+    const dealRows = await app.db.select().from(deals).where(eq(deals.businessId, businessId)).orderBy(desc(deals.createdAt)).limit(10);
+    const dealStats = dealRows.length
+      ? await app.db
+          .select({ dealId: dealClaims.dealId, claimed: count(), redeemed: count(dealClaims.redeemedAt) })
+          .from(dealClaims)
+          .where(inArray(dealClaims.dealId, dealRows.map((d) => d.id)))
+          .groupBy(dealClaims.dealId)
+      : [];
+    const reqs = await app.db.select({ status: serviceRequests.status }).from(serviceRequests).where(eq(serviceRequests.businessId, businessId));
+    const [onMap] = await app.db.select().from(businessPlots).where(eq(businessPlots.businessId, businessId));
+    return {
+      days,
+      totals,
+      daily,
+      deals: dealRows.map((d) => {
+        const st = dealStats.find((x) => x.dealId === d.id);
+        return { title: d.title, claimed: Number(st?.claimed ?? 0), redeemed: Number(st?.redeemed ?? 0), status: d.status === "live" && d.endsAt <= now ? "ended" : d.status };
+      }),
+      quotes: {
+        total: reqs.length,
+        open: reqs.filter((r) => !["completed", "declined", "cancelled"].includes(r.status)).length,
+        completed: reqs.filter((r) => r.status === "completed").length,
+      },
+      onMap: !!onMap,
+      verified: biz.verifiedAt !== null,
+    };
+  });
+}

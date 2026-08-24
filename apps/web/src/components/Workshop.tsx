@@ -5,6 +5,7 @@ import { AlertCircle, BadgeCheck, CheckCircle2, Clock, Plus, ShieldCheck, Trash2
 import { useEffect, useState, type FormEvent } from "react";
 import { api, formatNaira } from "../api.js";
 import { OwnerDeals } from "./Deals.js";
+import { Dashboard } from "./Dashboard.js";
 
 const STATUS: Record<MyBusiness["status"], { label: string; Icon: typeof Clock }> = {
   pending_review: { label: "Waiting for review", Icon: Clock },
@@ -55,6 +56,7 @@ export function Workshop({ notify }: { notify: (m: string) => void }) {
             </span>
             {b.reviewNote && <span className="small muted">Moderator note: {b.reviewNote}</span>}
             {b.status === "published" && b.kind !== "retail" && <span className="tiny muted">Requests arrive in Phone → Messages.</span>}
+            {b.status === "published" && <Dashboard businessId={b.id} />}
             {b.status === "published" && <OwnerDeals businessId={b.id} verified={b.verified} notify={notify} />}
           </div>
         );

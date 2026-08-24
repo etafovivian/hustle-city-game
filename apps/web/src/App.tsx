@@ -315,7 +315,8 @@ export function App() {
             )}
           </main>
 
-          {board && (
+          {/* On the full-screen map the quests live behind the Quests button (they covered the map); elsewhere, beside. */}
+          {board && !mapFull && (
             <div className="hide-md-down">
               <Quests board={board} onBoard={setBoard} onChanged={onChanged} notify={notify} />
             </div>

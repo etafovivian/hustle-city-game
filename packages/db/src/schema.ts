@@ -832,3 +832,17 @@ export const contacts = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.contactId] })],
 );
+
+/** Daily counts of what players did with a business (card opens, search views, WhatsApp taps, directions). */
+export const businessStats = pgTable(
+  "business_stats",
+  {
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    kind: text("kind").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.businessId, t.day, t.kind] })],
+);

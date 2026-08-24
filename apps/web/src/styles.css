@@ -886,3 +886,11 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .map-event { padding: 5px 12px; border-radius: 999px; border: 1px solid #ffc72c; background: rgb(60 30 0 / 86%); color: #ffe08a; font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; animation: land-pulse 2.6s ease-out 3; }
 .event-on { border-color: #ffc72c; }
 .power-line.off { color: #ffb38a; }
+/* Business dashboard */
+.dash { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: var(--sheet-2); }
+.dash .spread { justify-content: space-between; align-items: center; }
+.dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.dash-stat { display: grid; padding: 8px 10px; border-radius: 12px; background: var(--sheet); }
+.dash-num { font-size: 22px; font-weight: 900; color: var(--yellow); }
+.dash-bars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
+.dash-bars span { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: #4ade80; }
