@@ -32,7 +32,7 @@ interface Seen {
 interface Ping {
   id: string;
   from: string;
-  kind: "wave" | "drink" | "join" | "invite";
+  kind: "wave" | "drink" | "join" | "invite" | "challenge";
   text?: string;
   place: string | null;
   at: number;
@@ -56,6 +56,13 @@ export function sendPing(toUserId: string, ping: { from: string; kind: Ping["kin
   list.push({ ...ping, id: randomUUID(), at: Date.now() });
   inbox.set(toUserId, list.slice(-20));
 }
+
+/** Find someone online by nickname (for game challenges). */
+export function onlineByNick(nick: string) {
+  const now = Date.now();
+  return [...seen.values()].find((s) => now - s.at < ONLINE_MS && s.nickname.toLowerCase() === nick.toLowerCase());
+}
+export const nicknameOf = (userId: string) => seen.get(userId)?.nickname;
 
 export async function presenceRoutes(app: FastifyInstance) {
   const tz = app.config.GAME_TIMEZONE;

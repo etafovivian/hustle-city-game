@@ -8,6 +8,7 @@ import { CityMap } from "./components/CityMap.js";
 import { Decorate } from "./components/Decorate.js";
 import { Hangout, WorkHub } from "./components/Locations.js";
 import { Merchants } from "./components/Merchants.js";
+import type { GameOpen } from "./components/Games.js";
 import { MoodChip, NeedsPanel } from "./components/Needs.js";
 import { Phone, type PhoneApp } from "./components/Phone.js";
 import { Quests } from "./components/Quests.js";
@@ -52,6 +53,16 @@ export function App() {
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [phone, setPhone] = useState<PhoneApp | null>(null);
+  // A friend's game challenge opens the Games app on that game.
+  const [game, setGame] = useState<GameOpen>(null);
+  useEffect(() => {
+    const open = (e: Event) => {
+      setGame((e as CustomEvent<GameOpen>).detail);
+      setPhone("games");
+    };
+    window.addEventListener("hc:open-game", open);
+    return () => window.removeEventListener("hc:open-game", open);
+  }, []);
   // A one-time reset link opens straight into "choose a new password".
   const [resetToken, setResetToken] = useState<string | null>(() => new URLSearchParams(window.location.search).get("reset"));
   const [authNotice, setAuthNotice] = useState<string | null>(null);
@@ -348,6 +359,7 @@ export function App() {
 
       {phone && (
         <Phone
+          game={phone === "games" ? game : null}
           avatar={me.avatar}
           app={phone}
           setApp={setPhone}

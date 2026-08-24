@@ -29,6 +29,7 @@ export type CoinKind =
   | "fuel"
   | "treat"
   | "home_item"
+  | "game_reward"
   | "admin_adjustment";
 
 export interface PostingResult {

@@ -894,3 +894,22 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .dash-num { font-size: 22px; font-weight: 900; color: var(--yellow); }
 .dash-bars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
 .dash-bars span { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: #4ade80; }
+/* Games */
+.ayo { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; align-items: center; padding: 12px; border-radius: 18px; background: linear-gradient(#7a4a22, #5b3518); }
+.ayo-rows { display: grid; gap: 8px; }
+.ayo-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.ayo-pit { position: relative; aspect-ratio: 1; border-radius: 50%; border: 0; background: radial-gradient(circle at 50% 40%, #3b230e, #2a170a); color: #ffe7b8; font: inherit; cursor: default; display: grid; place-items: center; }
+.ayo-pit.legal { cursor: pointer; box-shadow: 0 0 0 3px #ffc72c; }
+.ayo-pit b { position: absolute; bottom: 2px; font-size: 11px; }
+.ayo-seeds { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; width: 70%; }
+.ayo-seeds i { width: 6px; height: 6px; border-radius: 50%; background: #d9c28c; box-shadow: inset -1px -1px 0 #8a6a35; }
+.ayo-store { display: grid; place-items: center; height: 100%; border-radius: 28px; background: #2a170a; color: #ffe7b8; padding: 6px 0; }
+.ayo-store b { font-size: 22px; }
+.ayo-store.mine { box-shadow: 0 0 0 2px #ffc72c; }
+.snooker-table { width: 100%; height: auto; border-radius: 12px; touch-action: none; cursor: crosshair; }
+@media (max-width: 560px) {
+  .ayo { grid-template-columns: 1fr; }
+  .ayo-store { grid-auto-flow: column; justify-content: center; gap: 10px; height: auto; border-radius: 999px; padding: 4px 14px; }
+  .ayo-store b { font-size: 18px; }
+}
+.ayo-pit { min-width: 0; }

@@ -337,6 +337,18 @@ export function VenueCard({
             </span>
           </div>
         )}
+        {["oga_snooker", "hangout"].includes(base.key) && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              onClose();
+              window.dispatchEvent(new CustomEvent("hc:open-game", { detail: null }));
+            }}
+          >
+            🎱 Play snooker or Ayo
+          </button>
+        )}
         {base.key === "balogun_market" && open && <Haggle notify={notify} onChanged={onChanged} />}
         {base.key === "balogun_market" && <Stalls notify={notify} />}
         {error && <p className="alert small">{error}</p>}

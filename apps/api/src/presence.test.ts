@@ -59,3 +59,32 @@ describe("presence", () => {
     expect(pings[0]).toMatchObject({ kind: "join", from: "bisi_together" });
   });
 });
+
+describe("ayo", () => {
+  it("rejects fake wins and plays live games in turn", async () => {
+    const a = await registerPlayer(app, "ayo_a");
+    const b = await registerPlayer(app, "ayo_b");
+    expect((await a.call("POST", "/api/games/ayo/win", { moves: [0, 1, 2] })).statusCode).toBe(400);
+    await a.call("POST", "/api/presence", { x: 100, y: 100, place: null });
+    await b.call("POST", "/api/presence", { x: 100, y: 100, place: null });
+    const g = (await a.call("POST", "/api/games/ayo/challenge", { to: "ayo_b" })).json();
+    expect(g).toMatchObject({ you: 0, names: ["ayo_a", "ayo_b"] });
+    expect((await b.call("POST", `/api/games/ayo/${g.id}/move`, { pit: 6 })).statusCode).toBe(409); // not b's turn
+    expect((await a.call("POST", `/api/games/ayo/${g.id}/move`, { pit: 0 })).json().state.turn).toBe(1);
+    expect((await b.call("GET", `/api/games/ayo/${g.id}`)).json()).toMatchObject({ you: 1 });
+    const ping = (await b.call("POST", "/api/presence", { x: 100, y: 100, place: null })).json().pings[0];
+    expect(ping).toMatchObject({ kind: "challenge", text: g.id });
+  });
+
+  it("plays live snooker shots on the server in turn", async () => {
+    const a = await registerPlayer(app, "pool_a");
+    const b = await registerPlayer(app, "pool_b");
+    await a.call("POST", "/api/presence", { x: 100, y: 100, place: null });
+    await b.call("POST", "/api/presence", { x: 100, y: 100, place: null });
+    const g = (await a.call("POST", "/api/games/snooker/challenge", { to: "pool_b" })).json();
+    expect((await b.call("POST", `/api/games/snooker/${g.id}/shot`, { angle: 0, power: 1 })).statusCode).toBe(409);
+    const after = (await a.call("POST", `/api/games/snooker/${g.id}/shot`, { angle: 0, power: 1 })).json();
+    expect(after.state.shots).toBe(1);
+    expect(after.last).toEqual({ angle: 0, power: 1 });
+  });
+});
