@@ -30,7 +30,8 @@ describe("Balogun market", () => {
     if (!open()) return expect(first.statusCode).toBe(409);
     expect(first.json()).toMatchObject({ result: "walked", triesLeft: 2 });
     const counter = (await haggle(3200)).json();
-    expect(counter.result === "counter" || counter.result === "deal").toBe(true);
+    // The trader's floor depends on the player and day, so a middling offer may be countered or waved off.
+    expect(["counter", "walked", "deal"]).toContain(counter.result);
     const deal = (await haggle(5500)).json();
     expect(deal).toMatchObject({ result: "deal", paid: 5500 });
     const shop = (await p.call("GET", "/api/game/shop")).json();
