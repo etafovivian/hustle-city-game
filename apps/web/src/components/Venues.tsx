@@ -8,6 +8,7 @@ import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
+import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { buildingBox } from "./sprites.js";
 
@@ -337,11 +338,7 @@ export function VenueCard({
             </span>
           </div>
         )}
-        {base.key === "island_motors" && onApp && (
-          <button type="button" className="btn go" onClick={() => onApp("garage")}>
-            🚗 Buy a car, keke or okada
-          </button>
-        )}
+        {base.key === "island_motors" && <Garage notify={notify} onChanged={onChanged} showroom />}
         {["oga_snooker", "hangout"].includes(base.key) && (
           <button
             type="button"

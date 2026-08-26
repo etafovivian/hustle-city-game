@@ -223,7 +223,7 @@ export function HomeCard({
 }
 
 /** Phone → Garage: buy a bike, keke or car and drive yourself. */
-export function Garage({ notify, onChanged }: { notify: (m: string) => void; onChanged: () => void }) {
+export function Garage({ notify, onChanged, showroom = false }: { notify: (m: string) => void; onChanged: () => void; showroom?: boolean }) {
   const [owned, setOwned] = useState<VehicleKind[] | null>(null);
   const [busy, setBusy] = useState<VehicleKind | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -239,7 +239,7 @@ export function Garage({ notify, onChanged }: { notify: (m: string) => void; onC
     setError(null);
     try {
       await api("POST", "/api/game/vehicles", { kind });
-      notify("It's yours! Pick it when you go somewhere.");
+      notify("It's yours! Next time you tap \"Go there\", choose \"Drive your…\" at the top.");
       onChanged();
       void load();
     } catch (e) {
@@ -251,8 +251,8 @@ export function Garage({ notify, onChanged }: { notify: (m: string) => void; onC
   return (
     <div className="stack account-form">
       <div className="stack" style={{ gap: 2 }}>
-        <h2 style={{ fontSize: 20 }}>
-          <Car size={20} aria-hidden="true" /> Garage
+        <h2 style={{ fontSize: showroom ? 17 : 20 }}>
+          <Car size={20} aria-hidden="true" /> {showroom ? "Pick your ride" : "Garage"}
         </h2>
         <p className="small muted">Drive yourself: no fare, just a little fuel. Faster than a danfo, and the area boys mostly leave a car alone.</p>
       </div>
