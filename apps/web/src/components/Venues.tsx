@@ -93,7 +93,7 @@ export function VenueCard({
   onChanged: () => void;
   notify: (m: string) => void;
   /** Open a phone app (the school opens the Academy). */
-  onApp?: (app: "academy") => void;
+  onApp?: (app: "academy" | "garage") => void;
 }) {
   const base = VENUES_BY_KEY.get(venueKey)!;
   const venue = branch ? { ...base, name: branch.name, area: branch.area } : base;
@@ -336,6 +336,11 @@ export function VenueCard({
               )}
             </span>
           </div>
+        )}
+        {base.key === "island_motors" && onApp && (
+          <button type="button" className="btn go" onClick={() => onApp("garage")}>
+            🚗 Buy a car, keke or okada
+          </button>
         )}
         {["oga_snooker", "hangout"].includes(base.key) && (
           <button
