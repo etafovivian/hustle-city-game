@@ -258,6 +258,7 @@ export function VenueCard({
             <span className="tiny">{liveEvent.blurb} Everything here gives +50% XP and an extra lift.</span>
           </div>
         )}
+        {base.key === "island_motors" && <Garage notify={notify} onChanged={onChanged} showroom />}
         <p className={`venue-hours small ${open ? "open" : "closed"}`}>
           <Clock size={14} aria-hidden="true" /> {hoursLabel(venue, hour)}
           {!open && <span className="muted"> · come back tonight or tomorrow</span>}
@@ -338,7 +339,6 @@ export function VenueCard({
             </span>
           </div>
         )}
-        {base.key === "island_motors" && <Garage notify={notify} onChanged={onChanged} showroom />}
         {["oga_snooker", "hangout"].includes(base.key) && (
           <button
             type="button"
