@@ -8,8 +8,8 @@ const COLOR: Record<BallKind, string> = { cue: "#f8f5ec", red: "#d6302a", yellow
 
 interface LiveView {
   id: string;
-  names: [string, string];
-  you: 0 | 1;
+  names: [string, string | null];
+  you: 0 | 1 | null;
   state: PoolState;
   before: PoolState;
   last: { angle: number; power: number } | null;
@@ -145,7 +145,7 @@ export function Snooker({ id, notify }: { id?: string; notify: (m: string) => vo
     setAim(Math.atan2(y - cue.y, x - cue.x));
   };
 
-  const names = live ? live.names.map((n) => `@${n}`) : ["Reds (you)", "Yellows"];
+  const names = live ? live.names.map((n) => (n ? `@${n}` : "…")) : ["Reds (you)", "Yellows"];
   const turnName = names[state.turn];
   return (
     <div className="stack snooker">
@@ -154,7 +154,7 @@ export function Snooker({ id, notify }: { id?: string; notify: (m: string) => vo
       </p>
       <canvas ref={canvas} width={1000} height={500} className="snooker-table" onPointerMove={(e) => e.buttons && aimAt(e)} onPointerDown={aimAt} />
       <p className="small">
-        {state.over ? (state.winner === (live?.you ?? 0) ? "You win! 🎉" : `${names[state.winner ?? 1]} wins.`) : `${state.note} ${live ? (myTurn ? "Your shot." : `${turnName} to play…`) : `${turnName} to play.`}`}
+        {state.over ? (live?.you !== null && state.winner === (live?.you ?? 0) ? "You win! 🎉" : `${names[state.winner ?? 1]} wins.`) : `${state.note} ${live ? (live.you === null ? `${turnName} to play.` : myTurn ? "Your shot." : `${turnName} to play…`) : `${turnName} to play.`}`}
       </p>
       <div className="row">
         <label className="small row" style={{ gap: 6, flex: 1 }}>
@@ -170,7 +170,7 @@ export function Snooker({ id, notify }: { id?: string; notify: (m: string) => vo
           </button>
         )}
       </div>
-      <span className="tiny muted">Tap or drag on the table to aim. {live ? "" : "Practice: you play both sides."}</span>
+      <span className="tiny muted">{live?.you === null ? "Watching this frame." : `Tap or drag on the table to aim. ${live ? "" : "Practice: you play both sides."}`}</span>
     </div>
   );
 }

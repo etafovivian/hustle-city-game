@@ -27,3 +27,5 @@ export * from "./power.js";
 export * from "./market.js";
 export * from "./ayo.js";
 export * from "./pool.js";
+export * from "./chess.js";
+export * from "./tables.js";

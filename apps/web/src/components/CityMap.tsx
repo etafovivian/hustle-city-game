@@ -391,12 +391,13 @@ export function CityMap({
           if (r.unread > unreadRef.current) notify(`💬 New message${r.unread - unreadRef.current > 1 ? "s" : ""}: Phone → Chats`);
           unreadRef.current = r.unread;
           for (const p of r.pings)
-            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : p.kind === "invite" ? `🏠 @${p.from} invited you to their house. Tap them on the map, then Visit their home.` : p.kind === "challenge" ? `🎮 @${p.from} challenged you to ${p.text?.startsWith("snooker:") ? "snooker" : "Ayo"}! Opening the game…` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
+            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : p.kind === "invite" ? `🏠 @${p.from} invited you to their house. Tap them on the map, then Visit their home.` : p.kind === "challenge" ? `🎮 @${p.from} challenged you to ${p.text?.startsWith("snooker:") ? "snooker" : p.text?.startsWith("chess:") ? "chess" : "Ayo"}! Opening the game…` : p.kind === "join" && p.text?.startsWith("sat down") ? `🎲 @${p.from} ${p.text}` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
           if (r.pings.some((p) => p.kind === "drink")) onVisited();
+          // A challenge opens the game on the phone, unless you're at the same place: then it opens at the table here.
           const ch = r.pings.find((p) => p.kind === "challenge");
-          if (ch?.text) {
-            const snooker = ch.text.startsWith("snooker:");
-            window.dispatchEvent(new CustomEvent("hc:open-game", { detail: { game: snooker ? "snooker" : "ayo", id: snooker ? ch.text.slice(8) : ch.text } }));
+          if (ch?.text && !(ch.place && ch.place === placeRef.current)) {
+            const [game, id] = ch.text.includes(":") ? ch.text.split(":") : ["ayo", ch.text];
+            window.dispatchEvent(new CustomEvent("hc:open-game", { detail: { game, id } }));
           }
         })
         .catch(() => undefined);

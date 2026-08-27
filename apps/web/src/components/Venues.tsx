@@ -1,11 +1,12 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { eventAt, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
+import { GameTables } from "./Tables.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { Garage } from "./Home.js";
@@ -352,27 +353,21 @@ export function VenueCard({
             </span>
           </div>
         )}
-        {present && ["oga_snooker", "hangout"].includes(base.key) && (
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              onClose();
-              window.dispatchEvent(new CustomEvent("hc:open-game", { detail: null }));
-            }}
-          >
-            🎱 Play snooker or Ayo
-          </button>
+        {present && GAME_TABLES[base.key] && (
+          <GameTables place={branch?.key ?? venue.key} games={GAME_TABLES[base.key]!} here={here} notify={notify} onChanged={onChanged} onSeated={(on) => setMe(on ? "sit" : "walk")} />
         )}
+        {!present && GAME_TABLES[base.key] && <p className="small muted">🎲 Tables here: {GAME_TABLES[base.key]!.map((g) => TABLE_GAMES[g].label).join(", ")}. Go there to sit down and play with whoever's around.</p>}
         {base.key === "balogun_market" && open && present && <Haggle notify={notify} onChanged={onChanged} />}
         {base.key === "balogun_market" && <Stalls notify={notify} />}
         {error && <p className="alert small">{error}</p>}
         {present && <RoomChat place={branch?.key ?? venue.key} />}
 
         <div className="row">
-          <button type="button" className="btn" onClick={onWalk}>
-            <Footprints size={16} aria-hidden="true" /> Go there
-          </button>
+          {!present && (
+            <button type="button" className="btn" onClick={onWalk}>
+              <Footprints size={16} aria-hidden="true" /> Go there
+            </button>
+          )}
           {venue.opens === "academy" && onApp && (
             <button type="button" className="btn go" onClick={() => onApp("academy")}>
               <GraduationCap size={16} aria-hidden="true" /> Open Hustle Academy

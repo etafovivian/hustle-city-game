@@ -87,4 +87,32 @@ describe("ayo", () => {
     expect(after.state.shots).toBe(1);
     expect(after.last).toEqual({ angle: 0, power: 1 });
   });
+
+  it("sets a chess table at the snooker spot: one sits and waits, another joins, a third watches", async () => {
+    const a = await registerPlayer(app, "chess_a");
+    const b = await registerPlayer(app, "chess_b");
+    const c = await registerPlayer(app, "chess_c");
+    for (const p of [a, b, c]) await p.call("POST", "/api/presence", { x: 100, y: 100, place: "oga_snooker" });
+    const t = (await a.call("POST", "/api/games/chess/open", { place: "oga_snooker" })).json();
+    expect(t).toMatchObject({ game: "chess", you: 0, waiting: true });
+    expect((await a.call("POST", `/api/games/chess/${t.id}/move`, { from: 52, to: 36 })).statusCode).toBe(409); // nobody to play yet
+    expect((await b.call("GET", "/api/games/at/oga_snooker")).json()).toEqual([expect.objectContaining({ id: t.id, waiting: true, names: ["chess_a", null] })]);
+    expect((await b.call("POST", `/api/games/table/${t.id}/join`)).json()).toMatchObject({ you: 1, waiting: false });
+    expect((await c.call("POST", `/api/games/table/${t.id}/join`)).statusCode).toBe(409); // seat taken
+    expect((await a.call("POST", `/api/games/chess/${t.id}/move`, { from: 52, to: 28 })).statusCode).toBe(400); // e2e5 is illegal
+    expect((await a.call("POST", `/api/games/chess/${t.id}/move`, { from: 52, to: 36 })).json().state.turn).toBe(1); // e2e4
+    expect((await c.call("GET", `/api/games/chess/${t.id}`)).json()).toMatchObject({ you: null, names: ["chess_a", "chess_b"] });
+    const ping = (await a.call("POST", "/api/presence", { x: 100, y: 100, place: "oga_snooker" })).json().pings[0];
+    expect(ping).toMatchObject({ kind: "join", from: "chess_b" });
+    // b walks away: a wins.
+    await b.call("POST", `/api/games/table/${t.id}/leave`);
+    expect((await a.call("GET", `/api/games/chess/${t.id}`)).json().state).toMatchObject({ over: true, winner: 0 });
+  });
+
+  it("only rewards a real chess win against the computer", async () => {
+    const a = await registerPlayer(app, "chess_cpu");
+    // Fool's mate the other way round is not a win for you.
+    const lose = [{ from: 53, to: 45 }, { from: 12, to: 28 }, { from: 54, to: 38 }, { from: 3, to: 39 }];
+    expect((await a.call("POST", "/api/games/chess/win", { moves: lose })).statusCode).toBe(400);
+  });
 });

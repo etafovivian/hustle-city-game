@@ -1,13 +1,14 @@
 // Phone → Games: Ayo against the computer or a friend (live), and snooker (see Snooker.tsx).
-import { AYO_WIN, AYO_WINS_PER_DAY, ayoBest, ayoMoves, ayoPlay, ayoStart, type AyoState } from "@hc/shared";
+import { AYO_WIN, AYO_WINS_PER_DAY, ayoBest, ayoMoves, ayoPlay, ayoStart, type AyoState, type TableGame } from "@hc/shared";
 import { ArrowLeft, Bot, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { ChessLive, ChessVsComputer } from "./Chess.js";
 import { Snooker } from "./Snooker.js";
 
 /** The board: player 1's row on top (right to left), player 0's below (left to right), stores at the sides. */
-function AyoBoard({ s, me, onPick, names }: { s: AyoState; me: 0 | 1; onPick: (pit: number) => void; names: [string, string] }) {
-  const legal = s.turn === me && !s.over ? ayoMoves(s) : [];
+function AyoBoard({ s, me, onPick, names, watching = false }: { s: AyoState; me: 0 | 1; onPick: (pit: number) => void; names: [string, string]; watching?: boolean }) {
+  const legal = !watching && s.turn === me && !s.over ? ayoMoves(s) : [];
   // Show your own row at the bottom.
   const bottom = me === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11];
   const top = me === 0 ? [11, 10, 9, 8, 7, 6] : [5, 4, 3, 2, 1, 0];
@@ -41,9 +42,9 @@ function AyoBoard({ s, me, onPick, names }: { s: AyoState; me: 0 | 1; onPick: (p
 }
 
 const status = (s: AyoState, me: 0 | 1, names: [string, string]) =>
-  s.over ? (s.winner === null ? "Draw!" : s.winner === me ? "You won! 🎉" : `@${names[s.winner]} won.`) : s.turn === me ? "Your turn: tap one of your pits." : `Waiting for ${names[s.turn]}…`;
+  s.over ? (s.winner === null ? "Draw!" : s.winner === me ? "You won! 🎉" : `${names[s.winner]} won.`) : s.turn === me ? "Your turn: tap one of your pits." : `Waiting for ${names[s.turn]}…`;
 
-function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => void; onChanged: () => void }) {
+export function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => void; onChanged: () => void }) {
   const [s, setS] = useState(ayoStart);
   const moves = useRef<number[]>([]);
   const [done, setDone] = useState(false);
@@ -91,9 +92,10 @@ function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => void; onC
 
 interface LiveView {
   id: string;
-  names: [string, string];
+  names: [string, string | null];
   state: AyoState;
-  you: 0 | 1;
+  you: 0 | 1 | null;
+  waiting: boolean;
 }
 
 export function AyoLive({ id }: { id: string }) {
@@ -117,20 +119,21 @@ export function AyoLive({ id }: { id: string }) {
       setError((e as Error).message);
     }
   };
+  const names = g.names.map((n) => (n ? `@${n}` : "…")) as [string, string];
   return (
     <div className="stack">
-      <AyoBoard s={g.state} me={g.you} onPick={(p) => void pick(p)} names={g.names.map((n) => `@${n}`) as [string, string]} />
-      <p className="small">{status(g.state, g.you, g.names)}</p>
+      <AyoBoard s={g.state} me={g.you ?? 0} watching={g.you === null} onPick={(p) => void pick(p)} names={names} />
+      <p className="small">{g.waiting ? "Waiting for someone to sit down…" : g.you === null ? (g.state.over ? (g.state.winner === null ? "Draw!" : `${names[g.state.winner]} won.`) : `Watching: ${names[g.state.turn]} to play.`) : status(g.state, g.you, names)}</p>
     </div>
   );
 }
 
-export type GameOpen = { game: "ayo" | "snooker"; id?: string } | null;
+export type GameOpen = { game: TableGame; id?: string } | null;
 
 export function GamesApp({ notify, onChanged, open: initial }: { notify: (m: string) => void; onChanged: () => void; open?: GameOpen }) {
-  const [open, setOpen] = useState<GameOpen | "ayo-cpu" | "ayo-friend" | "snooker-friend" | "snooker-solo">(initial ?? null);
+  const [open, setOpen] = useState<GameOpen | "ayo-cpu" | "chess-cpu" | "snooker-solo">(initial ?? null);
   const [friend, setFriend] = useState("");
-  const challenge = async (game: "ayo" | "snooker") => {
+  const challenge = async (game: TableGame) => {
     try {
       const r = await api<{ id: string }>("POST", `/api/games/${game}/challenge`, { to: friend.trim().replace(/^@/, "") });
       notify(`Challenge sent to @${friend.trim().replace(/^@/, "")}`);
@@ -151,6 +154,13 @@ export function GamesApp({ notify, onChanged, open: initial }: { notify: (m: str
         <AyoVsComputer notify={notify} onChanged={onChanged} />
       </div>
     );
+  if (open === "chess-cpu")
+    return (
+      <div className="stack account-form">
+        {back}
+        <ChessVsComputer notify={notify} onChanged={onChanged} />
+      </div>
+    );
   if (open === "snooker-solo")
     return (
       <div className="stack account-form">
@@ -162,10 +172,10 @@ export function GamesApp({ notify, onChanged, open: initial }: { notify: (m: str
     return (
       <div className="stack account-form">
         {back}
-        {open.game === "ayo" ? <AyoLive id={open.id} /> : <Snooker id={open.id} notify={notify} />}
+        {open.game === "ayo" ? <AyoLive id={open.id} /> : open.game === "chess" ? <ChessLive id={open.id} /> : <Snooker id={open.id} notify={notify} />}
       </div>
     );
-  const friendForm = (game: "ayo" | "snooker") => (
+  const friendForm = (game: TableGame) => (
     <form
       className="chat-compose"
       onSubmit={(e) => {
@@ -194,6 +204,16 @@ export function GamesApp({ notify, onChanged, open: initial }: { notify: (m: str
           </button>
         </div>
         {friendForm("ayo")}
+      </div>
+      <div className="quote-card">
+        <strong>♟️ Chess</strong>
+        <span className="tiny muted">Play the Professor for +{AYO_WIN.coins} coins a win (up to {AYO_WINS_PER_DAY} a day), or challenge a friend. Tables at the snooker spot, the library and the hotel lobby too.</span>
+        <div className="row">
+          <button type="button" className="btn sm go" onClick={() => setOpen("chess-cpu")}>
+            <Bot size={15} aria-hidden="true" /> Play the Professor
+          </button>
+        </div>
+        {friendForm("chess")}
       </div>
       <div className="quote-card">
         <strong>🎱 Snooker</strong>
