@@ -79,7 +79,10 @@ export function VenueCard({
   here = [],
   onPlayer,
   avatar,
+  present = true,
 }: {
+  /** You're actually there (arrived). Away, the card is a preview: look, then Go there. */
+  present?: boolean;
   /** Your look, so you appear in the room. */
   avatar?: AvatarConfig;
   /** Players at this place right now. */
@@ -225,12 +228,20 @@ export function VenueCard({
               alt={`Inside ${venue.name}`}
               room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]}
               seed={(branch?.key ?? venue.key).length}
-              player={avatar ? { avatar, action: me } : undefined}
+              player={avatar && present ? { avatar, action: me } : undefined}
               onPlayerWalk={() => setMe("walk")}
             />
           </div>
         )}
         <div className="venue-info">
+        {!present && (
+          <div className="away-note">
+            <span className="small">You're not here yet. Go there to do things, work or chat inside.</span>
+            <button type="button" className="btn sm go" onClick={onWalk}>
+              <Footprints size={15} aria-hidden="true" /> Go there
+            </button>
+          </div>
+        )}
         <p>{venue.blurb}</p>
         {branch ? (
           <p className="small muted">Same things to do as {base.name} in {base.area}.</p>
@@ -258,7 +269,7 @@ export function VenueCard({
             <span className="tiny">{liveEvent.blurb} Everything here gives +50% XP and an extra lift.</span>
           </div>
         )}
-        {base.key === "island_motors" && <Garage notify={notify} onChanged={onChanged} showroom />}
+        {base.key === "island_motors" && present && <Garage notify={notify} onChanged={onChanged} showroom />}
         <p className={`venue-hours small ${open ? "open" : "closed"}`}>
           <Clock size={14} aria-hidden="true" /> {hoursLabel(venue, hour)}
           {!open && <span className="muted"> · come back tonight or tomorrow</span>}
@@ -305,6 +316,8 @@ export function VenueCard({
                   <span className="small muted">{Math.ceil(left)}s</span>
                 ) : !open ? (
                   <span className="small muted">Opens {clockHour(venueHours(venue)![0])}</span>
+                ) : !present ? (
+                  <span className="small muted">Go there first</span>
                 ) : (
                   <button type="button" className={`btn sm ${a.kind === "flex" ? "gold" : "go"}`} disabled={busy !== null || running !== null} onClick={() => void act(a)}>
                     {busy === a.key ? "…" : a.kind === "flex" ? "Flex" : "Do it"}
@@ -332,14 +345,14 @@ export function VenueCard({
               {running?.action.key === "shift" ? (
                 <span className="small muted">{Math.ceil(left)}s</span>
               ) : (
-                <button type="button" className="btn sm go" disabled={busy !== null || running !== null || !open || work.shiftsLeftToday === 0} onClick={() => void shift()}>
+                <button type="button" className="btn sm go" disabled={!present || busy !== null || running !== null || !open || work.shiftsLeftToday === 0} onClick={() => void shift()}>
                   {busy === "shift" ? "…" : "Start shift"}
                 </button>
               )}
             </span>
           </div>
         )}
-        {["oga_snooker", "hangout"].includes(base.key) && (
+        {present && ["oga_snooker", "hangout"].includes(base.key) && (
           <button
             type="button"
             className="btn"
@@ -351,10 +364,10 @@ export function VenueCard({
             🎱 Play snooker or Ayo
           </button>
         )}
-        {base.key === "balogun_market" && open && <Haggle notify={notify} onChanged={onChanged} />}
+        {base.key === "balogun_market" && open && present && <Haggle notify={notify} onChanged={onChanged} />}
         {base.key === "balogun_market" && <Stalls notify={notify} />}
         {error && <p className="alert small">{error}</p>}
-        <RoomChat place={branch?.key ?? venue.key} />
+        {present && <RoomChat place={branch?.key ?? venue.key} />}
 
         <div className="row">
           <button type="button" className="btn" onClick={onWalk}>

@@ -90,6 +90,10 @@ const NATURE: Record<string, { art: string; w: number }> = {
   hedge: { art: "/art/nature/ixora-hedge.webp", w: 120 },
   bougainvillea: { art: "/art/nature/bougainvillea-wall.webp", w: 120 },
 };
+/** How close you must stand to a place to be inside it (map units). */
+const AT_PLACE = 140;
+/** Trips longer than this offer your own car or bike (shorter ones just walk). */
+const OWN_PICK_FROM = 250;
 const LAMP = { art: "/art/props/street-lamp.webp", w: 46 };
 /** Street furniture: stalls, shelters, poles and lamps. */
 const STREET_PROPS = [...PROPS, ...PORT_AND_PLANES, ...LAMPS.map((l) => ({ ...l, art: LAMP.art, w: LAMP.w }))];
@@ -260,6 +264,8 @@ export function CityMap({
   const arriveAt = useRef<string | null>(null);
 
   /** Go somewhere: short hops just walk; longer trips offer a ride. */
+  /** The place you last arrived at (you're inside it until you set off again). */
+  const [arrived, setArrived] = useState<string | null>(null);
   const goTo = (to: { x: number; y: number }, label: string, venue?: string) => {
     const route = walkRoute(meAt.current, to);
     if (!route) return notify("You can't walk on water. Take the bridge to the Island.");
@@ -267,7 +273,10 @@ export function CityMap({
     // Fares go by the distance along the roads (the way the ride will actually go).
     (roadRoute(meAt.current, to) ?? route).reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
     arriveAt.current = venue ?? null;
-    if (units < RIDE_PICK_FROM) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
+    setArrived(null);
+    loadVehicles();
+    // With your own car or bike you get the picker sooner (driving round the corner is fine too).
+    if (units < (vehicles.length ? OWN_PICK_FROM : RIDE_PICK_FROM)) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
     else setRidePick({ ...to, units: Math.round(units), to: label, venue });
   };
   goToRef.current = goTo;
@@ -337,6 +346,10 @@ export function CityMap({
   /** One of your other plots (land or a house that isn't home). */
   const [plotOpen, setPlotOpen] = useState<string | null>(null);
   const [vehicles, setVehicles] = useState<VehicleKind[]>([]);
+  const loadVehicles = () =>
+    api<VehicleKind[]>("GET", "/api/game/vehicles")
+      .then(setVehicles)
+      .catch(() => undefined);
   const loadHomes = () => {
     api<HomeView>("GET", "/api/game/home")
       .then(setHome)
@@ -344,9 +357,7 @@ export function CityMap({
     api<MapHome[]>("GET", "/api/map/homes")
       .then(setHomes)
       .catch(() => undefined);
-    api<VehicleKind[]>("GET", "/api/game/vehicles")
-      .then(setVehicles)
-      .catch(() => undefined);
+    loadVehicles();
   };
   useEffect(() => {
     loadHomes();
@@ -358,8 +369,14 @@ export function CityMap({
   const [visitHome, setVisitHome] = useState<MapHome | null>(null);
   const room = starterRoom(nickname);
   const myPlot = home?.plotId ? FOR_SALE.find((p) => p.id === home.plotId) : undefined;
+  /** Are you at this place? You arrived there, or you're standing right by it (not passing through). */
+  const isAt = (key: string) => {
+    if (arrived === key) return true;
+    const spot = BRANCH_BY_KEY.get(key) ?? VENUE_SPOTS.find((v) => v.key === key);
+    return !travelling && !!spot && Math.hypot(meAt.current.x - spot.x, meAt.current.y - (spot.y + 30)) < AT_PLACE;
+  };
   /** Where you are for other players: inside a place or a home, or out in the city. */
-  const place = homeOpen ? `home:${home?.plotId ?? `room-${nickname}`}` : visitHome ? `home:${visitHome.plotId}` : venueOpen;
+  const place = homeOpen ? `home:${home?.plotId ?? `room-${nickname}`}` : visitHome ? `home:${visitHome.plotId}` : venueOpen && isAt(venueOpen) ? venueOpen : null;
   const placeRef = useRef(place);
   const unreadRef = useRef(0);
   placeRef.current = place;
@@ -1018,7 +1035,10 @@ export function CityMap({
                   onArrive={() => {
                     setTravelling(false);
                     if (arriveAt.current === "__home") setHomeOpen(true);
-                    else if (arriveAt.current) setVenueOpen(arriveAt.current);
+                    else if (arriveAt.current) {
+                      setArrived(arriveAt.current);
+                      setVenueOpen(arriveAt.current);
+                    }
                     arriveAt.current = null;
                   }}
                 />
@@ -1330,7 +1350,6 @@ export function CityMap({
               onClose={() => setOverview(false)}
               onShow={(spot) => {
                 setOverview(false);
-                if (spot.key === "home") window.setTimeout(() => setHomeOpen(true), 500);
                 pz.flyTo(spot.x, spot.y, spot.kind === "area" ? 0.4 : 0.75);
                 if (spot.venue && spot.venue !== "__home") window.setTimeout(() => setVenueOpen(spot.venue!), 500);
                 if (spot.kind === "business") {
@@ -1462,9 +1481,10 @@ export function CityMap({
               }}
             />
           )}
-          {venueOpen && (
+          {venueOpen && VENUES_BY_KEY.has(BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen) && (
         <VenueCard
           avatar={avatar}
+          present={isAt(venueOpen)}
           here={others.filter((p) => p.place === venueOpen)}
           onPlayer={(p) => setPlayerOpen(p)}
           venueKey={BRANCH_BY_KEY.get(venueOpen)?.base ?? venueOpen}
@@ -1481,7 +1501,10 @@ export function CityMap({
             setVenueOpen(null);
             onDistrict("artisans");
           }}
-          onChanged={onVisited}
+          onChanged={() => {
+            onVisited();
+            loadVehicles();
+          }}
           notify={notify}
           onApp={
             onApp &&
