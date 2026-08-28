@@ -128,6 +128,8 @@ export function VenueCard({
     if (/sleep|nap|rest|suite|room/.test(k) && venue.key.includes("hotel")) return "sleep";
     if (a.gives.includes("style") && /cut|trim|braid|hair|wig|measure|aso|fabric|style/.test(k)) return "chair";
     if (a.gives.includes("food")) return "eat";
+    // Worship: salah in the mosque, praise and kneeling prayer in church.
+    if (/mosque|chapel|church/.test(venue.key) && (a.gives.includes("faith") || /pray|service|jumat|choir/.test(k))) return "pray";
     if (a.gives.includes("social") || a.gives.includes("fun") || a.gives.includes("faith") || a.gives.includes("brain") || a.gives.includes("rest")) return "sit";
     return "stand";
   };
