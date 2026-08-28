@@ -6,7 +6,9 @@
 import { OUTFIT_VARIANTS, type WalkerVariant } from "./walkers.js";
 
 /** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
-export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk" | "sleep";
+export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk" | "sleep" | "pray_salah" | "pray_church" | "kneel_pray";
+/** Adult looks that have every pose, prayer included. */
+const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
 export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   dance: ["woman_gele", "man_kaftan", "woman_buba", "man_casual", ...OUTFIT_VARIANTS],
@@ -15,15 +17,33 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
   sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
   sleep: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  // Salah sheets put the women in a headscarf; all three prayer sheets exist for every adult look.
+  pray_salah: ADULTS,
+  pray_church: ADULTS,
+  kneel_pray: ADULTS,
 };
-/** Pose sheet frames: 96x160 standing/seated (feet 16 px above the bottom); lying sheets are 192x112, centred. */
-export const POSE_FRAME = { w: 96, h: 160, ground: 16 };
-export const SLEEP_FRAME = { w: 192, h: 112 };
+/**
+ * Each pose sheet's frame size, frame count and speed. Standing, seated and praying frames have the feet 16 px above
+ * the bottom; lying (sleep) frames are centred on the middle of the body. Salah frames are wider (prostration reaches
+ * forward) and only salah has a "nw" sheet (facing the mihrab).
+ */
+export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean }> = {
+  dance: { w: 96, h: 160, frames: 8, fps: 10 },
+  serve: { w: 96, h: 160, frames: 8, fps: 7 },
+  stand_idle: { w: 96, h: 160, frames: 8, fps: 7 },
+  sit_eat: { w: 96, h: 160, frames: 8, fps: 7 },
+  sit_talk: { w: 96, h: 160, frames: 8, fps: 7 },
+  sleep: { w: 192, h: 112, frames: 8, fps: 3, centred: true },
+  pray_salah: { w: 144, h: 160, frames: 16, fps: 1.6 },
+  pray_church: { w: 96, h: 160, frames: 8, fps: 4 },
+  kneel_pray: { w: 96, h: 160, frames: 8, fps: 2 },
+};
 
 export type Pt = [number, number];
-export type Facing = "se" | "sw";
+/** Pose sheets face se or sw (towards the viewer); salah also faces nw (towards a mihrab on the left wall). */
+export type Facing = "se" | "sw" | "nw";
 /** What the player is doing in a room. */
-export type PlayerAction = "walk" | "sit" | "eat" | "sleep" | "dance" | "chair" | "stand";
+export type PlayerAction = "walk" | "sit" | "eat" | "sleep" | "dance" | "chair" | "stand" | "pray";
 /** Marked places for the player: door (where they come in) and one per action that fits the room. */
 export type SpotKey = "door" | Exclude<PlayerAction, "walk">;
 export interface Spot {
@@ -36,7 +56,8 @@ export interface Room {
   /** Open floor, in order: walkers go back and forth along it, pausing at each spot. */
   walkway: Pt[];
   walkers: number;
-  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant }[];
+  /** `phase`: frames into its loop this person starts (so a row of people praying don't move in step). */
+  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number }[];
   spots?: Partial<Record<SpotKey, Spot>>;
 }
 
@@ -130,16 +151,17 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.36, 0.56], dir: "se" }, dance: { at: [0.52, 0.6], dir: "se" }, stand: { at: [0.64, 0.5], dir: "sw" } },
   },
   church: {
+    // The pastor at the pulpit; the congregation at the pews, hands raised in praise or kneeling in prayer.
     walkway: [[0.32, 0.74], [0.42, 0.7], [0.52, 0.66], [0.6, 0.6]],
     walkers: 0,
     stations: [
       { action: "stand_idle", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.71, 0.7], dir: "sw", variant: "schoolgirl" },
-      { action: "sit_talk", at: [0.77, 0.75], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.55, 0.85], dir: "se", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman-hoodie_black" },
+      { action: "kneel_pray", at: [0.71, 0.7], dir: "sw", variant: "woman-ankara_green" },
+      { action: "kneel_pray", at: [0.5, 0.62], dir: "se", variant: "woman_gele", phase: 4 },
+      { action: "pray_church", at: [0.59, 0.67], dir: "sw", variant: "man-tee_blue", phase: 3 },
     ],
-    spots: { door: { at: [0.32, 0.76], dir: "se" }, sit: { at: [0.27, 0.73], dir: "se" }, stand: { at: [0.42, 0.7], dir: "se" } },
+    spots: { door: { at: [0.32, 0.76], dir: "se" }, sit: { at: [0.27, 0.73], dir: "se" }, pray: { at: [0.4, 0.7], dir: "se", pose: "pray_church" }, stand: { at: [0.42, 0.7], dir: "se" } },
   },
   salon: {
     walkway: [[0.4, 0.82], [0.5, 0.76], [0.58, 0.68], [0.66, 0.62]],
@@ -164,15 +186,23 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.52, 0.62], dir: "sw" }, dance: { at: [0.36, 0.66], dir: "se" }, sit: { at: [0.62, 0.62], dir: "sw" }, stand: { at: [0.4, 0.58], dir: "se" } },
   },
   mosque: {
-    // Worshippers stand in a prayer row on the mats (there are no seats; the pose library has no floor sitting).
+    // Congregational prayer: the imam on the mat in front of the mihrab, the rows behind him (men, then women),
+    // all facing the mihrab (nw) and moving through the rak'ah together.
     walkway: [[0.3, 0.7], [0.45, 0.78], [0.6, 0.82], [0.72, 0.72], [0.6, 0.62]],
-    walkers: 1,
+    walkers: 0,
     stations: [
-      { action: "stand_idle", at: [0.4, 0.62], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.55, 0.7], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.68, 0.64], dir: "sw", variant: "schoolboy" },
+      { action: "pray_salah", at: [0.37, 0.58], dir: "nw", variant: "man-agbada_white", phase: 0 },
+      { action: "pray_salah", at: [0.395, 0.673], dir: "nw", variant: "man_kaftan", phase: 0 },
+      { action: "pray_salah", at: [0.525, 0.607], dir: "nw", variant: "man-tee_blue", phase: 0 },
+      { action: "pray_salah", at: [0.485, 0.74], dir: "nw", variant: "woman-buba_wrapper", phase: 0 },
+      { action: "pray_salah", at: [0.615, 0.673], dir: "nw", variant: "woman-kaftan_gold", phase: 0 },
     ],
-    spots: { door: { at: [0.6, 0.82], dir: "se" }, sit: { at: [0.47, 0.66], dir: "se", pose: "stand_idle" }, stand: { at: [0.47, 0.66], dir: "se" } },
+    spots: {
+      door: { at: [0.6, 0.82], dir: "se" },
+      pray: { at: [0.655, 0.54], dir: "nw", pose: "pray_salah" },
+      sit: { at: [0.655, 0.54], dir: "nw", pose: "pray_salah" },
+      stand: { at: [0.72, 0.72], dir: "sw" },
+    },
   },
   "car-showroom": {
     walkway: [[0.6, 0.83], [0.7, 0.76], [0.8, 0.68]],

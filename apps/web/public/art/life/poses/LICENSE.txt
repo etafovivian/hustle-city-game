@@ -7,3 +7,7 @@ Seated poses: the seat sits about 0.3 m behind the feet point.
 Sleep: the library has no lying clip, so the first Idle_Loop frame (legs straightened) is laid flat on its back
 with the chest rising and falling over the loop. Sleep sheets are 8 frames of 192x112 (wider than tall); the frame
 centre is the middle of the body, anchored on the middle of the mattress. se = feet towards the bottom right.
+Prayer (posed bone by bone in sprites.py, no library clip; every adult look):
+pray_salah: one rak'ah, 16 frames of 144x160 (qiyam with hands folded, ruku, standing, sujud, jalsa, sujud, standing),
+facing se, sw and nw (towards a mihrab); the women's looks wear a plain headscarf. pray_church: standing with hands
+raised, swaying (8 frames); kneel_pray: kneeling, hands together, head bowing (8 frames); se and sw.

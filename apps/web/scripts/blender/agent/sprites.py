@@ -177,14 +177,14 @@ def v_woman_buba(arm, body):
     paint_body(body, DARK)
     bind_garment(arm, os.path.join(GDIR, "garment-woman-buba_wrapper.glb"))
     region_paint(body, arm, lambda c, ds, L: "sandal" if shoes(c, ds, L, 0.0) else None, {"sandal": make_mat("sandal", (0.35, 0.18, 0.06))})
-    attach_hair(arm, os.path.join(HUSTLE, "hair-Female", "hair-braids.glb"))
+    head_cover(arm, body, os.path.join(HUSTLE, "hair-Female", "hair-braids.glb"))
 
 
 def v_woman_gele(arm, body):
     paint_body(body, MEDIUM)
     bind_garment(arm, os.path.join(GDIR, "garment-woman-peplum_gown.glb"))
     region_paint(body, arm, lambda c, ds, L: "shoe" if shoes(c, ds, L, 0.0) else None, {"shoe": make_mat("shoe", (0.75, 0.55, 0.1))})
-    attach_hair(arm, os.path.join(HUSTLE, "hair-Female", "hair-gele.glb"))
+    head_cover(arm, body, os.path.join(HUSTLE, "hair-Female", "hair-gele.glb"))
 
 
 def v_man_kaftan(arm, body):
@@ -288,6 +288,13 @@ def recolour_new(before, rgb, name):
         o.data.materials.append(mat)
 
 
+def head_cover(arm, body, path):
+    """Hair, or with HIJAB=1 (the salah sheets) a headscarf for the women's looks."""
+    if os.environ.get("HIJAB") and "hair-Female" in path:
+        return hijab(arm, body)
+    return attach_hair(arm, path)
+
+
 def outfit_variant(body_key, outfit):
     top, sleeve, bottom, length, feet, garment = OUTFIT_LOOK[outfit]
 
@@ -324,7 +331,7 @@ def outfit_variant(body_key, outfit):
             mats["top"] = make_mat("top", hexrgb(top))
         region_paint(body, arm, rule, mats)
         hair = "gele" if outfit == "peplum_coral" else ("low_cut" if body_key == "man" else "braids")
-        attach_hair(arm, os.path.join(HUSTLE, "hair-Male" if body_key == "man" else "hair-Female", f"hair-{hair}.glb"))
+        head_cover(arm, body, os.path.join(HUSTLE, "hair-Male" if body_key == "man" else "hair-Female", f"hair-{hair}.glb"))
     return fn
 
 
@@ -612,6 +619,10 @@ POSES = {
     # The library has no lying clip: the first Idle_Loop frame is held and laid flat on its back (see lie_down),
     # with the chest rising and falling once per loop.
     "sleep": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
+    # Prayer: posed bone by bone (see apply_pose); every adult look, so a player can pray in what they wear.
+    "pray_salah": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "pray_church": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "kneel_pray": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
 }
 # Lying sheets are wider than tall: 8 frames of 192x112, cropped so the middle of the body is the centre of the
 # frame (it is anchored on the middle of the mattress). Directions: se = feet towards the bottom right (head up-left), sw = feet bottom left.
@@ -818,6 +829,175 @@ def render_sleep(arm, scene, look, name, tmp, first):
     sleep_view(scene, False)
 
 
+# ------------------------------------------------------------------ prayer (no library clip: posed bone by bone)
+# A pose is a set of joint angles (degrees). They are applied from the rest (T) pose as turns about the armature's
+# axes (x = the character's left, -y = forward, z = up), arms and head first, then the spine (which carries them),
+# then the legs, so every angle reads in the body's own frame. Frames blend the angles between key poses.
+PRAY_ADULTS = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"]
+PRAY_VARIANTS = PRAY_ADULTS + OUTFIT_NAMES if "OUTFIT_NAMES" in globals() else PRAY_ADULTS
+# frame size per prayer sheet (salah reaches forward in prostration, so its frames are wider)
+PRAY_FRAME = {"pray_salah": (144, 16), "pray_church": (96, 8), "kneel_pray": (96, 8)}
+PRAY_DIRS = {"pray_salah": ["se", "sw", "nw"], "pray_church": ["se", "sw"], "kneel_pray": ["se", "sw"]}
+
+STAND = dict(arm_down=82, arm_fwd=0, elbow=6, fore_in=0, arm_out=0, neck=0, head=0, sp1=0, sp2=0, sp3=0, side=0,
+             hip=0, knee=0, ankle=0, toe=0)
+
+
+def P(**kw):
+    d = dict(STAND)
+    d.update(kw)
+    return d
+
+
+SALAH_KEYS = {
+    # qiyam: standing, right hand over left on the chest, eyes down
+    "qiyam": P(arm_fwd=20, elbow=90, fore_in=70, head=14),
+    # ruku: back flat, head in line, hands on the knees
+    "ruku": P(sp1=80, sp2=12, sp3=0, neck=-30, head=-10, arm_fwd=62, elbow=4, hip=2),
+    # i'tidal: standing upright, arms at the sides
+    "itidal": P(head=6),
+    # sujud: knees, toes, palms and forehead on the floor, elbows off it
+    "sujud": P(sp1=64, sp2=50, sp3=38, neck=10, head=-18, arm_down=76, arm_fwd=146, elbow=84, hip=12, knee=102, ankle=-8, toe=-70),
+    # jalsa / tashahhud: sitting back on the heels, hands on the thighs
+    "jalsa": P(sp1=6, head=10, arm_fwd=15, elbow=45, hip=86, knee=158, ankle=58, toe=0),
+}
+# (key pose, hold frames) round the loop; the frame between two different poses is a blend
+# qiyam, ruku, standing up, sujud, jalsa, sujud, then up to standing again (the loop starts over at qiyam)
+SALAH_SEQ = ["qiyam", "qiyam", "qiyam", "ruku", "ruku", "itidal", "itidal", "sujud", "sujud", "jalsa", "jalsa",
+             "sujud", "sujud", "jalsa", "itidal", "itidal"]
+KNEEL = P(hip=0, knee=92, ankle=58, arm_fwd=30, elbow=104, fore_in=80, head=18, sp1=4)
+
+
+def turn(arm, bone, axis, deg):
+    if not deg or bone not in arm.pose.bones:
+        return
+    pb = arm.pose.bones[bone]
+    bpy.context.view_layer.update()
+    h = pb.head.copy()
+    R = Matrix.Rotation(math.radians(deg), 4, axis)
+    pb.matrix = Matrix.Translation(h) @ R @ Matrix.Translation(-h) @ pb.matrix
+    bpy.context.view_layer.update()
+
+
+def apply_pose(arm, q, sway=0.0):
+    arm.animation_data.action = None
+    for pb in arm.pose.bones:
+        pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
+    bpy.context.view_layer.update()
+    for s, sg in (("l", 1), ("r", -1)):
+        turn(arm, f"upperarm_{s}", "Y", sg * q["arm_down"])
+        turn(arm, f"upperarm_{s}", "Z", -sg * q["arm_out"])
+        turn(arm, f"upperarm_{s}", "X", -q["arm_fwd"])
+        turn(arm, f"lowerarm_{s}", "X", -q["elbow"])
+        turn(arm, f"lowerarm_{s}", "Z", -sg * q["fore_in"])
+    turn(arm, "Head", "X", q["head"])
+    turn(arm, "neck_01", "X", q["neck"])
+    turn(arm, "spine_03", "X", q["sp3"])
+    turn(arm, "spine_02", "X", q["sp2"])
+    turn(arm, "spine_01", "X", q["sp1"])
+    turn(arm, "spine_02", "Y", q["side"] + sway)
+    for s in "lr":
+        turn(arm, f"thigh_{s}", "X", -q["hip"])
+        turn(arm, f"calf_{s}", "X", q["knee"])
+        turn(arm, f"foot_{s}", "X", q["ankle"])
+        turn(arm, f"ball_{s}", "X", q["toe"])
+
+
+def blend(a, b, t):
+    t = smoothstep(0.0, 1.0, t)
+    return {k: a[k] + (b[k] - a[k]) * t for k in a}
+
+
+def ground(arm):
+    """Stand the posed body on the floor (lowest point at z = 0), feet point at the origin."""
+    arm.location = (0, 0, 0)
+    bpy.context.view_layer.update()
+    lo, _ = body_bounds()
+    arm.location = (0, 0, -lo.z)
+    bpy.context.view_layer.update()
+
+
+def prayer_frames(action, n):
+    """Joint angles and sway for each frame of a prayer loop."""
+    out = []
+    if action == "pray_salah":
+        for i in range(n):
+            a, b = SALAH_SEQ[i], SALAH_SEQ[(i + 1) % n]
+            prev = SALAH_SEQ[i - 1]
+            # a pose held over several frames shows plainly; the first frame of a new pose is the move into it
+            q = blend(SALAH_KEYS[prev], SALAH_KEYS[a], 0.6) if prev != a else SALAH_KEYS[a]
+            out.append((q, 0.0))
+    elif action == "pray_church":
+        for i in range(n):
+            ph = 2 * math.pi * i / n
+            # both hands raised high and open, swaying side to side with the song
+            q = P(arm_down=-30 + 6 * math.sin(ph), arm_fwd=25, elbow=24 + 6 * math.cos(ph), head=-14, sp3=-4)
+            out.append((q, 5 * math.sin(ph)))
+    else:  # kneel_pray: kneeling upright, hands together, a slow bow of the head
+        for i in range(n):
+            ph = 2 * math.pi * i / n
+            out.append((dict(KNEEL, head=KNEEL["head"] + 8 * (0.5 - 0.5 * math.cos(ph)), sp1=KNEEL["sp1"] + 3 * (0.5 - 0.5 * math.cos(ph))), 0.0))
+    return out
+
+
+def render_prayer(arm, scene, look, name, action, tmp, first):
+    W, n = PRAY_FRAME[action]
+    k = scene.render.resolution_x // FW
+    keep = (scene.render.resolution_x, scene.render.resolution_y)
+    scene.render.resolution_x = W * k
+    clear_ik(arm)
+    dirs = os.environ["PRAYDIRS"].split(",") if os.environ.get("PRAYDIRS") else PRAY_DIRS[action]
+    for d in dirs:
+        sx, sy = DIRS.get(d, (1, 0))  # "side": facing screen right, for checking poses in profile
+        sheet = np.zeros((FH, W * n, 4), dtype=np.float32)
+        for i, (q, sway) in enumerate(prayer_frames(action, n)):
+            arm.rotation_euler = (0, 0, 0)
+            apply_pose(arm, q, sway)
+            if os.environ.get("PRAYDEBUG"):
+                print("DBG", action, i, *[tuple(round(c, 2) for c in arm.pose.bones[b].tail) for b in ("hand_l", "hand_r", "lowerarm_l", "lowerarm_r")])
+            arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy)))
+            ground(arm)
+            pth = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
+            scene.render.filepath = pth
+            bpy.ops.render.render(write_still=True)
+            a = read_png(pth)
+            if look == "toon":
+                a = downsample(a)
+            sheet[:, i * W:(i + 1) * W] = a
+            first[(action, d, i)] = a
+        write_png(sheet, os.path.join(OUT, f"{action}-{name}-{d}.png"))
+        print("SHEET", action, name, d)
+    arm.location = (0, 0, 0)
+    scene.render.resolution_x, scene.render.resolution_y = keep
+
+
+def hijab(arm, body, rgb=(0.48, 0.12, 0.24)):
+    """A plain headscarf: a close cap round the head with the face open, falling over the neck and shoulders."""
+    vs = [v.co for v in body.data.vertices if any(g.weight > 0.5 and body.vertex_groups[g.group].name == "Head" for g in v.groups)]
+    lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
+    hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+    c = (lo + hi) / 2
+    r = (hi - lo) / 2
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=1.0)
+    for v in bm.verts:
+        v.co = Vector((c.x + v.co.x * r.x * 1.18, c.y + v.co.y * r.y * 1.15, c.z + 0.012 + v.co.z * r.z * 1.12))
+    # the face stays open: front of the head between the hairline and the chin
+    face = [v for v in bm.verts if v.co.y < c.y - r.y * 0.25 and c.z - r.z * 1.2 < v.co.z < c.z + r.z * 0.42 and abs(v.co.x - c.x) < r.x * 0.78]
+    bmesh.ops.delete(bm, geom=face, context="VERTS")
+    # drape: a cone from round the jaw to over the shoulders and upper chest
+    top_z = c.z - r.z * 0.55
+    bot_z = arm.data.bones["spine_03"].tail_local.z - 0.06
+    cone = bmesh.ops.create_cone(bm, cap_ends=False, segments=24, radius1=0.2, radius2=r.x * 1.05, depth=top_z - bot_z)
+    for v in cone["verts"]:
+        v.co.z += (top_z + bot_z) / 2
+        v.co.x += c.x
+        v.co.y = v.co.y * 0.85 + c.y + 0.01
+    o = obj_from_bm(bm, "hijab", make_mat("hijab", rgb))
+    attach_rest(arm, o, "neck_01")
+    return o
+
+
 def render_poses(name, sex, fn, jobs, tmp):
     bases = sorted({POSES[a][0] for a in jobs})
     arm, scene, look = prepare_variant(name, sex, fn, extra_actions=[b for b in bases if b not in bpy.data.actions] if False else
@@ -826,6 +1006,9 @@ def render_poses(name, sex, fn, jobs, tmp):
     if "sleep" in jobs:
         render_sleep(arm, scene, look, name, tmp, first)
     for action in jobs:
+        if action in PRAY_FRAME:
+            render_prayer(arm, scene, look, name, action, tmp, first)
+            continue
         if action == "sleep":
             continue
         base = POSES[action][0]
@@ -891,9 +1074,30 @@ if os.environ.get("POSE"):
                 cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] = a[..., :3] * al + cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] * (1 - al)
                 cs[y0 + SLEEP_H // 2, x0 + SLEEP_W // 2 - 3:x0 + SLEEP_W // 2 + 4, :3] = (0.8, 0.2, 0.2)  # anchor
         write_png(cs, os.path.join(OUT, "sleep-contact.png"))
+    for action in ("pray_salah", "pray_church", "kneel_pray"):
+        rows = [n for n in POSES[action][1] if any(k[0] == action for k in got.get(n, {}))]
+        if not rows:
+            continue
+        W, n = PRAY_FRAME[action]
+        dirs = PRAY_DIRS[action]
+        cs = np.zeros((FH * len(rows) * len(dirs), W * n, 4), dtype=np.float32)
+        cs[..., :3], cs[..., 3] = 0.9, 1
+        r = 0
+        for nm in reversed(rows):
+            for d in reversed(dirs):
+                for i in range(n):
+                    a = got[nm].get((action, d, i))
+                    if a is None:
+                        continue
+                    y0, x0 = r * FH, i * W
+                    al = a[..., 3:4]
+                    cs[y0:y0 + FH, x0:x0 + W, :3] = a[..., :3] * al + cs[y0:y0 + FH, x0:x0 + W, :3] * (1 - al)
+                    cs[y0 + FOOT_PX, x0:x0 + W, :3] = (0.7, 0.4, 0.4)
+                r += 1
+        write_png(cs, os.path.join(OUT, f"{action}-contact.png"))
     cells = []
     for action in POSES:
-        if action == "sleep":
+        if action in ("sleep", "pray_salah", "pray_church", "kneel_pray"):
             continue
         row = []
         for name in POSES[action][1]:

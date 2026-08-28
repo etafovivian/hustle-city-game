@@ -9,20 +9,25 @@ import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
-import { POSE_VARIANTS, ROOMS, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey } from "./rooms.js";
+import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 export { ROOMS, type PlayerAction, type Room };
 
-const poseSheet = (action: PoseAction, v: WalkerVariant, d: "se" | "sw") => `/art/life/poses/${action}-${v}-${d}.webp`;
+// Only salah has a nw sheet; anything else facing nw uses its sw sheet.
+const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing) =>
+  `/art/life/poses/${action}-${v}-${d === "nw" && action !== "pray_salah" ? "sw" : d}.webp`;
 
-/** Box for a person `ph` tall: standing/seated frames are 96x160 with the feet 16 px up; lying frames are 192x112
- * and centred on the middle of the body. */
-function spriteBox(ph: number, lying: boolean): CSSProperties {
-  return lying
-    ? { width: ph * 1.2, height: ph * 0.7, marginTop: 0, transform: "translate(-50%, -50%)" }
-    : { width: ph * 0.6, height: ph, marginTop: ph * 0.1 };
+/** Box for a person `ph` tall showing a pose sheet (null: a walk sheet). Frames are sized in px of a 160 px tall
+ * person; most are anchored at the feet (16 px up), lying ones on the middle of the body. */
+function spriteBox(ph: number, pose: PoseAction | null): CSSProperties {
+  const s = pose ? POSE_SHEETS[pose] : { w: 96, h: 160, frames: 8, centred: false };
+  const k = ph / 160;
+  const base = { width: s.w * k, height: s.h * k, backgroundSize: `${s.frames * 100}% 100%` };
+  return s.centred ? { ...base, marginTop: 0, transform: "translate(-50%, -50%)" } : { ...base, marginTop: ph * 0.1 };
 }
+/** Background position for frame `f` of a sheet with `n` frames. */
+const framePos = (f: number, n: number) => `${(f / (n - 1)) * 100}% 0`;
 
 /** The usual pose for each thing the player does at a spot. */
 const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
@@ -32,6 +37,7 @@ const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
   dance: "dance",
   chair: "sit_talk",
   stand: "stand_idle",
+  pray: "pray_church",
 };
 /** Where to go when a room has no spot for an action: eat or rest on a seat, dance where you'd stand. */
 const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
@@ -41,6 +47,7 @@ const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
   dance: ["dance", "stand"],
   chair: ["chair", "sit"],
   stand: ["stand"],
+  pray: ["pray"],
 };
 /** The spot and pose for an action in a room (null: stay where you are). */
 export function spotFor(room: Room | undefined, action: PlayerAction): { spot: Spot; pose: PoseAction } | null {
@@ -177,13 +184,13 @@ export function InteriorScene({
         }
         place(i);
       });
-      // Posed people loop their 8 frames (dancers a little faster)
+      // Posed people loop their sheets (each at its own phase, so nobody moves in step)
       posed.forEach((p, i) => {
         const el = posedEls.current[i];
         if (!el) return;
-        const fps = p.action === "dance" ? 10 : p.action === "sleep" ? 3 : 7;
-        const frame = (Math.floor(((now - t0) / 1000) * fps) + i * 3) % 8;
-        el.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
+        const { fps, frames } = POSE_SHEETS[p.action];
+        const frame = (Math.floor(((now - t0) / 1000) * fps) + (p.phase ?? i * 3)) % frames;
+        el.style.backgroundPosition = framePos(frame, frames);
       });
       raf = requestAnimationFrame(step);
     };
@@ -205,7 +212,7 @@ export function InteriorScene({
 
   // People stand about a fifth of the room's height (sprite frames are 96×160, feet 16 px above the bottom).
   const ph = h * 0.21;
-  const size = spriteBox(ph, false);
+  const size = spriteBox(ph, null);
   return (
     <div ref={box} className="interior-scene" onClick={player ? onTap : undefined} style={player && walkway.length > 1 ? { cursor: "pointer" } : undefined}>
       <img src={src} alt={alt} />
@@ -232,7 +239,8 @@ export function InteriorScene({
             className="interior-npc"
             aria-hidden="true"
             style={{
-              ...spriteBox(ph, p.action === "sleep"),
+              ...spriteBox(ph, p.action),
+              backgroundPosition: framePos(p.phase ?? 0, POSE_SHEETS[p.action].frames),
               left: `${p.at[0] * 100}%`,
               top: `${p.at[1] * 100}%`,
               zIndex: Math.round(p.at[1] * 1000),
@@ -273,8 +281,9 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as "se" | "sw", lying: false, t0: 0, settled: false, free: false });
-  const [lying, setLying] = useState(false);
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false });
+  /** The sheet on show (null while walking): sets the box size. */
+  const [shown, setShown] = useState<PoseAction | null>(null);
 
   // A new action (or the first one): walk to its spot. "walk" just steps in from the door.
   useEffect(() => {
@@ -321,21 +330,20 @@ function PlayerInRoom({
       node.style.top = `${m.at[1] * 100}%`;
       // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
-      if (m.route.length) {
+      const pose = m.route.length ? null : (m.pose ?? "stand_idle");
+      if (pose !== m.shown) {
+        m.shown = pose;
+        setShown(pose);
+      }
+      if (!pose) {
         const frame = Math.floor(m.walked / 0.024) % 8;
         node.style.backgroundImage = `url(${walkerSheet(variant, m.dir)})`;
-        node.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
+        node.style.backgroundPosition = framePos(frame, 8);
       } else {
-        const pose = m.pose ?? "stand_idle";
-        const fps = pose === "dance" ? 10 : pose === "sleep" ? 3 : 7;
-        const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % 8;
+        const { fps, frames } = POSE_SHEETS[pose];
+        const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
         node.style.backgroundImage = `url(${poseSheet(pose, variant, m.face)})`;
-        node.style.backgroundPosition = `${(frame / 7) * 100}% 0`;
-      }
-      const lie = !m.route.length && m.pose === "sleep";
-      if (lie !== m.lying) {
-        m.lying = lie;
-        setLying(lie);
+        node.style.backgroundPosition = framePos(frame, frames);
       }
     };
     const step = (now: number) => {
@@ -386,12 +394,12 @@ function PlayerInRoom({
   }, [variant, reduce]);
 
   return (
-    <div ref={el} className="interior-npc interior-player" aria-label="You" style={{ ...spriteBox(ph, lying), left: `${door[0] * 100}%`, top: `${door[1] * 100}%` }}>
+    <div ref={el} className="interior-npc interior-player" aria-label="You" style={{ ...spriteBox(ph, shown), left: `${door[0] * 100}%`, top: `${door[1] * 100}%` }}>
       <span
         style={{
           position: "absolute",
           left: "50%",
-          top: lying ? "8%" : "4%",
+          top: shown === "sleep" ? "8%" : "4%",
           transform: "translate(-50%, -100%)",
           padding: "1px 6px",
           borderRadius: 999,
