@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
 import { SoundToggle } from "./Ambience.js";
+import { HousePick } from "./HousePick.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
@@ -411,6 +412,23 @@ export function CityMap({
   }, [place]);
   /** Where "home" is: your plot, or your room in the face-me block. */
   // Home is reached on the pavement in front of the house, not on its roof.
+  /** Your built houses: with more than one, the home button asks which. */
+  const houses = home?.plots.filter((p) => p.design) ?? [];
+  const [housePick, setHousePick] = useState(false);
+  const goHouse = async (h: { plotId: string; isHome: boolean }) => {
+    setHousePick(false);
+    const plot = FOR_SALE.find((p) => p.id === h.plotId);
+    if (!plot) return;
+    if (!h.isHome) {
+      try {
+        setHome(await api<HomeView>("POST", `/api/plots/${h.plotId}/home`));
+        loadHomes();
+      } catch (e) {
+        return notify((e as Error).message);
+      }
+    }
+    goTo(kerbsideOf({ x: plot.x, y: plot.y }), "home", "__home");
+  };
   const homeSpot = myPlot ? kerbsideOf({ x: myPlot.x, y: myPlot.y }) : kerbsideOf({ x: room.x, y: room.y });
   useEffect(() => {
     api<BillboardView[]>("GET", "/api/billboards")
@@ -1279,7 +1297,7 @@ export function CityMap({
             return "street";
           })()}
         />
-        <button type="button" className="map-ctl home-ctl" onClick={() => goTo(homeSpot, "home", "__home")} aria-label="Go home" title="Go home">
+        <button type="button" className="map-ctl home-ctl" onClick={() => (houses.length > 1 ? setHousePick(true) : goTo(homeSpot, "home", "__home"))} aria-label="Go home" title="Go home">
           <HomeIcon size={18} aria-hidden="true" />
         </button>
         <button type="button" className="map-ctl" onClick={() => pz.zoomBy(1.4)} aria-label="Zoom in">
@@ -1364,6 +1382,7 @@ export function CityMap({
               }}
             />
           )}
+          {housePick && <HousePick houses={houses} from={meAt.current} onPick={(h) => void goHouse(h)} onClose={() => setHousePick(false)} />}
           {ridePick && (
             <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} vehicles={vehicles} />
           )}

@@ -233,3 +233,10 @@ For each, add: "Isometric cutaway room: two back walls and a floor, no front wal
 2. Cutaway interior of a phone and gadget market stall row: glass counters with phones (no logos), chargers on hooks, a repair bench.
 3. A market stall row exterior: six small stalls in a line under colourful umbrellas, traders' stools, goods on tables.
 4. A market load carrier (alabaru) with a big sack on the head, standing pose, isometric single figure.
+
+## Batch 51: car back views (your own car faces the camera when it drives up the screen)
+Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as references too, so they match exactly.
+1. The same Tokunbo saloon car as the reference, silver-grey, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, red tail lights, rear number plate left blank, the car's left side visible. Same size, outlines and colours as the front view.
+2. The same black SUV as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, spare-wheel cover with no logo, the left side visible.
+3. The same white SUV as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, the left side visible.
+4. The same yellow Lagos taxi with a black stripe as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, the left side visible.

@@ -7,6 +7,7 @@ import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { GameTables } from "./Tables.js";
+import { playAdhan, stopAdhan } from "./Ambience.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { Garage } from "./Home.js";
@@ -119,6 +120,14 @@ export function VenueCard({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Inside the mosque you hear the call to prayer (with sound on); it stops when you leave.
+  useEffect(() => {
+    if (!present || base.key !== "central_mosque") return;
+    playAdhan(0.8);
+    return () => {
+      stopAdhan();
+    };
+  }, [present, base.key]);
   const hour = useLagosLight().hour;
   // You in the room: you walk in, and each activity takes you to the right spot (a seat to eat, the dance floor…).
   const [me, setMe] = useState<PlayerAction>("walk");

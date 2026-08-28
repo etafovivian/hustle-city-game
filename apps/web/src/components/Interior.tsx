@@ -281,7 +281,7 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -298,6 +298,7 @@ function PlayerInRoom({
     m.route = close(m.at, to, 0.002) ? [] : routeTo(walkway, m.at, to, aspect).slice(1);
     m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
     m.face = target?.spot.dir ?? m.face;
+    m.atSpot = !!target;
     m.t0 = performance.now();
     m.settled = false;
     onSettle(null);
@@ -378,7 +379,8 @@ function PlayerInRoom({
         if (!m.route.length) {
           m.t0 = now;
           // Facing for standing after a walk: the way they were going (pose sheets face se or sw).
-          if (m.free || !spotFor(room, action)) m.face = m.dir === "sw" || m.dir === "nw" ? "sw" : "se";
+          // (atSpot, not `action`: this loop's closure only sees the action it started with.)
+          if (m.free || !m.atSpot) m.face = m.dir === "sw" || m.dir === "nw" ? "sw" : "se";
         }
       }
       if (!m.route.length && !m.settled) {

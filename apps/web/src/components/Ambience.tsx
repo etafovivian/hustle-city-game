@@ -8,6 +8,17 @@ import { useEffect, useRef, useState } from "react";
 export type SoundScene = "street" | "club" | "quiet";
 const KEY = "hc_sound";
 
+/**
+ * The call to prayer (adhan): a real recording, CC0 (public domain) from Wikimedia Commons, "Beautiful adhan.ogg"
+ * by Adam-synagda (credits in public/audio/CREDITS.md). It sounds across the city, softly, at the five daily prayer
+ * times (Lagos, rounded), and plays inside the mosque. Other code asks for it with the "hc:adhan" event.
+ */
+const ADHAN_SRC = "/audio/adhan.mp3";
+/** Lagos prayer times, hours (Fajr, Dhuhr, Asr, Maghrib, Isha); they barely move through the year near the equator. */
+export const PRAYER_HOURS = [5 + 20 / 60, 13, 16 + 15 / 60, 18 + 50 / 60, 20 + 5 / 60];
+export const playAdhan = (volume: number) => window.dispatchEvent(new CustomEvent("hc:adhan", { detail: volume }));
+export const stopAdhan = () => window.dispatchEvent(new Event("hc:adhan-stop"));
+
 function noiseBuffer(ctx: AudioContext, seconds = 2, brown = false) {
   const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
   const d = buf.getChannelData(0);
@@ -184,6 +195,41 @@ export function SoundToggle({ scene, weather, hour }: { scene: SoundScene; weath
     engine.current?.set(scene, weather, Math.floor(hour));
   }, [scene, weather, Math.floor(hour)]);
   useEffect(() => () => engine.current?.stop(), []);
+  // The adhan: on request (inside the mosque) and at prayer times, only with sound on.
+  const adhan = useRef<HTMLAudioElement | null>(null);
+  const onRef = useRef(on);
+  onRef.current = on;
+  useEffect(() => {
+    const play = (e: Event) => {
+      if (!onRef.current) return;
+      const vol = (e as CustomEvent<number>).detail;
+      const a = (adhan.current ??= new Audio(ADHAN_SRC));
+      a.volume = Math.min(1, Math.max(0, vol));
+      if (a.paused) {
+        a.currentTime = 0;
+        void a.play().catch(() => undefined);
+      }
+    };
+    const stop = () => adhan.current?.pause();
+    window.addEventListener("hc:adhan", play);
+    window.addEventListener("hc:adhan-stop", stop);
+    return () => {
+      window.removeEventListener("hc:adhan", play);
+      window.removeEventListener("hc:adhan-stop", stop);
+      adhan.current?.pause();
+    };
+  }, []);
+  useEffect(() => {
+    if (!on) adhan.current?.pause();
+  }, [on]);
+  // At each prayer time (within its first two minutes), once.
+  const called = useRef<number | null>(null);
+  const due = PRAYER_HOURS.find((p) => hour >= p && hour < p + 2 / 60) ?? null;
+  useEffect(() => {
+    if (due === null || called.current === due) return;
+    called.current = due;
+    playAdhan(scene === "quiet" ? 0.25 : 0.4);
+  }, [due]);
   const toggle = () => {
     const next = !on;
     setOn(next);
