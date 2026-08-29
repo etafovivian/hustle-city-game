@@ -937,3 +937,19 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .ayo-pit { min-width: 0; }
 .home-room-frame.arranging { outline: 2px dashed #ffc72c; outline-offset: -2px; border-radius: 18px; }
 .home-room-frame.arranging .home-item { filter: drop-shadow(0 0 6px #ffc72c); touch-action: none; }
+
+/* Lagoon City University. */
+.uni-box { display: grid; gap: 10px; padding: 12px; border-radius: 14px; background: var(--sheet-2); border: 1.5px solid var(--rule-strong); }
+.uni-programmes, .uni-courses, .uni-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.uni-prog { width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.uni-prog.on { border-color: var(--accent); }
+.uni-prog-icon { font-size: 24px; line-height: 1; }
+.uni-dots { display: inline-flex; align-items: center; gap: 4px; }
+.uni-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--rule-strong); }
+.uni-dots i.on { background: var(--ok); }
+.uni-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: #1d3a2a; color: #e9f7ee; font-size: 15px; line-height: 1.5; border-left: 4px solid var(--ok); }
+.uni-q { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+.uni-q legend { font-weight: 700; margin-bottom: 4px; }
+.uni-review li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--sheet); }
+.uni-review li.ok { border-left: 3px solid var(--ok); }
+.uni-review li.bad { border-left: 3px solid var(--danger); }

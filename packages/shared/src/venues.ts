@@ -361,6 +361,20 @@ export const VENUES: readonly Venue[] = [
     ],
   },
   {
+    key: "lagoon_city_university",
+    name: "Lagoon City University",
+    area: "Tech Mile",
+    icon: "🏛️",
+    art: "/art/buildings/colonial-block.webp",
+    interior: "/art/interiors/lecture-hall.webp",
+    blurb: "Big campus, bigger dreams. Enrol in a degree, go to lectures, write your exams and graduate in front of the whole family.",
+    regulars: ["Prof. Adebayo-Okafor", "Course rep Tolu"],
+    activities: [
+      { key: "cafeteria", label: "Rice and plantain at the cafeteria", cost: 300, xp: 8 },
+      { key: "study_group", label: "Study group under the mango tree", cost: 100, xp: 10 },
+    ],
+  },
+  {
     key: "city_library",
     name: "City Library",
     area: "Tech Mile",
@@ -467,6 +481,7 @@ const LIFE: Record<string, VenueLife> = {
   balogun_market: { hours: [7, 19], gives: ["hustle", "social"], free: "Watch the traders haggle", flex: { label: "Buy out a whole fabric stall for your aso-ebi crew", cost: 80_000 } },
   lagoon_boat_cruise: { hours: [15, 1], gives: ["fun", "rest"], free: "Watch the boats from the jetty", flex: { label: "Charter the whole boat for your birthday", cost: 200_000 } },
   high_court: { hours: [8, 17], gives: ["hustle"], free: "Read the cause list on the board" },
+  lagoon_city_university: { hours: [8, 18], gives: ["brain", "social"], free: "Walk round the campus and read the noticeboards" },
   city_library: { hours: [8, 21], gives: ["brain"], free: "Read the day's newspapers" },
   city_fm: { gives: ["fun", "rep"], free: "Listen to the show in reception", flex: { label: "Sponsor the morning show for a week", cost: 100_000 } },
   general_hospital: { gives: ["health"], free: "Free blood-pressure check at the stand" },

@@ -469,6 +469,7 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "city_library", district: "Tech Mile" },
   { key: "city_fm", district: "Tech Mile" },
   { key: "general_hospital", district: "Airport Ridge", scale: 1.2 },
+  { key: "lagoon_city_university", district: "Tech Mile", scale: 1.3 },
 ];
 
 /**
@@ -688,6 +689,7 @@ const VENUE_ART: Record<string, string> = {
   high_court: "high-court",
   balogun_market: "market-hall",
   city_library: "library",
+  lagoon_city_university: "colonial-block",
   city_fm: "radio-station",
   general_hospital: "hospital",
   lampnet_academy: "school",

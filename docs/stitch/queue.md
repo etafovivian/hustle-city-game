@@ -240,3 +240,9 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. The same black SUV as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, spare-wheel cover with no logo, the left side visible.
 3. The same white SUV as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, the left side visible.
 4. The same yellow Lagos taxi with a black stripe as the reference, seen from the BACK at 2:1 isometric, driving away up and to the right: rear window, tail lights, the left side visible.
+
+## Batch 52: Lagoon City University (the campus uses a colonial block and the school classroom for now)
+1. A Nigerian university senate building: a wide three-storey block with a clock tower, columns at the entrance, a crest with an open book (no words except "LAGOON CITY UNIVERSITY" over the door), palm trees and a car park.
+2. Cutaway interior of a university lecture theatre: tiered rows of wooden seats rising to the back, a lecturer's desk and a big projector screen showing only a simple diagram, a whiteboard. No words.
+3. Cutaway interior of a university cafeteria: a serving counter with trays of rice, plantain and stew, long tables with benches, a ceiling fan.
+4. A campus quad (outdoor): a big mango tree with benches under it, a noticeboard with blank papers pinned, walkways, students' bicycles.

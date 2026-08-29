@@ -7,6 +7,7 @@ import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
 import { GameTables } from "./Tables.js";
+import { UniversityPanel } from "./University.js";
 import { playAdhan, stopAdhan } from "./Ambience.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
@@ -364,6 +365,8 @@ export function VenueCard({
             </span>
           </div>
         )}
+        {present && base.key === "lagoon_city_university" && <UniversityPanel notify={notify} onChanged={onChanged} open={open} onSeated={(on) => setMe(on ? "sit" : "walk")} />}
+        {!present && base.key === "lagoon_city_university" && <p className="small muted">🎓 Degrees, lectures and exams happen on campus. Go there to enrol.</p>}
         {present && GAME_TABLES[base.key] && (
           <GameTables place={branch?.key ?? venue.key} games={GAME_TABLES[base.key]!} here={here} notify={notify} onChanged={onChanged} onSeated={(on) => setMe(on ? "sit" : "walk")} />
         )}

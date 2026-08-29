@@ -224,6 +224,19 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
     ],
   },
+  // Lagoon City University's lecture hall (the classroom picture until the campus art comes): a lecturer at the
+  // board, students at the desks, and a seat for you.
+  "lecture-hall": {
+    walkway: [],
+    walkers: 0,
+    stations: [
+      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "woman-tee_blue" },
+      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "man-hoodie_black" },
+      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "woman-ankara_green" },
+    ],
+    spots: { door: { at: [0.3, 0.8], dir: "se" }, sit: { at: [0.42, 0.62], dir: "se" }, stand: { at: [0.36, 0.72], dir: "se" } },
+  },
   "hotel-lobby": {
     walkway: [[0.25, 0.72], [0.35, 0.8], [0.5, 0.86], [0.62, 0.8], [0.66, 0.73]],
     walkers: 2,

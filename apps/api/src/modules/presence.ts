@@ -50,6 +50,12 @@ export function companionsAt(userId: string, baseVenue: string): { userId: strin
   return [...seen.values()].filter((s) => s.userId !== userId && now - s.at < ONLINE_MS && s.place === me.place).map((s) => ({ userId: s.userId, nickname: s.nickname }));
 }
 
+/** Where a player is right now (a place key), or null when out in the city or offline. */
+export function placeOf(userId: string): string | null {
+  const s = seen.get(userId);
+  return s && Date.now() - s.at < ONLINE_MS ? (s.place ?? null) : null;
+}
+
 /** Tell someone about something (shown as a toast next time their game reports in). */
 export function sendPing(toUserId: string, ping: { from: string; kind: Ping["kind"]; place: string | null; text?: string }) {
   const list = inbox.get(toUserId) ?? [];

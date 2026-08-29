@@ -141,6 +141,13 @@
       "when": 1791892323112,
       "tag": "0019_home_item_place",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791897415982,
+      "tag": "0020_university",
+      "breakpoints": true
     }
   ]
 }

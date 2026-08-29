@@ -851,3 +851,48 @@ export const businessStats = pgTable(
   },
   (t) => [primaryKey({ columns: [t.businessId, t.day, t.kind] })],
 );
+
+/** Lagoon City University: the programmes a player enrolled in (graduatedAt set at convocation). */
+export const uniEnrolments = pgTable(
+  "uni_enrolments",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    programme: text("programme").notNull(),
+    enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
+    graduatedAt: timestamp("graduated_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.programme] })],
+);
+
+/** Each course: lectures attended, exam attempts, and when it was passed. */
+export const uniCourses = pgTable(
+  "uni_courses",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    course: text("course").notNull(),
+    lectures: integer("lectures").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0),
+    passedAt: timestamp("passed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.course] })],
+);
+
+/** Lectures attended, one row each (for the daily limit). */
+export const uniLectures = pgTable(
+  "uni_lectures",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    course: text("course").notNull(),
+    day: text("day").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("uni_lectures_user_day").on(t.userId, t.day)],
+);

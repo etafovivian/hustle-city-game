@@ -43,6 +43,7 @@ import { lockProfile, type Tx } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
+import { graduatePay, isGraduate } from "../university.js";
 
 const shiftsToday = async (tx: Tx, userId: string, day: string) => {
   const [{ n }] = (await tx
@@ -87,7 +88,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       const [row] = await tx.select().from(playerJobs).where(and(eq(playerJobs.userId, user.id), eq(playerJobs.venue, job.venue)));
       const before = row?.shifts ?? 0;
       const rung = rungFor(before);
-      const pay = shiftPay(job, rung);
+      const pay = graduatePay(shiftPay(job, rung), await isGraduate(tx, user.id));
       const view0 = jobView(job, before, done);
       const posting = await postCoins(tx, user.id, pay, "shift_pay", `shift:${day}:${randomUUID()}`);
       await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${view0.xp}` }).where(eq(profiles.userId, user.id));
