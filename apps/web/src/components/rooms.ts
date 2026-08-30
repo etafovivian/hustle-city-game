@@ -225,18 +225,31 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
     ],
   },
-  // Lagoon City University's lecture hall (the classroom picture until the campus art comes): a lecturer at the
-  // board, students at the desks, and a seat for you.
+  // Lagoon City University's lecture theatre: the lecturer behind the desk under the screens, students on the
+  // tiered benches either side of the aisle, and a seat for you on the left bank.
   "lecture-hall": {
-    walkway: [],
+    walkway: [[0.22, 0.72], [0.34, 0.66], [0.46, 0.6], [0.52, 0.56]],
     walkers: 0,
     stations: [
-      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "woman-tee_blue" },
-      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "man-hoodie_black" },
-      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "woman-ankara_green" },
+      { action: "stand_idle", at: [0.74, 0.47], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.16, 0.6], dir: "se", variant: "woman-tee_blue" },
+      { action: "sit_talk", at: [0.42, 0.57], dir: "se", variant: "man-hoodie_black" },
+      { action: "sit_talk", at: [0.48, 0.8], dir: "se", variant: "woman-ankara_green" },
+      { action: "sit_talk", at: [0.7, 0.68], dir: "sw", variant: "man-jersey_red" },
     ],
-    spots: { door: { at: [0.3, 0.8], dir: "se" }, sit: { at: [0.42, 0.62], dir: "se" }, stand: { at: [0.36, 0.72], dir: "se" } },
+    spots: { door: { at: [0.22, 0.72], dir: "se" }, sit: { at: [0.27, 0.56], dir: "se" }, stand: { at: [0.46, 0.6], dir: "se" } },
+  },
+  // Balogun market: a narrow aisle between fabric, shoe and household stalls, traders at their stalls and
+  // shoppers squeezing through.
+  "market-aisle": {
+    walkway: [[0.5, 0.88], [0.48, 0.76], [0.5, 0.64], [0.52, 0.52]],
+    walkers: 2,
+    stations: [
+      { action: "stand_idle", at: [0.36, 0.64], dir: "se", variant: "woman_gele" },
+      { action: "stand_idle", at: [0.6, 0.56], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.44, 0.5], dir: "se", variant: "woman-buba_wrapper" },
+    ],
+    spots: { door: { at: [0.5, 0.88], dir: "se" }, stand: { at: [0.47, 0.72], dir: "sw" } },
   },
   "hotel-lobby": {
     walkway: [[0.25, 0.72], [0.35, 0.8], [0.5, 0.86], [0.62, 0.8], [0.66, 0.73]],

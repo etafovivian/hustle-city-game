@@ -17,17 +17,17 @@ const V = (name: string, w: number, mirror = false): View => {
 };
 /**
  * Each vehicle's views by heading. Danfos, BRT buses, okadas and kekes have front and back art, so they can go
- * any way (round the roundabout too); cars only have front views, so they only drive down the screen.
+ * any way (round the roundabout too); cars have front and back views too (the back views came later, batch 51).
  */
 const KINDS: Record<string, Partial<Record<WalkDir, View>>> = {
   danfo: { se: V("danfo-se", 104), sw: V("danfo-se", 104, true), nw: V("danfo-nw", 104), ne: V("danfo-nw", 104, true) },
   okada: { se: V("okada-se", 49), sw: V("okada-sw", 50), ne: V("okada-ne", 50), nw: V("okada-ne", 50, true) },
   keke: { se: V("keke-se", 57), sw: V("keke-sw", 57), ne: V("keke-ne", 58), nw: V("keke-ne", 58, true) },
   brt: { sw: V("brt-sw", 176), se: V("brt-sw", 176, true), ne: V("brt-ne", 176), nw: V("brt-ne", 176, true) },
-  taxi: { sw: V("car-taxi", 98), se: V("car-taxi", 98, true) },
-  saloon: { sw: V("car-saloon", 100), se: V("car-saloon", 100, true) },
-  suvBlack: { sw: V("car-suv-black", 94), se: V("car-suv-black", 94, true) },
-  suvWhite: { sw: V("car-suv-white", 96), se: V("car-suv-white", 96, true) },
+  taxi: { sw: V("car-taxi", 98), se: V("car-taxi", 98, true), ne: V("car-taxi-ne", 98), nw: V("car-taxi-ne", 98, true) },
+  saloon: { sw: V("car-saloon", 100), se: V("car-saloon", 100, true), ne: V("car-saloon-ne", 100), nw: V("car-saloon-ne", 100, true) },
+  suvBlack: { sw: V("car-suv-black", 94), se: V("car-suv-black", 94, true), ne: V("car-suv-black-ne", 94), nw: V("car-suv-black-ne", 94, true) },
+  suvWhite: { sw: V("car-suv-white", 96), se: V("car-suv-white", 96, true), ne: V("car-suv-white-ne", 96), nw: V("car-suv-white-ne", 96, true) },
 };
 /** A vehicle's art for a heading (the player's ride uses the same views as traffic). */
 export function vehicleView(kind: string, dir: WalkDir): View {

@@ -337,7 +337,7 @@ export const VENUES: readonly Venue[] = [
     area: "Marina Wharf",
     icon: "🛍️",
     art: "/art/buildings/market-hall.webp",
-    interior: "/art/interiors/provision-shop.webp",
+    interior: "/art/interiors/market-aisle.webp",
     blurb: "Lagos's biggest market: fabric, phones, provisions, everything. Haggle hard, buy wholesale, sell it in your shop.",
     regulars: ["Iya Oloja the market queen", "Chinedu the phone dealer"],
     activities: [
@@ -365,7 +365,7 @@ export const VENUES: readonly Venue[] = [
     name: "Lagoon City University",
     area: "Tech Mile",
     icon: "🏛️",
-    art: "/art/buildings/colonial-block.webp",
+    art: "/art/buildings/university.webp",
     interior: "/art/interiors/lecture-hall.webp",
     blurb: "Big campus, bigger dreams. Enrol in a degree, go to lectures, write your exams and graduate in front of the whole family.",
     regulars: ["Prof. Adebayo-Okafor", "Course rep Tolu"],

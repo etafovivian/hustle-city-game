@@ -542,6 +542,7 @@ const BIG: Record<string, number> = {
   hospital: 1.3,
   "high-court": 1.2,
   library: 1.15,
+  university: 1.3,
   // Small things
   atm: 0.75,
   "kiosk-container": 0.7,
@@ -689,7 +690,7 @@ const VENUE_ART: Record<string, string> = {
   high_court: "high-court",
   balogun_market: "market-hall",
   city_library: "library",
-  lagoon_city_university: "colonial-block",
+  lagoon_city_university: "university",
   city_fm: "radio-station",
   general_hospital: "hospital",
   lampnet_academy: "school",
@@ -1178,7 +1179,7 @@ export const ART_ASPECT: Record<string, number> = {
   hospital: 0.89, hotel: 1, "laptop-shop": 0.89, library: 0.92, mall: 0.89, "market-hall": 0.8, mechanic: 0.86, "mixed-use-block": 0.91, mosque: 1.24,
   "motor-park": 0.72, "office-tower": 1.23, "phone-shop": 0.96, "police-station": 0.9, "polytechnic-gate": 0.84, "radio-station": 1.33,
   "residential-block": 0.88, "residential-tower": 1.06, "restaurant-terrace": 0.88, salon: 1.11, school: 0.79, "shop-house": 0.99, "skyline-lounge": 0.83,
-  snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82,
+  snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82, university: 0.87, "campus-quad": 0.86, "market-stalls": 0.74,
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
 };
 export type Pt = [number, number];
