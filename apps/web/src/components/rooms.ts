@@ -186,22 +186,23 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.52, 0.62], dir: "sw" }, dance: { at: [0.36, 0.66], dir: "se" }, sit: { at: [0.62, 0.62], dir: "sw" }, stand: { at: [0.4, 0.58], dir: "se" } },
   },
   mosque: {
-    // Congregational prayer: the imam on the mat in front of the mihrab, the rows behind him (men, then women),
-    // all facing the mihrab (nw) and moving through the rak'ah together.
-    walkway: [[0.3, 0.7], [0.45, 0.78], [0.6, 0.82], [0.72, 0.72], [0.6, 0.62]],
+    // Congregational prayer, all facing the mihrab (nw) and moving through the rak'ah together: the imam alone in
+    // front, a row's depth of open floor, the men's row, another gap, and the women's row at the back.
+    walkway: [[0.45, 0.88], [0.485, 0.83], [0.615, 0.765], [0.745, 0.7], [0.74, 0.62]],
     walkers: 0,
     stations: [
-      { action: "pray_salah", at: [0.37, 0.58], dir: "nw", variant: "man-agbada_white", phase: 0 },
-      { action: "pray_salah", at: [0.395, 0.673], dir: "nw", variant: "man_kaftan", phase: 0 },
-      { action: "pray_salah", at: [0.525, 0.607], dir: "nw", variant: "man-tee_blue", phase: 0 },
-      { action: "pray_salah", at: [0.485, 0.74], dir: "nw", variant: "woman-buba_wrapper", phase: 0 },
-      { action: "pray_salah", at: [0.615, 0.673], dir: "nw", variant: "woman-kaftan_gold", phase: 0 },
+      { action: "pray_salah", at: [0.36, 0.585], dir: "nw", variant: "man-agbada_white", phase: 0 },
+      { action: "pray_salah", at: [0.465, 0.738], dir: "nw", variant: "man_kaftan", phase: 0 },
+      { action: "pray_salah", at: [0.595, 0.672], dir: "nw", variant: "man-tee_blue", phase: 0 },
+      { action: "pray_salah", at: [0.635, 0.858], dir: "nw", variant: "woman-buba_wrapper", phase: 0 },
+      { action: "pray_salah", at: [0.765, 0.792], dir: "nw", variant: "woman-kaftan_gold", phase: 0 },
     ],
     spots: {
-      door: { at: [0.6, 0.82], dir: "se" },
-      pray: { at: [0.655, 0.54], dir: "nw", pose: "pray_salah" },
-      sit: { at: [0.655, 0.54], dir: "nw", pose: "pray_salah" },
-      stand: { at: [0.72, 0.72], dir: "sw" },
+      door: { at: [0.45, 0.88], dir: "se" },
+      // in the men's row, next to the two already there
+      pray: { at: [0.725, 0.606], dir: "nw", pose: "pray_salah" },
+      sit: { at: [0.725, 0.606], dir: "nw", pose: "pray_salah" },
+      stand: { at: [0.28, 0.72], dir: "se" },
     },
   },
   "car-showroom": {

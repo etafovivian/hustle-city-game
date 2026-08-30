@@ -896,6 +896,10 @@ def apply_pose(arm, q, sway=0.0):
     turn(arm, "spine_02", "X", q["sp2"])
     turn(arm, "spine_01", "X", q["sp1"])
     turn(arm, "spine_02", "Y", q["side"] + sway)
+    # LEGS_TOGETHER=1 (the women's salah sheets): thighs turned in so the knees and feet stay together
+    legs_in = float(os.environ.get("LEGS_TOGETHER_DEG", "6.5")) if os.environ.get("LEGS_TOGETHER") else 0.0
+    for s, sg in (("l", 1), ("r", -1)):
+        turn(arm, f"thigh_{s}", "Y", sg * legs_in)
     for s in "lr":
         turn(arm, f"thigh_{s}", "X", -q["hip"])
         turn(arm, f"calf_{s}", "X", q["knee"])
