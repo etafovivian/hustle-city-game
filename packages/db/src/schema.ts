@@ -896,3 +896,29 @@ export const uniLectures = pgTable(
   },
   (t) => [index("uni_lectures_user_day").on(t.userId, t.day)],
 );
+
+/** "Bring your crew": who invited whom (one inviter per player); rewardedAt once the friend really played. */
+export const referrals = pgTable("referrals", {
+  inviteeId: uuid("invitee_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  inviterId: uuid("inviter_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+  rewardedAt: timestamp("rewarded_at", { withTimezone: true }),
+}, (t) => [index("referrals_inviter").on(t.inviterId)]);
+
+/** "I'm coming" to a play night (event key + its Lagos date). */
+export const playNightRsvps = pgTable(
+  "play_night_rsvps",
+  {
+    event: text("event").notNull(),
+    day: text("day").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.event, t.day, t.userId] })],
+);

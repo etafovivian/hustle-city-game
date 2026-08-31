@@ -32,7 +32,7 @@ interface Seen {
 interface Ping {
   id: string;
   from: string;
-  kind: "wave" | "drink" | "join" | "invite" | "challenge";
+  kind: "wave" | "drink" | "join" | "invite" | "challenge" | "note";
   text?: string;
   place: string | null;
   at: number;

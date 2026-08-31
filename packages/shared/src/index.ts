@@ -30,3 +30,4 @@ export * from "./pool.js";
 export * from "./chess.js";
 export * from "./tables.js";
 export * from "./university.js";
+export * from "./crew.js";

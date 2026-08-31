@@ -10,6 +10,7 @@ import {
   checkShopName,
   type AvatarConfig,
   type Me,
+  CREW,
 } from "@hc/shared";
 import {
   AlertCircle,
@@ -30,6 +31,7 @@ import { dreamIcon } from "./dreamIcons.js";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { Avatar, AvatarPicker } from "./Avatar.js";
+import { crewInvite } from "./Crew.js";
 import type { AvatarAction } from "./Avatar3D.js";
 
 // Three.js loads only when onboarding is shown.
@@ -169,6 +171,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
         dream,
         shopName: effectiveShop,
         confirmAdult: adult,
+        ...(crewInvite() ? { crew: crewInvite() } : {}),
       });
       onSignedIn(me);
     } catch (e) {
@@ -248,6 +251,11 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
       </div>
 
       <div className="onboard-body">
+        {crewInvite() && step === "Look" && (
+          <p className="crew-invited small">
+            🎁 <b>@{crewInvite()}</b> invited you. You start with +{CREW.welcome.toLocaleString()} extra coins and you'll be in each other's contacts.
+          </p>
+        )}
         {step === "Look" && (
           <>
             <label className="field">

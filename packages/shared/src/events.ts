@@ -16,6 +16,8 @@ export interface CityEvent {
   hours: readonly [number, number];
   /** Extra need lift for activities during the event. */
   gives: readonly Vibe[];
+  /** A play night: players meet at a set time; table-game wins there pay a prize, and people say "I'm coming". */
+  playNight?: boolean;
 }
 
 export const EVENTS: readonly CityEvent[] = [
@@ -25,6 +27,8 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "match_night", name: "Match night", icon: "⚽", blurb: "The big game on the big screen. Every goal shakes the street.", venues: ["viewing_centre", "city_stadium", "oga_snooker"], days: [2, 3, 6], hours: [18, 23], gives: ["fun", "social"] },
   { key: "friday_groove", name: "Friday Groove", icon: "🪩", blurb: "The DJ's best set of the week. Dress sharp.", venues: ["skyline_lounge"], days: [5], hours: [22, 4], gives: ["fun", "style"] },
   { key: "sunset_cruise", name: "Sunday sunset cruise", icon: "🌅", blurb: "Cocktails and Afrobeats on the lagoon as the sun goes down.", venues: ["lagoon_boat_cruise"], days: [0], hours: [16, 20], gives: ["fun", "rest"] },
+  { key: "games_night", name: "Games Night", icon: "🎲", blurb: "Everybody at Oga's: chess, Ayo and snooker against real people. Win a game here on the night for a prize.", venues: ["oga_snooker"], days: [3], hours: [20, 22], gives: ["fun", "social"], playNight: true },
+  { key: "buka_night", name: "Buka Night", icon: "🍲", blurb: "Saturday night at Mama Nkechi's: food, gist and Ayo with whoever turns up. Win at the Ayo board for a prize.", venues: ["mama_nkechi_buka"], days: [6], hours: [20, 22], gives: ["food", "social"], playNight: true },
   { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
@@ -63,4 +67,26 @@ export function upcoming(at: Date): { event: CityEvent; start: Date; on: boolean
     return { event: e, start: new Date(at.getTime() + 8 * 86_400_000), on: false };
   });
   return out.sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
+/** Play nights: a prize for each table game you win there (a few a night). */
+export const PLAY_NIGHT = { winCoins: 500, winsPerNight: 3 };
+export const PLAY_NIGHTS = EVENTS.filter((e) => e.playNight);
+/** Lagos date (YYYY-MM-DD) of the evening a play night starting at `start` belongs to. */
+export const lagosDate = (at: Date) => new Date(at.getTime() + 3_600_000).toISOString().slice(0, 10);
+export interface PlayNightView {
+  key: string;
+  name: string;
+  icon: string;
+  blurb: string;
+  venue: string;
+  /** When it starts (now, if on). */
+  start: string;
+  on: boolean;
+  /** Its Lagos date (what "I'm coming" is for). */
+  day: string;
+  coming: number;
+  you: boolean;
+  /** Some of the people coming (nicknames). */
+  names: string[];
 }

@@ -4,7 +4,7 @@
 // Live tables are kept in memory while you play.
 
 import { gameLedgerEntries, profiles } from "@hc/db";
-import { AYO_WIN, AYO_WINS_PER_DAY, ayoMoves, ayoPlay, ayoReplayVsComputer, ayoStart, CHESS_CPU_DEPTH, chessBest, chessLegal, chessPlay, chessResign, chessStart, dayKey, poolShoot, poolStart, type AyoState, type ChessMove, type ChessState, type PoolState, type TableGame } from "@hc/shared";
+import { AYO_WIN, AYO_WINS_PER_DAY, ayoMoves, ayoPlay, ayoReplayVsComputer, ayoStart, CHESS_CPU_DEPTH, chessBest, chessLegal, chessPlay, chessResign, chessStart, dayKey, poolShoot, poolStart, type AyoState, type ChessMove, type ChessState, type PoolState, type TableGame, PLAY_NIGHT } from "@hc/shared";
 import { createHash, randomUUID } from "node:crypto";
 import { and, count, eq, like, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -14,6 +14,7 @@ import { lockProfile } from "../lib/db.js";
 import { AppError, notFound } from "../lib/errors.js";
 import { requireUser } from "../plugins/auth.js";
 import { nicknameOf, onlineByNick, sendPing } from "./presence.js";
+import { playNightAt } from "./crew.js";
 
 type TableState = AyoState | PoolState | ChessState;
 interface Table {
@@ -80,6 +81,29 @@ export async function playRoutes(app: FastifyInstance) {
       const posting = await postCoins(tx, userId, AYO_WIN.coins, "game_reward", `${prefix}:${day}:${hash}`);
       if (posting.applied) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${AYO_WIN.xp}` }).where(eq(profiles.userId, userId));
       return { rewarded: posting.applied, message: posting.applied ? `You won! +${AYO_WIN.coins} coins, +${AYO_WIN.xp} XP` : "You already claimed that game." };
+    });
+  };
+
+  // Play nights: a table game won at the place while it's on pays the winner (a few a night, once per game).
+  const prized = new Set<string>();
+  const prize = async (t: Table) => {
+    const st = t.state as { over: boolean; winner: 0 | 1 | null };
+    if (!st.over || st.winner === null || !t.place || !t.players[1] || prized.has(t.id)) return;
+    const now = new Date();
+    const night = playNightAt(t.place, now);
+    if (!night) return;
+    prized.add(t.id);
+    const winner = t.players[st.winner]!;
+    const day = dayKey(now, tz);
+    await app.db.transaction(async (tx) => {
+      await lockProfile(tx, winner);
+      const [{ n }] = (await tx
+        .select({ n: count() })
+        .from(gameLedgerEntries)
+        .where(and(eq(gameLedgerEntries.userId, winner), like(gameLedgerEntries.reference, `playnight:${day}:%`)))) as [{ n: number }];
+      if (Number(n) >= PLAY_NIGHT.winsPerNight) return;
+      const posting = await postCoins(tx, winner, PLAY_NIGHT.winCoins, "game_reward", `playnight:${day}:${t.id}`);
+      if (posting.applied) sendPing(winner, { from: "Hustle City", kind: "note", place: t.place, text: `🏆 ${night.name} prize: +${PLAY_NIGHT.winCoins} coins for winning that ${LABEL[t.game]} game!` });
     });
   };
 
@@ -202,6 +226,7 @@ export async function playRoutes(app: FastifyInstance) {
     if (!ayoMoves(t.state as AyoState).includes(pit)) throw new AppError(400, "illegal", "You can't play that pit.");
     t.state = ayoPlay(t.state as AyoState, pit);
     t.updated = Date.now();
+    await prize(t);
     return view(t, user.id);
   });
 
@@ -212,6 +237,7 @@ export async function playRoutes(app: FastifyInstance) {
     if (!chessLegal(t.state as ChessState, m)) throw new AppError(400, "illegal", "That piece can't go there.");
     t.state = chessPlay(t.state as ChessState, m);
     t.updated = Date.now();
+    await prize(t);
     return view(t, user.id);
   });
 
@@ -224,6 +250,7 @@ export async function playRoutes(app: FastifyInstance) {
     t.last = { angle, power };
     t.state = poolShoot(t.state as PoolState, angle, power);
     t.updated = Date.now();
+    await prize(t);
     return view(t, user.id);
   });
 }

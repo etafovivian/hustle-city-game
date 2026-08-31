@@ -9,6 +9,7 @@ import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
 import { SoundToggle } from "./Ambience.js";
 import { HousePick } from "./HousePick.js";
+import { PlayNightBanner } from "./Crew.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
@@ -392,7 +393,7 @@ export function CityMap({
           if (r.unread > unreadRef.current) notify(`💬 New message${r.unread - unreadRef.current > 1 ? "s" : ""}: Phone → Chats`);
           unreadRef.current = r.unread;
           for (const p of r.pings)
-            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : p.kind === "invite" ? `🏠 @${p.from} invited you to their house. Tap them on the map, then Visit their home.` : p.kind === "challenge" ? `🎮 @${p.from} challenged you to ${p.text?.startsWith("snooker:") ? "snooker" : p.text?.startsWith("chess:") ? "chess" : "Ayo"}! Opening the game…` : p.kind === "join" && p.text?.startsWith("sat down") ? `🎲 @${p.from} ${p.text}` : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
+            notify(p.kind === "wave" ? `👋 @${p.from} waved at you` : p.kind === "drink" ? `🍻 @${p.from} bought you a drink! +Social +Fun` : p.kind === "invite" ? `🏠 @${p.from} invited you to their house. Tap them on the map, then Visit their home.` : p.kind === "challenge" ? `🎮 @${p.from} challenged you to ${p.text?.startsWith("snooker:") ? "snooker" : p.text?.startsWith("chess:") ? "chess" : "Ayo"}! Opening the game…` : p.kind === "join" && p.text?.startsWith("sat down") ? `🎲 @${p.from} ${p.text}` : p.kind === "note" ? (p.text ?? "") : `🎉 @${p.from}: ${p.text ?? "doing something"}. Join in for a together bonus!`);
           if (r.pings.some((p) => p.kind === "drink")) onVisited();
           // A challenge opens the game on the phone, unless you're at the same place: then it opens at the table here.
           const ch = r.pings.find((p) => p.kind === "challenge");
@@ -519,7 +520,7 @@ export function CityMap({
     const id = window.setInterval(() => setTickNow(new Date()), 60_000);
     return () => window.clearInterval(id);
   }, []);
-  const liveEvents = eventsOn(tickNow);
+  const liveEvents = (eventsOn(tickNow)).filter((e) => !e.playNight);
   const liveAt = (venueKey: string) => liveEvents.find((e) => e.venues.includes(venueKey));
   const dark = new Set(areasWithoutLight(tickNow));
   /** The area a point belongs to (nearest area centre). */
@@ -1320,6 +1321,7 @@ export function CityMap({
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
         {dark.size > 0 && ` · 🕯️ No light: ${[...dark].join(", ")}`}
       </p>
+      <PlayNightBanner onGo={(v) => setVenueOpen(v)} hereCount={(v) => others.filter((p) => p.place?.split("@")[0] === v).length + (isAt(v) ? 1 : 0)} />
       {liveEvents.length > 0 && (
         <div className="map-events">
           {liveEvents.slice(0, 2).map((e) => (

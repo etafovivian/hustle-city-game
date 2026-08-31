@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api.js";
 import { Avatar } from "./Avatar.js";
 import { DmThreadView } from "./Chat.js";
+import { CrewCard } from "./Crew.js";
 import { placeName } from "./Social.js";
 
 export function Contacts({ notify, onGo }: { notify: (m: string) => void; onGo: (c: ContactView) => void }) {
@@ -42,6 +43,7 @@ export function Contacts({ notify, onGo }: { notify: (m: string) => void; onGo: 
         <h2 style={{ fontSize: 20 }}>Contacts</h2>
         <p className="small muted">Add friends by their @name. See who's online and where, then message them or go and meet them.</p>
       </div>
+      <CrewCard notify={notify} />
       <form className="chat-compose" onSubmit={(e) => void add(e)}>
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="@name, e.g. Alexander_Abdulganiy" aria-label="Player's name" maxLength={31} />
         <button type="submit" className="btn sm go" disabled={!name.trim()}>

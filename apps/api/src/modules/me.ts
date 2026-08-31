@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.js";
+import { settleCrew } from "./crew.js";
 import { requireUser } from "../plugins/auth.js";
 
 export async function loadMe(db: Db, userId: string): Promise<Me> {
@@ -30,7 +31,11 @@ export async function loadMe(db: Db, userId: string): Promise<Me> {
 const profileBody = z.object({ nickname: z.string().optional(), avatar: z.unknown().optional() });
 
 export async function meRoutes(app: FastifyInstance) {
-  app.get("/api/me", async (request) => loadMe(app.db, requireUser(request).id));
+  app.get("/api/me", async (request) => {
+    const id = requireUser(request).id;
+    await settleCrew(app.db, id).catch((e) => request.log.warn(e, "crew reward"));
+    return loadMe(app.db, id);
+  });
 
   app.patch("/api/me/profile", async (request) => {
     const user = requireUser(request);

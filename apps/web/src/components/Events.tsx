@@ -2,12 +2,14 @@
 // a way to go there.
 import { VENUES_BY_KEY, upcoming } from "@hc/shared";
 import { CalendarDays } from "lucide-react";
+import { PlayNightCard, usePlayNights } from "./Crew.js";
 
 const when = (d: Date) =>
   new Intl.DateTimeFormat("en-NG", { weekday: "long", hour: "numeric", minute: "2-digit", timeZone: "Africa/Lagos" }).format(d);
 
 export function EventsApp({ onGo }: { onGo: (venueKey: string) => void }) {
-  const list = upcoming(new Date());
+  const list = upcoming(new Date()).filter((u) => !u.event.playNight);
+  const { nights, rsvp } = usePlayNights();
   return (
     <div className="stack account-form">
       <div className="stack" style={{ gap: 2 }}>
@@ -16,6 +18,9 @@ export function EventsApp({ onGo }: { onGo: (venueKey: string) => void }) {
         </h2>
         <p className="small muted">While an event is on, everything at its places gives +50% XP and an extra lift. Even better with friends.</p>
       </div>
+      {nights.map((n) => (
+        <PlayNightCard key={n.key} n={n} onRsvp={() => void rsvp(n.key)} onGo={() => onGo(n.venue)} />
+      ))}
       {list.map(({ event, start, on }) => (
         <div key={event.key} className={`quote-card ${on ? "event-on" : ""}`}>
           <strong>

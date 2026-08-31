@@ -8,6 +8,7 @@ import { AppError, badRequest, conflict, isUniqueViolation } from "../lib/errors
 import { endOtherSessions, endSession, requireRole, requireUser, startSession } from "../plugins/auth.js";
 import { createShop } from "./game/shop.js";
 import { loadMe } from "./me.js";
+import { joinCrew } from "./crew.js";
 
 const registerBody = z.object({
   email: z.email().max(254),
@@ -17,6 +18,8 @@ const registerBody = z.object({
   hustle: z.string().optional(),
   dream: z.string().optional(),
   shopName: z.string().max(60).optional(),
+  /** The nickname of the friend whose invite link brought them. */
+  crew: z.string().max(30).optional(),
   confirmAdult: z.literal(true, { error: "Hustle City is for adults aged 18 and over." }),
 });
 
@@ -63,6 +66,7 @@ export async function authRoutes(app: FastifyInstance) {
           await postCoins(tx, user!.id, app.config.STARTING_COINS, "signup_grant", "signup_grant");
         }
         await createShop(tx, user!.id, shopName, now, hustle.starter);
+        if (body.crew) await joinCrew(tx, user!.id, body.nickname, body.crew.replace(/^@/, ""));
         return user!.id;
       });
     } catch (err) {

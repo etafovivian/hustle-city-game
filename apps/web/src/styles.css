@@ -953,3 +953,13 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .uni-review li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--sheet); }
 .uni-review li.ok { border-left: 3px solid var(--ok); }
 .uni-review li.bad { border-left: 3px solid var(--danger); }
+
+/* Bring your crew and play nights. */
+.crew-card { border: 1.5px solid var(--accent); }
+.crew-link { display: block; padding: 8px 10px; border-radius: 10px; background: var(--sheet); font-size: 13px; overflow-wrap: anywhere; user-select: all; }
+.crew-invited { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--sheet-2); border: 1.5px solid var(--accent); }
+.play-night-pill { display: block; margin-top: 6px; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--accent); background: rgb(10 15 36 / 85%); color: var(--text); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: left; max-width: 100%; }
+.play-night-pill.on { background: var(--accent); color: var(--accent-ink); animation: pn-pulse 1.6s ease-in-out infinite; }
+@keyframes pn-pulse { 50% { box-shadow: 0 0 0 6px rgb(255 199 44 / 25%); } }
+@media (prefers-reduced-motion: reduce) { .play-night-pill.on { animation: none; } }
+.play-night .tag { margin-left: 6px; }
