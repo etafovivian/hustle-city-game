@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -10,6 +10,7 @@ import { CityOverview } from "./Overview.js";
 import { SoundToggle } from "./Ambience.js";
 import { HousePick } from "./HousePick.js";
 import { PlayNightBanner } from "./Crew.js";
+import { transitPlans, worthIt, type TransitPlan } from "./transit.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
@@ -260,7 +261,7 @@ export function CityMap({
     }, 500);
     return () => window.clearInterval(id);
   }, [travelling]);
-  const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string } | null>(null);
+  const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string; plans?: TransitPlan[]; walkable?: boolean } | null>(null);
   const [stopFor, setStopFor] = useState<{ rideId: string; done: () => void } | null>(null);
   /** A place to open on arrival (trips started from its card). */
   const arriveAt = useRef<string | null>(null);
@@ -270,18 +271,31 @@ export function CityMap({
   const [arrived, setArrived] = useState<string | null>(null);
   const goTo = (to: { x: number; y: number }, label: string, venue?: string) => {
     const route = walkRoute(meAt.current, to);
-    if (!route) return notify("You can't walk on water. Take the bridge to the Island.");
+    // Public transport that beats walking (or the only way, by boat).
+    const walkUnits = route ? Math.round(route.reduce((s, b, i, all) => s + Math.hypot(b.x - (i ? all[i - 1]!.x : meAt.current.x), b.y - (i ? all[i - 1]!.y : meAt.current.y)), 0)) : null;
+    const plans = transitPlans(meAt.current, to).filter((p) => worthIt(p, walkUnits));
+    if (!route && !plans.length) return notify("You can't walk on water. Take the bridge to the Island.");
     let units = 0;
     // Fares go by the distance along the roads (the way the ride will actually go).
-    (roadRoute(meAt.current, to) ?? route).reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
+    if (route) (roadRoute(meAt.current, to) ?? route).reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
     arriveAt.current = venue ?? null;
     setArrived(null);
     loadVehicles();
     // With your own car or bike you get the picker sooner (driving round the corner is fine too).
-    if (units < (vehicles.length ? OWN_PICK_FROM : RIDE_PICK_FROM)) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
-    else setRidePick({ ...to, units: Math.round(units), to: label, venue });
+    if (route && !plans.length && units < (vehicles.length ? OWN_PICK_FROM : RIDE_PICK_FROM)) setWalkTo({ ...to, seq: Date.now(), mode: "walk" });
+    else setRidePick({ ...to, units: Math.max(1, Math.round(units)), to: label, venue, plans, walkable: !!route });
   };
   goToRef.current = goTo;
+  /** Public transport: pay each ride on the way, then walk to the stop, ride, walk on. */
+  const takeTransit = async (plan: TransitPlan) => {
+    const pick = ridePick!;
+    let fare = 0;
+    for (const leg of plan.legs) if (leg.kind !== "walk") fare += (await api<RideStart>("POST", "/api/game/rides", { mode: "transit", transit: leg.kind, units: Math.min(leg.units, MAX_RIDE_UNITS) })).fare;
+    setRidePick(null);
+    onVisited();
+    notify(`${plan.title} to ${pick.to}: ${formatCoins(fare)} coins`);
+    setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode: "transit", legs: plan.legs.map((l) => ({ kind: l.kind, path: l.path })) });
+  };
   const ride = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
     const pick = ridePick!;
     if (mode === "own") {
@@ -944,7 +958,7 @@ export function CityMap({
         <svg className="map-layer traffic-layer" aria-hidden="true">
           {pz.view && !far && (
             <g transform={world}>
-              <StreetLife roads={ROADS} />
+              <StreetLife roads={ROADS} goSlow={isRushHour(light.hour)} />
             </g>
           )}
         </svg>
@@ -1321,6 +1335,7 @@ export function CityMap({
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
         {dark.size > 0 && ` · 🕯️ No light: ${[...dark].join(", ")}`}
       </p>
+      {isRushHour(light.hour) && <p className="go-slow-chip">🚗 Go-slow on the roads (rush hour). Okada, BRT and the train beat it.</p>}
       <PlayNightBanner onGo={(v) => setVenueOpen(v)} hereCount={(v) => others.filter((p) => p.place?.split("@")[0] === v).length + (isAt(v) ? 1 : 0)} />
       {liveEvents.length > 0 && (
         <div className="map-events">
@@ -1386,7 +1401,7 @@ export function CityMap({
           )}
           {housePick && <HousePick houses={houses} from={meAt.current} onPick={(h) => void goHouse(h)} onClose={() => setHousePick(false)} />}
           {ridePick && (
-            <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} vehicles={vehicles} />
+            <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} vehicles={vehicles} plans={ridePick.plans} walkable={ridePick.walkable} onTransit={takeTransit} />
           )}
           {stopFor && (
             <AreaBoys

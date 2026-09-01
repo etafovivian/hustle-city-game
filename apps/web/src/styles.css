@@ -963,3 +963,6 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 @keyframes pn-pulse { 50% { box-shadow: 0 0 0 6px rgb(255 199 44 / 25%); } }
 @media (prefers-reduced-motion: reduce) { .play-night-pill.on { animation: none; } }
 .play-night .tag { margin-left: 6px; }
+.ride-option.transit { border-width: 2px; }
+.transit-icon { display: grid; place-items: center; border-radius: 14px; font-size: 24px; min-height: 48px; }
+.go-slow-chip { display: inline-block; margin: 6px 0 0; padding: 4px 10px; border-radius: 999px; background: rgb(122 46 18 / 90%); color: #ffd2b8; font-size: 12px; font-weight: 800; }

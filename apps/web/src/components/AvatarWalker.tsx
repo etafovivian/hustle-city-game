@@ -1,6 +1,6 @@
 // The player's avatar on the map: tap the ground to walk there (like a street walk).
 // Animates on its own, so the big map doesn't re-render while you walk.
-import { RIDE_BY_MODE, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type VehicleKind } from "@hc/shared";
+import { RIDE_BY_MODE, TRANSIT, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type TransitKind, type VehicleKind } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { roadRoute, walkRoute } from "./cityLayout.js";
@@ -9,7 +9,17 @@ import { outfitVariant, walkDir, walkerSheet, walkerSize, type WalkDir, type Wal
 
 type Point = { x: number; y: number };
 /** Where to go, and how: on foot, or a paid ride (which the area boys may stop partway). */
-export type Trip = Point & { seq: number; mode?: RideMode | "own"; vehicle?: VehicleKind; rideId?: string; stop?: boolean };
+export type Trip = Point & {
+  seq: number;
+  mode?: RideMode | "own" | "transit";
+  vehicle?: VehicleKind;
+  rideId?: string;
+  stop?: boolean;
+  /** Public transport: walk to the stop, wait, ride the line, walk on (paths already planned). */
+  legs?: { kind: "walk" | TransitKind; path: Point[] }[];
+};
+/** A point on the way, with how fast to go to it, what you're riding, and a wait when you get there. */
+type Waypoint = Point & { speed: number; art: string; wait?: number };
 
 const SPEED = 300; // world units per second (walking)
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
@@ -76,31 +86,47 @@ export function AvatarWalker({
   if (posOut) posOut.current = pos;
   /** The vehicle art being ridden ("walk" on foot). */
   const [riding, setRiding] = useState<string>("walk");
+  /** Waiting at a stop for this kind of transport. */
+  const [waiting, setWaiting] = useState<TransitKind | null>(null);
+  /** Direction of travel in screen radians (the train lines up with its track). */
+  const [heading, setHeading] = useState(0);
   const face = useRef(avatarUri(avatar));
   face.current = avatarUri(avatar);
 
   useEffect(() => {
     if (!target) return;
-    // Rides keep to the roads; walkers to the pavements and zebras.
-    const route = target.mode && target.mode !== "walk" ? roadRoute(posRef.current, target) : walkRoute(posRef.current, target);
-    if (!route) {
-      onBlocked();
-      return;
+    let path: Waypoint[];
+    if (target.legs) {
+      // Transit: each leg at its own speed; a wait at the stop before each ride.
+      path = target.legs.flatMap((leg) => {
+        const ride = leg.kind !== "walk" ? TRANSIT[leg.kind] : null;
+        return leg.path.map((p, i) => ({ x: p.x, y: p.y, speed: ride?.speed ?? SPEED, art: ride ? leg.kind : "walk", wait: ride && i === 0 ? ride.wait : undefined }));
+      });
+    } else {
+      // Rides keep to the roads; walkers to the pavements and zebras.
+      const route = target.mode && target.mode !== "walk" ? roadRoute(posRef.current, target) : walkRoute(posRef.current, target);
+      if (!route) {
+        onBlocked();
+        return;
+      }
+      const mode = target.mode ?? "walk";
+      const own = mode === "own" ? VEHICLE_BY_KIND.get(target.vehicle ?? "bike") : undefined;
+      const speed = own?.speed ?? RIDE_BY_MODE.get(mode as RideMode)?.speed ?? SPEED;
+      const art = own?.art ?? RIDE_BY_MODE.get(mode as RideMode)?.vehicle ?? "walk";
+      path = route.map((p) => ({ ...p, speed, art }));
     }
-    const path = [...route];
-    const mode = target.mode ?? "walk";
-    const own = mode === "own" ? VEHICLE_BY_KIND.get(target.vehicle ?? "bike") : undefined;
-    const speed = own?.speed ?? RIDE_BY_MODE.get(mode as RideMode)?.speed ?? SPEED;
-    const art = own?.art ?? RIDE_BY_MODE.get(mode as RideMode)?.vehicle ?? "walk";
+    const art = path[0]?.art ?? "walk";
     let total = 0;
     for (let i = 0, prev = posRef.current; i < path.length; prev = path[i]!, i++) total += Math.hypot(path[i]!.x - prev.x, path[i]!.y - prev.y);
     let travelled = 0;
+    let waitUntil = 0;
     let stopPending = Boolean(target.stop && target.rideId && onStop);
     let raf = 0;
     let cancelled = false;
     let last = performance.now();
     setWalking(true);
     setRiding(art);
+    let shownArt = art;
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -115,13 +141,33 @@ export function AvatarWalker({
         return;
       }
       let p = posRef.current;
-      let budget = speed * dt;
+      // Waiting at a stop for the next bus, train or boat.
+      if (now < waitUntil) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      setWaiting(null);
+      let budget = (path[0]?.speed ?? SPEED) * dt;
       travelled += budget;
       while (budget > 0 && path.length) {
         const next = path[0]!;
+        if (next.art !== shownArt) {
+          shownArt = next.art;
+          setRiding(next.art);
+        }
         const dx = next.x - p.x;
         const dy = next.y - p.y;
         const dist = Math.hypot(dx, dy);
+        if (next.wait && dist <= budget) {
+          // At the stop: board after the wait.
+          p = { x: next.x, y: next.y };
+          path[0] = { ...next, wait: undefined };
+          waitUntil = now + next.wait * 1000;
+          setWaiting(next.art as TransitKind);
+          setRiding("walk");
+          shownArt = "walk";
+          break;
+        }
         if (dist <= budget) {
           p = next;
           path.shift();
@@ -130,6 +176,7 @@ export function AvatarWalker({
           p = { x: p.x + (dx / dist) * budget, y: p.y + (dy / dist) * budget };
           budget = 0;
           setFacing(walkDir(dx, dy));
+          setHeading(Math.atan2(dy, dx));
         }
       }
       posRef.current = p;
@@ -137,6 +184,7 @@ export function AvatarWalker({
       if (path.length) raf = requestAnimationFrame(step);
       else {
         setWalking(false);
+        setWaiting(null);
         setRiding("walk");
         savePos(p);
         onArrive?.(target);
@@ -165,9 +213,24 @@ export function AvatarWalker({
       <g transform={`translate(${pos.x} ${pos.y})`}>
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
-        {walking && riding !== "walk" ? (
+        {walking && riding === "rail" ? (
+          // The Coast Line train (a drawn stand-in until the Stitch art): two carriages along the track.
+          <g transform={`rotate(${(heading * 180) / Math.PI})`}>
+            {[-62, 2].map((x) => (
+              <g key={x}>
+                <rect x={x} y={-17} width={60} height={30} rx={9} fill="#f4f6fb" stroke="#0a0f24" strokeWidth={3} />
+                <rect x={x + 6} y={-11} width={48} height={9} rx={3} fill="#5b8def" />
+                <rect x={x} y={5} width={60} height={5} fill="#1e5bd8" />
+              </g>
+            ))}
+          </g>
+        ) : walking && riding === "ferry" ? (
+          <g transform={Math.cos(heading) < 0 ? "scale(-1 1)" : undefined}>
+            <image href="/art/props/tugboat.webp" x={-60} y={-70} width={120} height={80} />
+          </g>
+        ) : walking && riding !== "walk" ? (
           (() => {
-            const v = vehicleView(riding, facing);
+            const v = vehicleView(riding === "coach" ? "brt" : riding, facing);
             const w = v.w * 1.25;
             const h = v.h * 1.25;
             return (
@@ -184,6 +247,14 @@ export function AvatarWalker({
             )}
           </image>
         </svg>
+        )}
+        {waiting && (
+          <g transform={`translate(0 ${-WALK.h + WALK.ground - 40}) scale(${plateScale * 0.8})`}>
+            <rect x={-80} y={-26} width={160} height={24} rx={12} fill="rgb(10 15 36 / 85%)" />
+            <text y={-9} textAnchor="middle" fontSize="13" fontWeight="800" fill="#fff">
+              {TRANSIT[waiting].icon} Waiting for the {TRANSIT[waiting].label}…
+            </text>
+          </g>
         )}
         {/* Name plate with the player's face, kept readable at any zoom. */}
         <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>

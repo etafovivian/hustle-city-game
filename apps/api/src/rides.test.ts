@@ -1,4 +1,5 @@
 // Rides: fares charged at the start, area-boys stops decided by the server and settled once.
+import { transitFare } from "@hc/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { dice } from "./modules/game/rides.js";
 import { prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
@@ -48,5 +49,15 @@ describe("rides", () => {
     dice.roll = () => 0;
     const theirs = (await other.call("POST", "/api/game/rides", { mode: "okada", units: 1000 })).json();
     expect((await p.call("POST", `/api/game/rides/${theirs.rideId}/stop`, { choice: "pay" })).statusCode).toBe(404);
+  });
+
+  it("charges public transport by distance, never stops it, and holds the coach until Ogun opens", async () => {
+    const p = await registerPlayer(app);
+    const before = (await p.call("GET", "/api/me")).json().coins;
+    const r = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "ferry", units: 3000 })).json();
+    expect(r).toMatchObject({ fare: transitFare("ferry", 3000), stop: false });
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before - r.fare);
+    expect((await p.call("POST", "/api/game/rides", { mode: "transit", transit: "coach", units: 3000 })).statusCode).toBe(409);
+    expect((await p.call("POST", "/api/game/rides", { mode: "transit", transit: "rocket", units: 3000 })).statusCode).toBe(400);
   });
 });

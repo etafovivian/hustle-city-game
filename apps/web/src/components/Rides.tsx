@@ -3,11 +3,13 @@
 import {
   AREA_BOYS_OPTIONS,
   RIDE_MODES,
+  TRANSIT,
   isRushHour,
   rideFare,
   rideSeconds,
   VEHICLES,
   fuelCost,
+  fuelPriceOn,
   type RideMode,
   type VehicleKind,
   type StopChoice,
@@ -16,6 +18,7 @@ import {
 import { Coins, Footprints, ShieldAlert, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
+import type { TransitPlan } from "./transit.js";
 
 const ART: Record<RideMode, string | null> = {
   walk: null,
@@ -33,7 +36,15 @@ export function RidePicker({
   onPick,
   onClose,
   vehicles = [],
+  plans = [],
+  walkable = true,
+  onTransit,
 }: {
+  /** Public transport plans (walk, ride, walk) worth offering. */
+  plans?: TransitPlan[];
+  /** False when only a boat gets you there (no road or path). */
+  walkable?: boolean;
+  onTransit?: (plan: TransitPlan) => Promise<void>;
   /** Vehicles the player owns (drive yourself for fuel). */
   vehicles?: VehicleKind[];
   /** Trip length in map units along the route. */
@@ -80,8 +91,49 @@ export function RidePicker({
             To {to} · {km} km{rush && <span className="rush-tag">Rush hour: go-slow and surge</span>}
           </span>
         </div>
+        {!walkable && <p className="small notice">Only the water bus goes there.</p>}
         <ul className="ride-list">
-          {VEHICLES.filter((v) => vehicles.includes(v.kind)).map((v) => {
+          {plans.map((pl) => {
+            const key = `transit:${pl.kinds.join("+")}`;
+            const short = coins !== null && pl.fare > coins;
+            const walkMins = pl.legs.filter((l) => l.kind === "walk").reduce((s, l) => s + l.units, 0) / 300;
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  className="ride-option transit"
+                  style={{ borderColor: pl.color }}
+                  disabled={busy !== null || short || !onTransit}
+                  onClick={() => {
+                    setBusy(key);
+                    setError(null);
+                    onTransit!(pl).catch((e: Error) => {
+                      setError(e.message);
+                      setBusy(null);
+                    });
+                  }}
+                >
+                  <span className="ride-art transit-icon" aria-hidden="true" style={{ background: pl.color }}>
+                    {pl.kinds.map((k) => TRANSIT[k].icon).join("")}
+                  </span>
+                  <span className="ride-text">
+                    <strong>{pl.title}</strong>
+                    <span className="tiny muted">{short ? "Not enough coins" : `${pl.detail} · ${walkMins >= 1 ? `${Math.round(walkMins)}s walk` : "stop right here"}`}</span>
+                  </span>
+                  <span className="ride-meta">
+                    <span className="ride-fare">
+                      <Coins size={13} aria-hidden="true" /> {formatCoins(pl.fare)}
+                    </span>
+                    <span className="tiny muted">
+                      <Timer size={11} aria-hidden="true" /> {pl.seconds}s
+                    </span>
+                  </span>
+                  {busy === key && <span className="tiny">…</span>}
+                </button>
+              </li>
+            );
+          })}
+          {walkable && VEHICLES.filter((v) => vehicles.includes(v.kind)).map((v) => {
             const fuel = fuelCost(v.kind, units);
             return (
               <li key={v.kind}>
@@ -91,7 +143,7 @@ export function RidePicker({
                   </span>
                   <span className="ride-text">
                     <strong>Drive your {v.label.toLowerCase()}</strong>
-                    <span className="tiny muted">Yours: just fuel</span>
+                    <span className="tiny muted">{fuelPriceOn().scarcity ? "⛽ Fuel scarcity today: queues, price up" : "Yours: just fuel"}</span>
                   </span>
                   <span className="ride-meta">
                     <span className="ride-fare">
@@ -105,7 +157,7 @@ export function RidePicker({
               </li>
             );
           })}
-          {RIDE_MODES.map((m) => {
+          {walkable && RIDE_MODES.map((m) => {
             const fare = rideFare(m.mode, units, hour);
             const short = coins !== null && fare > coins;
             return (

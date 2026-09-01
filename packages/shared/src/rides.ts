@@ -54,6 +54,34 @@ export function rideSeconds(mode: RideMode, units: number, hour: number): number
   return Math.max(3, Math.round((units / m.speed) * slow));
 }
 
+// ---------------------------------------------------------------- public transport
+/** BRT, the Coast Line train, the water bus and the interstate coach: you walk to a stop, ride the line, walk on.
+ * Flat-ish fares by distance on the line, no area boys, and the BRT and train ignore the go-slow. */
+export type TransitKind = "brt" | "rail" | "ferry" | "coach";
+export interface TransitInfo {
+  kind: TransitKind;
+  label: string;
+  note: string;
+  icon: string;
+  base: number;
+  perKm: number;
+  /** Map units a second on the line. */
+  speed: number;
+  /** Seconds waiting at the stop for the next one. */
+  wait: number;
+}
+export const TRANSIT: Record<TransitKind, TransitInfo> = {
+  brt: { kind: "brt", label: "BRT bus", note: "Own lane and AC: no go-slow", icon: "🚌", base: 100, perKm: 10, speed: 520, wait: 4 },
+  rail: { kind: "rail", label: "Coast Line train", note: "Fastest way across the city", icon: "🚆", base: 150, perKm: 12, speed: 760, wait: 5 },
+  ferry: { kind: "ferry", label: "Water bus", note: "Lagoon breeze, zero traffic", icon: "⛴️", base: 300, perKm: 20, speed: 480, wait: 6 },
+  coach: { kind: "coach", label: "Interstate coach", note: "Out of Lagos", icon: "🚍", base: 300, perKm: 15, speed: 520, wait: 6 },
+};
+export const TRANSIT_KINDS = Object.keys(TRANSIT) as TransitKind[];
+export function transitFare(kind: TransitKind, units: number): number {
+  const t = TRANSIT[kind];
+  return Math.max(t.base, Math.round((t.base + (t.perKm * units) / UNITS_PER_KM) / 10) * 10);
+}
+
 // ---------------------------------------------------------------- the area boys
 export type StopChoice = "pay" | "talk" | "run" | "stand";
 

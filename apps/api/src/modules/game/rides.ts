@@ -2,7 +2,7 @@
 // stop it. The player picks how to handle the stop; the server rolls the outcome and settles it once.
 
 import { playerVehicles, profiles, rides } from "@hc/db";
-import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rideFare, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
+import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { postCoins, type PostingResult } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -39,6 +39,20 @@ export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, un
   const [ride] = await tx.insert(rides).values({ userId, mode, units, fare, stop }).returning({ id: rides.id });
   const posting = await postCoins(tx, userId, -fare, "ride", `ride:${ride!.id}`);
   return { rideId: ride!.id, fare, stop, balance: posting.balance };
+}
+
+/** Public transport: the fare for the distance on the line; never stopped by area boys. */
+export async function startTransit({ tx, userId }: ShopCtx, kind: TransitKind, units: number): Promise<RideStart> {
+  const info = TRANSIT[kind];
+  if (!info) throw new AppError(400, "bad_mode", "Pick a BRT, train or water bus.");
+  if (kind === "coach") throw new AppError(409, "coming_soon", "Coaches out of Lagos start soon. Ogun State is on its way.");
+  if (!Number.isInteger(units) || units < 1 || units > MAX_RIDE_UNITS) throw new AppError(400, "bad_distance", "That trip is off the map.");
+  const profile = await lockProfile(tx, userId);
+  const fare = transitFare(kind, units);
+  if (profile.coinBalance < fare) throw new AppError(422, "insufficient_coins", `The ${info.label} costs ${fare} coins.`);
+  const [ride] = await tx.insert(rides).values({ userId, mode: `transit:${kind}`, units, fare, stop: false }).returning({ id: rides.id });
+  const posting = await postCoins(tx, userId, -fare, "ride", `ride:${ride!.id}`);
+  return { rideId: ride!.id, fare, stop: false, balance: posting.balance };
 }
 
 export async function settleStop({ tx, userId }: ShopCtx, rideId: string, choice: StopChoice): Promise<StopResult> {

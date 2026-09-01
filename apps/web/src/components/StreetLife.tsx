@@ -114,7 +114,10 @@ function buildRoutes(roads: Segment[]): Route[] {
 }
 
 /** Vehicles: one animation loop moves them along their routes and turns their art to face the way they go. */
-function Traffic({ roads }: { roads: Segment[] }) {
+function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
+  // Rush hour: traffic crawls stop-start (read in the loop, so the loop never restarts).
+  const slowRef = useRef(goSlow);
+  slowRef.current = goSlow;
   const routes = useRef(buildRoutes(roads)).current;
   const vehicles = useRef(
     routes.flatMap((r, ri) => {
@@ -136,7 +139,8 @@ function Traffic({ roads }: { roads: Segment[] }) {
       last = now;
       for (const [i, v] of vehicles.entries()) {
         const r = routes[v.route]!;
-        v.at = (v.at + r.speed * dt) % v.len;
+        const crawl = slowRef.current ? 0.08 + 0.3 * Math.max(0, Math.sin(now / 1400 + i * 1.7)) : 1;
+        v.at = (v.at + r.speed * crawl * dt) % v.len;
         // Find the point at distance v.at along the route
         let d = v.at;
         let k = 0;
@@ -218,13 +222,13 @@ function usePrefersReducedMotion() {
   return reduce;
 }
 
-export function StreetLife({ roads }: { roads: Segment[] }) {
+export function StreetLife({ roads, goSlow = false }: { roads: Segment[]; goSlow?: boolean }) {
   const reduce = usePrefersReducedMotion();
   if (reduce) return null;
 
   return (
     <g aria-hidden="true" className="street-life">
-      <Traffic roads={roads} />
+      <Traffic roads={roads} goSlow={goSlow} />
     </g>
   );
 }

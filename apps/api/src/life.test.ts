@@ -1,6 +1,6 @@
 // Jobs, homes and vehicles.
 import postgres from "postgres";
-import { PLOTS_FOR_SALE, plotPriceOf } from "@hc/shared";
+import { PLOTS_FOR_SALE, fuelCost, plotPriceOf } from "@hc/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { dice } from "./modules/game/rides.js";
 import { TEST_DATABASE_URL, prepareDatabase, registerPlayer, resetDatabase, testServer, type Player } from "./test/harness.js";
@@ -91,6 +91,6 @@ describe("vehicles", () => {
     expect((await p.call("GET", "/api/game/vehicles")).json()).toEqual(["saloon"]);
     dice.roll = () => 0.99;
     const drive = (await p.call("POST", "/api/game/rides", { mode: "own", vehicle: "saloon", units: 3000 })).json();
-    expect(drive).toMatchObject({ fare: 27, stop: false });
+    expect(drive).toMatchObject({ fare: fuelCost("saloon", 3000), stop: false });
   });
 });

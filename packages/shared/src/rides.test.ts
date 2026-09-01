@@ -18,3 +18,16 @@ describe("rides", () => {
     expect(rideSeconds("okada", 6000, 8)).toBeLessThan(rideSeconds("cab", 6000, 8));
   });
 });
+
+describe("fuel price", () => {
+  it("is the same all Lagos day, mostly normal, sometimes a scarcity day", async () => {
+    const { fuelPriceOn } = await import("./vehicles.js");
+    const a = fuelPriceOn(new Date("2026-10-13T08:00:00Z"));
+    expect(fuelPriceOn(new Date("2026-10-13T20:00:00Z"))).toEqual(a);
+    const days = Array.from({ length: 120 }, (_, i) => fuelPriceOn(new Date(Date.UTC(2026, 0, 1 + i, 12))));
+    const scarce = days.filter((d) => d.scarcity).length;
+    expect(scarce).toBeGreaterThan(5);
+    expect(scarce).toBeLessThan(40);
+    expect(days.every((d) => d.factor >= 0.95 && d.factor <= 1.5)).toBe(true);
+  });
+});

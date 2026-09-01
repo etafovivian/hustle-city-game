@@ -27,4 +27,17 @@ export const VEHICLES: readonly VehicleInfo[] = [
 ];
 export const VEHICLE_BY_KIND: ReadonlyMap<VehicleKind, VehicleInfo> = new Map(VEHICLES.map((v) => [v.kind, v]));
 
-export const fuelCost = (kind: VehicleKind, units: number) => Math.max(5, Math.round((VEHICLE_BY_KIND.get(kind)!.fuelPerKm * units) / 1000));
+/**
+ * Fuel price of the (Lagos) day: most days normal give or take a little, and about one day in six a scarcity day
+ * (queues at the filling stations, price up by half). Same answer on the server and the phone.
+ */
+export function fuelPriceOn(at: Date = new Date()): { factor: number; scarcity: boolean } {
+  const day = new Date(at.getTime() + 3_600_000).toISOString().slice(0, 10);
+  let h = 2166136261;
+  for (const ch of day) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const r = ((h >>> 0) % 1000) / 1000;
+  if (r < 0.17) return { factor: 1.5, scarcity: true };
+  return { factor: Math.round((0.95 + (r - 0.17) * 0.18) * 100) / 100, scarcity: false };
+}
+export const fuelCost = (kind: VehicleKind, units: number, at: Date = new Date()) =>
+  Math.max(5, Math.round((VEHICLE_BY_KIND.get(kind)!.fuelPerKm * units * fuelPriceOn(at).factor) / 1000));

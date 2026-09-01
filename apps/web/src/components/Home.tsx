@@ -12,8 +12,7 @@ import {
   type AvatarConfig,
   type HomeView,
   type NeedsView,
-  type VehicleKind,
-} from "@hc/shared";
+  type VehicleKind, fuelPriceOn } from "@hc/shared";
 import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -265,7 +264,7 @@ export function Garage({ notify, onChanged, showroom = false }: { notify: (m: st
               <span className="stack" style={{ gap: 2 }}>
                 <strong>{v.label}</strong>
                 <span className="tiny muted">
-                  {v.note} · fuel {v.fuelPerKm} coins/km
+                  {v.note} · fuel {Math.round(v.fuelPerKm * fuelPriceOn().factor)} coins/km{fuelPriceOn().scarcity ? " today (scarcity)" : ""}
                 </span>
               </span>
               {mine ? (
