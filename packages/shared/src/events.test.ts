@@ -23,3 +23,16 @@ describe("events", () => {
     expect(danfo).toBeGreaterThan(island * 2);
   });
 });
+
+describe("seasons", () => {
+  it("Detty December runs only from mid-December into the new year, at night", async () => {
+    const { EVENT_BY_KEY, isEventOn, upcoming } = await import("./events.js");
+    const dd = EVENT_BY_KEY.get("detty_december")!;
+    expect(isEventOn(dd, new Date("2026-12-20T20:00:00Z"))).toBe(true); // 9pm Lagos
+    expect(isEventOn(dd, new Date("2027-01-01T22:00:00Z"))).toBe(true);
+    expect(isEventOn(dd, new Date("2026-12-20T12:00:00Z"))).toBe(false); // daytime
+    expect(isEventOn(dd, new Date("2026-10-13T20:00:00Z"))).toBe(false); // October
+    expect(upcoming(new Date("2026-10-13T12:00:00Z")).some((u) => u.event.key === "detty_december")).toBe(false);
+    expect(upcoming(new Date("2026-12-10T12:00:00Z")).some((u) => u.event.key === "detty_december")).toBe(true);
+  });
+});

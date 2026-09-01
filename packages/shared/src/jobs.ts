@@ -36,6 +36,7 @@ export const JOBS: readonly Job[] = [
   { venue: "high_court", titles: ["Messenger", "Court clerk", "Registrar", "Chief registrar"], task: "File the cause list and swear in witnesses", tier: 1.2 },
   { venue: "city_library", titles: ["Shelver", "Library assistant", "Librarian", "Head librarian"], task: "Shelve books and help students", tier: 1 },
   { venue: "city_fm", titles: ["Runner", "Producer", "OAP", "Station manager"], task: "Take calls and run the morning show", tier: 1.2 },
+  { venue: "sandbar_beach", titles: ["Beach cleaner", "Cabana attendant", "Lifeguard", "Beach manager"], task: "Rake the sand, serve the cabanas and watch the water", tier: 1.1 },
   { venue: "general_hospital", titles: ["Porter", "Nurse aide", "Nurse", "Matron"], task: "Push trolleys and check blood pressure", tier: 1.2 },
 ];
 export const JOB_BY_VENUE: ReadonlyMap<string, Job> = new Map(JOBS.map((j) => [j.venue, j]));

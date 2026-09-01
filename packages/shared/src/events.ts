@@ -16,6 +16,8 @@ export interface CityEvent {
   hours: readonly [number, number];
   /** Extra need lift for activities during the event. */
   gives: readonly Vibe[];
+  /** Only in season: Lagos month-day range [from, to] as "MM-DD" (wraps over New Year). */
+  season?: readonly [string, string];
   /** A play night: players meet at a set time; table-game wins there pay a prize, and people say "I'm coming". */
   playNight?: boolean;
 }
@@ -29,6 +31,8 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "sunset_cruise", name: "Sunday sunset cruise", icon: "🌅", blurb: "Cocktails and Afrobeats on the lagoon as the sun goes down.", venues: ["lagoon_boat_cruise"], days: [0], hours: [16, 20], gives: ["fun", "rest"] },
   { key: "games_night", name: "Games Night", icon: "🎲", blurb: "Everybody at Oga's: chess, Ayo and snooker against real people. Win a game here on the night for a prize.", venues: ["oga_snooker"], days: [3], hours: [20, 22], gives: ["fun", "social"], playNight: true },
   { key: "buka_night", name: "Buka Night", icon: "🍲", blurb: "Saturday night at Mama Nkechi's: food, gist and Ayo with whoever turns up. Win at the Ayo board for a prize.", venues: ["mama_nkechi_buka"], days: [6], hours: [20, 22], gives: ["food", "social"], playNight: true },
+  { key: "beach_rave", name: "Sunday Beach Rave", icon: "🏝️", blurb: "DJ on the sand, bonfire at sunset, everybody dancing barefoot. Take the water bus from Marina.", venues: ["sandbar_beach"], days: [0], hours: [16, 23], gives: ["fun", "social"] },
+  { key: "detty_december", name: "Detty December", icon: "🎆", blurb: "Everyone is back home for Christmas: beach raves every night, owambes everywhere, the Island is packed and prices are up.", venues: ["sandbar_beach", "skyline_lounge", "royal_event_centre", "lagoon_boat_cruise"], days: [0, 1, 2, 3, 4, 5, 6], hours: [18, 4], gives: ["fun", "social"], season: ["12-15", "01-02"] },
   { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
@@ -44,7 +48,16 @@ export function lagosClock(at: Date) {
 }
 
 /** Is the event on at this moment? (An evening that runs past midnight belongs to the day it started.) */
+/** Is a moment inside an event's season (Lagos date)? */
+function inSeason(e: CityEvent, at: Date) {
+  if (!e.season) return true;
+  const md = new Date(at.getTime() + 3_600_000).toISOString().slice(5, 10);
+  const [from, to] = e.season;
+  return from <= to ? md >= from && md <= to : md >= from || md <= to;
+}
+
 export function isEventOn(e: CityEvent, at: Date) {
+  if (!inSeason(e, at) && !inSeason(e, new Date(at.getTime() - 12 * 3_600_000))) return false;
   const { day, hour } = lagosClock(at);
   const [s, end] = e.hours;
   if (s < end) return e.days.includes(day) && hour >= s && hour < end;
@@ -57,7 +70,8 @@ export const eventAt = (venue: string, at: Date) => eventsOn(at).find((e) => e.v
 
 /** The next start of each event from `at` (for the calendar), soonest first. */
 export function upcoming(at: Date): { event: CityEvent; start: Date; on: boolean }[] {
-  const out = EVENTS.map((e) => {
+  // Seasonal events show only when they're on or start within the week.
+  const out = EVENTS.filter((e) => !e.season || [0, 1, 2, 3, 4, 5, 6, 7].some((d) => inSeason(e, new Date(at.getTime() + d * 86_400_000)))).map((e) => {
     if (isEventOn(e, at)) return { event: e, start: at, on: true };
     for (let h = 1; h <= 24 * 8; h++) {
       const t = new Date(Math.floor(at.getTime() / 3_600_000) * 3_600_000 + h * 3_600_000);

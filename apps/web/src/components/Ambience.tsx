@@ -5,7 +5,7 @@ import type { Weather } from "@hc/shared";
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-export type SoundScene = "street" | "club" | "quiet";
+export type SoundScene = "street" | "club" | "quiet" | "beach" | "beach-rave";
 const KEY = "hc_sound";
 
 /**
@@ -104,7 +104,33 @@ class Engine {
         src.start();
       });
 
-    if (scene === "club") {
+    // The beach: waves rolling in and out (and gulls by day); at the rave, the groove plays over the waves.
+    if (scene === "beach" || scene === "beach-rave") {
+      this.fade("city", 0);
+      this.fade("crickets", 0);
+      this.loopNoise("waves", true, "lowpass", 650, 0.22);
+      const waves = this.layers.get("waves")!.gain.gain;
+      this.every(4200, () => {
+        const t = this.ctx.currentTime;
+        waves.cancelScheduledValues(t);
+        waves.setValueAtTime(0.08, t);
+        waves.linearRampToValueAtTime(0.32, t + 1.6);
+        waves.linearRampToValueAtTime(0.1, t + 4);
+      });
+      if (!night && !wet)
+        this.every(5200, () => {
+          if (Math.random() < 0.6) return;
+          const t = this.ctx.currentTime;
+          for (let i = 0; i < 2; i++) {
+            const o = this.blip(1700, 0.22, 0.02, "triangle", t + i * 0.28);
+            o.frequency.setValueAtTime(1700, t + i * 0.28);
+            o.frequency.exponentialRampToValueAtTime(1100, t + i * 0.28 + 0.2);
+          }
+        });
+      if (scene === "beach") return;
+    } else this.fade("waves", 0);
+
+    if (scene === "club" || scene === "beach-rave") {
       this.fade("city", 0.02);
       this.fade("crickets", 0);
       // ~104 bpm groove: kick on the beat, shaker on eighths, log-drum bass and a chord stab.
