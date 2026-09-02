@@ -2,7 +2,7 @@
 // stop it. The player picks how to handle the stop; the server rolls the outcome and settles it once.
 
 import { playerVehicles, profiles, rides } from "@hc/db";
-import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
+import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rainSurge, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { postCoins, type PostingResult } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -33,7 +33,7 @@ export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, un
   if (!info || info.mode === "walk") throw new AppError(400, "bad_mode", "Pick a keke, danfo, okada or cab.");
   if (!Number.isInteger(units) || units < 1 || units > MAX_RIDE_UNITS) throw new AppError(400, "bad_distance", "That trip is off the map.");
   const profile = await lockProfile(tx, userId);
-  const fare = rideFare(mode, units, lagosHourOf(now));
+  const fare = rideFare(mode, units, lagosHourOf(now), rainSurge(now).fare);
   if (profile.coinBalance < fare) throw new AppError(422, "insufficient_coins", `The ${info.label.toLowerCase()} costs ${fare} coins. Trek, or take something cheaper.`);
   const stop = dice.roll() < info.stopChance;
   const [ride] = await tx.insert(rides).values({ userId, mode, units, fare, stop }).returning({ id: rides.id });

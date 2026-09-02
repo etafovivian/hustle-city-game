@@ -40,18 +40,20 @@ export const RIDE_PICK_FROM = 900;
 /** Lagos rush hours: 7–10 am and 4–8 pm. */
 export const isRushHour = (hour: number) => (hour >= 7 && hour < 10) || (hour >= 16 && hour < 20);
 
-export function rideFare(mode: RideMode, units: number, hour: number): number {
+export function rideFare(mode: RideMode, units: number, hour: number, rain = 1): number {
   const m = RIDE_BY_MODE.get(mode)!;
   if (!m.base && !m.perKm) return 0;
-  const raw = (m.base + (m.perKm * units) / UNITS_PER_KM) * (isRushHour(hour) ? m.rush : 1);
+  // Rain surge hits cabs, okadas and kekes; the danfo keeps its fare.
+  const surge = mode === "danfo" ? 1 : rain;
+  const raw = (m.base + (m.perKm * units) / UNITS_PER_KM) * (isRushHour(hour) ? m.rush : 1) * surge;
   return Math.max(m.base, Math.round(raw / 10) * 10);
 }
 
 /** Seconds the trip takes on the map (rush hour slows the danfo, keke and cab in go-slow). */
-export function rideSeconds(mode: RideMode, units: number, hour: number): number {
+export function rideSeconds(mode: RideMode, units: number, hour: number, rainSlow = 1): number {
   const m = RIDE_BY_MODE.get(mode)!;
   const slow = isRushHour(hour) && mode !== "okada" && mode !== "walk" ? 1.4 : 1;
-  return Math.max(3, Math.round((units / m.speed) * slow));
+  return Math.max(3, Math.round((units / m.speed) * slow * rainSlow));
 }
 
 // ---------------------------------------------------------------- public transport

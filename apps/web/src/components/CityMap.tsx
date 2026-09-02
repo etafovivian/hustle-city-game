@@ -1,9 +1,9 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, eventAt, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
 import { CityOverview } from "./Overview.js";
@@ -39,6 +39,7 @@ import {
   DRIVEWAYS,
   STREETS,
   FOR_SALE,
+  LAND,
   siteOf,
   BRANCHES,
   BRANCH_BY_KEY,
@@ -554,6 +555,37 @@ export function CityMap({
     const id = window.setInterval(() => setWeather(weatherAt(new Date())), 60_000);
     return () => window.clearInterval(id);
   }, []);
+  // Floods: water on the streets in front of the plots and places of flooded areas (drains after the rain).
+  const flooded = pinnedWeather === "storm" ? FLOOD_PRONE.map((f) => f.area) : floodedAreas(tickNow);
+  const floodKey = flooded.join(",");
+  const puddles = useMemo(() => {
+    if (!flooded.length) return [];
+    // Up to 18 patches per flooded area, spread over its plots and places.
+    const byArea = new Map<string, { x: number; y: number }[]>();
+    const add = (area: string, p: { x: number; y: number }) => byArea.set(area, [...(byArea.get(area) ?? []), p]);
+    for (const p of [...LAND, ...FOR_SALE]) if (flooded.includes(p.area)) add(p.area, { x: p.x, y: p.y });
+    for (const v of VENUE_SPOTS) {
+      const a = areaOf(v.x, v.y);
+      if (flooded.includes(a)) add(a, { x: v.x, y: v.y + 30 });
+    }
+    return [...byArea.values()].flatMap((list) => list.filter((_, i) => i % Math.max(1, Math.ceil(list.length / 18)) === 0).map((p) => kerbsideOf(p)));
+  }, [floodKey]);
+  const [umbrella, setUmbrella] = useState<boolean | null>(null);
+  useEffect(() => {
+    api<{ umbrella: boolean }>("GET", "/api/game/weather")
+      .then((w) => setUmbrella(w.umbrella))
+      .catch(() => undefined);
+  }, []);
+  const buyUmbrella = async () => {
+    try {
+      await api("POST", "/api/game/umbrella");
+      setUmbrella(true);
+      onVisited();
+      notify(`☂️ Umbrella bought (${formatCoins(UMBRELLA.price)} coins). The rain can't touch you now.`);
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  };
 
   // Everything that stands up on the buildings layer, with its foot point for depth order.
   const depthItems: DepthItem[] = [];
@@ -958,7 +990,19 @@ export function CityMap({
         <svg className="map-layer traffic-layer" aria-hidden="true">
           {pz.view && !far && (
             <g transform={world}>
-              <StreetLife roads={ROADS} goSlow={isRushHour(light.hour)} />
+              {puddles.length > 0 && (
+                <g className="flood-water" aria-hidden="true" pointerEvents="none">
+                  {puddles.map((p, i) => (
+                    <g key={i}>
+                      <ellipse cx={p.x} cy={p.y} rx={110 + (i % 3) * 18} ry={46 + (i % 2) * 10} fill="rgb(122 100 62 / 78%)" stroke="rgb(214 200 160 / 60%)" strokeWidth={4} />
+                      <ellipse cx={p.x - 20} cy={p.y - 6} rx={34} ry={9} fill="none" stroke="rgb(255 255 255 / 45%)" strokeWidth={3}>
+                        <animate attributeName="rx" values="20;46;20" dur={`${2.5 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
+                      </ellipse>
+                    </g>
+                  ))}
+                </g>
+              )}
+              <StreetLife roads={ROADS} goSlow={isRushHour(light.hour) || flooded.length > 0} />
             </g>
           )}
         </svg>
@@ -1066,8 +1110,17 @@ export function CityMap({
                   }}
                   posOut={meAt}
                   onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
-                  onArrive={() => {
+                  onArrive={(trip) => {
                     setTravelling(false);
+                    // Walked in the rain without an umbrella: soaked.
+                    if ((weather === "rain" || weather === "storm") && !umbrella && (!trip.mode || trip.mode === "walk" || trip.mode === "transit"))
+                      void api<{ soaked: boolean }>("POST", "/api/game/soaked")
+                        .then((r) => {
+                          if (!r.soaked) return;
+                          notify(`🌧️ You got soaked! −Style −Health. A hawker sells umbrellas for ${formatCoins(UMBRELLA.price)}.`);
+                          onVisited();
+                        })
+                        .catch(() => undefined);
                     if (arriveAt.current === "__home") setHomeOpen(true);
                     else if (arriveAt.current) {
                       setArrived(arriveAt.current);
@@ -1336,18 +1389,27 @@ export function CityMap({
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
         {dark.size > 0 && ` · 🕯️ No light: ${[...dark].join(", ")}`}
       </p>
-      {isRushHour(light.hour) && <p className="go-slow-chip">🚗 Go-slow on the roads (rush hour). Okada, BRT and the train beat it.</p>}
-      <PlayNightBanner onGo={(v) => setVenueOpen(v)} hereCount={(v) => others.filter((p) => p.place?.split("@")[0] === v).length + (isAt(v) ? 1 : 0)} />
-      {liveEvents.length > 0 && (
-        <div className="map-events">
-          {liveEvents.slice(0, 2).map((e) => (
-            <button key={e.key} type="button" className="map-event" onClick={() => setVenueOpen(e.venues[0]!)}>
-              {e.icon} {e.name} on now · {VENUES_BY_KEY.get(e.venues[0]!)?.name}
-            </button>
-          ))}
-        </div>
-      )}
-      <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>
+      <div className="map-events">
+        {(weather === "rain" || weather === "storm") && (
+          <p className="rain-chip">
+            {weather === "storm" ? "⛈️ Storm" : "🌧️ Rain"}: rides cost more, roads slow
+            {umbrella === false && (
+              <button type="button" className="btn sm" onClick={() => void buyUmbrella()}>
+                ☂️ Umbrella ({formatCoins(UMBRELLA.price)})
+              </button>
+            )}
+          </p>
+        )}
+        {flooded.length > 0 && <p className="flood-chip" title={`Flooding in ${flooded.join(", ")}`}>🌊 Flooding: {flooded.slice(0, 2).join(", ")}{flooded.length > 2 ? ` +${flooded.length - 2} more` : ""}</p>}
+        {isRushHour(light.hour) && <p className="go-slow-chip">🚗 Go-slow (rush hour): okada, BRT and train beat it</p>}
+        <PlayNightBanner onGo={(v) => setVenueOpen(v)} hereCount={(v) => others.filter((p) => p.place?.split("@")[0] === v).length + (isAt(v) ? 1 : 0)} />
+        {liveEvents.slice(0, 2).map((e) => (
+          <button key={e.key} type="button" className="map-event" onClick={() => setVenueOpen(e.venues[0]!)}>
+            {e.icon} {e.name} on now · {VENUES_BY_KEY.get(e.venues[0]!)?.name}
+          </button>
+        ))}
+      </div>
+      {weather !== "rain" && weather !== "storm" && !flooded.length && !isRushHour(light.hour) && <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>}
       {peek && (
         <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
           <button type="button" className="map-peek-close" onClick={() => setPeek(null)} aria-label="Close">

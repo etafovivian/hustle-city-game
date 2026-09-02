@@ -922,3 +922,16 @@ export const playNightRsvps = pgTable(
   },
   (t) => [primaryKey({ columns: [t.event, t.day, t.userId] })],
 );
+
+/** Small things a player carries (an umbrella…). */
+export const playerItems = pgTable(
+  "player_items",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    item: text("item").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.item] })],
+);

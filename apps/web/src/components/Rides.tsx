@@ -5,6 +5,7 @@ import {
   RIDE_MODES,
   TRANSIT,
   isRushHour,
+  rainSurge,
   rideFare,
   rideSeconds,
   VEHICLES,
@@ -66,6 +67,7 @@ export function RidePicker({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   const rush = isRushHour(hour);
+  const rain = rainSurge(new Date());
   const km = (units / 1000).toFixed(1);
 
   const pick = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
@@ -89,6 +91,7 @@ export function RidePicker({
           <h2>How are you going?</h2>
           <span className="small muted">
             To {to} · {km} km{rush && <span className="rush-tag">Rush hour: go-slow and surge</span>}
+            {rain.fare > 1 && <span className="rush-tag">Rain surge</span>}
           </span>
         </div>
         {!walkable && <p className="small notice">Only the water bus goes there.</p>}
@@ -158,7 +161,7 @@ export function RidePicker({
             );
           })}
           {walkable && RIDE_MODES.map((m) => {
-            const fare = rideFare(m.mode, units, hour);
+            const fare = rideFare(m.mode, units, hour, rain.fare);
             const short = coins !== null && fare > coins;
             return (
               <li key={m.mode}>
@@ -181,7 +184,7 @@ export function RidePicker({
                       )}
                     </span>
                     <span className="tiny muted">
-                      <Timer size={11} aria-hidden="true" /> {rideSeconds(m.mode, units, hour)}s
+                      <Timer size={11} aria-hidden="true" /> {rideSeconds(m.mode, units, hour, rain.slow)}s
                     </span>
                   </span>
                   {busy === m.mode && <span className="tiny">…</span>}

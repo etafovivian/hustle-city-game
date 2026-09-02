@@ -36,3 +36,18 @@ describe("seasons", () => {
     expect(upcoming(new Date("2026-12-10T12:00:00Z")).some((u) => u.event.key === "detty_december")).toBe(true);
   });
 });
+
+describe("floods and rain surge", () => {
+  it("storms flood every prone area, two rainy spells the lowest ones, and dry weather none", async () => {
+    const { floodedAreas, rainSurge, weatherAt, FLOOD_PRONE } = await import("./weather.js");
+    const hours = Array.from({ length: 24 * 200 }, (_, i) => new Date(Date.UTC(2026, 3, 1) + i * 3_600_000));
+    const storm = hours.find((h) => weatherAt(h) === "storm")!;
+    expect(floodedAreas(storm)).toEqual(FLOOD_PRONE.map((f) => f.area));
+    expect(rainSurge(storm)).toEqual({ fare: 1.5, slow: 1.4 });
+    const dry = hours.find((h) => [0, 1, 2].every((k) => weatherAt(new Date(h.getTime() - k * 7_200_000)) === "sunny"))!;
+    expect(floodedAreas(dry)).toEqual([]);
+    expect(rainSurge(dry).fare).toBe(1);
+    // Harmattan never floods.
+    expect(floodedAreas(new Date(Date.UTC(2027, 0, 10, 12)))).toEqual([]);
+  });
+});

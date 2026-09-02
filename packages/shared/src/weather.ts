@@ -30,3 +30,43 @@ export function weatherAt(at: Date): Weather {
   }
   return r < 0.12 ? "rain" : r < 0.35 ? "cloudy" : "sunny";
 }
+
+// ── Floods ──
+/** Low-lying areas that flood first (Lekki, Victoria Island, Apapa) and the next ones in a storm. */
+export const FLOOD_PRONE: readonly { area: string; depth: 1 | 2 }[] = [
+  { area: "Lekki Gardens", depth: 1 },
+  { area: "Island Heights", depth: 1 },
+  { area: "Apapa Port", depth: 1 },
+  { area: "Ikodu Town", depth: 1 },
+  { area: "Marina Wharf", depth: 2 },
+  { area: "Owambe Gardens", depth: 2 },
+];
+const BLOCK = 7_200_000;
+const wet = (w: Weather) => w === "rain" || w === "storm";
+
+/**
+ * Flooded areas now: a storm (now or in the last two hours) floods every prone area; two rainy spells in a row flood
+ * the lowest ones. Water takes about two hours to drain after the rain stops.
+ */
+export function floodedAreas(at: Date): string[] {
+  const now = weatherAt(at);
+  const before = weatherAt(new Date(at.getTime() - BLOCK));
+  const twoBefore = weatherAt(new Date(at.getTime() - 2 * BLOCK));
+  const storm = now === "storm" || before === "storm";
+  const soaked = (wet(now) && wet(before)) || (wet(before) && wet(twoBefore));
+  if (storm) return FLOOD_PRONE.map((f) => f.area);
+  if (soaked) return FLOOD_PRONE.filter((f) => f.depth === 1).map((f) => f.area);
+  return [];
+}
+
+/** Rain surge on road rides: cabs and okadas cost more in the rain, more in a storm, and everything is slower. */
+export function rainSurge(at: Date): { fare: number; slow: number } {
+  const w = weatherAt(at);
+  if (w === "storm") return { fare: 1.5, slow: 1.4 };
+  if (w === "rain") return { fare: 1.25, slow: 1.2 };
+  return { fare: 1, slow: 1 };
+}
+
+/** Umbrella from a roadside hawker: walking in the rain without one leaves you soaked. */
+export const UMBRELLA = { price: 800 };
+export const SOAKED = { style: -12, health: -4, cooldownMs: 60 * 60_000 };
