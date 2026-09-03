@@ -28,6 +28,7 @@ const AREA_OF_PREFIX: Record<string, string> = {
   mw: "Marina Wharf",
   ih: "Island Heights",
   lk: "Lekki Gardens",
+  ik: "Ikodu Town",
 };
 /** The main road's stretch through each area: fixed iso axis and value, and the range along it. */
 const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to: number }[] = [
@@ -50,6 +51,7 @@ export const AREA_WALKERS: Record<string, number> = {
   "Marina Wharf": 6,
   "Island Heights": 6,
   "Lekki Gardens": 8,
+  "Ikodu Town": 4,
 };
 
 const kerbOf = (s: { half: number; pav: number }) => s.half + s.pav / 2;

@@ -8,6 +8,7 @@
 // - A line's `path` is the polyline the vehicle follows, passing through each of its stops in order; `stopAt[i]` is
 //   the index in `path` of `stops[i]`. Lines run both ways.
 // - Positions are map units (the same space as cityLayout's iso()).
+import { TRANSIT_LINES_L, TRANSIT_STOPS_L } from "./cityLayout.js";
 
 export type TransitMode = "brt" | "rail" | "ferry" | "coach";
 
@@ -32,6 +33,8 @@ export interface TransitLine {
   stopAt: number[];
 }
 
-export const TRANSIT_STOPS: TransitStop[] = [];
-export const TRANSIT_LINES: TransitLine[] = [];
-export const TRANSIT_STOP_BY_ID = new Map<string, TransitStop>();
+// Laid out with the city (cityLayout.ts, "Public transport"): stations beside the Coast Line's own track, BRT stops on
+// the pavements of Roads A and B (and the Island road), water bus piers on the lagoon, the coach bay at Danfo Terminal.
+export const TRANSIT_STOPS: TransitStop[] = TRANSIT_STOPS_L;
+export const TRANSIT_LINES: TransitLine[] = TRANSIT_LINES_L;
+export const TRANSIT_STOP_BY_ID = new Map<string, TransitStop>(TRANSIT_STOPS.map((s) => [s.id, s]));

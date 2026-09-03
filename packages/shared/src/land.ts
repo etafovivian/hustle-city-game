@@ -15,6 +15,8 @@ export const LAND_RATE: Record<string, number> = {
   "Owambe Gardens": 70,
   "Apapa Port": 60,
   "Danfo Terminal": 45,
+  // Outer mainland, across the lagoon: the cheapest land in the city
+  "Ikodu Town": 35,
 };
 const ROAD_FACTOR: Record<LandRoad, number> = { arterial: 1.5, collector: 1.25, local: 1, alley: 0.8 };
 

@@ -1,6 +1,7 @@
 // New Lagos layout, following docs/city-plan.md: Mainland in the north, the lagoon across the middle,
 // Third Mainland Bridge down to the Island, the Atlantic in the south.
 // Roads run on the 2:1 isometric axes (slope ±0.5) so they line up with the building art.
+import type { TransitLine, TransitMode, TransitStop } from "./transitData.js";
 
 export const WORLD = { w: 13000, h: 10400 };
 /** Junction 101, the start of the game. */
@@ -96,11 +97,42 @@ export const BEACH_PATH = `M${TIP + 400} ${island(TIP + 400) + ISLAND_S - 70} L$
 export const SHORE_PATH = smooth(SHORE);
 
 const onIsland = (x: number, y: number) => x > TIP + 250 && y > island(x) + ISLAND_N + 140 && y < island(x) + ISLAND_S - 90;
+
+// ── Sandbar Bay ──
+// A small beach spit in the harbour mouth off Marina Wharf, on the Atlantic side: sand and palms, reachable only by the
+// water bus (its pier faces Marina). An ellipse in iso coordinates (long along Road A's axis), drawn smooth.
+const SANDBAR = { a: 1925, b: -4015, ra: 470, rb: 160 };
+const isoPt = (a: number, b: number) => ({ x: CX + a + b, y: CY + 0.5 * a - 0.5 * b });
+const sandbarRing = (grow: number): [number, number][] =>
+  Array.from({ length: 24 }, (_, i) => {
+    const t = (i / 24) * 2 * Math.PI;
+    const p = isoPt(SANDBAR.a + (SANDBAR.ra + grow) * Math.cos(t), SANDBAR.b + (SANDBAR.rb + grow) * Math.sin(t));
+    return [Math.round(p.x), Math.round(p.y)];
+  });
+const closedSmooth = (pts: [number, number][]) => {
+  const n = pts.length;
+  const at = (i: number) => pts[((i % n) + n) % n]!;
+  let d = `M${at(0)[0]} ${at(0)[1]}`;
+  for (let i = 0; i < n; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(0)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(0)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(0)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(0)} ${p2[0]} ${p2[1]}`;
+  }
+  return `${d}Z`;
+};
+/** Sandbar Bay's sand, and the pale wet rim drawn under it. */
+export const SANDBAR_PATH = closedSmooth(sandbarRing(0));
+export const SANDBAR_RIM_PATH = closedSmooth(sandbarRing(36));
+/** Where a person can stand on the sandbar (a little inside its edge). */
+const inSandbar = (x: number, y: number, inset = 30) => {
+  const a = (x - CX) / 2 + (y - CY) - SANDBAR.a;
+  const b = (x - CX) / 2 - (y - CY) - SANDBAR.b;
+  return (a / (SANDBAR.ra - inset)) ** 2 + (b / (SANDBAR.rb - inset)) ** 2 <= 1;
+};
 /** Dry land with room for a building (art is drawn up to ~210 units above its foot). */
-export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x, y);
+export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x, y) || inSandbar(x, y, 50);
 
 // ── Walking ──
-export type Landmass = "mainland" | "island" | "bridge";
+export type Landmass = "mainland" | "island" | "bridge" | "sandbar";
 const BRIDGES = ROADS.filter((r) => r.bridge);
 /** Where a person can stand: mainland, the Island, or the bridge deck. Null means water or off the map. */
 export function landmassAt(x: number, y: number): Landmass | null {
@@ -108,6 +140,7 @@ export function landmassAt(x: number, y: number): Landmass | null {
   if (BRIDGES.some((b) => x >= b.x0 && x <= b.x1 && Math.abs(y - yOn(b, x)) < HALF + 14)) return "bridge";
   if (y < shoreY(x) - 12) return "mainland";
   if (x > TIP + 120 && y > island(x) + ISLAND_N + 40 && y < island(x) + ISLAND_S - 10) return "island";
+  if (inSandbar(x, y)) return "sandbar";
   return null;
 }
 /** Bridge ends, just onto dry land on each side. */
@@ -135,6 +168,8 @@ export function walkRoute(from: { x: number; y: number }, to: { x: number; y: nu
   const end = landmassAt(to.x, to.y);
   if (!end) return null;
   const start = landmassAt(from.x, from.y) ?? "mainland";
+  // Sandbar Bay has no bridge: walk about on it, or take the water bus.
+  if (start === "sandbar" || end === "sandbar") return start === end ? [to] : null;
   // Around Junction 101, walk the pavements and cross at the zebras, like everyone else.
   if (start === "mainland" && end === "mainland") {
     const onFoot = footpathRoute(from, to);
@@ -470,6 +505,8 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "city_fm", district: "Tech Mile" },
   { key: "general_hospital", district: "Airport Ridge", scale: 1.2 },
   { key: "lagoon_city_university", district: "Tech Mile", scale: 1.3 },
+  // On Sandbar Bay, a short walk from its pier, facing the open sea (open sand either side for cabanas later)
+  { key: "sandbar_beach", a: 1880, b: -4065 },
 ];
 
 /**
@@ -626,7 +663,14 @@ export const DISTRICTS: District[] = [
     front: { axis: "a", at: 7600, base: ISLAND_B, from: 4900, to: 10300 },
   },
   { name: "Atlantic Beach", x: 9000, y: island(9000) + ISLAND_S - 160, phase: 4, buildings: [], landmark: true },
+  // Newer areas (appended, so nothing above moves). Ikodu Town: the outer mainland on the lagoon past Airport Ridge
+  // and the Lagoon Forest; bungalows, compounds and half-built houses on sandy streets, with a water bus jetty.
+  { name: "Ikodu Town", ...iso(3330, 2420), phase: 4, buildings: [] },
+  // Sandbar Bay: the beach spit off Marina Wharf (its name sits on the water just south of it).
+  { name: "Sandbar Bay", ...(({ x, y }) => ({ x, y: y + 20 }))(iso(1925, -4015)), phase: 4, buildings: [], landmark: true },
 ];
+/** Areas added after the first city: older buildings keep the area (and branch names) they had before these. */
+const NEWER_AREAS = new Set(["Ikodu Town", "Sandbar Bay"]);
 
 const onSite = (cx: number, cy: number, hh: number) => onLand(cx, cy + hh) && onLand(cx, cy - hh) && onLand(cx - 2 * hh, cy) && onLand(cx + 2 * hh, cy);
 
@@ -700,6 +744,8 @@ const VENUE_ART: Record<string, string> = {
   tailors_row: "tailor-shop",
   viewing_centre: "viewing-centre",
   mallam_suya: "suya-stand",
+  // Stand-in until the beach art (cabanas, beach bar shack) arrives
+  sandbar_beach: "restaurant-terrace",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
   if (v.a !== undefined && v.b !== undefined) {
@@ -924,6 +970,17 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     shops: [["restaurant-terrace", 2], ["gym", 1], ["chemist", 1], ["car-showroom", 1], ["mall", 1]],
     homes: [["villa", 4], ["terrace-duplex", 4], ["residential-tower", 1], ["crazy-house", 1], ["estate-gate", 1]],
     civic: [["school", 1], ["church", 1]],
+  },
+  // Outer mainland: family compounds, bungalows and houses still going up, a few shops and a motor park on the main
+  // street, cheap land.
+  "Ikodu Town": {
+    commercial: 0.22,
+    forSale: 0.22,
+    plotHalf: 54,
+    shops: [["shop-house", 3], ["buka", 2], ["mechanic", 2], ["chemist", 1], ["suya-stand", 1], ["gadget-kiosk", 1], ["salon", 1]],
+    homes: [["bungalow", 6], ["family-compound", 5], ["unfinished-building", 4], ["storey-house", 1]],
+    civic: [["church", 2], ["mosque", 2], ["school", 1]],
+    mainRoad: [["motor-park", 1], ["filling-station", 1]],
   },
 };
 
@@ -1159,6 +1216,217 @@ const GROWN = [
     ),
   ),
 ];
+
+// ── Ikodu Town ──
+// Laid after everything above (so every older plot keeps its id and number): Airport Ridge's top collector carries on
+// east past the Lagoon Forest to the lagoon, with cross streets down to the water and up beside the forest.
+const IKODU_LINES: GrowLine[] = [
+  st("ikm", "b", 2650, 2700, 4100, "collector"),
+  st("ikc0", "a", 3000, 2650, 1300, "local"),
+  st("ikc1", "a", 3380, 2650, 1700, "local"),
+  st("ikc2", "a", 3760, 2650, 3700, "local"),
+  link("ikl0", "b", 2150, 3000, 3380),
+  st("ikl1", "b", 3200, 3760, 4500, "local"),
+  st("ikl2", "b", 3600, 3760, 4400, "local"),
+  link("ikc3", "a", 4130, 3200, 3600),
+];
+const IKODU_GRID = IKODU_LINES.flatMap((l) => growLine(l) ?? []);
+STREETS.push(...IKODU_GRID.map(streetOf));
+GROWN.push(fillArea("Ikodu Town", IKODU_GRID, { growing: true }));
+
+// ── Public transport: the ground it needs ──
+// Laid after every plot (so no plot id moves) and before the street furniture and trees (so those keep off it). The
+// Coast Line's track runs on its own corridor through the gaps between the plots: along the Lagoon Forest's edge north
+// of Danfo Terminal, between Junction 101's north streets and Airport Ridge, past Tech Mile, then on its own bridge
+// beside Third Mainland Bridge to the Island. Stations, piers and the line paths are built further down
+// (TRANSIT_STOPS / TRANSIT_LINES, read by transitData.ts).
+type IsoPt = readonly [number, number];
+/** Problems found while laying transit (something already standing where it goes); check-clearance fails on any. */
+export const TRANSIT_ISSUES: string[] = [];
+/** Everything claimed before transit: the track, platforms and piers may sit side by side, never on these. */
+const BEFORE_TRANSIT = TAKEN.length;
+/** Claims a strip of iso squares (half-side `hh`) along a polyline, reporting anything already there. */
+function claimStrip(name: string, pts: { x: number; y: number }[], hh: number) {
+  const before = BEFORE_TRANSIT;
+  for (let i = 1; i < pts.length; i++) {
+    const [p, q] = [pts[i - 1]!, pts[i]!];
+    const n = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / hh));
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+      const c = { x: p.x + ((q.x - p.x) * k) / n, y: p.y + ((q.y - p.y) * k) / n };
+      if (!landmassAt(c.x, c.y)) continue; // over water nothing can stand anyway
+      const patch = patchAt(c.x, c.y, hh);
+      const hit = TAKEN.slice(0, before).find((t) => overlaps(patch, t, 0));
+      if (hit) TRANSIT_ISSUES.push(`${name} at ${c.x.toFixed(0)},${c.y.toFixed(0)} runs over something at iso ${hit.a.toFixed(0)},${hit.b.toFixed(0)}`);
+      TAKEN.push(patch);
+    }
+  }
+}
+/** Claims an iso rectangle (a platform, a pier, a station's plot). */
+function claimRect(name: string, a0: number, a1: number, b0: number, b1: number) {
+  const pts: { x: number; y: number }[] = [];
+  const hh = Math.min(Math.abs(a1 - a0), Math.abs(b1 - b0)) / 2;
+  const [al, ah] = [Math.min(a0, a1) + hh, Math.max(a0, a1) - hh];
+  const [bl, bh] = [Math.min(b0, b1) + hh, Math.max(b0, b1) - hh];
+  for (let a = al; a <= ah + 0.1; a += Math.max(hh, (ah - al) / Math.ceil((ah - al) / hh || 1)))
+    for (let b = bl; b <= bh + 0.1; b += Math.max(hh, (bh - bl) / Math.ceil((bh - bl) / hh || 1))) pts.push(iso(a, b));
+  const before = BEFORE_TRANSIT;
+  for (const c of pts) {
+    const patch = patchAt(c.x, c.y, hh);
+    const hit = TAKEN.slice(0, before).find((t) => overlaps(patch, t, 0));
+    if (hit) TRANSIT_ISSUES.push(`${name} at ${c.x.toFixed(0)},${c.y.toFixed(0)} overlaps something at iso ${hit.a.toFixed(0)},${hit.b.toFixed(0)}`);
+    TAKEN.push(patch);
+  }
+}
+
+/** Half-width of the Coast Line's track bed (iso units). */
+export const RAIL_HALF = 24;
+/** The Coast Line in iso coordinates, from the City Rail Station's buffer stop to the Island. */
+const RAIL_ISO: IsoPt[] = [
+  [-2880, 1600],
+  [-1560, 1600],
+  [-1420, 1515],
+  [-480, 1515],
+  // under the Airport Ridge billboard, over Road B, and between the first plots either side of it
+  [80, 1349],
+  [300, 1349],
+  [470, 1526],
+  [2380, 1526],
+  [2560, 1346],
+  [2560, 360],
+  [2560, -1995],
+];
+/** Where the rail bridge leaves the mainland and reaches the Island (iso b on the a = 2560 line). */
+export const RAIL_BRIDGE = { a: 2560, b0: 360, b1: -1995 };
+export const RAIL_PATH = RAIL_ISO.map(([a, b]) => iso(a, b));
+/** Distance from a point to the Coast Line's track. */
+export function railDistance(x: number, y: number) {
+  let best = Infinity;
+  for (let i = 1; i < RAIL_PATH.length; i++) {
+    const [p, q] = [RAIL_PATH[i - 1]!, RAIL_PATH[i]!];
+    const [dx, dy] = [q.x - p.x, q.y - p.y];
+    const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy)));
+    best = Math.min(best, Math.hypot(p.x + dx * t - x, p.y + dy * t - y));
+  }
+  return best;
+}
+claimStrip("Coast Line track", RAIL_PATH, RAIL_HALF + 6);
+
+/** Something transit puts on the map that stands up (a station, a pier, a parked train): drawn with the street furniture. */
+interface TransitProp {
+  art: string;
+  x: number;
+  y: number;
+  key: string;
+  w: number;
+  behind: boolean;
+}
+const TRANSIT_ART_PROPS: TransitProp[] = [];
+/** A transit building on an iso rectangle: claims the ground and stands its art on the rectangle's front corner. */
+function transitBuilding(key: string, art: string, a0: number, a1: number, b0: number, b1: number, w: number) {
+  claimRect(key, a0, a1, b0, b1);
+  // The front (bottom) corner of the rectangle is at the larger a and the smaller b.
+  const front = iso(Math.max(a0, a1), Math.min(b0, b1));
+  const mid = iso((a0 + a1) / 2, (b0 + b1) / 2);
+  TRANSIT_ART_PROPS.push({ art, x: mid.x, y: front.y, key, w, behind: false });
+}
+
+/** Rail stations: platform rectangle beside the track (iso), and where people stand to board. */
+export interface RailStation {
+  id: string;
+  name: string;
+  /** Platform as an iso rectangle. */
+  platform: { a0: number; a1: number; b0: number; b1: number };
+  stand: { x: number; y: number };
+  terminus?: boolean;
+}
+const station = (id: string, name: string, a0: number, a1: number, b0: number, b1: number, stand: IsoPt, terminus = false): RailStation => ({
+  id,
+  name,
+  platform: { a0, a1, b0, b1 },
+  stand: iso(stand[0], stand[1]),
+  terminus,
+});
+export const RAIL_STATIONS: RailStation[] = [
+  // The terminus (an Iddo feel): the station hall south of the buffer stop, its platform along the track
+  station("city-rail-station", "City Rail Station", -2880, -2600, 1546, 1570, [-2640, 1558], true),
+  station("danfo-north-station", "Danfo North", -1990, -1810, 1630, 1656, [-1900, 1640]),
+  station("j101-north-station", "Junction 101 North", -940, -760, 1460, 1484, [-850, 1474]),
+  station("airport-ridge-station", "Airport Ridge Station", 630, 810, 1472, 1496, [720, 1486]),
+  station("tech-mile-station", "Tech Mile Station", 1700, 1860, 1472, 1496, [1780, 1486]),
+  // On piles at the Island end of the rail bridge; people come up from the lagoon drive
+  station("marina-station", "Marina Wharf Station", 2486, 2530, -1990, -1830, [2560, -2027], true),
+];
+// The terminus yard: kept clear round the buffer stop and the waiting train
+claimRect("city-rail-yard", -2920, -2560, 1570, 1700);
+for (const s of RAIL_STATIONS) if (s.platform.b1 > 0) claimRect(`${s.id} platform`, s.platform.a0, s.platform.a1, s.platform.b0, s.platform.b1);
+// Station buildings: the terminus hall, and a canopy at each stop
+transitBuilding("city-rail-hall", "/art/transit/rail-terminus.svg", -2860, -2690, 1415, 1540, 270);
+transitBuilding("danfo-north-canopy", "/art/transit/rail-station.svg", -1975, -1825, 1660, 1716, 170);
+transitBuilding("j101-north-canopy", "/art/transit/rail-station.svg", -925, -775, 1400, 1456, 170);
+transitBuilding("airport-ridge-canopy", "/art/transit/rail-station.svg", 645, 795, 1412, 1468, 170);
+transitBuilding("tech-mile-canopy", "/art/transit/rail-station.svg", 1712, 1852, 1412, 1468, 160);
+{
+  // Marina Wharf's station stands over the water at the bridge end
+  const c = iso(2508, -1880);
+  TRANSIT_ART_PROPS.push({ art: "/art/transit/rail-station.svg", x: c.x, y: c.y + 40, key: "marina-station-canopy", w: 150, behind: false });
+}
+// A train waiting at the terminus
+{
+  const c = iso(-2760, 1600);
+  TRANSIT_ART_PROPS.push({ art: "/art/transit/train.svg", x: c.x, y: c.y + 26, key: "train-parked", w: 230, behind: true });
+}
+
+// ── Water bus piers ──
+export interface Pier {
+  id: string;
+  name: string;
+  /** Where people stand to board (on land). */
+  stand: { x: number; y: number };
+  /** Where the water bus ties up (on the water). */
+  dock: { x: number; y: number };
+}
+/** A pier as ferry-jetty art with its foot at (x, y), claimed so nothing else stands there. */
+function pierArt(key: string, x: number, y: number, w = 190) {
+  const hh = w / 5;
+  const patch = patchAt(x, y - hh, hh);
+  const hit = TAKEN.slice(0, BEFORE_TRANSIT).find((t) => overlaps(patch, t, 0));
+  if (hit) TRANSIT_ISSUES.push(`${key} at ${x.toFixed(0)},${y.toFixed(0)} overlaps something at iso ${hit.a.toFixed(0)},${hit.b.toFixed(0)}`);
+  TAKEN.push(patch);
+  TRANSIT_ART_PROPS.push({ art: "/art/buildings/ferry-jetty.webp", x, y, key, w, behind: false });
+}
+const drivePt = (a: number, off: number) => iso(a, LAGOON_B + off);
+export const PIERS: Pier[] = (() => {
+  const out: Pier[] = [];
+  // Marina Wharf: the existing jetty is the hub
+  out.push({ id: "marina-jetty", name: "Marina Jetty", stand: { x: JETTY.x, y: JETTY.y + 30 }, dock: { x: JETTY.x, y: JETTY.y - 205 } });
+  // Sandbar Bay: on the spit's Marina side
+  {
+    // At the water's edge, so the jetty's piles stand in the sea
+    const foot = iso(2035, -3868);
+    pierArt("sandbar-pier-art", foot.x, foot.y, 170);
+    out.push({ id: "sandbar-pier", name: "Sandbar Bay Pier", stand: iso(1990, -3935), dock: { x: foot.x + 20, y: foot.y - 190 } });
+  }
+  // Island Heights and Lekki: off the lagoon drive on the Island's north shore
+  for (const [id, name, a] of [
+    ["island-heights-jetty", "Island Heights Jetty", 3750],
+    ["lekki-jetty", "Lekki Jetty", 7850],
+  ] as const) {
+    const kerb = drivePt(a, 0);
+    const foot = { x: kerb.x, y: kerb.y - 60 };
+    pierArt(`${id}-art`, foot.x, foot.y);
+    out.push({ id, name, stand: { x: kerb.x, y: kerb.y - 31 }, dock: { x: foot.x, y: foot.y - 200 } });
+  }
+  // Ikodu Town: at the lagoon end of its main street (the water is in front here, so the jetty stands out over it)
+  {
+    const end = iso(3790, 2650);
+    const foot = { x: end.x + 70, y: shoreY(end.x + 70) + 40 };
+    TRANSIT_ART_PROPS.push({ art: "/art/buildings/ferry-jetty.webp", x: foot.x, y: foot.y, key: "ikodu-jetty-art", w: 190, behind: false });
+    out.push({ id: "ikodu-jetty", name: "Ikodu Town Jetty", stand: end, dock: { x: foot.x + 30, y: foot.y + 110 } });
+  }
+  return out;
+})();
+// A water bus tied up at Marina
+TRANSIT_ART_PROPS.push({ art: "/art/transit/water-bus.svg", x: JETTY.x + 150, y: JETTY.y - 170, key: "water-bus-moored", w: 150, behind: true });
 
 /** Buildings of the city before it grew. */
 const ORIGINAL_HOUSES = FILLED.flatMap((f) => f.houses);
@@ -1431,7 +1699,7 @@ function roadProp(road: Segment, x: number, side: 1 | -1, kind: string, key: str
   // Poles stand on the back edge of the pavement; stalls and shelters stand on the ground behind it.
   const off = pole ? BACK : HALF + PAVEMENT + hh + 12;
   const y = yOn(road, x) - side * off;
-  if (!onLand(x, y + hh) || (pole && atCrossing(road, x))) return null;
+  if (!onLand(x, y + hh) || (pole && (atCrossing(road, x) || railDistance(x, y) < 80))) return null;
   if (!pole && !claim(x, y, hh, 6)) return null;
   return { art: `/art/props/${kind}.webp`, x, y: pole ? y : y + hh, key, w, behind: side > 0 };
 }
@@ -1490,6 +1758,8 @@ export const LAMPS = ROADS.filter((r) => !r.flyover).flatMap((s) => {
     const north = i++ % 2 === 1;
     // On bridges the lamps stand on the parapet.
     const off = s.bridge ? HALF + 10 : BACK;
+    // None at the Coast Line's level crossing
+    if (railDistance(x, yOn(s, x) + (north ? -off : off)) < 80) continue;
     out.push({ x, y: yOn(s, x) + (north ? -off : off), key: `${s.id}-${x}`, behind: north });
   }
   return out;
@@ -1547,7 +1817,7 @@ const EXTRA_TREES = [
 // Lagos ground is mostly laterite, with green where people plant it: almond and mango trees shading compounds,
 // palms along the Island, hedges and lawns in the estates. Each area has its own share of green.
 export type TreeKind = "leafy" | "palm" | "mango" | "almond" | "neem" | "plantain" | "bush" | "hedge" | "bougainvillea";
-const GREEN_SHARE: Record<string, number> = { "Lekki Gardens": 0.6, "Island Heights": 0.32, "Airport Ridge": 0.3, "Owambe Gardens": 0.25, "Tech Mile": 0.15, "Marina Wharf": 0.1, "Danfo Terminal": 0.06, "Apapa Port": 0.04 };
+const GREEN_SHARE: Record<string, number> = { "Ikodu Town": 0.08, "Lekki Gardens": 0.6, "Island Heights": 0.32, "Airport Ridge": 0.3, "Owambe Gardens": 0.25, "Tech Mile": 0.15, "Marina Wharf": 0.1, "Danfo Terminal": 0.06, "Apapa Port": 0.04 };
 const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: number; green: number }[] = [
   { name: "j101", a0: -1400, a1: 1400, b0: -1400, b1: 1400, green: PRESETS.mainland.green },
   ...AREA_GRIDS.map((g) => {
@@ -1562,6 +1832,8 @@ const GREEN_AREAS: { name: string; a0: number; a1: number; b0: number; b1: numbe
     const bs = ls.flatMap((l) => (l.fixed === "b" ? [l.at] : [l.from, l.to]));
     return { name: `${g.area} new`, a0: Math.min(...as) - 150, a1: Math.max(...as) + 150, b0: Math.min(...bs) - 150, b1: Math.max(...bs) + 150, green: GREEN_SHARE[g.area] ?? 0.15 };
   }),
+  // Ikodu Town: sandy, a little green (kept out of the forest's rectangle, which plants its own)
+  { name: "Ikodu Town", a0: 2850, a1: 4300, b0: 1300, b1: 2800, green: GREEN_SHARE["Ikodu Town"]! },
 ];
 /** Grass patches: flat on the ground, under everything. */
 export const GRASS: { x: number; y: number; r: number; key: string }[] = [];
@@ -1608,7 +1880,25 @@ const FOREST_TREES = FORESTS.flatMap((f) => {
   return out;
 });
 
-export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES].sort((a, b) => a.y - b.y);
+// Sandbar Bay: a row of palms along its Marina side, clear of the walk from the pier to the beach venue, and open
+// sand either side of the venue (room for cabanas later).
+const SANDBAR_PALMS = (
+  [
+    [1500, -3990],
+    [1570, -3950],
+    [1650, -3940],
+    [1730, -3945],
+    [2170, -3945],
+    [2250, -3950],
+    [2330, -3975],
+    [2400, -4010],
+  ] as const
+).flatMap(([a, b], i) => {
+  const c = iso(a, b);
+  return inSandbar(c.x, c.y, 40) && treeClear(c.x, c.y, "palm") && claim(c.x, c.y, 16, 6) ? [{ ...c, kind: "palm" as TreeKind, key: `sandbar-${i}` }] : [];
+});
+
+export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS].sort((a, b) => a.y - b.y);
 
 export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES].sort((a, b) => a.y - b.y);
 /** The buildings that stood before the city grew, back to front as they were then. */
@@ -2095,6 +2385,7 @@ const SHORT_AREA: Record<string, string> = {
   "Marina Wharf": "Marina",
   "Island Heights": "Island",
   "Lekki Gardens": "Lekki",
+  "Ikodu Town": "Ikodu",
 };
 export interface Branch {
   /** "<base venue>@<building>": the base venue's room, activities and once-a-day limits. */
@@ -2110,11 +2401,16 @@ export interface Branch {
 export const BRANCHES: Branch[] = (() => {
   const used = new Set<string>();
   const first = new Set(ORIGINAL_SCENERY.map((b) => b.key));
-  return [...ORIGINAL_SCENERY, ...ALL_SCENERY.filter((b) => !first.has(b.key))].flatMap((b) => {
+  // The newer areas' buildings come last, so no older branch's name changes.
+  const newer = (b: Building) => [...NEWER_AREAS].some((n) => b.key.startsWith(`${n.toLowerCase().replace(/\s+/g, "-")}-`));
+  const rest = ALL_SCENERY.filter((b) => !first.has(b.key));
+  return [...ORIGINAL_SCENERY, ...rest.filter((b) => !newer(b)), ...rest.filter(newer)].flatMap((b) => {
     const kind = b.art.split("/").pop()!.replace(".webp", "");
     const base = BRANCH_OF[kind];
     if (!base) return [];
-    const near = DISTRICTS.reduce((best, d) => (Math.hypot(d.x - b.x, d.y - b.y) < Math.hypot(best.x - b.x, best.y - b.y) ? d : best));
+    // Buildings of the newer areas name themselves after their own area; older ones keep the area they had.
+    const own = DISTRICTS.find((d) => NEWER_AREAS.has(d.name) && b.key.startsWith(`${d.name.toLowerCase().replace(/\s+/g, "-")}-`));
+    const near = own ?? DISTRICTS.filter((d) => !NEWER_AREAS.has(d.name)).reduce((best, d) => (Math.hypot(d.x - b.x, d.y - b.y) < Math.hypot(best.x - b.x, best.y - b.y) ? d : best));
     const area = near.name;
     const templates = BRANCH_NAMES[base]!;
     // Pick a name that isn't taken yet (a few tries), so two branches don't share one.
@@ -2151,4 +2447,195 @@ export function kerbsideOf(p: P): P {
   }
   const side = p.y >= best.q.y ? 1 : -1;
   return { x: best.q.x, y: best.q.y + side * (best.line.half + best.line.pav / 2) };
+}
+
+// ── Public transport: stops and lines (read by transitData.ts) ──
+// Stop ids are permanent once shipped, like plot ids. Each line's path passes through its stops' halts in order;
+// `stopAt[i]` is the index in the path where the vehicle stops for `stops[i]`. Lines run both ways.
+const round = (p: P) => ({ x: Math.round(p.x), y: Math.round(p.y) });
+const STOPS = new Map<string, TransitStop>();
+const stop = (id: string, name: string, at: P, mode: TransitMode) => {
+  const s = STOPS.get(id);
+  if (s) {
+    if (!s.modes.includes(mode)) s.modes.push(mode);
+  } else STOPS.set(id, { id, name, ...round(at), modes: [mode] });
+  return id;
+};
+
+/** A line built from its halts, joining each pair of halts with `leg` (the points after `from`, ending at `to`). */
+function lineOf(key: string, name: string, mode: TransitMode, color: string, halts: { id: string; at: P }[], leg: (from: P, to: P) => P[]): TransitLine {
+  const path: P[] = [halts[0]!.at];
+  const stopAt = [0];
+  for (let i = 1; i < halts.length; i++) {
+    path.push(...leg(halts[i - 1]!.at, halts[i]!.at));
+    stopAt.push(path.length - 1);
+  }
+  return { key, name, mode, color, stops: halts.map((h) => h.id), path: path.map(round), stopAt };
+}
+
+// BRT: the buses keep to the near-side lane (half a lane south of the centre line), round the roundabout at Junction 101.
+const LANE = HALF / 2;
+const onRing = (p: P) => Math.hypot((p.x - CX) / ROUNDABOUT.rx, (p.y - CY) / ROUNDABOUT.ry) < 1.2;
+const byRoad = (from: P, to: P) => {
+  const r = roadRoute(from, to) ?? [to];
+  // roadRoute ends with the destination itself after its nearest road point: drop the repeat
+  const pts = r.slice(1, -1).filter((p, i, all) => i === 0 || Math.hypot(p.x - all[i - 1]!.x, p.y - all[i - 1]!.y) > 1);
+  return [...pts.map((p) => (onRing(p) ? p : { x: p.x, y: p.y + LANE })), { x: to.x, y: to.y + LANE }].filter(
+    (p, i, all) => i === all.length - 1 || Math.hypot(p.x - to.x, p.y - to.y - LANE) > 1,
+  );
+};
+const brtHalts = (defs: [string, string, IsoPt, IsoPt][], mode: TransitMode) =>
+  defs.map(([id, name, halt, stand]) => ({ id: stop(id, name, iso(stand[0], stand[1]), mode), at: iso(halt[0], halt[1]) }));
+const IB = ISLAND_B;
+/** Junction 101's stop is on the south-east corner, where both BRT lines stop either side. */
+const J101_STAND: IsoPt = [110, -80];
+const BRT_A = lineOf(
+  "brt-a",
+  "BRT Road A: Danfo – Lekki",
+  "brt",
+  "#1f6fd1",
+  brtHalts(
+    [
+      ["danfo-west", "Danfo West", [-3300, 0], [-3300, -77]],
+      ["danfo-terminal", "Danfo Terminal", [-1900, 0], [-1900, -77]],
+      ["junction-101", "Junction 101", [300, 0], J101_STAND],
+      ["tech-mile", "Tech Mile", [1700, 0], [1700, -77]],
+      ["island-heights", "Island Heights", [3400, IB], [3400, IB - 77]],
+      ["lekki-gardens", "Lekki Gardens", [6400, IB], [6400, IB - 77]],
+    ],
+    "brt",
+  ),
+  byRoad,
+);
+const BRT_B = lineOf(
+  "brt-b",
+  "BRT Road B: Marina – Airport",
+  "brt",
+  "#3d8fe0",
+  brtHalts(
+    [
+      ["marina-wharf", "Marina Wharf", [1650, IB], [1650, IB - 77]],
+      ["apapa-gate", "Apapa Gate", [0, -2250], [77, -2250]],
+      ["owambe-gardens", "Owambe Gardens", [0, -1650], [77, -1650]],
+      ["junction-101", "Junction 101", [0, -300], J101_STAND],
+      ["airport-ridge", "Airport Ridge", [0, 1700], [77, 1700]],
+      ["airport-terminal", "Airport Terminal", [0, 2550], [77, 2550]],
+    ],
+    "brt",
+  ),
+  byRoad,
+);
+
+// The Coast Line: along its own track, stopping beside each platform.
+const RAIL_LINE = (() => {
+  // Each station's halt is the point on the track nearest its platform; the path is the track with the halts put in.
+  const len = (p: P, q: P) => Math.hypot(q.x - p.x, q.y - p.y);
+  const project = (c: P) => {
+    let best = { d: Infinity, t: 0, p: c };
+    let run = 0;
+    for (let i = 1; i < RAIL_PATH.length; i++) {
+      const [p, q] = [RAIL_PATH[i - 1]!, RAIL_PATH[i]!];
+      const [dx, dy] = [q.x - p.x, q.y - p.y];
+      const u = Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / (dx * dx + dy * dy)));
+      const at = { x: p.x + dx * u, y: p.y + dy * u };
+      const d = len(at, c);
+      if (d < best.d) best = { d, t: run + len(p, q) * u, p: at };
+      run += len(p, q);
+    }
+    return best;
+  };
+  const cum = RAIL_PATH.map((_, i) => RAIL_PATH.slice(1, i + 1).reduce((s, q, k) => s + len(RAIL_PATH[k]!, q), 0));
+  const halts = RAIL_STATIONS.map((s) => {
+    const pl = s.platform;
+    const pr = project(iso((pl.a0 + pl.a1) / 2, (pl.b0 + pl.b1) / 2));
+    return { id: stop(s.id, s.name, s.stand, "rail"), t: pr.t, at: pr.p };
+  });
+  const pts = [...RAIL_PATH.map((p, i) => ({ t: cum[i]!, at: p, id: "" })), ...halts].sort((p, q) => p.t - q.t || (p.id ? 1 : -1));
+  const first = pts.findIndex((p) => p.id === halts[0]!.id);
+  const last = pts.findIndex((p) => p.id === halts[halts.length - 1]!.id);
+  const used = pts.slice(first, last + 1).filter((p, i, all) => p.id || i === 0 || len(p.at, all[i - 1]!.at) > 1);
+  return {
+    key: "coast-line",
+    name: "Coast Line",
+    mode: "rail" as const,
+    color: "#d9482b",
+    stops: halts.map((h) => h.id),
+    path: used.map((p) => round(p.at)),
+    stopAt: halts.map((h) => used.findIndex((p) => p.id === h.id)),
+  };
+})();
+
+// Water bus: the hub at Marina's jetty; boats keep to the water (waypoints between the piers).
+const pierHalt = (id: string) => {
+  const p = PIERS.find((q) => q.id === id)!;
+  return { id: stop(p.id, p.name, p.stand, "ferry"), at: p.dock };
+};
+const viaWater = (ways: Record<string, P[]>) => (from: P, to: P) => [...(ways[`${Math.round(from.x)},${Math.round(from.y)}`] ?? []), to];
+const dockKey = (id: string) => {
+  const d = PIERS.find((q) => q.id === id)!.dock;
+  return `${Math.round(d.x)},${Math.round(d.y)}`;
+};
+const FERRY_EAST = lineOf(
+  "ferry-lagoon",
+  "Lagoon Water Bus: Marina – Ikodu",
+  "ferry",
+  "#14a3a3",
+  ["marina-jetty", "island-heights-jetty", "lekki-jetty", "ikodu-jetty"].map(pierHalt),
+  viaWater({
+    [dockKey("marina-jetty")]: [{ x: 4700, y: 4120 }, { x: 5400, y: 4420 }, { x: 6100, y: 4800 }],
+    [dockKey("island-heights-jetty")]: [{ x: 7300, y: 5300 }, { x: 8400, y: 5900 }, { x: 9600, y: 6520 }],
+    [dockKey("lekki-jetty")]: [{ x: 10900, y: 6200 }, { x: 11200, y: 4800 }, { x: 11250, y: 3800 }],
+  }),
+);
+const FERRY_SANDBAR = lineOf(
+  "ferry-sandbar",
+  "Sandbar Shuttle: Marina – Sandbar Bay",
+  "ferry",
+  "#22b8cf",
+  ["marina-jetty", "sandbar-pier"].map(pierHalt),
+  viaWater({
+    [dockKey("marina-jetty")]: [{ x: 3950, y: 3800 }, { x: 3700, y: 3772 }, { x: 3450, y: 3870 }, { x: 3200, y: 4500 }, { x: 3150, y: 4900 }],
+  }),
+);
+
+// Interstate coach: from the motor park in front of Danfo Terminal's bus station out along Road A to the Ogun road.
+const COACH = lineOf(
+  "coach-ogun",
+  "Interstate Coach: Danfo – Ogun",
+  "coach",
+  "#e07b1f",
+  brtHalts(
+    [
+      ["interstate-motor-park", "Interstate Motor Park", [-2196, 0], [-2196, -77]],
+      ["ogun-border", "To Ogun · Ibadan", [-3800, 0], [-3800, -77]],
+    ],
+    "coach",
+  ),
+  byRoad,
+);
+
+export const TRANSIT_LINES_L: TransitLine[] = [BRT_A, BRT_B, RAIL_LINE, FERRY_EAST, FERRY_SANDBAR, COACH];
+export const TRANSIT_STOPS_L: TransitStop[] = [...STOPS.values()];
+
+// ── Transit on the street: BRT shelters, the coach bay sign, the road out to Ogun ──
+for (const l of [BRT_A, BRT_B])
+  l.stops.forEach((id, i) => {
+    const s = STOPS.get(id)!;
+    const halt = l.path[l.stopAt[i]!]!;
+    // A shelter just behind the pavement where there's room (it shares the spot with nothing)
+    const road = ROADS.filter((r) => !r.bridge && !r.flyover).reduce((b, r) => (Math.abs(halt.y - LANE - yOn(r, halt.x)) < Math.abs(halt.y - LANE - yOn(b, halt.x)) && halt.x >= Math.min(r.x0, r.x1) && halt.x <= Math.max(r.x0, r.x1) ? r : b));
+    if (PROPS.some((p) => p.key === `brt-${id}`)) return;
+    for (const dx of [0, 60, -60, 120, -120, 180, -180]) {
+      const p = roadProp(road, s.x + dx, -1, "bus-stop", `brt-${id}`);
+      if (p) {
+        PROPS.push(p);
+        break;
+      }
+    }
+  });
+PROPS.push(...TRANSIT_ART_PROPS);
+{
+  // The road sign at Road A's north-west end, on the near kerb (where the road leaves for Ogun)
+  const x = iso(-3860, 0).x;
+  PROPS.push({ art: "/art/transit/sign-ogun.svg", x, y: yOn(ROAD_A, x) + BACK, key: "sign-ogun", w: 110, behind: false });
 }
