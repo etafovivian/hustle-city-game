@@ -12,10 +12,11 @@ import {
   type AvatarConfig,
   type HomeView,
   type NeedsView,
-  type VehicleKind, fuelPriceOn } from "@hc/shared";
-import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X } from "lucide-react";
+  type VehicleKind, fuelPriceOn, type OwnedPlot } from "@hc/shared";
+import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X, KeyRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { LetBox, RentPicker, Tenancy } from "./Rent.js";
 import { api, formatCoins } from "../api.js";
 import { InteriorScene, ROOMS, type PlayerAction, type Room } from "./Interior.js";
 import type { PoseAction } from "./rooms.js";
@@ -99,6 +100,7 @@ export function HomeCard({
   onBuyLand: () => void;
 }) {
   const sheet = useSheet(onClose);
+  const [renting, setRenting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [rebuild, setRebuild] = useState(false);
   const [me, setMe] = useState<PlayerAction>("walk");
@@ -190,7 +192,9 @@ export function HomeCard({
         <p className="small">
           {home.plotId
             ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."
-            : "A rented room in a face-me-I-face-you: shared toilet, generator noise, good neighbours. Buy land to build your own house."}
+            : home.rental
+              ? "Your rented flat: your own space, your own key. Keep the rent paid."
+              : "A rented room in a face-me-I-face-you: shared toilet, generator noise, good neighbours. Rent a proper flat, or buy land to build your own house."}
         </p>
         <div className="row">
           <button type="button" className="btn go" disabled={busy || restLeft > 0} onClick={() => void rest()}>
@@ -201,11 +205,20 @@ export function HomeCard({
               <Hammer size={16} aria-hidden="true" /> Change house
             </button>
           ) : (
-            <button type="button" className="btn" onClick={onBuyLand}>
-              <HomeIcon size={16} aria-hidden="true" /> Buy land
-            </button>
+            <>
+              {!home.rental && (
+                <button type="button" className="btn" onClick={() => setRenting((x) => !x)}>
+                  <KeyRound size={16} aria-hidden="true" /> Rent a flat
+                </button>
+              )}
+              <button type="button" className="btn" onClick={onBuyLand}>
+                <HomeIcon size={16} aria-hidden="true" /> Buy land
+              </button>
+            </>
           )}
         </div>
+        {home.rental && <Tenancy rental={home.rental} notify={notify} onChanged={onChanged} />}
+        {renting && !home.rental && !home.plotId && <RentPicker notify={notify} onChanged={onChanged} />}
         <HomeShop home={home} notify={notify} onChanged={onChanged} />
         {rebuild && home.plotId && (
           <>
@@ -487,7 +500,7 @@ export function PlotCard({
   onChanged,
   notify,
 }: {
-  plot: { plotId: string; design: string | null; isHome: boolean };
+  plot: OwnedPlot;
   area: string;
   onClose: () => void;
   onChanged: () => void;
@@ -551,6 +564,7 @@ export function PlotCard({
             </button>
           )}
         </div>
+        {plot.design && !plot.isHome && <LetBox plot={plot} notify={notify} onChanged={onChanged} />}
         {picking && (
           <>
             <p className="tiny muted">{plot.design ? "Rebuilding gives you back half of what this house cost." : "Pick a house to build on your land."}</p>

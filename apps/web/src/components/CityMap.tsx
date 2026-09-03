@@ -385,7 +385,8 @@ export function CityMap({
   const [playerOpen, setPlayerOpen] = useState<PresencePlayer | null>(null);
   const [visitHome, setVisitHome] = useState<MapHome | null>(null);
   const room = starterRoom(nickname);
-  const myPlot = home?.plotId ? FOR_SALE.find((p) => p.id === home.plotId) : undefined;
+  // Your home on the map: your own house, else the building your rented flat is in.
+  const myPlot = home?.plotId ? FOR_SALE.find((p) => p.id === home.plotId) : home?.rental ? LAND.find((p) => p.id === home.rental!.plotId) : undefined;
   /** Are you at this place? You arrived there, or you're standing right by it (not passing through). */
   const isAt = (key: string) => {
     if (arrived === key) return true;
@@ -1551,7 +1552,7 @@ export function CityMap({
               guests={others.filter((p) => p.place === `home:${home.plotId ?? `room-${nickname}`}`)}
               chatPlace={`home:${home.plotId ?? `room-${nickname}`}`}
               home={home}
-              label={myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}
+              label={home.rental && !home.plotId ? `Rented flat · ${home.rental.area}` : myPlot ? `${HOUSE_BY_KEY.get(home.design ?? "")?.label ?? "House"} · ${myPlot.area}` : "Room in a face-me-I-face-you"}
               onClose={() => setHomeOpen(false)}
               onChanged={() => {
                 loadHomes();

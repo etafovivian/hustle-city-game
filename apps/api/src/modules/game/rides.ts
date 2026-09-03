@@ -2,12 +2,13 @@
 // stop it. The player picks how to handle the stop; the server rolls the outcome and settles it once.
 
 import { playerVehicles, profiles, rides } from "@hc/db";
-import { MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rainSurge, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
+import { SKILL_ODDS, MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rainSurge, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { postCoins, type PostingResult } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import type { ShopCtx } from "./shop.js";
+import { skillLevelOf } from "./skills.js";
 
 /** Dice for stops and their outcomes (tests swap it for fixed rolls). */
 export const dice = { roll: () => Math.random() };
@@ -62,7 +63,11 @@ export async function settleStop({ tx, userId }: ShopCtx, rideId: string, choice
   const [ride] = await tx.select().from(rides).where(and(eq(rides.id, rideId), eq(rides.userId, userId)));
   if (!ride || !ride.stop) throw notFound("Stop");
   if (ride.stopChoice) throw new AppError(409, "settled", "You've already dealt with them.");
-  const ok = choice === "pay" || dice.roll() < option.odds;
+  // Charisma helps you talk, Fitness helps you run, both help you stand your ground.
+  const charisma = await skillLevelOf(tx, userId, "charisma");
+  const fitness = await skillLevelOf(tx, userId, "fitness");
+  const level = choice === "talk" ? charisma : choice === "run" ? fitness : choice === "stand" ? (charisma + fitness) / 2 : 0;
+  const ok = choice === "pay" || dice.roll() < Math.min(0.95, option.odds + SKILL_ODDS * level);
   // Paying always costs; the others cost only when they fail. Nobody pays more than they have.
   const owed = choice === "pay" || !ok ? option.cost : 0;
   const cost = Math.min(owed, profile.coinBalance);

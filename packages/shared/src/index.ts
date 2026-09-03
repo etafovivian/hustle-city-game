@@ -31,3 +31,5 @@ export * from "./chess.js";
 export * from "./tables.js";
 export * from "./university.js";
 export * from "./crew.js";
+export * from "./skills.js";
+export * from "./rent.js";

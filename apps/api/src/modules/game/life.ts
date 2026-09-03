@@ -19,6 +19,9 @@ import {
   SHIFT_COST,
   VEHICLE_BY_KIND,
   VENUES_BY_KEY,
+  VENUE_SKILL,
+  SKILL_PAY,
+  SKILL_POINTS,
   clockHour,
   dayKey,
   isOpenAt,
@@ -44,6 +47,8 @@ import { AppError, notFound } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
 import { graduatePay, isGraduate } from "../university.js";
+import { addSkill, skillLevelOf } from "./skills.js";
+import { collect, letInfo, moveIn, moveOut, setLet, settleRent } from "./rent.js";
 
 const shiftsToday = async (tx: Tx, userId: string, day: string) => {
   const [{ n }] = (await tx
@@ -88,7 +93,11 @@ export async function lifeRoutes(app: FastifyInstance) {
       const [row] = await tx.select().from(playerJobs).where(and(eq(playerJobs.userId, user.id), eq(playerJobs.venue, job.venue)));
       const before = row?.shifts ?? 0;
       const rung = rungFor(before);
-      const pay = graduatePay(shiftPay(job, rung), await isGraduate(tx, user.id));
+      // Graduates and people skilled in the job's line of work earn more.
+      const skill = VENUE_SKILL[job.venue];
+      const level = await skillLevelOf(tx, user.id, skill);
+      const pay = Math.round(graduatePay(shiftPay(job, rung), await isGraduate(tx, user.id)) * (1 + SKILL_PAY * level));
+      await addSkill(tx, user.id, skill, SKILL_POINTS.shift);
       const view0 = jobView(job, before, done);
       const posting = await postCoins(tx, user.id, pay, "shift_pay", `shift:${day}:${randomUUID()}`);
       await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${view0.xp}` }).where(eq(profiles.userId, user.id));
@@ -111,13 +120,16 @@ export async function lifeRoutes(app: FastifyInstance) {
     const items = rows.map((r) => r.itemKey);
     const placements = Object.fromEntries(rows.filter((r) => r.room && r.x !== null && r.y !== null).map((r) => [r.itemKey, { room: r.room!, x: r.x!, y: r.y! }]));
     const home = plots.find((p) => p.isHome && p.design);
+    const { rental } = await settleRent(tx, userId, now);
     const { freeAt } = await loadNeeds(tx, userId, now);
     const last = freeAt.__home ? new Date(freeAt.__home).getTime() : 0;
     const again = last + REST.everyMs;
     return {
       plotId: home?.plotId ?? null,
-      design: home?.design ?? null,
-      plots: plots.map((p) => ({ plotId: p.plotId, design: p.design, isHome: p.isHome })),
+      // Living in a rented flat when you don't live in a house of your own.
+      design: home?.design ?? rental?.unit ?? null,
+      plots: plots.map((p) => ({ plotId: p.plotId, design: p.design, isHome: p.isHome, let: letInfo(p, now) })),
+      rental,
       items,
       placements,
       restEnergy: restEnergy(items),
@@ -210,9 +222,44 @@ export async function lifeRoutes(app: FastifyInstance) {
     return inTx(async (tx, now) => {
       const plot = await ownPlot(tx, user.id, request.params.plotId);
       if (!plot.design) throw new AppError(409, "no_house", "Build a house there first.");
+      if (plot.letSince) await setLet(tx, user.id, plot, false, now);
       await tx.update(playerPlots).set({ isHome: false }).where(eq(playerPlots.userId, user.id));
       await tx.update(playerPlots).set({ isHome: true }).where(eq(playerPlots.plotId, plot.plotId));
       return homeView(tx, user.id, now);
+    });
+  });
+
+  // ── Rent: rent a flat, move out, let out a house, collect rent. ──
+  app.post("/api/game/rent", async (request) => {
+    const user = requireUser(request);
+    const { unit, area, plotId } = z.object({ unit: z.string().max(40), area: z.string().max(40), plotId: z.string().max(80) }).parse(request.body);
+    return inTx(async (tx, now) => {
+      const cost = await moveIn(tx, user.id, unit, area, plotId, now);
+      return { cost, home: await homeView(tx, user.id, now) };
+    });
+  });
+  app.post("/api/game/rent/leave", async (request) => {
+    const user = requireUser(request);
+    return inTx(async (tx, now) => {
+      const r = await moveOut(tx, user.id, now);
+      return { ...r, home: await homeView(tx, user.id, now) };
+    });
+  });
+  app.post<{ Params: { plotId: string } }>("/api/plots/:plotId/let", async (request) => {
+    const user = requireUser(request);
+    const { on } = z.object({ on: z.boolean() }).parse(request.body);
+    return inTx(async (tx, now) => {
+      const plot = await ownPlot(tx, user.id, request.params.plotId);
+      const r = await setLet(tx, user.id, plot, on, now);
+      return { ...r, home: await homeView(tx, user.id, now) };
+    });
+  });
+  app.post<{ Params: { plotId: string } }>("/api/plots/:plotId/collect", async (request) => {
+    const user = requireUser(request);
+    return inTx(async (tx, now) => {
+      const plot = await ownPlot(tx, user.id, request.params.plotId);
+      const r = await collect(tx, user.id, plot, now);
+      return { ...r, home: await homeView(tx, user.id, now) };
     });
   });
 

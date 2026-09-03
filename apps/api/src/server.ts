@@ -19,6 +19,7 @@ import { playRoutes } from "./modules/games.js";
 import { universityRoutes } from "./modules/university.js";
 import { crewRoutes } from "./modules/crew.js";
 import { weatherRoutes } from "./modules/game/weather.js";
+import { skillRoutes } from "./modules/game/skills.js";
 import { gameRoutes } from "./modules/game/routes.js";
 import { marketRoutes } from "./modules/market.js";
 import { meRoutes } from "./modules/me.js";
@@ -98,6 +99,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(universityRoutes);
   await app.register(crewRoutes);
   await app.register(weatherRoutes);
+  await app.register(skillRoutes);
 
   return app;
 }

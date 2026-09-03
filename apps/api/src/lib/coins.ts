@@ -31,6 +31,7 @@ export type CoinKind =
   | "home_item"
   | "game_reward"
   | "university_fees"
+  | "rent"
   | "admin_adjustment";
 
 export interface PostingResult {

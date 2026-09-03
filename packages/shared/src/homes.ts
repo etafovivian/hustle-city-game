@@ -2,6 +2,7 @@
 // and it becomes your home on the map (with your name on it). Resting at home brings your energy back.
 import { PLOTS_FOR_SALE } from "./plots.gen.js";
 import { landPrice, type LandRoad } from "./land.js";
+import type { RentalView } from "./rent.js";
 
 export interface HouseDesign {
   key: string;
@@ -67,6 +68,8 @@ export interface OwnedPlot {
   /** House design, or null for empty land. */
   design: string | null;
   isHome: boolean;
+  /** Let out to a tenant: weekly rent and what's built up to collect. */
+  let?: { weekly: number; due: number } | null;
 }
 
 export interface HomeView {
@@ -81,6 +84,8 @@ export interface HomeView {
   restEnergy: number;
   /** When resting will work again (ISO), or null if now. */
   restAgainAt: string | null;
+  /** The flat you rent (your home when you don't live in a house you own). */
+  rental: RentalView | null;
 }
 
 export interface MapHome {

@@ -801,6 +801,8 @@ export const playerPlots = pgTable(
     /** House design, or null for empty land. */
     design: text("design"),
     isHome: boolean("is_home").notNull().default(false),
+    /** Let out to a tenant since (rent builds up from here, or from the last collection). */
+    letSince: timestamp("let_since", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index("player_plots_user_idx").on(t.userId)],
@@ -935,3 +937,31 @@ export const playerItems = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.item] })],
 );
+
+/** Skill points per player (Charisma, Fitness, Cooking, Tech, Business). */
+export const playerSkills = pgTable(
+  "player_skills",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skill: text("skill").notNull(),
+    points: integer("points").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.skill] })],
+);
+
+/** A flat a player rents (one at a time). */
+export const rentals = pgTable("rentals", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  unit: text("unit").notNull(),
+  area: text("area").notNull(),
+  /** The home building on the map the flat is in. */
+  plotId: text("plot_id").notNull(),
+  weekly: integer("weekly").notNull(),
+  caution: integer("caution").notNull(),
+  paidUntil: timestamp("paid_until", { withTimezone: true }).notNull(),
+  startedAt: createdAt(),
+});

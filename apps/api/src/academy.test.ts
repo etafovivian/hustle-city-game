@@ -76,8 +76,11 @@ describe("Hustle Academy", () => {
     const db = sql();
     await db`update lesson_progress set last_beat_at = now() - interval '5 minutes' where lesson_id = ${video.id}`;
     expect(await beat(video.id)).toMatchObject({ seconds: 20, done: false });
-    await db`update lesson_progress set last_beat_at = now() - interval '12 seconds' where lesson_id = ${video.id}`;
-    expect(await beat(video.id)).toMatchObject({ seconds: 32, done: true });
+    // 12.5 s back, so a split second between the database clock and the server's still counts 12 (not 11).
+    await db`update lesson_progress set last_beat_at = now() - interval '12.5 seconds' where lesson_id = ${video.id}`;
+    const last = await beat(video.id);
+    expect(last).toMatchObject({ done: true });
+    expect([32, 33]).toContain(last.seconds);
     expect(await beat(text.id)).toMatchObject({ done: true });
 
     // Quiz: answers stay on the server

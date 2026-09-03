@@ -2,8 +2,9 @@
 // The ledger reference makes each activity once a day; doing it again is refused before any charge.
 
 import { gameLedgerEntries, profiles } from "@hc/db";
-import { EVENT_NEED_BONUS, EVENT_XP, FREE_COOLDOWN_MS, NEED_GAIN, eventAt, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, type VenueDay } from "@hc/shared";
+import { EVENT_NEED_BONUS, EVENT_XP, FREE_COOLDOWN_MS, NEED_GAIN, eventAt, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, SKILL_POINTS, VENUE_SKILL, type VenueDay } from "@hc/shared";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
+import { addSkill } from "./skills.js";
 import { companionsAt, sendPing } from "../presence.js";
 import { and, eq, like, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
@@ -45,6 +46,8 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
     .returning({ xp: profiles.xp, nickname: profiles.nickname });
   for (const f of friends) sendPing(f.userId, { from: p!.nickname, kind: "join", place: venue.key, text: `${activity.label} at ${venue.name}` });
   await recordEvents(tx, userId, [{ type: "activity_done", key: `${venue.key}:${activity.key}` }], now, timeZone);
+  // Practice makes perfect: the place's skill grows.
+  await addSkill(tx, userId, VENUE_SKILL[venue.key], activity.kind === "flex" ? SKILL_POINTS.flex : SKILL_POINTS.activity);
   // The activity fills the needs its tags name.
   const { needs } = await loadNeeds(tx, userId, now);
   let filled = fillNeeds(needs, activity.gives, activity.kind === "flex" ? NEED_GAIN.flex : NEED_GAIN.paid);

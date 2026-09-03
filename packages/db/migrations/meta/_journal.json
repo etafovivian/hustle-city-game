@@ -162,6 +162,13 @@
       "when": 1791903017676,
       "tag": "0022_player_items",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791903981877,
+      "tag": "0023_skills_rent",
+      "breakpoints": true
     }
   ]
 }

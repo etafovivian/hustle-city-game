@@ -9,6 +9,8 @@ import {
   LECTURE,
   LECTURES_PER_COURSE,
   PROGRAMME_BY_KEY,
+  PROGRAMME_SKILL,
+  SKILL_POINTS,
   UNIVERSITY,
   VENUES_BY_KEY,
   clockHour,
@@ -30,6 +32,7 @@ import { AppError, notFound } from "../lib/errors.js";
 import { requireUser } from "../plugins/auth.js";
 import { loadNeeds, saveNeeds } from "./game/needs.js";
 import { placeOf } from "./presence.js";
+import { addSkill } from "./game/skills.js";
 
 /** The clock lectures run on (tests move it). */
 export const uniClock = { now: () => Date.now() };
@@ -135,6 +138,8 @@ export async function universityRoutes(app: FastifyInstance) {
         .onConflictDoUpdate({ target: [uniCourses.userId, uniCourses.course], set: { lectures: sql`${uniCourses.lectures} + 1`, updatedAt: now } });
       await tx.insert(uniLectures).values({ userId: user.id, course: live.course, day: dayKey(now, tz) });
       await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${LECTURE.xp}` }).where(eq(profiles.userId, user.id));
+      const course = COURSE_BY_KEY.get(live.course);
+      await addSkill(tx, user.id, course ? PROGRAMME_SKILL[course.programme] : undefined, SKILL_POINTS.lecture);
       const { needs } = await loadNeeds(tx, user.id, now);
       await saveNeeds(tx, user.id, fillNeeds(needs, ["brain"], 20), now);
       return view(tx, user.id, now);

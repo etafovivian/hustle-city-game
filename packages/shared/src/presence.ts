@@ -49,6 +49,17 @@ export const HOME_ROOMS: Record<string, { key: string; label: string; art: strin
     { key: "bedroom", label: "Master bedroom", art: "home-duplex-bedroom" },
     { key: "kitchen", label: "Kitchen", art: "home-kitchen" },
   ],
+  // Rented flats (rent.ts).
+  rent_self_contain: [{ key: "room", label: "Your self-contain", art: "home-self-contain" }],
+  rent_mini_flat: [
+    { key: "parlour", label: "Parlour", art: "home-mini-flat" },
+    { key: "bedroom", label: "Bedroom", art: "home-bedroom" },
+  ],
+  rent_flat: [
+    { key: "living", label: "Living room", art: "home-duplex" },
+    { key: "bedroom", label: "Bedroom", art: "home-duplex-bedroom" },
+    { key: "kitchen", label: "Kitchen", art: "home-kitchen" },
+  ],
   villa: [
     { key: "living", label: "Grand living room", art: "home-mansion" },
     { key: "suite", label: "Master suite", art: "home-villa-suite" },
@@ -66,6 +77,9 @@ export const HOME_INTERIOR: Record<string, string> = {
   family_compound: "home-mini-flat",
   terrace_duplex: "home-duplex",
   villa: "home-mansion",
+  rent_self_contain: "home-self-contain",
+  rent_mini_flat: "home-mini-flat",
+  rent_flat: "home-duplex",
 };
 
 /** A saved contact, with where they are if they're online now. */

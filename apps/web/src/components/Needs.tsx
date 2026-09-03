@@ -1,8 +1,9 @@
 // Needs and mood: the chip in the top bar and the panel it opens (six bars, why you feel the way you do, and places
 // that would help right now).
-import { NEED_ICON, NEED_KEYS, NEED_LABEL, VENUES, VIBE_NEED, isOpenAt, lagosHourOf, venueActions, type NeedKey, type NeedsView, type Vibe } from "@hc/shared";
+import { NEED_ICON, NEED_KEYS, NEED_LABEL, VENUES, VIBE_NEED, isOpenAt, lagosHourOf, venueActions, type NeedKey, type NeedsView, type Vibe, MAX_SKILL, SKILLS, pointsFor, type SkillsView } from "@hc/shared";
 import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../api.js";
 import { createPortal } from "react-dom";
 
 export function MoodChip({ view, onOpen }: { view: NeedsView; onOpen: () => void }) {
@@ -68,6 +69,7 @@ export function NeedsPanel({ view, onClose, onGo }: { view: NeedsView; onClose: 
             </li>
           ))}
         </ul>
+        <SkillsList />
         {view.mood.moodlets.length > 0 && (
           <div className="moodlets">
             {view.mood.moodlets.map((m) => (
@@ -97,5 +99,41 @@ export function NeedsPanel({ view, onClose, onGo }: { view: NeedsView; onClose: 
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Your skills: level, progress to the next, and what each is good for. */
+function SkillsList() {
+  const [skills, setSkills] = useState<SkillsView | null>(null);
+  useEffect(() => {
+    api<SkillsView>("GET", "/api/game/skills")
+      .then(setSkills)
+      .catch(() => undefined);
+  }, []);
+  if (!skills) return null;
+  return (
+    <div className="stack" style={{ gap: 6 }}>
+      <strong className="small">Skills</strong>
+      <ul className="need-bars">
+        {SKILLS.map((s) => {
+          const { points, level } = skills[s.key];
+          const from = pointsFor(level);
+          const to = pointsFor(level + 1);
+          const pct = level >= MAX_SKILL ? 100 : (100 * (points - from)) / (to - from);
+          return (
+            <li key={s.key} title={`${s.perk}. Grow it at: ${s.grow}.`}>
+              <span className="need-name">
+                <span aria-hidden="true">{s.icon}</span> {s.label}
+              </span>
+              <span className="need-bar" role="meter" aria-label={`${s.label} level ${level}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+                <span className="skill-fill" style={{ width: `${pct}%` }} />
+              </span>
+              <span className="num tiny">Lv {level}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <span className="tiny muted">Grow skills by doing things at matching places, working shifts and going to lectures. Charisma and Fitness help with the area boys; every skill raises pay at its jobs.</span>
+    </div>
   );
 }
