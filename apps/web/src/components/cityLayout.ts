@@ -2607,7 +2607,7 @@ const COACH = lineOf(
   brtHalts(
     [
       ["interstate-motor-park", "Interstate Motor Park", [-2196, 0], [-2196, -77]],
-      ["ogun-border", "To Ogun · Ibadan", [-3800, 0], [-3800, -77]],
+      ["ogun-border", "To Ogun · Ibadan", [-3760, 0], [-3760, -77]],
     ],
     "coach",
   ),
