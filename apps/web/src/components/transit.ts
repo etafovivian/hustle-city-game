@@ -9,6 +9,8 @@ type P = { x: number; y: number };
 const WALK_SPEED = 300;
 /** Stops farther than this (straight line) from the start or the end aren't worth walking to. */
 const MAX_WALK = 2200;
+/** Changing lines: stops this close count as one interchange (a short walk between them). */
+const CHANGE_WALK = 1300;
 
 export interface TripLeg {
   kind: "walk" | TransitKind;
@@ -104,16 +106,18 @@ export function transitPlans(from: P, to: P): TransitPlan[] {
         if (p) all.push(p);
       }
   }
-  // One change at a stop two lines share.
+  // One change: at a stop two lines share, or a short walk between nearby stops (the train station to the jetty).
   for (const l1 of usable)
     for (const l2 of usable) {
       if (l1 === l2) continue;
-      const shared = l1.stops.filter((s) => l2.stops.includes(s));
-      for (const x of shared)
+      const pairs: [TransitStop, TransitStop][] = [];
+      for (const s1 of l1.stops.map((id) => TRANSIT_STOP_BY_ID.get(id)!))
+        for (const s2 of l2.stops.map((id) => TRANSIT_STOP_BY_ID.get(id)!)) if (s1 && s2 && dist(s1, s2) < CHANGE_WALK) pairs.push([s1, s2]);
+      for (const [x1, x2] of pairs)
         for (const b of near(l1, from))
           for (const a of near(l2, to)) {
-            if (b.id === x || a.id === x) continue;
-            const p = plan([walkLeg(from, b), rideLeg(l1, b.id, x), rideLeg(l2, x, a.id), walkLeg(a, to)]);
+            if (b.id === x1.id || a.id === x2.id) continue;
+            const p = plan([walkLeg(from, b), rideLeg(l1, b.id, x1.id), walkLeg(x1, x2), rideLeg(l2, x2.id, a.id), walkLeg(a, to)]);
             if (p) all.push(p);
           }
     }
@@ -124,7 +128,12 @@ export function transitPlans(from: P, to: P): TransitPlan[] {
     const cur = best.get(k);
     if (!cur || p.seconds < cur.seconds) best.set(k, p);
   }
-  return [...best.values()].sort((a, b) => a.seconds - b.seconds).slice(0, 3);
+  // Drop plans another beats on both time and fare (a change that saves nothing).
+  const plans = [...best.values()];
+  return plans
+    .filter((p) => !plans.some((q) => q !== p && q.seconds <= p.seconds && q.fare <= p.fare && (q.seconds < p.seconds || q.fare < p.fare)))
+    .sort((a, b) => a.seconds - b.seconds)
+    .slice(0, 3);
 }
 
 /** Should the picker offer this plan? Yes if it's quicker than walking, or walking can't get there. */

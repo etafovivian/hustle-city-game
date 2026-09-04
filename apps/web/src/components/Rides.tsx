@@ -90,7 +90,9 @@ export function RidePicker({
         <div className="visit-head">
           <h2>How are you going?</h2>
           <span className="small muted">
-            To {to} · {km} km{rush && <span className="rush-tag">Rush hour: go-slow and surge</span>}
+            To {to}
+            {walkable ? ` · ${km} km` : " · by boat"}
+            {rush && walkable && <span className="rush-tag">Rush hour: go-slow and surge</span>}
             {rain.fare > 1 && <span className="rush-tag">Rain surge</span>}
           </span>
         </div>
