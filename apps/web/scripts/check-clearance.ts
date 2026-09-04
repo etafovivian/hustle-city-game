@@ -36,6 +36,48 @@ if (lonely) bad.push(`${lonely} footpath nodes have no links`);
 // map, no name plates on top of each other (scripts/audit-layout.ts has the rules and the full report).
 for (const f of audit().found) if (STRICT.includes(f.kind)) bad.push(`${f.kind}: ${f.msg}`);
 
+// Public transport: nothing was in the way when it was laid, every stop is on land people can walk to, buses and
+// coaches keep to the roads, water buses to the water, and each line stops in order.
+for (const i of L.TRANSIT_ISSUES) bad.push(`transit: ${i}`);
+const ids = new Set<string>();
+const start = { x: L.CX - 120, y: L.CY + 150 };
+for (const s of L.TRANSIT_STOPS_L) {
+  if (ids.has(s.id)) bad.push(`transit: stop id ${s.id} is used twice`);
+  ids.add(s.id);
+  const land = L.landmassAt(s.x, s.y);
+  if (!land || land === "bridge") bad.push(`transit: stop ${s.id} is not on land`);
+  else if (land !== "sandbar" && !L.walkRoute(start, s)) bad.push(`transit: stop ${s.id} can't be walked to`);
+}
+const roadDist = (p: { x: number; y: number }) =>
+  Math.min(
+    ...L.ROADS.map((r) => {
+      const dx = r.x1 - r.x0;
+      const dy = r.y1 - r.y0;
+      const t = Math.max(0, Math.min(1, ((p.x - r.x0) * dx + (p.y - r.y0) * dy) / (dx * dx + dy * dy)));
+      return Math.hypot(r.x0 + dx * t - p.x, r.y0 + dy * t - p.y);
+    }),
+    Math.hypot((p.x - L.CX) / 2, p.y - L.CY) < L.ROUNDABOUT.rx ? 0 : Infinity,
+  );
+for (const l of L.TRANSIT_LINES_L) {
+  if (l.stops.length !== l.stopAt.length || l.stopAt.some((k, i) => k < 0 || k >= l.path.length || (i && k <= l.stopAt[i - 1]!))) bad.push(`transit: ${l.key}'s stopAt is out of order`);
+  for (const id of l.stops) if (!ids.has(id)) bad.push(`transit: ${l.key} calls at unknown stop ${id}`);
+  for (let i = 1; i < l.path.length; i++) {
+    const [p, q] = [l.path[i - 1]!, l.path[i]!];
+    const n = Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / 30);
+    for (let k = 0; k <= n; k++) {
+      const c = { x: p.x + ((q.x - p.x) * k) / n, y: p.y + ((q.y - p.y) * k) / n };
+      if (l.mode === "ferry" && L.landmassAt(c.x, c.y) && L.landmassAt(c.x, c.y) !== "bridge") {
+        bad.push(`transit: ${l.key} runs aground at ${c.x.toFixed(0)},${c.y.toFixed(0)}`);
+        break;
+      }
+      if ((l.mode === "brt" || l.mode === "coach") && roadDist(c) > L.HALF + 2) {
+        bad.push(`transit: ${l.key} leaves the road at ${c.x.toFixed(0)},${c.y.toFixed(0)}`);
+        break;
+      }
+    }
+  }
+}
+
 console.log(bad.length ? bad.join("\n") : "all clear");
 console.log(`${boxes.length} things checked, ${L.PROPS.length} props, ${nodes.length} footpath nodes, ${L.ZEBRAS.length} zebras`);
 process.exit(bad.length ? 1 : 0);

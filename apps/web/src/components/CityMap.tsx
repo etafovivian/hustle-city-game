@@ -24,6 +24,7 @@ import { ShopVisit } from "./ShopVisit.js";
 import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
 import { DepthSorted, type DepthItem } from "./People.js";
 import { StreetLife } from "./StreetLife.js";
+import { TransitLayer } from "./TransitLayer.js";
 import {
   ALL_SCENERY,
   BEACH_PATH,
@@ -983,6 +984,7 @@ export function CityMap({
                   ))}
                 </g>
               )}
+              <TransitLayer part="ground" k={k} />
 
             </g>
           )}
@@ -1182,6 +1184,7 @@ export function CityMap({
 
               {/* Labels stay readable at every zoom and time of day */}
               <g className="map-labels" aria-hidden="true">
+                <TransitLayer part="labels" k={k} plateScale={plateScale} />
                 {/* Venue icons show at every zoom (names only up close), so places are easy to find. */}
                 {VENUE_SPOTS.map((spot) => {
                     const v = VENUES_BY_KEY.get(spot.key);

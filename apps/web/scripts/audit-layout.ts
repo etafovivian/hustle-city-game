@@ -49,7 +49,7 @@ export function sprites() {
 }
 
 /** Things allowed to stand on or over water: moored ships, tugs, the ferry jetty, quay cranes on the quay edge. */
-const WET_OK = /cargo-ship|tugboat|ferry-jetty|quay-crane|jet-|plane-/;
+const WET_OK = /cargo-ship|tugboat|ferry-jetty|quay-crane|jet-|plane-|water-bus|marina-station/;
 
 export function audit() {
   const S = sprites();
@@ -112,7 +112,7 @@ export function audit() {
       found.push({ kind: "off-map", msg: `${s.name} at ${s.fx.toFixed(0)},${s.fy.toFixed(0)} is off the map` });
       continue;
     }
-    const wet = pts.filter(([x, y]) => L.landmassAt(x, y) !== "mainland" && L.landmassAt(x, y) !== "island");
+    const wet = pts.filter(([x, y]) => !L.landmassAt(x, y) || L.landmassAt(x, y) === "bridge");
     if (wet.length) found.push({ kind: "water", msg: `${s.name} at ${s.fx.toFixed(0)},${s.fy.toFixed(0)} stands on water or a bridge (${wet.length}/${pts.length} points)` });
   }
   found.push(...deadEnds(), ...labels(), ...empty(S));
