@@ -54,7 +54,7 @@ export interface MapBusiness {
   serviceArea: string;
   pickupAddress: string | null;
   contactPhone: string | null;
-  products: { name: string; priceKobo: number }[];
+  products: { id: string; name: string; priceKobo: number }[];
   /** Live deals right now. */
   deals: number;
   hours: BusinessHours | null;

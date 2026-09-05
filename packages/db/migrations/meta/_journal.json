@@ -183,6 +183,13 @@
       "when": 1791906063541,
       "tag": "0025_shop_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791906144191,
+      "tag": "0026_reservations",
+      "breakpoints": true
     }
   ]
 }

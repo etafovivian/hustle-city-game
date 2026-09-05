@@ -8,6 +8,7 @@ import { FOR_SALE, VENUE_SPOTS, type LandPlot as Plot } from "./cityLayout.js";
 import { DealList } from "./Deals.js";
 import { HousePicker } from "./Home.js";
 import { OpenNow } from "./BusinessHours.js";
+import { ReserveButton } from "./Reserve.js";
 import { track } from "./Dashboard.js";
 
 const ROAD_LABEL: Record<LandRoad, string> = {
@@ -370,7 +371,7 @@ export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: Map
               <li key={p.name}>
                 <span>{p.name}</span>
                 <span className="land-price">{biz.kind === "artisan" ? "from " : ""}{formatNaira(p.priceKobo)}</span>
-                <span />
+                {biz.kind === "retail" ? <ReserveButton productId={p.id} name={p.name} notify={notify ?? (() => undefined)} /> : <span />}
               </li>
             ))}
           </ul>

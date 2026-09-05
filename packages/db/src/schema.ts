@@ -987,3 +987,28 @@ export const shopReviews = pgTable(
   },
   (t) => [index("shop_reviews_business_idx").on(t.businessId), check("shop_reviews_rating", sql`${t.rating} between 1 and 5`)],
 );
+
+/** A product reserved for pickup: the customer pays at the shop; the shop confirms, declines or marks it collected. */
+export const reservations = pgTable(
+  "reservations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    qty: integer("qty").notNull(),
+    note: text("note").notNull().default(""),
+    code: text("code").notNull(),
+    // requested | confirmed | declined | collected | cancelled
+    status: text("status").notNull().default("requested"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("reservations_business_idx").on(t.businessId, t.status), index("reservations_user_idx").on(t.userId), uniqueIndex("reservations_code_uq").on(t.code)],
+);

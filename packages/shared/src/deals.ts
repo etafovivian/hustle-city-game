@@ -95,3 +95,29 @@ export interface BusinessDashboard {
   onMap: boolean;
   verified: boolean;
 }
+
+// ── Pickup reservations: reserve a product, the shop confirms, you pay and collect at the shop. ──
+export const RESERVE = {
+  /** Hours the shop has to confirm. */
+  confirmHours: 24,
+  /** Hours you have to collect once confirmed. */
+  holdHours: 48,
+  maxQty: 10,
+  /** Open reservations one player can have at once. */
+  maxOpen: 3,
+};
+export type ReservationStatus = "requested" | "confirmed" | "declined" | "collected" | "cancelled" | "expired";
+export interface ReservationView {
+  id: string;
+  code: string;
+  product: string;
+  priceKobo: number;
+  qty: number;
+  note: string;
+  status: ReservationStatus;
+  expiresAt: string;
+  businessName: string;
+  pickupAddress: string | null;
+  /** Who reserved it (shown to the shop). */
+  customer?: string;
+}

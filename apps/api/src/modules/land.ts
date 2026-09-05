@@ -93,7 +93,7 @@ export async function landRoutes(app: FastifyInstance) {
       serviceArea: b.serviceArea,
       pickupAddress: b.pickupAddress,
       contactPhone: b.contactPhone,
-      products: items.filter((p) => p.businessId === b.id).slice(0, 6).map((p) => ({ name: p.name, priceKobo: p.priceKobo })),
+      products: items.filter((p) => p.businessId === b.id).slice(0, 6).map((p) => ({ id: p.id, name: p.name, priceKobo: p.priceKobo })),
       hours: (b.hours as MapBusiness["hours"]) ?? null,
       ...ratingOf(b.id),
     }));

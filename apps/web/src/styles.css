@@ -976,3 +976,4 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .star { border: 0; background: none; font-size: 24px; line-height: 1; color: var(--rule-strong); cursor: pointer; padding: 2px; }
 .star.on { color: var(--yellow); }
 .stars-static { color: var(--yellow); letter-spacing: 1px; }
+.reserve-form .input { min-width: 0; max-width: 160px; }

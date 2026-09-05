@@ -3,6 +3,7 @@
 import { DEAL_LIMITS, DEAL_REWARD, type DealView, type MyDealCode, type OwnerDeal, type RedeemResult } from "@hc/shared";
 import { AlertCircle, CheckCircle2, Clock, Copy, Plus, Tag, Ticket } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { MyReservations } from "./Reserve.js";
 import { api } from "../api.js";
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
@@ -83,6 +84,7 @@ export function MyDeals() {
         <h2 style={{ fontSize: 20 }}>Your deals</h2>
         <p className="small muted">Show the code at the shop. When they mark it used you get {DEAL_REWARD.coins} coins and {DEAL_REWARD.xp} XP (up to 3 deals a day).</p>
       </div>
+      <MyReservations />
       {!items.length && <p className="small muted">No codes yet. Look for the green tag on real businesses around the city.</p>}
       {items.map((c) => {
         const expired = !c.redeemedAt && new Date(c.expiresAt).getTime() < now;
