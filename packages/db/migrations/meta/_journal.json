@@ -169,6 +169,20 @@
       "when": 1791903981877,
       "tag": "0023_skills_rent",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791905978862,
+      "tag": "0024_business_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791906063541,
+      "tag": "0025_shop_reviews",
+      "breakpoints": true
     }
   ]
 }

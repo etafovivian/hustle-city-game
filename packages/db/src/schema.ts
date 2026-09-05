@@ -227,6 +227,8 @@ export const businesses = pgTable(
     contactPhone: text("contact_phone"),
     /** Set by an admin after checking the business (phone, and CAC for bigger ones); null means not verified. */
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** Opening hours { days, open, close } (Lagos hours); null = not set. */
+    hours: jsonb("hours"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -965,3 +967,23 @@ export const rentals = pgTable("rentals", {
   paidUntil: timestamp("paid_until", { withTimezone: true }).notNull(),
   startedAt: createdAt(),
 });
+
+/** A review of a shop, unlocked by a deal the reviewer actually redeemed there (one per claim). */
+export const shopReviews = pgTable(
+  "shop_reviews",
+  {
+    claimId: uuid("claim_id")
+      .primaryKey()
+      .references(() => dealClaims.id, { onDelete: "cascade" }),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    reviewerId: uuid("reviewer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    body: text("body").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("shop_reviews_business_idx").on(t.businessId), check("shop_reviews_rating", sql`${t.rating} between 1 and 5`)],
+);

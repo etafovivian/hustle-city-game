@@ -115,6 +115,7 @@ export function MyDeals() {
                 </>
               )}
             </span>
+            {c.redeemedAt && <ShopReview claim={c} onDone={(review) => setItems((xs) => xs?.map((x) => (x.claimId === c.claimId ? { ...x, review } : x)) ?? null)} />}
           </div>
         );
       })}
@@ -297,6 +298,54 @@ export function AdminDeals({ notify }: { notify: (m: string) => void }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** After a deal was used at the shop: rate the shop (stars and a line). */
+function ShopReview({ claim, onDone }: { claim: MyDealCode; onDone: (r: { rating: number; body: string }) => void }) {
+  const [stars, setStars] = useState(0);
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  if (claim.review)
+    return (
+      <span className="tiny">
+        Your review: {"★".repeat(claim.review.rating)}
+        {"☆".repeat(5 - claim.review.rating)} {claim.review.body}
+      </span>
+    );
+  const send = async () => {
+    try {
+      onDone(await api<{ rating: number; body: string }>("POST", `/api/deals/claims/${claim.claimId}/review`, { rating: stars, body }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <div className="stack" style={{ gap: 4 }}>
+      <span className="tiny">How was {claim.businessName}?</span>
+      <span className="stars" role="radiogroup" aria-label="Your rating">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} className={`star ${n <= stars ? "on" : ""}`} onClick={() => setStars(n)}>
+            ★
+          </button>
+        ))}
+      </span>
+      {stars > 0 && (
+        <form
+          className="chat-compose"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <input className="input" value={body} maxLength={400} onChange={(e) => setBody(e.target.value)} placeholder="One line for other customers (optional)" aria-label="Review" />
+          <button type="submit" className="btn sm go">
+            Post
+          </button>
+        </form>
+      )}
+      {error && <span className="alert small">{error}</span>}
     </div>
   );
 }

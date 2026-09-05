@@ -2,7 +2,7 @@
 // New workshops start pending review and only appear in search once an admin publishes them.
 
 import { auditEvents, businessMembers, businesses, products } from "@hc/db";
-import { ARTISAN_CATEGORY_KEYS, LAGOS_AREA_SET, NG_PHONE, RETAIL_CATEGORY_KEYS, normalisePhone, type MyBusiness } from "@hc/shared";
+import { ARTISAN_CATEGORY_KEYS, LAGOS_AREA_SET, NG_PHONE, RETAIL_CATEGORY_KEYS, normalisePhone, type BusinessHours, type MyBusiness } from "@hc/shared";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -57,6 +57,7 @@ const toMine = (b: typeof businesses.$inferSelect): MyBusiness => ({
   verified: b.verifiedAt !== null,
   status: b.status as MyBusiness["status"],
   reviewNote: b.reviewNote,
+  hours: (b.hours as BusinessHours | null) ?? null,
 });
 
 export async function businessRoutes(app: FastifyInstance) {
@@ -103,6 +104,25 @@ export async function businessRoutes(app: FastifyInstance) {
       .where(eq(businessMembers.userId, user.id))
       .orderBy(desc(businesses.createdAt));
     return rows.map((r) => toMine(r.b));
+  });
+
+  // Opening hours (owner or staff): shown on the business card with "open now".
+  app.post<{ Params: { id: string } }>("/api/businesses/:id/hours", async (request) => {
+    const user = requireUser(request);
+    const id = z.uuid().parse(request.params.id);
+    const hours = z
+      .object({ days: z.array(z.number().int().min(0).max(6)).min(1).max(7), open: z.number().int().min(0).max(23), close: z.number().int().min(1).max(24) })
+      .refine((h) => h.open !== h.close, { message: "Open and close can't be the same hour." })
+      .nullable()
+      .parse(request.body);
+    const [member] = await app.db.select().from(businessMembers).where(and(eq(businessMembers.businessId, id), eq(businessMembers.userId, user.id)));
+    if (!member) throw notFound("Business");
+    const [b] = await app.db
+      .update(businesses)
+      .set({ hours: hours ? { ...hours, days: [...new Set(hours.days)].sort() } : null })
+      .where(eq(businesses.id, id))
+      .returning();
+    return toMine(b!);
   });
 
   // ── Admin review ──

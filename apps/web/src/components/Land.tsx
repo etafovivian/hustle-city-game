@@ -7,6 +7,7 @@ import { api, formatCoins, formatNaira } from "../api.js";
 import { FOR_SALE, VENUE_SPOTS, type LandPlot as Plot } from "./cityLayout.js";
 import { DealList } from "./Deals.js";
 import { HousePicker } from "./Home.js";
+import { OpenNow } from "./BusinessHours.js";
 import { track } from "./Dashboard.js";
 
 const ROAD_LABEL: Record<LandRoad, string> = {
@@ -341,6 +342,23 @@ export function BusinessCard({ biz, onClose, onGo, onQuote, notify }: { biz: Map
           </div>
         </div>
         <p>{biz.description}</p>
+        <OpenNow hours={biz.hours} />
+        {biz.reviews > 0 && (
+          <div className="stack" style={{ gap: 2 }}>
+            <span className="small">
+              <span className="stars-static" aria-label={`${biz.rating} out of 5`}>
+                {"★".repeat(Math.round(biz.rating ?? 0))}
+                {"☆".repeat(5 - Math.round(biz.rating ?? 0))}
+              </span>{" "}
+              {biz.rating} · {biz.reviews} review{biz.reviews > 1 ? "s" : ""} from real customers
+            </span>
+            {biz.recent.map((r, i) => (
+              <span key={i} className="tiny muted">
+                “{r.body}” · {r.rating}★
+              </span>
+            ))}
+          </div>
+        )}
         {biz.pickupAddress && (
           <p className="small">
             <MapPinned size={14} aria-hidden="true" /> {biz.pickupAddress}

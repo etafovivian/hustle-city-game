@@ -14,6 +14,16 @@ export const ARTISAN_CATEGORIES = [
   { key: "event_decor", label: "Event decoration" },
   { key: "catering", label: "Catering" },
   { key: "hair_beauty", label: "Hair and beauty" },
+  { key: "pos_agent", label: "POS agent (cash out, transfers)" },
+  { key: "dispatch_rider", label: "Dispatch rider and delivery" },
+  { key: "laundry", label: "Laundry and dry cleaning" },
+  { key: "cleaning", label: "Home and office cleaning" },
+  { key: "solar_inverter", label: "Solar and inverter installer" },
+  { key: "gas_refill", label: "Cooking gas refill" },
+  { key: "printing", label: "Printing and branding" },
+  { key: "tutor", label: "Lesson teacher and tutor" },
+  { key: "car_wash", label: "Car wash" },
+  { key: "mechanic", label: "Mechanic and vulcaniser" },
 ] as const;
 export const ARTISAN_CATEGORY_KEYS: readonly string[] = ARTISAN_CATEGORIES.map((c) => c.key);
 /** Shops that sell things (retail listings): customers see products and prices, and go to the shop or WhatsApp it. */
@@ -28,6 +38,7 @@ export const RETAIL_CATEGORIES = [
   { key: "books_stationery", label: "Books and stationery" },
   { key: "baby_kids", label: "Baby and kids" },
   { key: "home_kitchen", label: "Home and kitchen" },
+  { key: "pharmacy", label: "Pharmacy and chemist" },
 ] as const;
 export const RETAIL_CATEGORY_KEYS: readonly string[] = RETAIL_CATEGORIES.map((c) => c.key);
 export type ListingKind = "artisan" | "retail";
@@ -180,8 +191,36 @@ export interface ServiceRequestDetail extends ServiceRequestSummary {
   can: RequestAction[];
 }
 
+/** Opening hours: Lagos hours [open, close) on the given weekdays (0 = Sunday). close below open runs past midnight. */
+export interface BusinessHours {
+  days: number[];
+  open: number;
+  close: number;
+}
+export const DEFAULT_HOURS: BusinessHours = { days: [1, 2, 3, 4, 5, 6], open: 8, close: 19 };
+const lagosNow = (at: Date) => {
+  const l = new Date(at.getTime() + 3_600_000);
+  return { day: l.getUTCDay(), hour: l.getUTCHours() + l.getUTCMinutes() / 60 };
+};
+export function isBusinessOpen(h: BusinessHours | null, at: Date): boolean | null {
+  if (!h) return null;
+  const { day, hour } = lagosNow(at);
+  if (h.open < h.close) return h.days.includes(day) && hour >= h.open && hour < h.close;
+  return (h.days.includes(day) && hour >= h.open) || (h.days.includes((day + 6) % 7) && hour < h.close);
+}
+const hourLabel = (n: number) => (n === 0 || n === 24 ? "midnight" : n === 12 ? "noon" : n < 12 ? `${n}am` : `${n - 12}pm`);
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** "Mon–Sat 8am–7pm" style. */
+export function hoursText(h: BusinessHours): string {
+  const days = [...h.days].sort();
+  const run = days.length > 1 && days.every((d, i) => i === 0 || d === days[i - 1]! + 1);
+  const d = days.length === 7 ? "Every day" : run ? `${DAY_SHORT[days[0]!]}–${DAY_SHORT[days[days.length - 1]!]}` : days.map((x) => DAY_SHORT[x]).join(", ");
+  return `${d} ${hourLabel(h.open)}–${hourLabel(h.close)}`;
+}
+
 export interface MyBusiness {
   id: string;
+  hours: BusinessHours | null;
   name: string;
   kind: ListingKind | "office";
   verified: boolean;

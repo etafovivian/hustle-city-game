@@ -61,6 +61,10 @@ export interface MyDealCode {
   terms: string;
   businessName: string;
   pickupAddress: string | null;
+  /** The claim (for reviewing the shop once it's redeemed). */
+  claimId: string;
+  /** Your review of the shop for this deal, if you left one. */
+  review: { rating: number; body: string } | null;
 }
 
 export interface RedeemResult {

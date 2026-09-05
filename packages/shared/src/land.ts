@@ -1,6 +1,7 @@
 // Land for sale: open plots on the map with a permanent id (cityLayout makes them the same on every visit).
 // Prices are in City Coins and follow Lagos: the Island and Lekki cost the most, a plot on a big road more than
 // one on a close. Ownership opens later; for now players register interest and the owner follows up.
+import type { BusinessHours } from "./services.js";
 
 export type LandRoad = "arterial" | "collector" | "local" | "alley";
 
@@ -56,6 +57,12 @@ export interface MapBusiness {
   products: { name: string; priceKobo: number }[];
   /** Live deals right now. */
   deals: number;
+  hours: BusinessHours | null;
+  /** Average stars (1-5, from finished jobs and redeemed deals) and how many reviews. */
+  rating: number | null;
+  reviews: number;
+  /** A few recent review lines. */
+  recent: { rating: number; body: string }[];
 }
 
 /** The building drawn for a business, by what it does. */
@@ -80,5 +87,16 @@ export const BUSINESS_ART: Record<string, string> = {
   books_stationery: "cyber-cafe",
   baby_kids: "shop-house",
   home_kitchen: "commercial-block",
+  pos_agent: "gadget-kiosk",
+  dispatch_rider: "shop-house",
+  laundry: "shop-house",
+  cleaning: "shop-house",
+  solar_inverter: "commercial-block",
+  gas_refill: "shop-house",
+  printing: "cyber-cafe",
+  tutor: "cyber-cafe",
+  car_wash: "mechanic",
+  mechanic: "mechanic",
+  pharmacy: "chemist",
 };
 export const businessArt = (category: string) => `/art/buildings/${BUSINESS_ART[category] ?? "shop-house"}.webp`;

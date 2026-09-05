@@ -2,7 +2,7 @@
 // counter; the business marks a code used and the player earns a small reward. Owner decision (2026-10-12): deals
 // only, no cash, airtime or data. Deals from verified businesses go live at once; others wait for admin review.
 
-import { auditEvents, businessMembers, businessPlots, businessStats, businesses, dealClaims, deals, gameLedgerEntries, profiles, serviceRequests } from "@hc/db";
+import { auditEvents, businessMembers, businessPlots, businessStats, businesses, dealClaims, deals, gameLedgerEntries, profiles, serviceRequests, shopReviews } from "@hc/db";
 import {
   BUSINESS_EVENTS,
   DEAL_CODE,
@@ -10,6 +10,7 @@ import {
   DEAL_LIMITS,
   DEAL_REWARD,
   DEAL_REWARDS_PER_DAY,
+  chatProblem,
   dayKey,
   normaliseDealCode,
   type BusinessDashboard,
@@ -253,7 +254,13 @@ export async function dealRoutes(app: FastifyInstance) {
       .where(eq(dealClaims.userId, user.id))
       .orderBy(desc(dealClaims.createdAt))
       .limit(50);
+    const mine = rows.length ? await app.db.select().from(shopReviews).where(inArray(shopReviews.claimId, rows.map((r) => r.c.id))) : [];
     return rows.map(({ c, d, b }) => ({
+      claimId: c.id,
+      review: (() => {
+        const r = mine.find((x) => x.claimId === c.id);
+        return r ? { rating: r.rating, body: r.body } : null;
+      })(),
       code: c.code,
       expiresAt: c.expiresAt.toISOString(),
       redeemedAt: c.redeemedAt?.toISOString() ?? null,
@@ -262,6 +269,25 @@ export async function dealRoutes(app: FastifyInstance) {
       businessName: b.name,
       pickupAddress: b.pickupAddress,
     }));
+  });
+
+  // Review the shop after your deal was redeemed there (one review per redeemed deal).
+  app.post<{ Params: { claimId: string } }>("/api/deals/claims/:claimId/review", async (request, reply) => {
+    const user = requireUser(request);
+    const claimId = z.uuid().parse(request.params.claimId);
+    const { rating, body } = z.object({ rating: z.number().int().min(1).max(5), body: z.string().trim().max(400).default("") }).parse(request.body);
+    const problem = body ? chatProblem(body) : null;
+    if (problem) throw new AppError(400, "bad_text", problem);
+    const [row] = await app.db
+      .select({ c: dealClaims, d: deals })
+      .from(dealClaims)
+      .innerJoin(deals, eq(deals.id, dealClaims.dealId))
+      .where(and(eq(dealClaims.id, claimId), eq(dealClaims.userId, user.id)));
+    if (!row) throw notFound("Deal");
+    if (!row.c.redeemedAt) throw new AppError(409, "not_redeemed", "Use the deal at the shop first, then review it.");
+    const [done] = await app.db.insert(shopReviews).values({ claimId, businessId: row.d.businessId, reviewerId: user.id, rating, body }).onConflictDoNothing().returning();
+    if (!done) throw new AppError(409, "reviewed", "You've reviewed this one already.");
+    return reply.code(201).send({ rating, body });
   });
 
   // ── Admin review (deals from businesses that aren't verified yet) ──

@@ -1,6 +1,6 @@
 // Land interest: players say which plot they want; the owner sees who to contact when ownership opens.
 
-import { businessMembers, businessPlots, businesses, deals, landInterest, playerPlots, products, users } from "@hc/db";
+import { businessMembers, businessPlots, businesses, deals, landInterest, playerPlots, products, users, reviews, shopReviews } from "@hc/db";
 import { PLOT_ID, STALLS, isStall, stallId, type LandInterestView, type MapBusiness } from "@hc/shared";
 import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -69,6 +69,18 @@ export async function landRoutes(app: FastifyInstance) {
           .where(and(inArray(deals.businessId, rows.map((r) => r.b.id)), eq(deals.status, "live"), gt(deals.endsAt, new Date())))
           .groupBy(deals.businessId)
       : [];
+    // Stars from finished artisan jobs and redeemed deals.
+    const ids = rows.map((r) => r.b.id);
+    const jobReviews = ids.length ? await app.db.select({ businessId: reviews.businessId, rating: reviews.rating, body: reviews.body, at: reviews.createdAt }).from(reviews).where(inArray(reviews.businessId, ids)) : [];
+    const dealReviews = ids.length ? await app.db.select({ businessId: shopReviews.businessId, rating: shopReviews.rating, body: shopReviews.body, at: shopReviews.createdAt }).from(shopReviews).where(inArray(shopReviews.businessId, ids)) : [];
+    const ratingOf = (id: string) => {
+      const all = [...jobReviews, ...dealReviews].filter((r) => r.businessId === id).sort((a, b) => b.at.getTime() - a.at.getTime());
+      return {
+        rating: all.length ? Math.round((10 * all.reduce((n, r) => n + r.rating, 0)) / all.length) / 10 : null,
+        reviews: all.length,
+        recent: all.filter((r) => r.body).slice(0, 3).map((r) => ({ rating: r.rating, body: r.body })),
+      };
+    };
     return rows.map(({ plotId, b }) => ({
       deals: Number(live.find((x) => x.businessId === b.id)?.n ?? 0),
       plotId,
@@ -82,6 +94,8 @@ export async function landRoutes(app: FastifyInstance) {
       pickupAddress: b.pickupAddress,
       contactPhone: b.contactPhone,
       products: items.filter((p) => p.businessId === b.id).slice(0, 6).map((p) => ({ name: p.name, priceKobo: p.priceKobo })),
+      hours: (b.hours as MapBusiness["hours"]) ?? null,
+      ...ratingOf(b.id),
     }));
   });
 

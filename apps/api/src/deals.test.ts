@@ -87,4 +87,28 @@ describe("deals", () => {
     await owner.call("POST", `/api/businesses/${shop}/deals`, { title: "Deal number three here", days: 7, maxClaims: 5 });
     expect((await owner.call("POST", `/api/businesses/${shop}/deals`, { title: "Deal number four here", days: 7, maxClaims: 5 })).statusCode).toBe(409);
   });
+
+  it("lets a customer review the shop only after the deal was used there, once, and shows stars and hours on the map", async () => {
+    const owner = await registerPlayer(app);
+    const buyer = await registerPlayer(app);
+    const shop = await liveShop(owner, true);
+    await owner.call("POST", `/api/businesses/${shop}/deals`, { title: "Free pure water with rice", terms: "", days: 14, maxClaims: 50 });
+    const deal = (await app.inject({ method: "GET", url: `/api/deals?businessId=${shop}` })).json()[0];
+    const claim = (await buyer.call("POST", `/api/deals/${deal.id}/claim`)).json();
+    const mine = (await buyer.call("GET", "/api/deals/mine")).json()[0];
+    expect((await buyer.call("POST", `/api/deals/claims/${mine.claimId}/review`, { rating: 5, body: "Fast and friendly" })).statusCode).toBe(409); // not used yet
+    await owner.call("POST", `/api/businesses/${shop}/redeem`, { code: claim.code });
+    expect((await owner.call("POST", `/api/deals/claims/${mine.claimId}/review`, { rating: 5 })).statusCode).toBe(404); // not their claim
+    expect((await buyer.call("POST", `/api/deals/claims/${mine.claimId}/review`, { rating: 4, body: "Fast and friendly" })).statusCode).toBe(201);
+    expect((await buyer.call("POST", `/api/deals/claims/${mine.claimId}/review`, { rating: 1 })).statusCode).toBe(409); // once
+    expect((await buyer.call("GET", "/api/deals/mine")).json()[0].review).toEqual({ rating: 4, body: "Fast and friendly" });
+    // Hours: only members can set them; strangers get 404.
+    expect((await buyer.call("POST", `/api/businesses/${shop}/hours`, { days: [1], open: 8, close: 18 })).statusCode).toBe(404);
+    const hours = (await owner.call("POST", `/api/businesses/${shop}/hours`, { days: [6, 1, 2, 2], open: 8, close: 20 })).json();
+    expect(hours.hours).toEqual({ days: [1, 2, 6], open: 8, close: 20 });
+    // On the map (once the shop has a plot).
+    await sqlRun((sql) => sql`insert into business_plots (business_id, plot_id) values (${shop}, 'junction-101-A+1')`);
+    const card = (await app.inject({ method: "GET", url: "/api/map/businesses" })).json().find((b: { businessId: string }) => b.businessId === shop);
+    expect(card).toMatchObject({ rating: 4, reviews: 1, recent: [{ rating: 4, body: "Fast and friendly" }], hours: { days: [1, 2, 6], open: 8, close: 20 } });
+  });
 });
