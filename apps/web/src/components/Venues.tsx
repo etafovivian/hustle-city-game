@@ -13,6 +13,7 @@ import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
+import { SponsorBanner } from "./Sponsors.js";
 import { buildingBox } from "./sprites.js";
 
 /** The building: tap to open its card. */
@@ -255,6 +256,7 @@ export function VenueCard({
             </button>
           </div>
         )}
+        <SponsorBanner venue={base.key} />
         <p>{venue.blurb}</p>
         {branch ? (
           <p className="small muted">Same things to do as {base.name} in {base.area}.</p>

@@ -1012,3 +1012,14 @@ export const reservations = pgTable(
   },
   (t) => [index("reservations_business_idx").on(t.businessId, t.status), index("reservations_user_idx").on(t.userId), uniqueIndex("reservations_code_uq").on(t.code)],
 );
+
+/** A business sponsoring a place in the game ("Presented by …"), set by an admin for a period. */
+export const venueSponsors = pgTable("venue_sponsors", {
+  venue: text("venue").primaryKey(),
+  businessId: uuid("business_id")
+    .notNull()
+    .references(() => businesses.id, { onDelete: "cascade" }),
+  tagline: text("tagline").notNull().default(""),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+});

@@ -75,21 +75,34 @@ export interface RedeemResult {
 }
 
 /** What we count for a business's dashboard. */
-export const BUSINESS_EVENTS = ["card_open", "search_view", "whatsapp", "directions"] as const;
+export const BUSINESS_EVENTS = ["card_open", "search_view", "whatsapp", "directions", "sponsor_view"] as const;
 export type BusinessEvent = (typeof BUSINESS_EVENTS)[number];
 export const BUSINESS_EVENT_LABEL: Record<BusinessEvent, string> = {
   card_open: "Opened your card on the map",
   search_view: "Saw you in Find a business",
   whatsapp: "Tapped WhatsApp",
   directions: "Went to you in the game",
+  sponsor_view: "Saw your sponsorship at a place",
 };
+
+/** A place sponsored by a business ("Presented by …"). */
+export interface SponsorView {
+  venue: string;
+  businessId: string;
+  businessName: string;
+  tagline: string;
+  endsAt: string;
+  /** The business has a building on the map (so "Visit" can take you there). */
+  onMap: boolean;
+  deals: number;
+}
 
 export interface BusinessDashboard {
   days: number;
   /** Totals for the period. */
   totals: Record<BusinessEvent, number>;
   /** One row per day, oldest first. */
-  daily: { day: string; card_open: number; search_view: number; whatsapp: number; directions: number }[];
+  daily: { day: string; card_open: number; search_view: number; whatsapp: number; directions: number; sponsor_view: number }[];
   deals: { title: string; claimed: number; redeemed: number; status: string }[];
   quotes: { total: number; open: number; completed: number };
   onMap: boolean;

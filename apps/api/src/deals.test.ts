@@ -111,4 +111,20 @@ describe("deals", () => {
     const card = (await app.inject({ method: "GET", url: "/api/map/businesses" })).json().find((b: { businessId: string }) => b.businessId === shop);
     expect(card).toMatchObject({ rating: 4, reviews: 1, recent: [{ rating: 4, body: "Fast and friendly" }], hours: { days: [1, 2, 6], open: 8, close: 20 } });
   });
+
+  it("lets an admin sponsor a place with a live business, shown to everyone until it ends", async () => {
+    const owner = await registerPlayer(app);
+    const admin = await registerPlayer(app);
+    await sqlRun((sql) => sql`update users set roles = array['player','admin'] where id = ${admin.id}`);
+    const shop = await liveShop(owner, true);
+    expect((await owner.call("POST", "/api/admin/sponsors", { venue: "mallam_suya", businessId: shop, days: 7 })).statusCode).toBe(403);
+    expect((await admin.call("POST", "/api/admin/sponsors", { venue: "nowhere", businessId: shop, days: 7 })).statusCode).toBe(400);
+    await admin.call("POST", "/api/admin/sponsors", { venue: "mallam_suya", businessId: shop, tagline: "Rice and drinks all day", days: 7 });
+    const list = (await app.inject({ method: "GET", url: "/api/sponsors" })).json();
+    expect(list).toEqual([expect.objectContaining({ venue: "mallam_suya", businessId: shop, businessName: "Mama Bisi Provisions", tagline: "Rice and drinks all day", onMap: false })]);
+    await owner.call("POST", `/api/businesses/${shop}/track`, { kind: "sponsor_view" });
+    expect((await owner.call("GET", `/api/businesses/${shop}/dashboard`)).json().totals.sponsor_view).toBe(1);
+    await admin.call("POST", "/api/admin/sponsors/mallam_suya/end");
+    expect((await app.inject({ method: "GET", url: "/api/sponsors" })).json()).toEqual([]);
+  });
 });

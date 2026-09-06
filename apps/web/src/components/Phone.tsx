@@ -17,6 +17,7 @@ import { EventsApp } from "./Events.js";
 import { Contacts } from "./Contacts.js";
 import { GamesApp, type GameOpen } from "./Games.js";
 import { Hangout, WorkHub } from "./Locations.js";
+import { AdminSponsors } from "./Sponsors.js";
 import { Quests } from "./Quests.js";
 
 export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games";
@@ -204,6 +205,7 @@ export function Phone({
             <div className="stack">
               <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
+              <AdminSponsors notify={notify} />
               <AdminReview notify={notify} />
               <h2 style={{ fontSize: 20 }}>Deal review</h2>
               <AdminDeals notify={notify} />

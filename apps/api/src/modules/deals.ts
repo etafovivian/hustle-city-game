@@ -359,7 +359,7 @@ export async function dealRoutes(app: FastifyInstance) {
     const dayList = Array.from({ length: days }, (_, i) => dayKey(new Date(now.getTime() - (days - 1 - i) * 86_400_000), tz));
     const rows = await app.db.select().from(businessStats).where(and(eq(businessStats.businessId, businessId), sql`${businessStats.day} >= ${dayList[0]!}`));
     const totals = Object.fromEntries(BUSINESS_EVENTS.map((k) => [k, 0])) as Record<BusinessEvent, number>;
-    const daily = dayList.map((day) => ({ day, card_open: 0, search_view: 0, whatsapp: 0, directions: 0 }));
+    const daily = dayList.map((day) => ({ day, card_open: 0, search_view: 0, whatsapp: 0, directions: 0, sponsor_view: 0 }));
     for (const r of rows) {
       const k = r.kind as BusinessEvent;
       if (!(k in totals)) continue;

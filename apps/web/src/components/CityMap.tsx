@@ -340,6 +340,18 @@ export function CityMap({
     window.addEventListener("hc:go-to", go);
     return () => window.removeEventListener("hc:go-to", go);
   }, []);
+  // A sponsor's "Visit them" opens that business's card.
+  useEffect(() => {
+    const open = (e: Event) => {
+      const b = mapBizRef.current.find((m) => m.businessId === (e as CustomEvent<string>).detail);
+      if (b) {
+        setVenueOpen(null);
+        setBizOpen(b);
+      }
+    };
+    window.addEventListener("hc:open-business", open);
+    return () => window.removeEventListener("hc:open-business", open);
+  }, []);
   // "Go fix it" from the needs panel opens a place's card here.
   useEffect(() => {
     const open = (e: Event) => setVenueOpen((e as CustomEvent<string>).detail);
@@ -348,6 +360,8 @@ export function CityMap({
   }, []);
   // Real businesses with a building on a plot (free in the beta).
   const [mapBiz, setMapBiz] = useState<MapBusiness[]>([]);
+  const mapBizRef = useRef(mapBiz);
+  mapBizRef.current = mapBiz;
   const [bizOpen, setBizOpen] = useState<MapBusiness | null>(null);
   const loadMapBiz = () =>
     api<MapBusiness[]>("GET", "/api/map/businesses")

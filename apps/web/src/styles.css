@@ -977,3 +977,5 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
 .star.on { color: var(--yellow); }
 .stars-static { color: var(--yellow); letter-spacing: 1px; }
 .reserve-form .input { min-width: 0; max-width: 160px; }
+.sponsor-banner { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: linear-gradient(135deg, rgb(255 199 44 / 16%), transparent); border: 1px solid rgb(255 199 44 / 45%); }
+.sponsor-banner .btn { justify-self: start; margin-top: 4px; }
