@@ -18,6 +18,7 @@ import { Contacts } from "./Contacts.js";
 import { GamesApp, type GameOpen } from "./Games.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { AdminSponsors } from "./Sponsors.js";
+import { JobsBoard } from "./JobsBoard.js";
 import { Quests } from "./Quests.js";
 
 export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games";
@@ -164,7 +165,12 @@ export function Phone({
           )}
           {app === "dream" && dream && <Dream dream={dream} onDream={setDream} onChanged={onChanged} notify={notify} />}
           {app === "academy" && <AcademyApp notify={notify} onChanged={onChanged} />}
-          {app === "jobs" && <WorkHub />}
+          {app === "jobs" && (
+            <div className="stack-lg">
+              <JobsBoard notify={notify} />
+              <WorkHub />
+            </div>
+          )}
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}

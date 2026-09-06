@@ -1023,3 +1023,45 @@ export const venueSponsors = pgTable("venue_sponsors", {
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   createdAt: createdAt(),
 });
+
+/** Real job vacancies posted by verified businesses. */
+export const vacancies = pgTable(
+  "vacancies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    // full_time | part_time | gig | apprenticeship
+    kind: text("kind").notNull(),
+    pay: text("pay").notNull().default(""),
+    area: text("area").notNull(),
+    description: text("description").notNull(),
+    wantsCertificate: boolean("wants_certificate").notNull().default(false),
+    // open | closed
+    status: text("status").notNull().default("open"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("vacancies_status_idx").on(t.status), index("vacancies_business_idx").on(t.businessId)],
+);
+
+/** Applications to a vacancy: a message and the contact the applicant chose to share. */
+export const jobApplications = pgTable(
+  "job_applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vacancyId: uuid("vacancy_id")
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    contact: text("contact").notNull(),
+    // new | shortlisted | declined
+    status: text("status").notNull().default("new"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("job_applications_vacancy_user_uq").on(t.vacancyId, t.userId)],
+);

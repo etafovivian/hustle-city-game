@@ -22,6 +22,7 @@ import { weatherRoutes } from "./modules/game/weather.js";
 import { skillRoutes } from "./modules/game/skills.js";
 import { reservationRoutes } from "./modules/reservations.js";
 import { sponsorRoutes } from "./modules/sponsors.js";
+import { jobsBoardRoutes } from "./modules/jobsboard.js";
 import { gameRoutes } from "./modules/game/routes.js";
 import { marketRoutes } from "./modules/market.js";
 import { meRoutes } from "./modules/me.js";
@@ -104,6 +105,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(skillRoutes);
   await app.register(reservationRoutes);
   await app.register(sponsorRoutes);
+  await app.register(jobsBoardRoutes);
 
   return app;
 }

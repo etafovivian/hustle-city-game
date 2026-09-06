@@ -134,3 +134,41 @@ export interface ReservationView {
   /** Who reserved it (shown to the shop). */
   customer?: string;
 }
+
+// ── Jobs board: real vacancies from verified businesses; players apply with a message and a contact. ──
+export const VACANCY_KINDS = [
+  { key: "full_time", label: "Full-time" },
+  { key: "part_time", label: "Part-time" },
+  { key: "gig", label: "One-off gig" },
+  { key: "apprenticeship", label: "Apprenticeship" },
+] as const;
+export type VacancyKind = (typeof VACANCY_KINDS)[number]["key"];
+export interface VacancyView {
+  id: string;
+  businessId: string;
+  businessName: string;
+  verified: boolean;
+  title: string;
+  kind: VacancyKind;
+  pay: string;
+  area: string;
+  description: string;
+  wantsCertificate: boolean;
+  status: "open" | "closed";
+  createdAt: string;
+  /** For the player: already applied. For the business: how many applied. */
+  applied?: boolean;
+  applications?: number;
+}
+export interface ApplicationView {
+  id: string;
+  nickname: string;
+  message: string;
+  contact: string;
+  status: "new" | "shortlisted" | "declined";
+  createdAt: string;
+  /** Verified Academy certificates the applicant holds. */
+  certificates: { number: string; courseTitle: string }[];
+  /** Degrees from Lagoon City University (in the game). */
+  degrees: string[];
+}
