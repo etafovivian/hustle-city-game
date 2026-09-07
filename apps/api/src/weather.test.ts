@@ -49,3 +49,17 @@ describe("rain", () => {
     expect((await p.call("POST", "/api/game/soaked")).json()).toEqual({ soaked: false });
   });
 });
+
+describe("daily hunt", () => {
+  it("pays each nut once a day and a bonus for all five", async () => {
+    const p = await registerPlayer(app);
+    const before = (await p.call("GET", "/api/me")).json().coins;
+    for (let i = 0; i < 4; i++) expect((await p.call("POST", `/api/game/hunt/${i}`)).json().bonus).toBe(false);
+    expect((await p.call("POST", "/api/game/hunt/0")).statusCode).toBe(409);
+    expect((await p.call("POST", "/api/game/hunt/9")).statusCode).toBe(400);
+    const last = (await p.call("POST", "/api/game/hunt/4")).json();
+    expect(last).toMatchObject({ bonus: true });
+    expect(last.found.sort()).toEqual([0, 1, 2, 3, 4]);
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before + 5 * 100 + 1000);
+  });
+});

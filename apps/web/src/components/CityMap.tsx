@@ -10,6 +10,7 @@ import { CityOverview } from "./Overview.js";
 import { SoundToggle } from "./Ambience.js";
 import { HousePick } from "./HousePick.js";
 import { PlayNightBanner } from "./Crew.js";
+import { HuntChip, HuntLayer, useHunt } from "./Hunt.js";
 import { transitPlans, worthIt, type TransitPlan } from "./transit.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
@@ -269,6 +270,7 @@ export function CityMap({
   const arriveAt = useRef<string | null>(null);
 
   /** Go somewhere: short hops just walk; longer trips offer a ride. */
+  const hunt = useHunt(notify, () => onVisited());
   /** The place you last arrived at (you're inside it until you set off again). */
   const [arrived, setArrived] = useState<string | null>(null);
   const goTo = (to: { x: number; y: number }, label: string, venue?: string) => {
@@ -1110,6 +1112,7 @@ export function CityMap({
                 <DepthSorted items={depthItems} people={!far} />
               </g>
 
+              {!far && <HuntLayer spots={hunt.spots} found={hunt.found} plateScale={plateScale} onPick={(i) => !pz.wasDragged() && void hunt.pick(i, meAt.current)} />}
               {/* Other players online right now */}
               {!far && <OtherPlayers players={others} plateScale={plateScale} onOpen={(p) => !pz.wasDragged() && setPlayerOpen(p)} />}
 
@@ -1420,6 +1423,7 @@ export function CityMap({
         )}
         {flooded.length > 0 && <p className="flood-chip" title={`Flooding in ${flooded.join(", ")}`}>🌊 Flooding: {flooded.slice(0, 2).join(", ")}{flooded.length > 2 ? ` +${flooded.length - 2} more` : ""}</p>}
         {isRushHour(light.hour) && <p className="go-slow-chip">🚗 Go-slow (rush hour): okada, BRT and train beat it</p>}
+        <HuntChip spots={hunt.spots} found={hunt.found} />
         <PlayNightBanner onGo={(v) => setVenueOpen(v)} hereCount={(v) => others.filter((p) => p.place?.split("@")[0] === v).length + (isAt(v) ? 1 : 0)} />
         {liveEvents.slice(0, 2).map((e) => (
           <button key={e.key} type="button" className="map-event" onClick={() => setVenueOpen(e.venues[0]!)}>

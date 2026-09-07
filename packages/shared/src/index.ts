@@ -33,3 +33,4 @@ export * from "./university.js";
 export * from "./crew.js";
 export * from "./skills.js";
 export * from "./rent.js";
+export * from "./hunt.js";

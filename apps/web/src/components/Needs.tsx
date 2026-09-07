@@ -5,6 +5,10 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { createPortal } from "react-dom";
+import { VENUE_SPOTS } from "./cityLayout.js";
+
+/** Places you can actually get to (on the map). */
+const ON_MAP = new Set(VENUE_SPOTS.map((s) => s.key));
 
 export function MoodChip({ view, onOpen }: { view: NeedsView; onOpen: () => void }) {
   const low = NEED_KEYS.filter((k) => view.needs[k] < 25);
@@ -26,7 +30,7 @@ const barTone = (v: number) => (v < 25 ? "bad" : v < 50 ? "meh" : "ok");
 /** Places that fill a need and are open now (the originals; branches share their menus). */
 function placesFor(need: NeedKey, hour: number) {
   const vibes = (Object.entries(VIBE_NEED) as [Vibe, NeedKey][]).filter(([, n]) => n === need).map(([v]) => v);
-  return VENUES.filter((v) => isOpenAt(v, hour) && venueActions(v)[0]?.gives.some((g) => vibes.includes(g))).slice(0, 3);
+  return VENUES.filter((v) => ON_MAP.has(v.key) && isOpenAt(v, hour) && venueActions(v)[0]?.gives.some((g) => vibes.includes(g))).slice(0, 3);
 }
 
 export function NeedsPanel({ view, onClose, onGo }: { view: NeedsView; onClose: () => void; onGo: (venueKey: string) => void }) {
