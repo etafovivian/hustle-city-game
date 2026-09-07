@@ -505,6 +505,7 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "city_fm", district: "Tech Mile" },
   { key: "general_hospital", district: "Airport Ridge", scale: 1.2 },
   { key: "lagoon_city_university", district: "Tech Mile", scale: 1.3 },
+  { key: "ring_kings_boxing", district: "Danfo Terminal" },
   // On Sandbar Bay, a short walk from its pier, facing the open sea (open sand either side for cabanas later)
   { key: "sandbar_beach", a: 1880, b: -4065 },
 ];
@@ -735,6 +736,7 @@ const VENUE_ART: Record<string, string> = {
   balogun_market: "market-hall",
   city_library: "library",
   lagoon_city_university: "university",
+  ring_kings_boxing: "gym",
   city_fm: "radio-station",
   general_hospital: "hospital",
   lampnet_academy: "school",

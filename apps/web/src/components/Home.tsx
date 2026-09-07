@@ -12,7 +12,7 @@ import {
   type AvatarConfig,
   type HomeView,
   type NeedsView,
-  type VehicleKind, fuelPriceOn, type OwnedPlot } from "@hc/shared";
+  type VehicleKind, fuelPriceOn, type OwnedPlot, WORKOUT } from "@hc/shared";
 import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X, KeyRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -71,6 +71,9 @@ export function HousePicker({ plotId, current, onPick, busy }: { plotId?: string
 }
 
 /** Your home: rest here, and (on your own plot) rebuild; in the starter room, a nudge to buy land. */
+/** The pose for working out at home (the gym poses when the room has a workout spot; else standing). */
+const WORKOUT_POSE: PlayerAction = "stand";
+
 export function HomeCard({
   home,
   label,
@@ -108,6 +111,21 @@ export function HomeCard({
   const [error, setError] = useState<string | null>(null);
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
+  const workout = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setMe(WORKOUT_POSE);
+      await api("POST", "/api/game/home/workout");
+      notify(`Good session! +${WORKOUT.health} Health, +Fitness, −${WORKOUT.energy} Energy`);
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+      setMe("stand");
+    } finally {
+      setBusy(false);
+    }
+  };
   const rest = async () => {
     setBusy(true);
     setError(null);
@@ -180,6 +198,11 @@ export function HomeCard({
           <button type="button" className="btn sm" onClick={() => setMe("dance")}>
             💃 Dance
           </button>
+          {home.items.some((k) => WORKOUT.items.includes(k)) && (
+            <button type="button" className="btn sm" disabled={busy} onClick={() => void workout()}>
+              {home.items.includes("punching_bag") ? "🥊" : "🏋️"} Work out
+            </button>
+          )}
           <span className="tiny muted">Tap the floor to walk around.</span>
         </div>
         <p className={`small power-line ${hasLight ? "on" : "off"}`}>

@@ -20,6 +20,7 @@ import {
   VEHICLE_BY_KIND,
   VENUES_BY_KEY,
   VENUE_SKILL,
+  WORKOUT,
   SKILL_PAY,
   SKILL_POINTS,
   clockHour,
@@ -161,6 +162,24 @@ export async function lifeRoutes(app: FastifyInstance) {
       const rested = { ...needs, energy: Math.min(100, needs.energy + gain) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
       return { ...needsView(rested), gained: gain, light, generator };
+    });
+  });
+
+  // Work out at home with dumbbells or a punching bag: Health and Fun up, Energy down, Fitness grows.
+  app.post("/api/game/home/workout", async (request) => {
+    const user = requireUser(request);
+    return inTx(async (tx, now) => {
+      await lockProfile(tx, user.id);
+      const items = (await tx.select({ k: homeItems.itemKey }).from(homeItems).where(eq(homeItems.userId, user.id))).map((r) => r.k);
+      if (!items.some((k) => WORKOUT.items.includes(k))) throw new AppError(409, "no_kit", "Buy dumbbells or a punching bag in \"Things for your house\" first.");
+      const { needs, freeAt } = await loadNeeds(tx, user.id, now);
+      const last = freeAt.__workout ? new Date(freeAt.__workout).getTime() : 0;
+      if (now.getTime() - last < WORKOUT.everyMs) throw new AppError(409, "worked_out", "Your muscles need a break. Work out again in a couple of hours.");
+      if (needs.energy < WORKOUT.energy) throw new AppError(409, "too_tired", "Too tired to work out. Sleep first.");
+      const after = { ...needs, health: Math.min(100, needs.health + WORKOUT.health), fun: Math.min(100, needs.fun + WORKOUT.fun), energy: needs.energy - WORKOUT.energy };
+      await saveNeeds(tx, user.id, after, now, { ...freeAt, __workout: now.toISOString() });
+      await addSkill(tx, user.id, "fitness", WORKOUT.fitness);
+      return needsView(after);
     });
   });
 

@@ -31,6 +31,7 @@ export const VENUE_SKILL: Readonly<Record<string, SkillKey>> = {
   glory_hair_salon: "charisma",
   city_fm: "tech",
   fit_lagos: "fitness",
+  ring_kings_boxing: "fitness",
   city_stadium: "fitness",
   sandbar_beach: "fitness",
   lagoon_golf_club: "fitness",

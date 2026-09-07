@@ -58,7 +58,11 @@ export const HOME_ITEMS: readonly HomeItem[] = [
   { key: "adire_sofa_set", name: "Adire lounge set", price: 90_000, comfort: 8, art: "/art/furniture/adire-sofa-set.webp" },
   { key: "big_generator", name: "Big generator (24/7 light)", price: 150_000, comfort: 10, art: "/art/furniture/generator-34.webp" },
   { key: "water_tank", name: "Water tank (no more fetching)", price: 60_000, comfort: 6, art: "/art/props/water-tank.webp" },
+  { key: "dumbbell_set", name: "Dumbbell set (work out at home)", price: 15_000, comfort: 0, art: "/art/furniture/dumbbells.svg" },
+  { key: "punching_bag", name: "Punching bag (box at home)", price: 25_000, comfort: 0, art: "/art/furniture/punching-bag.svg" },
 ];
+/** Working out at home: with dumbbells or a punching bag, once every couple of hours. */
+export const WORKOUT = { items: ["dumbbell_set", "punching_bag"], health: 20, fun: 6, energy: 12, fitness: 8, everyMs: 2 * 60 * 60_000 };
 export const HOME_ITEM_BY_KEY: ReadonlyMap<string, HomeItem> = new Map(HOME_ITEMS.map((i) => [i.key, i]));
 /** Energy from resting at home with these things. */
 export const restEnergy = (items: readonly string[]) => Math.min(80, REST.energy + items.reduce((n, k) => n + (HOME_ITEM_BY_KEY.get(k)?.comfort ?? 0), 0));

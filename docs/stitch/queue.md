@@ -246,3 +246,9 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. Cutaway interior of a university lecture theatre: tiered rows of wooden seats rising to the back, a lecturer's desk and a big projector screen showing only a simple diagram, a whiteboard. No words.
 3. Cutaway interior of a university cafeteria: a serving counter with trays of rice, plantain and stew, long tables with benches, a ceiling fan.
 4. A campus quad (outdoor): a big mango tree with benches under it, a noticeboard with blank papers pinned, walkways, students' bicycles.
+
+## Batch 53: boxing and working out (the boxing club uses the gym art for now; home kit uses drawn stand-ins)
+1. A Lagos boxing club building: a single-storey block with a hand-painted sign "RING KINGS BOXING", a roll-up door half open showing a ring inside, a bench outside, a skipping rope hanging on a nail.
+2. Cutaway interior of a boxing gym: a raised ring with red and blue corners in the middle, two heavy bags hanging on chains, a speed bag, a mirror wall, benches and a water cooler. Clear floor around the ring, no people.
+3. A set of dumbbells on a small rack (four pairs, black and red), single object.
+4. A red leather punching bag hanging from a ceiling bracket, with boxing gloves hung on a hook beside it, single object.

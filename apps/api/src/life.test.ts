@@ -93,4 +93,15 @@ describe("vehicles", () => {
     const drive = (await p.call("POST", "/api/game/rides", { mode: "own", vehicle: "saloon", units: 3000 })).json();
     expect(drive).toMatchObject({ fare: fuelCost("saloon", 3000), stop: false });
   });
+
+  it("works out at home with dumbbells: health up, energy down, fitness grows, then a cooldown", async () => {
+    const p = await registerPlayer(app);
+    await rich(p);
+    expect((await p.call("POST", "/api/game/home/workout")).statusCode).toBe(409); // no kit
+    expect((await p.call("POST", "/api/game/home/items", { key: "dumbbell_set" })).statusCode).toBe(201);
+    const r = (await p.call("POST", "/api/game/home/workout")).json();
+    expect(r.needs.health).toBeGreaterThan(85);
+    expect((await p.call("GET", "/api/game/skills")).json().fitness.points).toBe(8);
+    expect((await p.call("POST", "/api/game/home/workout")).statusCode).toBe(409); // cooldown
+  });
 });
