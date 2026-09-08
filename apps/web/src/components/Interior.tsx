@@ -14,9 +14,9 @@ import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant
 
 export { ROOMS, type PlayerAction, type Room };
 
-// Only salah has a nw sheet; anything else facing nw uses its sw sheet.
+// Only some poses have a nw sheet (POSE_SHEETS nw); the others facing nw use their sw sheet.
 const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing) =>
-  `/art/life/poses/${action}-${v}-${d === "nw" && action !== "pray_salah" ? "sw" : d}.webp`;
+  `/art/life/poses/${action}-${v}-${d === "nw" && !POSE_SHEETS[action].nw ? "sw" : d}.webp`;
 
 /** Box for a person `ph` tall showing a pose sheet (null: a walk sheet). Frames are sized in px of a 160 px tall
  * person; most are anchored at the feet (16 px up), lying ones on the middle of the body. */
@@ -38,6 +38,11 @@ const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
   chair: "sit_talk",
   stand: "stand_idle",
   pray: "pray_church",
+  lift_weights: "lift_weights",
+  boxing: "boxing",
+  run: "run",
+  pushups: "pushups",
+  skip: "skip_rope",
 };
 /** Where to go when a room has no spot for an action: eat or rest on a seat, dance where you'd stand. */
 const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
@@ -48,6 +53,12 @@ const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
   chair: ["chair", "sit"],
   stand: ["stand"],
   pray: ["pray"],
+  // workouts: their own equipment in the gym, the free floor at home
+  lift_weights: ["lift_weights", "workout"],
+  boxing: ["boxing", "workout"],
+  run: ["run"],
+  pushups: ["pushups", "workout"],
+  skip: ["skip", "workout"],
 };
 /** The spot and pose for an action in a room (null: stay where you are). */
 export function spotFor(room: Room | undefined, action: PlayerAction): { spot: Spot; pose: PoseAction } | null {

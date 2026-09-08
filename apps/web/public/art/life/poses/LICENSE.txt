@@ -11,3 +11,7 @@ Prayer (posed bone by bone in sprites.py, no library clip; every adult look):
 pray_salah: one rak'ah, 16 frames of 144x160 (qiyam with hands folded, ruku, standing, sujud, jalsa, sujud, standing),
 facing se, sw and nw (towards a mihrab); the women's looks wear a plain headscarf. pray_church: standing with hands
 raised, swaying (8 frames); kneel_pray: kneeling, hands together, head bowing (8 frames); se and sw.
+Workouts (every adult look): run is the library's Jog_Fwd_Loop (se, sw, nw); lift_weights (alternating dumbbell
+curls, 96x160), boxing (guard, jab, cross in red gloves, 112x160, se/sw/nw), pushups (plank, lowering and pushing up,
+192x112 centred on the body like sleep) and skip_rope (112x160) are posed bone by bone in sprites.py, with the
+dumbbells, gloves and rope modelled per frame. 8 frames each.

@@ -6,7 +6,21 @@
 import { OUTFIT_VARIANTS, type WalkerVariant } from "./walkers.js";
 
 /** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
-export type PoseAction = "dance" | "serve" | "stand_idle" | "sit_eat" | "sit_talk" | "sleep" | "pray_salah" | "pray_church" | "kneel_pray";
+export type PoseAction =
+  | "dance"
+  | "serve"
+  | "stand_idle"
+  | "sit_eat"
+  | "sit_talk"
+  | "sleep"
+  | "pray_salah"
+  | "pray_church"
+  | "kneel_pray"
+  | "lift_weights"
+  | "boxing"
+  | "run"
+  | "pushups"
+  | "skip_rope";
 /** Adult looks that have every pose, prayer included. */
 const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
@@ -21,31 +35,59 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   pray_salah: ADULTS,
   pray_church: ADULTS,
   kneel_pray: ADULTS,
+  lift_weights: ADULTS,
+  boxing: ADULTS,
+  run: ADULTS,
+  pushups: ADULTS,
+  skip_rope: ADULTS,
 };
 /**
  * Each pose sheet's frame size, frame count and speed. Standing, seated and praying frames have the feet 16 px above
  * the bottom; lying (sleep) frames are centred on the middle of the body. Salah frames are wider (prostration reaches
  * forward) and only salah has a "nw" sheet (facing the mihrab).
  */
-export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean }> = {
+export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean; nw?: boolean }> = {
   dance: { w: 96, h: 160, frames: 8, fps: 10 },
   serve: { w: 96, h: 160, frames: 8, fps: 7 },
   stand_idle: { w: 96, h: 160, frames: 8, fps: 7 },
   sit_eat: { w: 96, h: 160, frames: 8, fps: 7 },
   sit_talk: { w: 96, h: 160, frames: 8, fps: 7 },
   sleep: { w: 192, h: 112, frames: 8, fps: 3, centred: true },
-  pray_salah: { w: 144, h: 160, frames: 16, fps: 1.6 },
+  pray_salah: { w: 144, h: 160, frames: 16, fps: 1.6, nw: true },
   pray_church: { w: 96, h: 160, frames: 8, fps: 4 },
   kneel_pray: { w: 96, h: 160, frames: 8, fps: 2 },
+  // Workouts: dumbbell curls, jab-cross in gloves (also nw, at a bag), jogging (also nw, on a treadmill),
+  // push-ups (horizontal, centred like sleep) and skipping with a rope.
+  lift_weights: { w: 96, h: 160, frames: 8, fps: 5 },
+  boxing: { w: 112, h: 160, frames: 8, fps: 7, nw: true },
+  run: { w: 96, h: 160, frames: 8, fps: 11, nw: true },
+  pushups: { w: 192, h: 112, frames: 8, fps: 5, centred: true },
+  skip_rope: { w: 112, h: 160, frames: 8, fps: 10 },
 };
 
 export type Pt = [number, number];
 /** Pose sheets face se or sw (towards the viewer); salah also faces nw (towards a mihrab on the left wall). */
 export type Facing = "se" | "sw" | "nw";
 /** What the player is doing in a room. */
-export type PlayerAction = "walk" | "sit" | "eat" | "sleep" | "dance" | "chair" | "stand" | "pray";
+export type PlayerAction =
+  | "walk"
+  | "sit"
+  | "eat"
+  | "sleep"
+  | "dance"
+  | "chair"
+  | "stand"
+  | "pray"
+  | "lift_weights"
+  | "boxing"
+  | "run"
+  | "pushups"
+  | "skip";
+/** Every action the player can take in a room (for callers mapping activities to actions). */
+export const PLAYER_ACTIONS: PlayerAction[] = ["walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip"];
 /** Marked places for the player: door (where they come in) and one per action that fits the room. */
-export type SpotKey = "door" | Exclude<PlayerAction, "walk">;
+/** "workout": a free bit of floor at home for push-ups, skipping, dumbbells or shadow boxing. */
+export type SpotKey = "door" | "workout" | Exclude<PlayerAction, "walk">;
 export interface Spot {
   at: Pt;
   dir: Facing;
@@ -130,14 +172,25 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.55, 0.85], dir: "se" }, sit: { at: [0.25, 0.6], dir: "se" }, stand: { at: [0.66, 0.68], dir: "sw" } },
   },
   gym: {
-    walkway: [[0.62, 0.84], [0.68, 0.78], [0.74, 0.72], [0.8, 0.64]],
-    walkers: 1,
+    // Treadmills along the left wall, the heavy bag and dumbbell rack on the right, a mat and kettlebells in front.
+    walkway: [[0.6, 0.86], [0.55, 0.78], [0.5, 0.7], [0.52, 0.64]],
+    walkers: 0,
     stations: [
-      { action: "dance", at: [0.67, 0.71], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.78, 0.62], dir: "sw", variant: "man_casual" },
-      { action: "stand_idle", at: [0.5, 0.76], dir: "se", variant: "man_kaftan" },
+      { action: "run", at: [0.405, 0.535], dir: "nw", variant: "man-jersey_red", phase: 0 },
+      { action: "run", at: [0.3, 0.6], dir: "nw", variant: "woman-tee_blue", phase: 3 },
+      { action: "boxing", at: [0.605, 0.52], dir: "nw", variant: "man-hoodie_black" },
+      { action: "lift_weights", at: [0.62, 0.66], dir: "se", variant: "woman-jersey_red", phase: 2 },
+      { action: "pushups", at: [0.68, 0.73], dir: "sw", variant: "man-tee_blue" },
     ],
-    spots: { door: { at: [0.62, 0.84], dir: "se" }, dance: { at: [0.72, 0.8], dir: "sw" }, stand: { at: [0.74, 0.72], dir: "sw" } },
+    spots: {
+      door: { at: [0.6, 0.86], dir: "se" },
+      run: { at: [0.195, 0.665], dir: "nw" },
+      boxing: { at: [0.605, 0.52], dir: "nw" },
+      lift_weights: { at: [0.62, 0.66], dir: "se" },
+      pushups: { at: [0.68, 0.73], dir: "sw" },
+      skip: { at: [0.47, 0.72], dir: "se" },
+      stand: { at: [0.55, 0.78], dir: "se" },
+    },
   },
   "boat-deck": {
     walkway: [[0.36, 0.56], [0.46, 0.62], [0.56, 0.58], [0.64, 0.5]],
@@ -410,6 +463,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.5, 0.645], dir: "se" },
       stand: { at: [0.72, 0.72], dir: "sw" },
       dance: { at: [0.62, 0.82], dir: "se" },
+      workout: { at: [0.62, 0.82], dir: "se" },
     },
   },
   "home-duplex": {
@@ -429,6 +483,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.5, 0.67], dir: "se" },
       stand: { at: [0.74, 0.72], dir: "sw" },
       dance: { at: [0.7, 0.8], dir: "se" },
+      workout: { at: [0.7, 0.8], dir: "se" },
     },
   },
   "home-mansion": {
@@ -448,6 +503,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.54, 0.6], dir: "se" },
       stand: { at: [0.73, 0.64], dir: "sw" },
       dance: { at: [0.7, 0.82], dir: "se" },
+      workout: { at: [0.7, 0.82], dir: "se" },
     },
   },
   "home-crazy": {
@@ -482,6 +538,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.625, 0.48], dir: "sw" },
       stand: { at: [0.4, 0.62], dir: "se" },
       dance: { at: [0.3, 0.7], dir: "se" },
+      workout: { at: [0.3, 0.7], dir: "se" },
     },
   },
   "home-villa-pool": {
@@ -500,6 +557,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.62, 0.47], dir: "se" },
       stand: { at: [0.45, 0.47], dir: "se" },
       dance: { at: [0.5, 0.5], dir: "se" },
+      workout: { at: [0.5, 0.5], dir: "se" },
     },
   },
   "home-bedroom": {
@@ -517,6 +575,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.24, 0.7], dir: "sw" },
       stand: { at: [0.62, 0.66], dir: "sw" },
       dance: { at: [0.55, 0.75], dir: "se" },
+      workout: { at: [0.55, 0.75], dir: "se" },
     },
   },
   "home-kitchen": {
@@ -550,6 +609,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.57, 0.69], dir: "se" },
       stand: { at: [0.65, 0.78], dir: "sw" },
       dance: { at: [0.42, 0.75], dir: "se" },
+      workout: { at: [0.42, 0.75], dir: "se" },
     },
   },
   "home-villa-suite": {
@@ -567,6 +627,7 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.62, 0.84], dir: "se" },
       stand: { at: [0.45, 0.68], dir: "se" },
       dance: { at: [0.4, 0.74], dir: "se" },
+      workout: { at: [0.4, 0.74], dir: "se" },
     },
   },
   "home-villa-kitchen": {

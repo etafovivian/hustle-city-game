@@ -623,6 +623,12 @@ POSES = {
     "pray_salah": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
     "pray_church": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
     "kneel_pray": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    # Workouts: run is the library's jog; the rest are posed (see exercise_frames), with dumbbells, gloves or a rope.
+    "run": ("Jog_Fwd_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "lift_weights": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "boxing": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "pushups": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    "skip_rope": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
 }
 # Lying sheets are wider than tall: 8 frames of 192x112, cropped so the middle of the body is the centre of the
 # frame (it is anchored on the middle of the mattress). Directions: se = feet towards the bottom right (head up-left), sw = feet bottom left.
@@ -884,26 +890,28 @@ def apply_pose(arm, q, sway=0.0):
     for pb in arm.pose.bones:
         pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
     bpy.context.view_layer.update()
+    side = lambda k, s: q.get(f"{k}_{s}", q[k])  # a per-side value (e.g. elbow_l) overrides the shared one
     for s, sg in (("l", 1), ("r", -1)):
-        turn(arm, f"upperarm_{s}", "Y", sg * q["arm_down"])
-        turn(arm, f"upperarm_{s}", "Z", -sg * q["arm_out"])
-        turn(arm, f"upperarm_{s}", "X", -q["arm_fwd"])
-        turn(arm, f"lowerarm_{s}", "X", -q["elbow"])
-        turn(arm, f"lowerarm_{s}", "Z", -sg * q["fore_in"])
+        turn(arm, f"upperarm_{s}", "Y", sg * side("arm_down", s))
+        turn(arm, f"upperarm_{s}", "Z", -sg * side("arm_out", s))
+        turn(arm, f"upperarm_{s}", "X", -side("arm_fwd", s))
+        turn(arm, f"lowerarm_{s}", "X", -side("elbow", s))
+        turn(arm, f"lowerarm_{s}", "Z", -sg * side("fore_in", s))
     turn(arm, "Head", "X", q["head"])
     turn(arm, "neck_01", "X", q["neck"])
     turn(arm, "spine_03", "X", q["sp3"])
     turn(arm, "spine_02", "X", q["sp2"])
     turn(arm, "spine_01", "X", q["sp1"])
     turn(arm, "spine_02", "Y", q["side"] + sway)
+    turn(arm, "spine_02", "Z", q.get("twist", 0))
     # LEGS_TOGETHER=1 (the women's salah sheets): thighs turned in so the knees and feet stay together
     legs_in = float(os.environ.get("LEGS_TOGETHER_DEG", "6.5")) if os.environ.get("LEGS_TOGETHER") else 0.0
     for s, sg in (("l", 1), ("r", -1)):
         turn(arm, f"thigh_{s}", "Y", sg * legs_in)
     for s in "lr":
-        turn(arm, f"thigh_{s}", "X", -q["hip"])
-        turn(arm, f"calf_{s}", "X", q["knee"])
-        turn(arm, f"foot_{s}", "X", q["ankle"])
+        turn(arm, f"thigh_{s}", "X", -side("hip", s))
+        turn(arm, f"calf_{s}", "X", side("knee", s))
+        turn(arm, f"foot_{s}", "X", side("ankle", s))
         turn(arm, f"ball_{s}", "X", q["toe"])
 
 
@@ -942,6 +950,184 @@ def prayer_frames(action, n):
             ph = 2 * math.pi * i / n
             out.append((dict(KNEEL, head=KNEEL["head"] + 8 * (0.5 - 0.5 * math.cos(ph)), sp1=KNEEL["sp1"] + 3 * (0.5 - 0.5 * math.cos(ph))), 0.0))
     return out
+
+
+# ------------------------------------------------------------------ workouts (posed like the prayers, with props)
+# frame size, frames, directions, and whether the sheet is centred on the body (horizontal poses, like sleep)
+EX_FRAME = {"lift_weights": (96, 8), "boxing": (112, 8), "pushups": (192, 8), "skip_rope": (112, 8)}
+EX_DIRS = {"lift_weights": ["se", "sw"], "boxing": ["se", "sw", "nw"], "pushups": ["se", "sw"], "skip_rope": ["se", "sw"]}
+EX_CENTRED = {"pushups"}
+GUARD = dict(arm_down=72, arm_fwd=62, elbow=128, fore_in=14, head=6, hip_l=14, hip_r=-12, knee=14, knee_l=18, twist=-14)
+
+
+def exercise_frames(action, n):
+    """(joint angles, extras) per frame. extras: tilt (whole body forward, deg), lift (jump, m), rope (angle, deg)."""
+    out = []
+    for i in range(n):
+        t = i / n
+        ph = 2 * math.pi * t
+        if action == "lift_weights":
+            # alternating dumbbell curls: one arm up while the other lowers
+            cl = 0.5 - 0.5 * math.cos(ph)
+            cr = 0.5 - 0.5 * math.cos(ph + math.pi)
+            out.append((P(arm_down=84, arm_fwd=6, elbow_l=12 + 128 * cl, elbow_r=12 + 128 * cr, head=4, knee=4), {}))
+        elif action == "boxing":
+            # guard, jab (lead left), back to guard, cross (right, with a turn of the hips), guard, a little bounce
+            q = P(**GUARD)
+            seq = ["g", "jab", "jab", "g", "cross", "cross", "g", "g"]
+            k = seq[i]
+            if k == "jab":
+                q.update(arm_fwd_l=88, elbow_l=12 if i == 2 else 50, arm_down_l=80, twist=-4)
+            elif k == "cross":
+                q.update(arm_fwd_r=88, elbow_r=12 if i == 5 else 50, arm_down_r=80, twist=-30, hip_r=-6)
+            out.append((q, {"lift": 0.015 * (0.5 - 0.5 * math.cos(2 * ph))}))
+        elif action == "pushups":
+            # plank on hands and toes, hands under the shoulders; lowering, the upper arms swing back while the
+            # forearms stay upright, so the body tilts nearer the floor (shoulder height from the arm's reach)
+            d = 0.5 - 0.5 * math.cos(ph)
+            back = 72 * d
+            reach = 0.28 * math.cos(math.radians(back)) + 0.31
+            tilt = math.degrees(math.acos(min(1.0, reach / 1.42)))
+            q = P(arm_down=84, arm_fwd=tilt - back, elbow=back, head=-34, ankle=-12)
+            out.append((q, {"tilt": tilt}))
+        else:  # skip_rope: small jumps, hands at the hips turning the rope
+            up = max(0.0, math.sin(ph))
+            q = P(arm_down=80, arm_fwd=10, elbow=34, fore_in=-28, head=4, knee=10 + 14 * (1 - up), ankle=-6 * up)
+            out.append((q, {"lift": 0.09 * up, "rope": (360 * t + 180) % 360}))
+    return out
+
+
+def toon_obj(o, rgb, name):
+    mat = make_mat(name, rgb)
+    try:
+        mat = toon_material(mat, {}) if TOON_LIGHT is not None else mat
+    except Exception:
+        pass
+    o.data.materials.clear()
+    o.data.materials.append(mat)
+    return o
+
+
+def hand_props(arm, action):
+    """Dumbbells or gloves at the posed hands, built in world space for this frame (removed after it renders)."""
+    bpy.context.view_layer.update()
+    mw = arm.matrix_world
+    made = []
+    for s_ in "lr":
+        fa = mw @ arm.pose.bones[f"lowerarm_{s_}"].head
+        hd = mw @ arm.pose.bones[f"hand_{s_}"].head
+        tl = mw @ arm.pose.bones[f"hand_{s_}"].tail
+        along = (tl - fa).normalized()
+        grip = hd + (tl - hd) * 0.9 + along * 0.02
+        bm = bmesh.new()
+        if action == "lift_weights":
+            ax = along.cross(Vector((0, 0, 1)))
+            if ax.length < 1e-3:
+                ax = along.cross(Vector((1, 0, 0)))
+            ax.normalize()
+            rot = Vector((0, 0, 1)).rotation_difference(ax).to_matrix().to_4x4()
+            bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.014, radius2=0.014, depth=0.2, matrix=Matrix.Translation(grip) @ rot)
+            for off in (-0.085, 0.085):
+                bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.05, radius2=0.05, depth=0.05,
+                                      matrix=Matrix.Translation(grip + ax * off) @ rot)
+            o = toon_obj(obj_from_bm(bm, f"dumbbell_{s_}", make_mat("x", (0, 0, 0))), (0.16, 0.17, 0.2), "dumbbell")
+        else:  # boxing gloves round the fist
+            bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=1.0)
+            c = hd + (tl - hd) * 0.6
+            for v in bm.verts:
+                v.co = c + Vector((v.co.x * 0.07, v.co.y * 0.07, v.co.z * 0.065))
+            o = toon_obj(obj_from_bm(bm, f"glove_{s_}", make_mat("x", (0, 0, 0))), (0.78, 0.08, 0.07), "glove")
+        made.append(o)
+    return made
+
+
+def rope_obj(arm, angle):
+    """A skipping rope from hand to hand, swung `angle` degrees round the line between the hands (0 = under the feet)."""
+    bpy.context.view_layer.update()
+    mw = arm.matrix_world
+    a = mw @ arm.pose.bones["hand_l"].tail
+    b = mw @ arm.pose.bones["hand_r"].tail
+    axis = (b - a).normalized()
+    mid = (a + b) / 2
+    down = Vector((0, 0, -1))
+    down = (down - axis * down.dot(axis)).normalized()
+    R = Matrix.Rotation(math.radians(angle), 3, axis)
+    d = R @ down
+    reach = mid.z + 0.03
+    cu = bpy.data.curves.new("rope", "CURVE")
+    cu.dimensions = "3D"
+    cu.bevel_depth = 0.006
+    sp = cu.splines.new("POLY")
+    n = 24
+    sp.points.add(n)
+    for i in range(n + 1):
+        u = i / n
+        p = a.lerp(b, u) + d * (reach * math.sin(math.pi * u))
+        sp.points[i].co = (*p, 1)
+    o = bpy.data.objects.new("rope", cu)
+    bpy.context.scene.collection.objects.link(o)
+    cu.materials.append(make_mat("rope", (0.05, 0.05, 0.06)))
+    return o
+
+
+def render_exercise(arm, scene, look, name, action, tmp, first):
+    W, n = EX_FRAME[action]
+    centred = action in EX_CENTRED
+    k = scene.render.resolution_x // FW
+    keep = (scene.render.resolution_x, scene.render.resolution_y)
+    cam = scene.camera
+    keep_cam = (cam.data.ortho_scale, cam.location.copy())
+    H = 112 if centred else FH
+    if centred:  # rendered big round the body, then cropped to the body's middle
+        to_cam, _, _ = cam_axes()
+        cam.data.ortho_scale = 2 * FH / PPM
+        cam.location = to_cam * 20
+        scene.render.resolution_x, scene.render.resolution_y = 2 * W * k, 2 * FH * k
+    else:
+        scene.render.resolution_x = W * k
+    clear_ik(arm)
+    dirs = os.environ["PRAYDIRS"].split(",") if os.environ.get("PRAYDIRS") else EX_DIRS[action]
+    for d in dirs:
+        sx, sy = DIRS.get(d, (1, 0))
+        frames = []
+        for i, (q, ex) in enumerate(exercise_frames(action, n)):
+            arm.rotation_euler = (0, 0, 0)
+            apply_pose(arm, q)
+            arm.rotation_euler = (math.radians(ex.get("tilt", 0)), 0, math.radians(facing_angle(sx, sy)))
+            ground(arm)
+            arm.location.z += ex.get("lift", 0.0)
+            rope = rope_obj(arm, ex["rope"]) if "rope" in ex else None
+            props = hand_props(arm, action) if action in ("lift_weights", "boxing") else []
+            pth = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
+            scene.render.filepath = pth
+            bpy.ops.render.render(write_still=True)
+            if rope:
+                bpy.data.objects.remove(rope)
+            for o in props:
+                bpy.data.objects.remove(o)
+            a = read_png(pth)
+            if look == "toon":
+                a = downsample(a)
+            frames.append(a)
+        if centred:
+            al = np.maximum.reduce([f[..., 3] for f in frames])
+            rows = np.where(al.max(axis=1) > 0.05)[0]
+            cols = np.where(al.max(axis=0) > 0.05)[0]
+            cy = (rows.min() + rows.max()) // 2 if len(rows) else FH
+            cx = (cols.min() + cols.max()) // 2 if len(cols) else W
+            y0 = int(min(max(cy - H // 2, 0), al.shape[0] - H))
+            x0 = int(min(max(cx - W // 2, 0), al.shape[1] - W))
+            frames = [f[y0:y0 + H, x0:x0 + W] for f in frames]
+        sheet = np.zeros((H, W * n, 4), dtype=np.float32)
+        for i, a in enumerate(frames):
+            sheet[:, i * W:(i + 1) * W] = a
+            first[(action, d, i)] = a
+        write_png(sheet, os.path.join(OUT, f"{action}-{name}-{d}.png"))
+        print("SHEET", action, name, d)
+    arm.location = (0, 0, 0)
+    arm.rotation_euler = (0, 0, 0)
+    cam.data.ortho_scale, cam.location = keep_cam
+    scene.render.resolution_x, scene.render.resolution_y = keep
 
 
 def render_prayer(arm, scene, look, name, action, tmp, first):
@@ -1013,12 +1199,16 @@ def render_poses(name, sex, fn, jobs, tmp):
         if action in PRAY_FRAME:
             render_prayer(arm, scene, look, name, action, tmp, first)
             continue
+        if action in EX_FRAME:
+            render_exercise(arm, scene, look, name, action, tmp, first)
+            continue
         if action == "sleep":
             continue
         base = POSES[action][0]
         yaw = clip_yaw(arm, base)
         print("CLIP", base, "body yaw", round(yaw, 1))
-        for d, (sx, sy) in POSE_DIRS.items():
+        # runners also face nw (on a treadmill, towards its console)
+        for d, (sx, sy) in (dict(POSE_DIRS, nw=DIRS["nw"]) if action == "run" else POSE_DIRS).items():
             arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy) - yaw))
             sheet = np.zeros((FH, FW * NF, 4), dtype=np.float32)
             for i in pose_frames(arm, action, base):
@@ -1078,13 +1268,14 @@ if os.environ.get("POSE"):
                 cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] = a[..., :3] * al + cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] * (1 - al)
                 cs[y0 + SLEEP_H // 2, x0 + SLEEP_W // 2 - 3:x0 + SLEEP_W // 2 + 4, :3] = (0.8, 0.2, 0.2)  # anchor
         write_png(cs, os.path.join(OUT, "sleep-contact.png"))
-    for action in ("pray_salah", "pray_church", "kneel_pray"):
-        rows = [n for n in POSES[action][1] if any(k[0] == action for k in got.get(n, {}))]
+    for action in ("pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope"):
+        rows = [n for n in POSES[action][1] if any(len(k) == 3 and k[0] == action for k in got.get(n, {}))]
         if not rows:
             continue
-        W, n = PRAY_FRAME[action]
-        dirs = PRAY_DIRS[action]
-        cs = np.zeros((FH * len(rows) * len(dirs), W * n, 4), dtype=np.float32)
+        W, n = PRAY_FRAME.get(action) or EX_FRAME[action]
+        dirs = [d for d in (PRAY_DIRS.get(action) or EX_DIRS[action]) if any((action, d, 0) in got[nm] for nm in rows)] or sorted({k[1] for nm in rows for k in got[nm] if k[0] == action})
+        FHc = 112 if action in EX_CENTRED else FH
+        cs = np.zeros((FHc * len(rows) * len(dirs), W * n, 4), dtype=np.float32)
         cs[..., :3], cs[..., 3] = 0.9, 1
         r = 0
         for nm in reversed(rows):
@@ -1093,15 +1284,15 @@ if os.environ.get("POSE"):
                     a = got[nm].get((action, d, i))
                     if a is None:
                         continue
-                    y0, x0 = r * FH, i * W
+                    y0, x0 = r * FHc, i * W
                     al = a[..., 3:4]
-                    cs[y0:y0 + FH, x0:x0 + W, :3] = a[..., :3] * al + cs[y0:y0 + FH, x0:x0 + W, :3] * (1 - al)
+                    cs[y0:y0 + FHc, x0:x0 + W, :3] = a[..., :3] * al + cs[y0:y0 + FHc, x0:x0 + W, :3] * (1 - al)
                     cs[y0 + FOOT_PX, x0:x0 + W, :3] = (0.7, 0.4, 0.4)
                 r += 1
         write_png(cs, os.path.join(OUT, f"{action}-contact.png"))
     cells = []
     for action in POSES:
-        if action in ("sleep", "pray_salah", "pray_church", "kneel_pray"):
+        if action in ("sleep", "pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope"):
             continue
         row = []
         for name in POSES[action][1]:
