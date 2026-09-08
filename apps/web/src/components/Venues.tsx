@@ -135,6 +135,11 @@ export function VenueCard({
   const [me, setMe] = useState<PlayerAction>("walk");
   const actionFor = (a: VenueAction): PlayerAction => {
     const k = `${a.key} ${a.label}`.toLowerCase();
+    // Working out: the gym and the boxing club play the matching animation at the right equipment.
+    if (/treadmill|jog|run on/.test(k)) return "run";
+    if (/dumbbell|weights|lift/.test(k)) return "lift_weights";
+    if (/heavy_bag|heavy bag|pads|spar|boxing/.test(k)) return "boxing";
+    if (/skip/.test(k)) return "skip";
     if (/danc|party|rave|owambe/.test(k)) return "dance";
     if (/sleep|nap|rest|suite|room/.test(k) && venue.key.includes("hotel")) return "sleep";
     if (a.gives.includes("style") && /cut|trim|braid|hair|wig|measure|aso|fabric|style/.test(k)) return "chair";

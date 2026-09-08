@@ -71,8 +71,6 @@ export function HousePicker({ plotId, current, onPick, busy }: { plotId?: string
 }
 
 /** Your home: rest here, and (on your own plot) rebuild; in the starter room, a nudge to buy land. */
-/** The pose for working out at home (the gym poses when the room has a workout spot; else standing). */
-const WORKOUT_POSE: PlayerAction = "stand";
 
 export function HomeCard({
   home,
@@ -115,7 +113,8 @@ export function HomeCard({
     setBusy(true);
     setError(null);
     try {
-      setMe(WORKOUT_POSE);
+      // Box with the bag if you have one, else curl the dumbbells (at the room's workout spot).
+      setMe(home.items.includes("punching_bag") ? "boxing" : "lift_weights");
       await api("POST", "/api/game/home/workout");
       notify(`Good session! +${WORKOUT.health} Health, +Fitness, −${WORKOUT.energy} Energy`);
       onChanged();
