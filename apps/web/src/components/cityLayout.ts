@@ -2142,7 +2142,7 @@ const SANDBAR_PALMS = (
 // Ogun: thick bush either side of the expressway between the towns (it reads as leaving the city: dark forest floor
 // like the Lagos reserves), open country with a scattering of trees behind, and some green in the towns. Sparse, and
 // mostly low bush, so the map stays light.
-const OGUN_BUSH: { name: string; a0: number; a1: number; b0: number; b1: number; density: number; floor: boolean }[] = [
+const OGUN_BUSH: { name: string; a0: number; a1: number; b0: number; b1: number; density: number; floor: boolean; below?: number }[] = [
   { name: "Border Bush North", a0: -5700, a1: -4470, b0: 250, b1: 2080, density: 0.09, floor: true },
   { name: "Border Bush South", a0: -4140, a1: -3420, b0: 480, b1: 2080, density: 0.09, floor: true },
   { name: "Mowe-Sagamu Bush North", a0: -5800, a1: -4470, b0: 3800, b1: 4480, density: 0.07, floor: true },
@@ -2152,10 +2152,12 @@ const OGUN_BUSH: { name: string; a0: number; a1: number; b0: number; b1: number;
   { name: "Ogun Country", a0: -9400, a1: -6000, b0: 400, b1: 10600, density: 0.006, floor: false },
   { name: "Ogun Country East", a0: -3150, a1: -1950, b0: 3350, b1: 9800, density: 0.008, floor: false },
   { name: "River Country", a0: -5900, a1: -3420, b0: 9500, b1: 11600, density: 0.016, floor: false },
+  // The Ikeja Forest Reserve's north end (its floor reaches past Lagos's old edge, where nothing was planted)
+  { name: "Ikeja Forest Reserve North", a0: -3100, a1: -1500, b0: 1550, b1: 3000, density: 0.4, floor: false, below: 110 },
 ];
 FORESTS.push(...OGUN_BUSH.filter((f) => f.floor).map(({ name, a0, a1, b0, b1 }) => ({ name, a0, a1, b0, b1, path: isoRect(a0, a1, b0, b1) })));
 /** On the Ogun part of the map, with room for a tree's crown above its foot. */
-const onOgunMap = (x: number, y: number) => x > 30 && x < WORLD.w - 30 && y > WORLD.y0 + 110 && y < -60;
+const onOgunMap = (x: number, y: number, below = -60) => x > 30 && x < WORLD.w - 30 && y > WORLD.y0 + 110 && y < below;
 const OGUN_TREES = [
   ...OGUN_BUSH.flatMap((f) => {
     const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
@@ -2164,8 +2166,8 @@ const OGUN_TREES = [
         const key = `${f.name}:${a}:${b}`;
         if (seeded(key) > f.density) continue;
         const c = iso(a + (seeded(key + "x") - 0.5) * 44, b + (seeded(key + "y") - 0.5) * 44);
-        if (!onLand(c.x, c.y) || !onOgunMap(c.x, c.y)) continue;
-        const kind = pick<TreeKind>(seeded(key + "k"), [["bush", 6], ["neem", 2], ["mango", 1], ["palm", 2], ["almond", 1], ["plantain", 1]]);
+        if (!onLand(c.x, c.y) || !onOgunMap(c.x, c.y, f.below)) continue;
+        const kind = pick<TreeKind>(seeded(key + "k"), f.below ? [["almond", 3], ["mango", 3], ["neem", 3], ["palm", 2], ["bush", 2]] : [["bush", 6], ["neem", 2], ["mango", 1], ["palm", 2], ["almond", 1], ["plantain", 1]]);
         if (treeClear(c.x, c.y, kind) && claim(c.x, c.y, kind === "bush" ? 10 : 13, 2)) out.push({ ...c, kind, key });
       }
     return out;
