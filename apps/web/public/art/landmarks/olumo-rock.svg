@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 408" width="480" height="408"><title>Olumo Rock (stand-in)</title>
+<defs>
+<linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9b3a6"/><stop offset=".55" stop-color="#8f897d"/><stop offset="1" stop-color="#6c675e"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c7c1b4"/><stop offset=".6" stop-color="#9b9588"/><stop offset="1" stop-color="#76716a"/></linearGradient>
+<linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9a396"/><stop offset="1" stop-color="#635e56"/></linearGradient>
+</defs>
+<ellipse cx="244" cy="352" rx="232" ry="54" fill="#000" opacity=".2"/>
+<path d="M18 300 C40 250 70 240 96 250 C110 214 140 206 160 222 C176 186 214 178 232 200 C250 172 300 176 314 214 C340 196 386 206 398 246 C428 240 462 262 466 300 C452 344 384 384 244 392 C110 392 30 348 18 300Z" fill="#6f8f45" stroke="#2a1f1a" stroke-width="3" stroke-linejoin="round"/>
+<path d="M118 292 C110 220 132 120 196 60 C226 32 262 28 288 52 C342 98 372 196 362 290 C330 318 160 322 118 292Z" fill="url(#g1)" stroke="#2a1f1a" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M176 102 C200 70 236 52 262 60 C240 74 214 98 200 132 C190 126 182 116 176 102Z" fill="#d6d0c3" opacity=".75"/>
+<path d="M246 64 C252 120 248 200 238 300" fill="none" stroke="#4e4a43" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+<path d="M300 92 C318 150 324 220 318 296" fill="none" stroke="#4e4a43" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+<path d="M198 140 C214 150 230 152 244 146" fill="none" stroke="#4e4a43" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+<path d="M40 312 C34 262 60 214 104 204 C140 196 170 226 176 268 C178 300 172 322 160 334 C120 350 64 344 40 312Z" fill="url(#g2)" stroke="#2a1f1a" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M66 252 C80 226 104 214 126 218 C108 230 94 246 86 268 C78 264 70 260 66 252Z" fill="#e0dbcf" opacity=".7"/>
+<path d="M120 214 C132 250 134 296 128 336" fill="none" stroke="#4e4a43" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+<path d="M326 330 C318 280 330 214 372 196 C410 182 446 214 452 262 C456 300 446 324 430 336 C396 356 346 354 326 330Z" fill="url(#g3)" stroke="#2a1f1a" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M348 238 C358 214 378 202 398 204 C382 216 370 232 364 252 C356 250 350 246 348 238Z" fill="#cfc9bc" opacity=".65"/>
+<path d="M394 204 C404 244 406 290 398 338" fill="none" stroke="#4e4a43" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+<path d="M150 344 C150 316 176 300 206 302 C240 304 262 324 262 350 C250 372 170 374 150 344Z" fill="#9a9488" stroke="#2a1f1a" stroke-width="3" stroke-linejoin="round"/>
+<path d="M262 352 C266 328 290 316 316 320 C342 326 352 344 346 362 C326 380 276 378 262 352Z" fill="#8b857a" stroke="#2a1f1a" stroke-width="3" stroke-linejoin="round"/>
+<g fill="none" stroke="#e9e2cf" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+<path d="M330 342 L322 318 L340 300 L330 276 L346 256 L338 232 L352 214 L344 190 L330 172 L318 148 L304 126 L292 104 L282 84"/>
+</g>
+<g fill="none" stroke="#2a1f1a" stroke-width="1.5" opacity=".55">
+<path d="M330 342 L322 318 L340 300 L330 276 L346 256 L338 232 L352 214 L344 190 L330 172 L318 148 L304 126 L292 104 L282 84"/>
+</g>
+<g fill="#4f7d34" stroke="#2a1f1a" stroke-width="2.5">
+<circle cx="30" cy="318" r="16"/><circle cx="48" cy="332" r="14"/><circle cx="178" cy="368" r="15"/><circle cx="196" cy="378" r="12"/>
+<circle cx="452" cy="318" r="16"/><circle cx="436" cy="340" r="14"/><circle cx="262" cy="384" r="13"/><circle cx="362" cy="366" r="14"/>
+<circle cx="154" cy="214" r="11"/><circle cx="168" cy="206" r="9"/><circle cx="358" cy="176" r="10"/><circle cx="214" cy="160" r="8"/>
+</g>
+<g fill="#6aa046">
+<circle cx="26" cy="313" r="7"/><circle cx="174" cy="363" r="7"/><circle cx="448" cy="312" r="7"/><circle cx="150" cy="210" r="5"/><circle cx="354" cy="172" r="5"/>
+</g>
+<path d="M266 40 L266 6" stroke="#2a1f1a" stroke-width="3" stroke-linecap="round"/>
+<path d="M266 8 L276 8 L276 22 L266 22Z" fill="#1f8a4c" stroke="#2a1f1a" stroke-width="1.5"/>
+<path d="M276 8 L286 8 L286 22 L276 22Z" fill="#f4f1e8" stroke="#2a1f1a" stroke-width="1.5"/>
+<path d="M286 8 L296 8 L296 22 L286 22Z" fill="#1f8a4c" stroke="#2a1f1a" stroke-width="1.5"/>
+<path d="M248 44 L288 44" stroke="#e9e2cf" stroke-width="4" stroke-linecap="round"/>
+</svg>

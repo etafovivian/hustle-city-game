@@ -368,7 +368,8 @@ export const VENUES: readonly Venue[] = [
     name: "Olumo Rock",
     area: "Abeokuta",
     icon: "🪨",
-    art: "/art/buildings/high-court.webp",
+    // A drawn stand-in for the rock (the map draws it on its high ground) until its art arrives
+    art: "/art/landmarks/olumo-rock.svg",
     blurb: "The great rock Abeokuta was founded under. Climb the steps past the shrines and see the whole town and the Ogun River from the top.",
     regulars: ["Guide Baba Sola"],
     activities: [
