@@ -19,7 +19,7 @@ export const RENT_UNITS: readonly RentUnit[] = [
 ];
 export const RENT_UNIT_BY_KEY: ReadonlyMap<string, RentUnit> = new Map(RENT_UNITS.map((u) => [u.key, u]));
 
-/** Area price factor: the Island and Lekki cost double, Ikodu is cheap. */
+/** Area price factor: the Island and Lekki cost double, Ikodu and Ogun are cheap. */
 export const RENT_AREA: Readonly<Record<string, number>> = {
   "Island Heights": 2,
   "Lekki Gardens": 2,
@@ -31,6 +31,10 @@ export const RENT_AREA: Readonly<Record<string, number>> = {
   "Danfo Terminal": 0.9,
   "Apapa Port": 0.9,
   "Ikodu Town": 0.7,
+  // Ogun State
+  Mowe: 0.5,
+  Sagamu: 0.6,
+  Abeokuta: 0.7,
 };
 export const RENT_TERMS = { weeksUpFront: 4, agentFee: 0.1, cautionWeeks: 1, graceWeeks: 2 };
 export const WEEK_MS = 7 * 86_400_000;
