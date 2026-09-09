@@ -39,7 +39,13 @@ const CARS = ["taxi", "saloon", "suvBlack", "taxi", "suvWhite"];
 
 type Pt = { x: number; y: number };
 /** World-x to drop from each end of a road's traffic route (the Tech Mile / bridge corner is a curve). */
-const CORNER_TRIM: Record<string, { lo: number; hi: number }> = { a: { lo: 0, hi: 170 }, bridge: { lo: 0, hi: 170 } };
+const CORNER_TRIM: Record<string, { lo: number; hi: number }> = {
+  a: { lo: 0, hi: 170 },
+  bridge: { lo: 0, hi: 170 },
+  // The expressway's corner where Road A turns north-east for Ogun
+  "ogun-link": { lo: 170, hi: 0 },
+  expressway: { lo: 170, hi: 0 },
+};
 
 /** Points along a road lane from x0 to x1 (flyovers rise and fall, so they get several points). */
 function lanePoints(s: Segment, x0: number, x1: number, lane: number): Pt[] {
@@ -90,7 +96,7 @@ function buildRoutes(roads: Segment[]): Route[] {
       const speed = east ? 150 : 138;
       // Cars can drive this lane when it heads down the screen (east on a down-right road, west on an up-right one).
       const carsOk = downRight === east;
-      const count = Math.max(2, Math.round(length / 950));
+      const count = Math.max(2, Math.round((length / 950) * (s.traffic ?? 1)));
       const crosses = (s.id === "a" || s.id === "b") && Math.min(x0, x1) < CX && Math.max(x0, x1) > CX;
       if (!crosses) {
         out.push({ pts: lanePoints(s, x0, x1, lane), kinds: carsOk ? [...ANY_WAY, ...CARS] : ANY_WAY, speed, count, fadeEnd: true, fadeStart: true });

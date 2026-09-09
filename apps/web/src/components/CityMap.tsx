@@ -887,6 +887,7 @@ export function CityMap({
               <rect width={WORLD.w} height={WORLD.h} fill="url(#sand)" />
               <ellipse cx={CX} cy={CY} rx="1400" ry="800" fill="url(#glow-centre)" />
               <rect width={WORLD.w} height={WORLD.h} fill="url(#sand-shade)" />
+              <TransitLayer part="land" k={k} />
 
               {/* Lagoon, harbour and sea, then the Island on top */}
               <path d={WATER_PATH} fill="#2f7ea6" />
