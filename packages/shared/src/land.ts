@@ -18,6 +18,10 @@ export const LAND_RATE: Record<string, number> = {
   "Danfo Terminal": 45,
   // Outer mainland, across the lagoon: the cheapest land in the city
   "Ikodu Town": 35,
+  // Ogun State, past the border: cheaper still (Mowe's new estates the cheapest, old Abeokuta a little more)
+  Mowe: 18,
+  Sagamu: 22,
+  Abeokuta: 28,
 };
 const ROAD_FACTOR: Record<LandRoad, number> = { arterial: 1.5, collector: 1.25, local: 1, alley: 0.8 };
 

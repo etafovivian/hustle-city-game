@@ -13,8 +13,8 @@ interface Options {
   maxK: number;
   /** World rectangle the view should fit on first load / recentre. */
   home: { x: number; y: number; w: number; h: number };
-  /** World bounds; the viewport centre is kept inside them. */
-  bounds: { w: number; h: number };
+  /** World bounds (x0..w, y0..h; x0 and y0 default to 0); the viewport centre is kept inside them. */
+  bounds: { x0?: number; y0?: number; w: number; h: number };
 }
 
 const DRAG_THRESHOLD = 6;
@@ -34,7 +34,7 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, opts: Options)
     (k: number) => {
       const el = ref.current;
       const { minK, maxK, bounds } = optsRef.current;
-      const floor = el ? Math.max(minK, el.clientWidth / bounds.w, el.clientHeight / bounds.h) : minK;
+      const floor = el ? Math.max(minK, el.clientWidth / (bounds.w - (bounds.x0 ?? 0)), el.clientHeight / (bounds.h - (bounds.y0 ?? 0))) : minK;
       return Math.min(maxK, Math.max(floor, k));
     },
     [ref],
@@ -48,8 +48,8 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, opts: Options)
     const w = el.clientWidth;
     const h = el.clientHeight;
     // Keep the world point under the viewport centre inside the world.
-    const cx = Math.min(bounds.w, Math.max(0, (w / 2 - v.x) / k));
-    const cy = Math.min(bounds.h, Math.max(0, (h / 2 - v.y) / k));
+    const cx = Math.min(bounds.w, Math.max(bounds.x0 ?? 0, (w / 2 - v.x) / k));
+    const cy = Math.min(bounds.h, Math.max(bounds.y0 ?? 0, (h / 2 - v.y) / k));
     return { k, x: w / 2 - cx * k, y: h / 2 - cy * k };
   }, [ref, clampK]);
 

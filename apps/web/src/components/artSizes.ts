@@ -116,9 +116,13 @@ export const ART_SIZE: Record<string, [number, number]> = {
   "/art/nature/neem.webp": [436, 640],
   "/art/nature/plantain.webp": [597, 640],
   "/art/nature/water.webp": [1376, 628],
+  "/art/transit/ogun-border-arch.svg": [340, 375],
   "/art/transit/rail-station.svg": [338, 255],
   "/art/transit/rail-terminus.svg": [458, 310],
+  "/art/transit/sign-benin.svg": [240, 240],
+  "/art/transit/sign-ibadan.svg": [240, 240],
   "/art/transit/sign-ogun.svg": [240, 240],
   "/art/transit/train.svg": [420, 268],
   "/art/transit/water-bus.svg": [278, 182],
+  "/art/landmarks/olumo-rock.svg": [480, 408],
 };

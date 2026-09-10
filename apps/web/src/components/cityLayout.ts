@@ -3,7 +3,11 @@
 // Roads run on the 2:1 isometric axes (slope ±0.5) so they line up with the building art.
 import type { TransitLine, TransitMode, TransitStop } from "./transitData.js";
 
-export const WORLD = { w: 13000, h: 10400 };
+/**
+ * The world's edges. Lagos fills 0..w × 0..h; Ogun State lies north of it, past the state border on the expressway, up
+ * to y0 (negative). `w` and `h` are the far edges (Lagos's ground rectangle is drawn 0..w × 0..h).
+ */
+export const WORLD = { x0: 0, y0: -5600, w: 13000, h: 10400 };
 /** Junction 101, the start of the game. */
 export const CX = 4800;
 export const CY = 2400;
@@ -19,12 +23,32 @@ export interface Segment {
   bridge?: boolean;
   /** Raised road on pillars (crosses over another road); height in world units at its middle. */
   flyover?: number;
+  /** Street lamps only along these x ranges (the expressway is dark through the bush); every 250 when unset. */
+  lit?: [number, number][];
+  /** Traffic density (1 = like the city roads). */
+  traffic?: number;
 }
 
 /** y on a segment's centre line for an x (segments are never vertical). */
 export const yOn = (s: Segment, x: number) => s.y0 + ((x - s.x0) * (s.y1 - s.y0)) / (s.x1 - s.x0);
 /** Island road: Marina Wharf → Island Heights → Lekki. */
 const island = (x: number) => 4300 + 0.5 * (x - 3800);
+
+/** World point of iso road coordinates (as `iso` below, which the road list can't use yet). */
+const isoXY = (a: number, b: number) => ({ x: CX + a + b, y: CY + 0.5 * a - 0.5 * b });
+// ── Ogun State: the Lagos-Ibadan expressway ──
+// Road A runs on past its north-west end (the "To Ogun · Ibadan" sign) to OGUN_A, turns and runs north-east along the
+// iso line a = OGUN_A, through the bush to the state border, then Mowe, the Sagamu interchange and Abeokuta.
+export const OGUN_A = -4300;
+/** Expressway landmarks, as iso b along a = OGUN_A. */
+export const OGUN_B = { border: 1300, moweFrom: 2200, moweTo: 3700, sagamuFrom: 4600, sagamu: 5200, sagamuTo: 5800, abeokutaFrom: 6800, abeokutaTo: 9100, end: 9300 } as const;
+const OGUN_CORNER = isoXY(OGUN_A, 0);
+const OGUN_END = isoXY(OGUN_A, OGUN_B.end);
+/** The Sagamu road crosses the expressway at the interchange (iso b = OGUN_B.sagamu), from a = -5800 to -3000. */
+const SAGAMU_W = isoXY(-5800, OGUN_B.sagamu);
+const SAGAMU_E = isoXY(-3000, OGUN_B.sagamu);
+/** Lamps through the towns only (world x ranges along the expressway). */
+const ogunLit = (...bs: [number, number][]) => bs.map(([b0, b1]) => [isoXY(OGUN_A, b0).x, isoXY(OGUN_A, b1).x] as [number, number]);
 
 export const ROADS: Segment[] = [
   // Road A: Danfo Terminal (NW) → Junction 101 → Tech Mile → bridge head
@@ -40,6 +64,19 @@ export const ROADS: Segment[] = [
   // Oshodi-style flyover at Danfo Terminal: over Road A, ramps down at both ends
   // (runs along the iso b axis at a = -1650, crossing Road A between b = -600 and +600)
   { id: "flyover", x0: CX - 1650 - 600, y0: CY - 825 + 300, x1: CX - 1650 + 600, y1: CY - 825 - 300, flyover: 70 },
+  // Ogun (appended, so the roads above keep their places): Road A's carry-on to the expressway's corner, the
+  // expressway, and the Sagamu road across it at the interchange.
+  { id: "ogun-link", x0: OGUN_CORNER.x, y0: OGUN_CORNER.y, x1: 900, y1: CY + 0.5 * (900 - CX), lit: [], traffic: 0.6 },
+  {
+    id: "expressway",
+    x0: OGUN_CORNER.x,
+    y0: OGUN_CORNER.y,
+    x1: OGUN_END.x,
+    y1: OGUN_END.y,
+    lit: ogunLit([OGUN_B.border + 100, OGUN_B.border + 400], [OGUN_B.moweFrom, OGUN_B.moweTo], [OGUN_B.sagamuFrom, OGUN_B.sagamuTo], [OGUN_B.abeokutaFrom, OGUN_B.end]),
+    traffic: 0.45,
+  },
+  { id: "sagamu-road", x0: SAGAMU_W.x, y0: SAGAMU_W.y, x1: SAGAMU_E.x, y1: SAGAMU_E.y, lit: [[isoXY(-4900, 0).x + OGUN_B.sagamu, isoXY(-3700, 0).x + OGUN_B.sagamu]], traffic: 0.5 },
 ];
 export const ROAD_A = ROADS[0]!;
 export const ROAD_B = ROADS[1]!;
@@ -128,17 +165,57 @@ const inSandbar = (x: number, y: number, inset = 30) => {
   const b = (x - CX) / 2 - (y - CY) - SANDBAR.b;
   return (a / (SANDBAR.ra - inset)) ** 2 + (b / (SANDBAR.rb - inset)) ** 2 <= 1;
 };
+// ── The Ogun River ──
+// Comes down from the north past Abeokuta's east side and leaves the map to the east, through the bush (no road or
+// track crosses it). A Catmull-Rom curve through these points, sampled into a polyline for drawing and for tests.
+const RIVER_KNOTS: [number, number][] = [
+  [8500, -5700],
+  [9150, -5180],
+  [10150, -4800],
+  [11050, -4150],
+  [11800, -3250],
+  [12500, -2650],
+  [13300, -2380],
+];
+export const RIVER_HALF = 95;
+export const RIVER_PTS: { x: number; y: number }[] = (() => {
+  const out: { x: number; y: number }[] = [];
+  const k = RIVER_KNOTS;
+  for (let i = 0; i < k.length - 1; i++) {
+    const [p0, p1, p2, p3] = [k[i - 1] ?? k[i]!, k[i]!, k[i + 1]!, k[i + 2] ?? k[i + 1]!];
+    for (let t = 0; t < 1; t += 0.125) {
+      const [t2, t3] = [t * t, t * t * t];
+      const f = (j: 0 | 1) => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3);
+      out.push({ x: Math.round(f(0)), y: Math.round(f(1)) });
+    }
+  }
+  out.push({ x: k[k.length - 1]![0], y: k[k.length - 1]![1] });
+  return out;
+})();
+/** Distance from a point to the river's centre line. */
+export function riverDistance(x: number, y: number) {
+  if (y > -1500) return Infinity; // the river is all in the far north
+  let best = Infinity;
+  for (let i = 1; i < RIVER_PTS.length; i++) {
+    const [p, q] = [RIVER_PTS[i - 1]!, RIVER_PTS[i]!];
+    const [dx, dy] = [q.x - p.x, q.y - p.y];
+    const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy)));
+    best = Math.min(best, Math.hypot(p.x + dx * t - x, p.y + dy * t - y));
+  }
+  return best;
+}
+
 /** Dry land with room for a building (art is drawn up to ~210 units above its foot). */
-export const onLand = (x: number, y: number) => y < shoreY(x) - 60 || onIsland(x, y) || inSandbar(x, y, 50);
+export const onLand = (x: number, y: number) => (y < shoreY(x) - 60 && riverDistance(x, y) > RIVER_HALF + 60) || onIsland(x, y) || inSandbar(x, y, 50);
 
 // ── Walking ──
 export type Landmass = "mainland" | "island" | "bridge" | "sandbar";
 const BRIDGES = ROADS.filter((r) => r.bridge);
 /** Where a person can stand: mainland, the Island, or the bridge deck. Null means water or off the map. */
 export function landmassAt(x: number, y: number): Landmass | null {
-  if (x < 0 || y < 0 || x > WORLD.w || y > WORLD.h) return null;
+  if (x < WORLD.x0 || y < WORLD.y0 || x > WORLD.w || y > WORLD.h) return null;
   if (BRIDGES.some((b) => x >= b.x0 && x <= b.x1 && Math.abs(y - yOn(b, x)) < HALF + 14)) return "bridge";
-  if (y < shoreY(x) - 12) return "mainland";
+  if (y < shoreY(x) - 12) return riverDistance(x, y) < RIVER_HALF + 10 ? null : "mainland";
   if (x > TIP + 120 && y > island(x) + ISLAND_N + 40 && y < island(x) + ISLAND_S - 10) return "island";
   if (inSandbar(x, y)) return "sandbar";
   return null;
@@ -508,6 +585,12 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   { key: "ring_kings_boxing", district: "Danfo Terminal" },
   // On Sandbar Bay, a short walk from its pier, facing the open sea (open sand either side for cabanas later)
   { key: "sandbar_beach", a: 1880, b: -4065 },
+  // Ogun State (see the expressway at OGUN_A): the estate office at Mowe's gate, the Sagamu interchange's motor park on
+  // its south-east corner, Olumo Rock on the high ground north of Abeokuta, and Itoku's adire market on the main road.
+  { key: "mowe_estate_office", a: -4475, b: 2725, scale: 1.1 },
+  { key: "sagamu_junction", a: -4135, b: 5035 },
+  { key: "olumo_rock", a: -5300, b: 7720, scale: 2.4 },
+  { key: "itoku_adire_market", a: -4480, b: 8625, scale: 1.25 },
 ];
 
 /**
@@ -669,9 +752,13 @@ export const DISTRICTS: District[] = [
   { name: "Ikodu Town", ...iso(3330, 2420), phase: 4, buildings: [] },
   // Sandbar Bay: the beach spit off Marina Wharf (its name sits on the water just south of it).
   { name: "Sandbar Bay", ...(({ x, y }) => ({ x, y: y + 20 }))(iso(1925, -4015)), phase: 4, buildings: [], landmark: true },
+  // Ogun State, past the border on the expressway: Mowe's new estates, the Sagamu interchange, and Abeokuta.
+  { name: "Mowe", ...iso(-4800, 3000), phase: 4, buildings: [] },
+  { name: "Sagamu", ...iso(-4700, 5450), phase: 4, buildings: [] },
+  { name: "Abeokuta", ...iso(-4650, 8250), phase: 4, buildings: [] },
 ];
 /** Areas added after the first city: older buildings keep the area (and branch names) they had before these. */
-const NEWER_AREAS = new Set(["Ikodu Town", "Sandbar Bay"]);
+const NEWER_AREAS = new Set(["Ikodu Town", "Sandbar Bay", "Mowe", "Sagamu", "Abeokuta"]);
 
 const onSite = (cx: number, cy: number, hh: number) => onLand(cx, cy + hh) && onLand(cx, cy - hh) && onLand(cx - 2 * hh, cy) && onLand(cx + 2 * hh, cy);
 
@@ -748,6 +835,11 @@ const VENUE_ART: Record<string, string> = {
   mallam_suya: "suya-stand",
   // Stand-in until the beach art (cabanas, beach bar shack) arrives
   sandbar_beach: "restaurant-terrace",
+  mowe_estate_office: "estate-gate",
+  sagamu_junction: "motor-park",
+  // A drawn stand-in (public/art/landmarks/olumo-rock.svg) until the rock's art arrives
+  olumo_rock: "olumo-rock",
+  itoku_adire_market: "market-hall",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
   if (v.a !== undefined && v.b !== undefined) {
@@ -984,6 +1076,35 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     civic: [["church", 2], ["mosque", 2], ["school", 1]],
     mainRoad: [["motor-park", 1], ["filling-station", 1]],
   },
+  // Ogun State: quieter and greener than Lagos, cheap land. Mowe is new estates (bungalows, houses going up, most of
+  // the land still for sale), Sagamu a busy junction town, Abeokuta an old town of family compounds and storey houses.
+  Mowe: {
+    commercial: 0.1,
+    forSale: 0.55,
+    plotHalf: 56,
+    shops: [["shop-house", 3], ["chemist", 1], ["buka", 1], ["mechanic", 1], ["gadget-kiosk", 1]],
+    homes: [["bungalow", 9], ["unfinished-building", 5], ["terrace-duplex", 2], ["family-compound", 1], ["storey-house", 1]],
+    civic: [["church", 2], ["school", 1], ["mosque", 1]],
+    mainRoad: [["filling-station", 1]],
+  },
+  Sagamu: {
+    commercial: 0.32,
+    forSale: 0.3,
+    plotHalf: 52,
+    shops: [["shop-house", 3], ["buka", 3], ["suya-stand", 2], ["mechanic", 2], ["market-stalls", 2], ["chemist", 1], ["gadget-kiosk", 1]],
+    homes: [["bungalow", 4], ["family-compound", 4], ["unfinished-building", 3], ["storey-house", 2]],
+    civic: [["mosque", 2], ["church", 2]],
+    mainRoad: [["motor-park", 1], ["filling-station", 2]],
+  },
+  Abeokuta: {
+    commercial: 0.2,
+    forSale: 0.25,
+    plotHalf: 54,
+    shops: [["shop-house", 3], ["tailor-shop", 3], ["buka", 2], ["market-stalls", 2], ["chemist", 1], ["salon", 1], ["phone-shop", 1]],
+    homes: [["family-compound", 5], ["bungalow", 4], ["storey-house", 3], ["colonial-block", 1], ["unfinished-building", 2]],
+    civic: [["church", 2], ["mosque", 2], ["school", 1]],
+    mainRoad: [["filling-station", 1]],
+  },
 };
 
 /** The Junction 101 neighbourhood's front lines: both arterials' frontages and every quarter street. */
@@ -1024,6 +1145,8 @@ interface FillOpts {
   plotHalf?: number;
   /** Growth: plots must sit well inside the map. */
   growing?: boolean;
+  /** Where a growing plot may stand (default: well inside Lagos's part of the map). */
+  within?: (x: number, y: number, hh?: number) => boolean;
 }
 /**
  * The area generator: plots on both sides of every front line, shops on busy frontages and corners, homes and
@@ -1052,7 +1175,7 @@ function fillArea(area: string, lines: FrontLine[], opts: FillOpts = {}) {
         const hh = shop ? half - 4 : half;
         const off = l.at + side * (clear + hh + 2);
         const c = l.fixed === "b" ? iso(t, off) : iso(off, t);
-        if ((growing && (!inWorld(c.x, c.y, hh) || inForest(c.x, c.y, hh))) || !onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh, 22)) continue;
+        if ((growing && (!(opts.within ?? inWorld)(c.x, c.y, hh) || inForest(c.x, c.y, hh))) || !onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh, 22)) continue;
         n++;
         t += hh * 2;
         const forSale = seeded(id + ":land") < (forSaleShare ?? P.forSale);
@@ -1175,7 +1298,7 @@ const GROWTH: { area: string; forSale?: number; lines: GrowLine[] }[] = [
   },
 ];
 /** Lays a growth street: it runs from its start until the land, the map's edge or something already built stops it. */
-function growLine(l: GrowLine): FrontLine | null {
+function growLine(l: GrowLine, within: (x: number, y: number) => boolean = inWorld): FrontLine | null {
   if (l.cls === "arterial") return l;
   const { half, pav } = STREET_CLASS[l.cls];
   const dir = Math.sign(l.to - l.from);
@@ -1191,7 +1314,7 @@ function growLine(l: GrowLine): FrontLine | null {
   let stopped = false;
   for (let t = start + dir * 20; dir > 0 ? t <= l.to : t >= l.to; t += dir * 20) {
     const p = pt(t);
-    if (!onLand(p.x, p.y + 40) || !inWorld(p.x, p.y)) {
+    if (!onLand(p.x, p.y + 40) || !within(p.x, p.y)) {
       stopped = true;
       end -= dir * 60;
       break;
@@ -1430,6 +1553,119 @@ export const PIERS: Pier[] = (() => {
 // A water bus tied up at Marina
 TRANSIT_ART_PROPS.push({ art: "/art/transit/water-bus.svg", x: JETTY.x + 150, y: JETTY.y - 170, key: "water-bus-moored", w: 150, behind: true });
 
+// ── Ogun State ──
+// Laid after every Lagos plot and Lagos's transit ground, so nothing in Lagos moves. First what the towns are built
+// round (the Ogun line's track and Abeokuta's station, the border arch, Olumo Rock's high ground, the Kuto motor park),
+// then each town's streets and plots (ids mowe-*, sagamu-*, abeokuta-*), appended to LAND and FOR_SALE after Ikodu's.
+/** Well inside Ogun's part of the map (north of Lagos), with room for a building's art above its plot. */
+const inOgun = (x: number, y: number, hh = 0) => x - 2 * hh > 60 && x + 2 * hh < WORLD.w - 60 && y - hh - 210 > WORLD.y0 + 40 && y + hh < -120;
+/** Iso line of the Ogun line's track beside the expressway (south-east of it, behind the towns' south streets). */
+const OGUN_RAIL_A = -3300;
+/**
+ * The Ogun line (a Lagos-Ibadan railway feel): out of the City Rail Station on the Coast Line's track, on past its old
+ * buffer stop, round the corner north of Danfo Terminal and north-east beside the expressway to Abeokuta.
+ */
+const OGUN_RAIL_ISO: IsoPt[] = [
+  [-2600, 1600],
+  [-2880, 1600],
+  [-3180, 1600],
+  [OGUN_RAIL_A, 1720],
+  [OGUN_RAIL_A, 7660],
+];
+export const OGUN_RAIL_PATH = OGUN_RAIL_ISO.map(([a, b]) => iso(a, b));
+claimStrip("Ogun line track", OGUN_RAIL_PATH.slice(1), RAIL_HALF + 6);
+/** Distance from a point to either railway's track. */
+export function anyRailDistance(x: number, y: number) {
+  let best = railDistance(x, y);
+  for (let i = 1; i < OGUN_RAIL_PATH.length; i++) {
+    const [p, q] = [OGUN_RAIL_PATH[i - 1]!, OGUN_RAIL_PATH[i]!];
+    const [dx, dy] = [q.x - p.x, q.y - p.y];
+    const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy)));
+    best = Math.min(best, Math.hypot(p.x + dx * t - x, p.y + dy * t - y));
+  }
+  return best;
+}
+/** Abeokuta's station: the platform on the town side of the track, the station hall behind it, a train waiting. */
+export const OGUN_RAIL_STATIONS: RailStation[] = [station("abeokuta-station", "Abeokuta Station", -3356, -3332, 7420, 7600, [-3374, 7510], true)];
+claimRect("abeokuta-station platform", -3356, -3332, 7420, 7600);
+transitBuilding("abeokuta-station-hall", "/art/transit/rail-terminus.svg", -3550, -3392, 7425, 7595, 250);
+{
+  const c = iso(OGUN_RAIL_A, 7520);
+  TRANSIT_ART_PROPS.push({ art: "/art/transit/train.svg", x: c.x, y: c.y + 26, key: "train-abeokuta", w: 230, behind: true });
+}
+// The state border: an arch over the expressway (its legs on the verges), with the toll booths just past it.
+{
+  const c = iso(OGUN_A, OGUN_B.border);
+  // The art's right leg stands 140 down-right of the centre line, 10 above the image's bottom
+  TRANSIT_ART_PROPS.push({ art: "/art/transit/ogun-border-arch.svg", x: c.x, y: c.y + 150, key: "ogun-border-arch", w: 340, behind: false });
+  for (const da of [-140, 140]) {
+    const p = iso(OGUN_A + da, OGUN_B.border);
+    TAKEN.push(patchAt(p.x, p.y, 16));
+  }
+}
+/** Olumo Rock's high ground north of Abeokuta (iso centre and radii): the hill is drawn under the rock (TransitLayer). */
+export const OLUMO_HILL = { a: -5300, b: 7720, ra: 410, rb: 360 };
+for (let a = OLUMO_HILL.a - OLUMO_HILL.ra + 40; a <= OLUMO_HILL.a + OLUMO_HILL.ra - 40; a += 60)
+  for (let b = OLUMO_HILL.b - OLUMO_HILL.rb + 40; b <= OLUMO_HILL.b + OLUMO_HILL.rb - 40; b += 60) {
+    const c = iso(a, b);
+    TAKEN.push(patchAt(c.x, c.y, 30));
+  }
+/** Ogun's own buildings that aren't plots (a town's landmark that every visit shows the same). */
+const OGUN_FIXED: Building[] = [];
+const ogunFixed = (key: string, art: string, a: number, b: number, scale = 1) => {
+  const c = iso(a, b);
+  if (claim(c.x, c.y, siteOf(scale).hh)) OGUN_FIXED.push({ art: `/art/buildings/${art}.webp`, ...footAt(a, b, scale), key, scale });
+  else TRANSIT_ISSUES.push(`${key} has no room at iso ${a},${b}`);
+};
+// Kuto-style motor park at the end of the expressway in Abeokuta, where the coach from Lagos stops
+ogunFixed("abeokuta-kuto-park", "motor-park", -4136, 9000);
+
+/** Frontage along the expressway, and along the Sagamu road. */
+const EXPRESS = (from: number, to: number): FrontLine => ({ id: "E", fixed: "a", at: OGUN_A, from, to, cls: "arterial" });
+const SAGAMU_ROAD = (from: number, to: number): FrontLine => ({ id: "S", fixed: "b", at: OGUN_B.sagamu, from, to, cls: "arterial" });
+const OGUN_AREAS: { area: string; lines: GrowLine[] }[] = [
+  {
+    // Mowe: estate roads north of the expressway behind the estate gate, joined across and round the back; two
+    // shorter roads to the south.
+    area: "Mowe",
+    lines: [
+      EXPRESS(OGUN_B.moweFrom + 50, OGUN_B.moweTo - 50),
+      ...[2450, 3000, 3550].map((b, i) => st(`moc${i}n`, "b", b, OGUN_A, -5450, "collector", true)),
+      link("mol0", "a", -4900, 2450, 3550),
+      link("mol1", "a", -5450, 2450, 3550),
+      ...[2650, 3350].map((b, i) => st(`moc${i}s`, "b", b, OGUN_A, -3500, "collector", true)),
+      link("mol2", "a", -3560, 2650, 3350),
+    ],
+  },
+  {
+    // Sagamu: the interchange, with streets off the Sagamu road either side of the expressway.
+    area: "Sagamu",
+    lines: [
+      EXPRESS(OGUN_B.sagamuFrom + 50, OGUN_B.sagamuTo - 50),
+      SAGAMU_ROAD(-5700, -3100),
+      ...[-4950, -3700].flatMap((a, i) => [st(`sgc${i}n`, "a", a, OGUN_B.sagamu, OGUN_B.sagamuTo - 50, "collector", true), st(`sgc${i}s`, "a", a, OGUN_B.sagamu, OGUN_B.sagamuFrom + 50, "collector", true)]),
+    ],
+  },
+  {
+    // Abeokuta: town streets both sides of the expressway; Olumo Rock's hill between the north ones, the station
+    // between the south ones.
+    area: "Abeokuta",
+    lines: [
+      EXPRESS(OGUN_B.abeokutaFrom + 50, OGUN_B.abeokutaTo),
+      ...[7050, 8350].map((b, i) => st(`abc${i}n`, "b", b, OGUN_A, -5850, "collector", true)),
+      st("abc2n", "b", 8950, OGUN_A, -5300, "collector", true),
+      link("abl0", "a", -5850, 7050, 8350),
+      link("abl1", "a", -4850, 8350, 8950),
+      ...[7100, 7750, 8350].map((b, i) => st(`abc${i}s`, "b", b, OGUN_A, -3480, "collector", true)),
+      st("abc3s", "b", 8800, OGUN_A, -3600, "collector", true),
+      link("abl2", "a", -3900, 7100, 8800),
+    ],
+  },
+];
+const OGUN_GRIDS = OGUN_AREAS.map((g) => ({ ...g, lines: g.lines.flatMap((l) => growLine(l, inOgun) ?? []) }));
+STREETS.push(...OGUN_GRIDS.flatMap((g) => g.lines.filter((l) => l.cls !== "arterial").map(streetOf)));
+GROWN.push(...OGUN_GRIDS.map((g) => fillArea(g.area, g.lines, { growing: true, within: inOgun })), { houses: OGUN_FIXED, driveways: [] });
+
 /** Buildings of the city before it grew. */
 const ORIGINAL_HOUSES = FILLED.flatMap((f) => f.houses);
 /** Their order back to front as it was then (starter rooms and branch names follow it, whatever changes below). */
@@ -1451,9 +1687,11 @@ export const ART_ASPECT: Record<string, number> = {
   "residential-block": 0.88, "residential-tower": 1.06, "restaurant-terrace": 0.88, salon: 1.11, school: 0.79, "shop-house": 0.99, "skyline-lounge": 0.83,
   snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82, university: 0.87, "campus-quad": 0.86, "market-stalls": 0.74,
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
+  // Drawn stand-ins (public/art/landmarks)
+  "olumo-rock": 0.85,
 };
 export type Pt = [number, number];
-const artName = (art: string) => art.split("/").pop()!.replace(".webp", "");
+const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
 /** Silhouette and footprint of building art `BASE * scale` wide with its foot at (x, y) (`h`: drawn height, if not the art's own). */
 export function buildingShape(art: string, x: number, y: number, scale: number, h?: number) {
   const w = BASE * scale;
@@ -1757,11 +1995,12 @@ export const LAMPS = ROADS.filter((r) => !r.flyover).flatMap((s) => {
   let i = 0;
   for (let x = lo + 120; x < hi - 60; x += s.bridge ? 200 : 250) {
     if (Math.hypot(x - CX, yOn(s, x) - CY) < 300 || atCrossing(s, x)) continue;
+    if (s.lit && !s.lit.some(([l, h]) => x >= l && x <= h)) continue;
     const north = i++ % 2 === 1;
     // On bridges the lamps stand on the parapet.
     const off = s.bridge ? HALF + 10 : BACK;
     // None at the Coast Line's level crossing
-    if (railDistance(x, yOn(s, x) + (north ? -off : off)) < 80) continue;
+    if ((s.lit ? anyRailDistance : railDistance)(x, yOn(s, x) + (north ? -off : off)) < 80) continue;
     out.push({ x, y: yOn(s, x) + (north ? -off : off), key: `${s.id}-${x}`, behind: north });
   }
   return out;
@@ -1900,7 +2139,71 @@ const SANDBAR_PALMS = (
   return inSandbar(c.x, c.y, 40) && treeClear(c.x, c.y, "palm") && claim(c.x, c.y, 16, 6) ? [{ ...c, kind: "palm" as TreeKind, key: `sandbar-${i}` }] : [];
 });
 
-export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS].sort((a, b) => a.y - b.y);
+// Ogun: thick bush either side of the expressway between the towns (it reads as leaving the city: dark forest floor
+// like the Lagos reserves), open country with a scattering of trees behind, and some green in the towns. Sparse, and
+// mostly low bush, so the map stays light.
+const OGUN_BUSH: { name: string; a0: number; a1: number; b0: number; b1: number; density: number; floor: boolean; below?: number }[] = [
+  { name: "Border Bush North", a0: -5700, a1: -4470, b0: 250, b1: 2080, density: 0.09, floor: true },
+  { name: "Border Bush South", a0: -4140, a1: -3420, b0: 480, b1: 2080, density: 0.09, floor: true },
+  { name: "Mowe-Sagamu Bush North", a0: -5800, a1: -4470, b0: 3800, b1: 4480, density: 0.07, floor: true },
+  { name: "Mowe-Sagamu Bush South", a0: -4140, a1: -3420, b0: 3800, b1: 4480, density: 0.07, floor: true },
+  { name: "Sagamu-Abeokuta Bush North", a0: -5800, a1: -4470, b0: 5920, b1: 6700, density: 0.07, floor: true },
+  { name: "Sagamu-Abeokuta Bush South", a0: -4140, a1: -3420, b0: 5920, b1: 6700, density: 0.07, floor: true },
+  { name: "Ogun Country", a0: -9400, a1: -6000, b0: 400, b1: 10600, density: 0.006, floor: false },
+  { name: "Ogun Country East", a0: -3150, a1: -1950, b0: 3350, b1: 9800, density: 0.008, floor: false },
+  { name: "River Country", a0: -5900, a1: -3420, b0: 9500, b1: 11600, density: 0.016, floor: false },
+  // The Ikeja Forest Reserve's north end (its floor reaches past Lagos's old edge, where nothing was planted)
+  { name: "Ikeja Forest Reserve North", a0: -3100, a1: -1500, b0: 1550, b1: 3000, density: 0.4, floor: false, below: 110 },
+];
+FORESTS.push(...OGUN_BUSH.filter((f) => f.floor).map(({ name, a0, a1, b0, b1 }) => ({ name, a0, a1, b0, b1, path: isoRect(a0, a1, b0, b1) })));
+/** On the Ogun part of the map, with room for a tree's crown above its foot. */
+const onOgunMap = (x: number, y: number, below = -60) => x > 30 && x < WORLD.w - 30 && y > WORLD.y0 + 110 && y < below;
+const OGUN_TREES = [
+  ...OGUN_BUSH.flatMap((f) => {
+    const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
+    for (let a = f.a0 + 40; a <= f.a1 - 40; a += 62)
+      for (let b = f.b0 + 40; b <= f.b1 - 40; b += 62) {
+        const key = `${f.name}:${a}:${b}`;
+        if (seeded(key) > f.density) continue;
+        const c = iso(a + (seeded(key + "x") - 0.5) * 44, b + (seeded(key + "y") - 0.5) * 44);
+        if (!onLand(c.x, c.y) || !onOgunMap(c.x, c.y, f.below)) continue;
+        const kind = pick<TreeKind>(seeded(key + "k"), f.below ? [["almond", 3], ["mango", 3], ["neem", 3], ["palm", 2], ["bush", 2]] : [["bush", 6], ["neem", 2], ["mango", 1], ["palm", 2], ["almond", 1], ["plantain", 1]]);
+        if (treeClear(c.x, c.y, kind) && claim(c.x, c.y, kind === "bush" ? 10 : 13, 2)) out.push({ ...c, kind, key });
+      }
+    return out;
+  }),
+  // The towns: greener than Lagos (Mowe's estates have hedges and lawns)
+  ...OGUN_GRIDS.flatMap((g) => {
+    const ls = g.lines.filter((l) => l.cls !== "arterial");
+    const as = ls.flatMap((l) => (l.fixed === "a" ? [l.at] : [l.from, l.to]));
+    const bs = ls.flatMap((l) => (l.fixed === "b" ? [l.at] : [l.from, l.to]));
+    const green = { Mowe: 0.15, Sagamu: 0.08, Abeokuta: 0.12 }[g.area] ?? 0.1;
+    const out: { x: number; y: number; kind: TreeKind; key: string }[] = [];
+    for (let a = Math.min(...as) - 150; a <= Math.max(...as) + 150; a += 85)
+      for (let b = Math.min(...bs) - 150; b <= Math.max(...bs) + 150; b += 85) {
+        const key = `${g.area}:${a}:${b}`;
+        if (seeded(key) > green) continue;
+        const c = iso(a + (seeded(key + "x") - 0.5) * 50, b + (seeded(key + "y") - 0.5) * 50);
+        if (!onLand(c.x, c.y) || !onOgunMap(c.x, c.y)) continue;
+        const kind = pick<TreeKind | "grass">(
+          seeded(key + "k"),
+          g.area === "Mowe"
+            ? [["grass", 4], ["hedge", 2], ["bougainvillea", 1], ["palm", 2], ["almond", 1], ["mango", 1], ["bush", 1]]
+            : [["grass", 3], ["bush", 1], ["almond", 2], ["mango", 2], ["neem", 2], ["plantain", 2], ["palm", 1]],
+        );
+        if (kind === "grass") {
+          const p = patchAt(c.x, c.y, 26);
+          if (groundClear(c.x, c.y, 26) && !TAKEN.some((q) => overlaps(p, q, 0))) GRASS.push({ x: c.x, y: c.y, r: 34 + seeded(key + "r") * 30, key });
+          continue;
+        }
+        const hh = kind === "hedge" || kind === "bougainvillea" ? 28 : kind === "bush" ? 12 : 16;
+        if (treeClear(c.x, c.y, kind) && claim(c.x, c.y, hh, 4)) out.push({ ...c, kind, key });
+      }
+    return out;
+  }),
+];
+
+export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS, ...OGUN_TREES].sort((a, b) => a.y - b.y);
 
 export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES].sort((a, b) => a.y - b.y);
 /** The buildings that stood before the city grew, back to front as they were then. */
@@ -2105,7 +2408,7 @@ export const ROAD_ENDS = ROADS.filter((r) => !r.bridge && !r.flyover).flatMap((r
   [
     { x: r.x0, y: r.y0 },
     { x: r.x1, y: r.y1 },
-  ].filter((p) => p.x > 60 && p.x < WORLD.w - 60 && p.y > 60 && p.y < WORLD.h - 60 && !ROADS.some((o) => o !== r && !o.flyover && Math.hypot(o.x0 - p.x, o.y0 - p.y) < 90 || o !== r && !o.flyover && Math.hypot(o.x1 - p.x, o.y1 - p.y) < 90)),
+  ].filter((p) => p.x > WORLD.x0 + 60 && p.x < WORLD.w - 60 && p.y > WORLD.y0 + 60 && p.y < WORLD.h - 60 && !ROADS.some((o) => o !== r && !o.flyover && Math.hypot(o.x0 - p.x, o.y0 - p.y) < 90 || o !== r && !o.flyover && Math.hypot(o.x1 - p.x, o.y1 - p.y) < 90)),
 );
 
 /** Polygon for a road's asphalt band. */
@@ -2169,6 +2472,18 @@ export const ROAD_PATHS: RoadPath[] = (() => {
     { id: "eko", kind: "bridge", d: `M${P(outEko.x, outEko.y)} L${P(eko.x1, eko.y1)}` },
     { id: "island", kind: "road", d: `M${P(isl.x0, isl.y0)} L${P(isl.x1, isl.y1)}` },
     ...STREETS.map((s): RoadPath => ({ id: s.id, kind: s.cls === "alley" ? "alley" : "street", d: `M${P(s.x0, s.y0)} L${P(s.x1, s.y1)}`, half: s.half, pav: s.pav })),
+    // Ogun: Road A carries on to the corner and turns north-east up the expressway; the Sagamu road crosses it.
+    ...(() => {
+      const ex = ROADS.find((r) => r.id === "expressway")!;
+      const sg = ROADS.find((r) => r.id === "sagamu-road")!;
+      const corner = { x: ex.x0, y: ex.y0 };
+      const inC = { x: corner.x + R, y: corner.y + 0.5 * R };
+      const outC = { x: corner.x + R, y: corner.y - 0.5 * R };
+      return [
+        { id: "expressway", kind: "road", d: `M${P(a.x0, a.y0)} L${P(inC.x, inC.y)} Q${P(corner.x, corner.y)} ${P(outC.x, outC.y)} L${P(ex.x1, ex.y1)}` },
+        { id: "sagamu-road", kind: "road", d: `M${P(sg.x0, sg.y0)} L${P(sg.x1, sg.y1)}` },
+      ] satisfies RoadPath[];
+    })(),
   ];
 })();
 
@@ -2388,6 +2703,9 @@ const SHORT_AREA: Record<string, string> = {
   "Island Heights": "Island",
   "Lekki Gardens": "Lekki",
   "Ikodu Town": "Ikodu",
+  Mowe: "Mowe",
+  Sagamu: "Sagamu",
+  Abeokuta: "Abeokuta",
 };
 export interface Branch {
   /** "<base venue>@<building>": the base venue's room, activities and once-a-day limits. */
@@ -2404,9 +2722,11 @@ export const BRANCHES: Branch[] = (() => {
   const used = new Set<string>();
   const first = new Set(ORIGINAL_SCENERY.map((b) => b.key));
   // The newer areas' buildings come last, so no older branch's name changes.
-  const newer = (b: Building) => [...NEWER_AREAS].some((n) => b.key.startsWith(`${n.toLowerCase().replace(/\s+/g, "-")}-`));
+  const inArea = (b: Building, n: string) => b.key.startsWith(`${n.toLowerCase().replace(/\s+/g, "-")}-`);
+  const newer = (b: Building) => [...NEWER_AREAS].some((n) => inArea(b, n));
   const rest = ALL_SCENERY.filter((b) => !first.has(b.key));
-  return [...ORIGINAL_SCENERY, ...rest.filter((b) => !newer(b)), ...rest.filter(newer)].flatMap((b) => {
+  // Newer areas one after another, in the order they were added (so a later area never renames an earlier one's).
+  return [...ORIGINAL_SCENERY, ...rest.filter((b) => !newer(b)), ...[...NEWER_AREAS].flatMap((n) => rest.filter((b) => inArea(b, n)))].flatMap((b) => {
     const kind = b.art.split("/").pop()!.replace(".webp", "");
     const base = BRANCH_OF[kind];
     if (!base) return [];
@@ -2528,15 +2848,15 @@ const BRT_B = lineOf(
   byRoad,
 );
 
-// The Coast Line: along its own track, stopping beside each platform.
-const RAIL_LINE = (() => {
+// Trains: along their own track, stopping beside each platform.
+function railLine(key: string, name: string, color: string, track: P[], stations: RailStation[]): TransitLine {
   // Each station's halt is the point on the track nearest its platform; the path is the track with the halts put in.
   const len = (p: P, q: P) => Math.hypot(q.x - p.x, q.y - p.y);
   const project = (c: P) => {
     let best = { d: Infinity, t: 0, p: c };
     let run = 0;
-    for (let i = 1; i < RAIL_PATH.length; i++) {
-      const [p, q] = [RAIL_PATH[i - 1]!, RAIL_PATH[i]!];
+    for (let i = 1; i < track.length; i++) {
+      const [p, q] = [track[i - 1]!, track[i]!];
       const [dx, dy] = [q.x - p.x, q.y - p.y];
       const u = Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / (dx * dx + dy * dy)));
       const at = { x: p.x + dx * u, y: p.y + dy * u };
@@ -2546,26 +2866,29 @@ const RAIL_LINE = (() => {
     }
     return best;
   };
-  const cum = RAIL_PATH.map((_, i) => RAIL_PATH.slice(1, i + 1).reduce((s, q, k) => s + len(RAIL_PATH[k]!, q), 0));
-  const halts = RAIL_STATIONS.map((s) => {
+  const cum = track.map((_, i) => track.slice(1, i + 1).reduce((s, q, k) => s + len(track[k]!, q), 0));
+  const halts = stations.map((s) => {
     const pl = s.platform;
     const pr = project(iso((pl.a0 + pl.a1) / 2, (pl.b0 + pl.b1) / 2));
     return { id: stop(s.id, s.name, s.stand, "rail"), t: pr.t, at: pr.p };
   });
-  const pts = [...RAIL_PATH.map((p, i) => ({ t: cum[i]!, at: p, id: "" })), ...halts].sort((p, q) => p.t - q.t || (p.id ? 1 : -1));
+  const pts = [...track.map((p, i) => ({ t: cum[i]!, at: p, id: "" })), ...halts].sort((p, q) => p.t - q.t || (p.id ? 1 : -1));
   const first = pts.findIndex((p) => p.id === halts[0]!.id);
   const last = pts.findIndex((p) => p.id === halts[halts.length - 1]!.id);
   const used = pts.slice(first, last + 1).filter((p, i, all) => p.id || i === 0 || len(p.at, all[i - 1]!.at) > 1);
   return {
-    key: "coast-line",
-    name: "Coast Line",
+    key,
+    name,
     mode: "rail" as const,
-    color: "#d9482b",
+    color,
     stops: halts.map((h) => h.id),
     path: used.map((p) => round(p.at)),
     stopAt: halts.map((h) => used.findIndex((p) => p.id === h.id)),
   };
-})();
+}
+const RAIL_LINE = railLine("coast-line", "Coast Line", "#d9482b", RAIL_PATH, RAIL_STATIONS);
+// The Ogun line: from the City Rail Station (the Coast Line's terminus) to Abeokuta.
+const OGUN_RAIL = railLine("ogun-rail", "Ogun Line: Lagos – Abeokuta", "#8a3fb3", OGUN_RAIL_PATH, [RAIL_STATIONS[0]!, ...OGUN_RAIL_STATIONS]);
 
 // Water bus: the hub at Marina's jetty; boats keep to the water (waypoints between the piers).
 const pierHalt = (id: string) => {
@@ -2600,23 +2923,27 @@ const FERRY_SANDBAR = lineOf(
   }),
 );
 
-// Interstate coach: from the motor park in front of Danfo Terminal's bus station out along Road A to the Ogun road.
+// Interstate coach: from the motor park in front of Danfo Terminal's bus station out along Road A and up the
+// expressway: the state border, Mowe, the Sagamu interchange and Abeokuta's motor park.
 const COACH = lineOf(
   "coach-ogun",
-  "Interstate Coach: Danfo – Ogun",
+  "Interstate Coach: Danfo – Abeokuta",
   "coach",
   "#e07b1f",
   brtHalts(
     [
       ["interstate-motor-park", "Interstate Motor Park", [-2196, 0], [-2196, -77]],
-      ["ogun-border", "To Ogun · Ibadan", [-3760, 0], [-3760, -77]],
+      ["ogun-border", "Ogun State Border", [OGUN_A, OGUN_B.border + 280], [OGUN_A + 77, OGUN_B.border + 280]],
+      ["mowe-park", "Mowe Park", [OGUN_A, 3250], [OGUN_A + 77, 3250]],
+      ["sagamu-interchange", "Sagamu Interchange", [OGUN_A, 4880], [OGUN_A + 77, 4880]],
+      ["abeokuta-motor-park", "Abeokuta Motor Park", [OGUN_A, 9000], [OGUN_A + 77, 9000]],
     ],
     "coach",
   ),
   byRoad,
 );
 
-export const TRANSIT_LINES_L: TransitLine[] = [BRT_A, BRT_B, RAIL_LINE, FERRY_EAST, FERRY_SANDBAR, COACH];
+export const TRANSIT_LINES_L: TransitLine[] = [BRT_A, BRT_B, RAIL_LINE, FERRY_EAST, FERRY_SANDBAR, COACH, OGUN_RAIL];
 export const TRANSIT_STOPS_L: TransitStop[] = [...STOPS.values()];
 
 // ── Transit on the street: BRT shelters, the coach bay sign, the road out to Ogun ──
@@ -2635,7 +2962,27 @@ for (const l of [BRT_A, BRT_B])
       }
     }
   });
+// Coach shelters at the Ogun stops (the Interstate Motor Park has its bus station)
+const EXPRESSWAY = ROADS.find((r) => r.id === "expressway")!;
+for (const id of COACH.stops.slice(1)) {
+  const s = STOPS.get(id)!;
+  for (const dx of [0, 60, -60, 120, -120, 180, -180]) {
+    const p = roadProp(EXPRESSWAY, s.x + dx, -1, "bus-stop", `coach-${id}`);
+    if (p) {
+      PROPS.push(p);
+      break;
+    }
+  }
+}
 PROPS.push(...TRANSIT_ART_PROPS);
+{
+  // Road signs at the far ends: the expressway on to Ibadan, the Sagamu road east to Ijebu-Ode and Benin
+  const x = iso(OGUN_A, OGUN_B.end - 60).x;
+  PROPS.push({ art: "/art/transit/sign-ibadan.svg", x, y: yOn(EXPRESSWAY, x) + BACK, key: "sign-ibadan", w: 110, behind: false });
+  const sg = ROADS.find((r) => r.id === "sagamu-road")!;
+  const x2 = sg.x1 - 140;
+  PROPS.push({ art: "/art/transit/sign-benin.svg", x: x2, y: yOn(sg, x2) - BACK, key: "sign-benin", w: 110, behind: true });
+}
 {
   // The road sign at Road A's north-west end, on the near kerb (where the road leaves for Ogun)
   const x = iso(-3860, 0).x;

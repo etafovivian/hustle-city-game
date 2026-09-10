@@ -4,7 +4,7 @@
 // mouth (along the pavement of the road it leaves). The main road through each area gets walkers going up and down
 // each of its pavements. Pavements are kept clear of every plot (cityLayout groundClear), so nobody walks through a
 // building. Built from exported layout data only.
-import { DISTRICTS, HALF, ISLAND_B, KERB, STREETS, STREET_CLASS, iso, onLand, toIso, type Street } from "./cityLayout.js";
+import { DISTRICTS, HALF, ISLAND_B, KERB, OGUN_A, OGUN_B, STREETS, STREET_CLASS, iso, onLand, toIso, type Street } from "./cityLayout.js";
 
 type P = { x: number; y: number };
 export interface WalkPath {
@@ -29,6 +29,9 @@ const AREA_OF_PREFIX: Record<string, string> = {
   ih: "Island Heights",
   lk: "Lekki Gardens",
   ik: "Ikodu Town",
+  mo: "Mowe",
+  sg: "Sagamu",
+  ab: "Abeokuta",
 };
 /** The main road's stretch through each area: fixed iso axis and value, and the range along it. */
 const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to: number }[] = [
@@ -40,6 +43,14 @@ const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to
   { area: "Marina Wharf", fixed: "b", at: ISLAND_B, from: 1450, to: 2300 },
   { area: "Island Heights", fixed: "b", at: ISLAND_B, from: 2550, to: 4800 },
   { area: "Lekki Gardens", fixed: "b", at: ISLAND_B, from: 4900, to: 10300 },
+  // Ogun: the expressway through each town, and the Sagamu road across it
+  { area: "Mowe", fixed: "a", at: OGUN_A, from: OGUN_B.moweFrom + 50, to: OGUN_B.moweTo - 50 },
+  // (Sagamu's pavements stop either side of the interchange)
+  { area: "Sagamu", fixed: "a", at: OGUN_A, from: OGUN_B.sagamuFrom + 50, to: OGUN_B.sagamu - 120 },
+  { area: "Sagamu", fixed: "a", at: OGUN_A, from: OGUN_B.sagamu + 120, to: OGUN_B.sagamuTo - 50 },
+  { area: "Sagamu", fixed: "b", at: OGUN_B.sagamu, from: -5600, to: OGUN_A - 120 },
+  { area: "Sagamu", fixed: "b", at: OGUN_B.sagamu, from: OGUN_A + 120, to: -3500 },
+  { area: "Abeokuta", fixed: "a", at: OGUN_A, from: OGUN_B.abeokutaFrom + 50, to: OGUN_B.abeokutaTo },
 ];
 /** How many walkers each area gets: busy mainland areas more, the far ends of the map fewer. */
 export const AREA_WALKERS: Record<string, number> = {
@@ -52,6 +63,9 @@ export const AREA_WALKERS: Record<string, number> = {
   "Island Heights": 6,
   "Lekki Gardens": 8,
   "Ikodu Town": 4,
+  Mowe: 4,
+  Sagamu: 5,
+  Abeokuta: 7,
 };
 
 const kerbOf = (s: { half: number; pav: number }) => s.half + s.pav / 2;

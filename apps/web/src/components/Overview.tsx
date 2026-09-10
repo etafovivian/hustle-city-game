@@ -12,6 +12,8 @@ import {
   FOR_SALE,
   ISLAND_PATH,
   OCEAN_PATH,
+  RIVER_HALF,
+  RIVER_PTS,
   ROAD_PATHS,
   VENUE_SPOTS,
   WATER_PATH,
@@ -90,8 +92,8 @@ export function CityOverview({
     const xs = spots.map((s) => s.x);
     const ys = spots.map((s) => s.y);
     const pad = 600;
-    const x0 = Math.max(0, Math.min(...xs) - pad);
-    const y0 = Math.max(0, Math.min(...ys) - pad - 300);
+    const x0 = Math.max(WORLD.x0, Math.min(...xs) - pad);
+    const y0 = Math.max(WORLD.y0, Math.min(...ys) - pad - 300);
     const x1 = Math.min(WORLD.w, Math.max(...xs) + pad);
     const y1 = Math.min(WORLD.h, Math.max(...ys) + pad);
     return `${x0} ${y0} ${x1 - x0} ${y1 - y0}`;
@@ -110,7 +112,7 @@ export function CityOverview({
         <div className="overview-layout">
           <div className="overview-map">
             <svg viewBox={box} role="img" aria-label="Map of the city">
-              <rect width={WORLD.w} height={WORLD.h} fill="#d9b981" />
+              <rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w - WORLD.x0} height={WORLD.h - WORLD.y0} fill="#d9b981" />
               <path d={WATER_PATH} fill="#2f8fb0" />
               <path d={OCEAN_PATH} fill="#1f6f9a" />
               <path d={ISLAND_PATH} fill="#e3c48f" />
@@ -118,6 +120,7 @@ export function CityOverview({
               {FORESTS.map((f) => (
                 <path key={f.name} d={f.path} fill="#4c8a3c" opacity=".75" />
               ))}
+              <path d={RIVER_PTS.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" ")} fill="none" stroke="#2f8fb0" strokeWidth={RIVER_HALF * 2} strokeLinecap="round" strokeLinejoin="round" />
               {roads.map((r) => (
                 <path key={r.id} d={r.d} fill="none" stroke={r.kind === "bridge" ? "#cfd3d8" : "#4a4540"} strokeWidth="90" strokeLinecap="round" />
               ))}

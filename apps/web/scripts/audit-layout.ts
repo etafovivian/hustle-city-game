@@ -27,7 +27,7 @@ export interface Finding {
 /** The findings that must stay at zero (check-clearance.ts fails on them). */
 export const STRICT: Finding["kind"][] = ["covers", "ground", "tree-in-building", "tree-covers", "water", "off-map", "label", "art-size"];
 
-const artName = (art: string) => art.split("/").pop()!.replace(".webp", "");
+const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
 const building = (name: string, art: string, x: number, y: number, scale: number, h?: number): Sprite => ({ name, kind: "building", fx: x, fy: y, ...L.buildingShape(art, x, y, scale, h) });
 
 export function sprites() {
@@ -108,7 +108,7 @@ export function audit() {
   for (const s of S) {
     if (WET_OK.test(s.name)) continue;
     const pts = s.foot ?? [[s.fx, s.fy] as Pt];
-    if (pts.some(([x, y]) => x < 0 || y < 0 || x > L.WORLD.w || y > L.WORLD.h)) {
+    if (pts.some(([x, y]) => x < L.WORLD.x0 || y < L.WORLD.y0 || x > L.WORLD.w || y > L.WORLD.h)) {
       found.push({ kind: "off-map", msg: `${s.name} at ${s.fx.toFixed(0)},${s.fy.toFixed(0)} is off the map` });
       continue;
     }
@@ -137,7 +137,7 @@ export function deadEnds(): Finding[] {
     ]) {
       if (lines.some((o) => o !== s && dist(o, end) < o.half + s.half + 40)) continue;
       const len = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
-      const edge = end.x < 400 || end.y < 400 || end.x > L.WORLD.w - 400;
+      const edge = end.x < L.WORLD.x0 + 400 || end.y < L.WORLD.y0 + 400 || end.x > L.WORLD.w - 400;
       const coast = !L.onLand(end.x, end.y + 160) || !L.onLand(end.x, end.y - 160);
       out.push({
         kind: edge ? "edge-end" : "dead-end",
@@ -174,8 +174,8 @@ export function empty(S: Sprite[]): Finding[] {
   const holes: string[] = [];
   let land = 0;
   let built = 0;
-  for (let gx = 0; gx < L.WORLD.w / CELL; gx++)
-    for (let gy = 0; gy < L.WORLD.h / CELL; gy++) {
+  for (let gx = Math.floor(L.WORLD.x0 / CELL); gx < L.WORLD.w / CELL; gx++)
+    for (let gy = Math.floor(L.WORLD.y0 / CELL); gy < L.WORLD.h / CELL; gy++) {
       const [x, y] = [(gx + 0.5) * CELL, (gy + 0.5) * CELL];
       if (!L.onLand(x, y)) continue;
       land++;
