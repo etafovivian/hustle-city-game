@@ -76,11 +76,13 @@ export const TRANSIT: Record<TransitKind, TransitInfo> = {
   brt: { kind: "brt", label: "BRT bus", note: "Own lane and AC: no go-slow", icon: "🚌", base: 100, perKm: 10, speed: 520, wait: 4 },
   rail: { kind: "rail", label: "Coast Line train", note: "Fastest way across the city", icon: "🚆", base: 150, perKm: 12, speed: 760, wait: 5 },
   ferry: { kind: "ferry", label: "Water bus", note: "Lagoon breeze, zero traffic", icon: "⛴️", base: 300, perKm: 20, speed: 480, wait: 6 },
-  coach: { kind: "coach", label: "Interstate coach", note: "Out of Lagos", icon: "🚍", base: 300, perKm: 15, speed: 520, wait: 6 },
+  coach: { kind: "coach", label: "Interstate coach", note: "AC coach to Ogun State: Mowe, Sagamu, Abeokuta", icon: "🚍", base: 500, perKm: 90, speed: 560, wait: 6 },
 };
 export const TRANSIT_KINDS = Object.keys(TRANSIT) as TransitKind[];
-export function transitFare(kind: TransitKind, units: number): number {
-  const t = TRANSIT[kind];
+/** Intercity lines priced on their own (the Lagos-Abeokuta train costs more than a city train, less than the coach). */
+export const INTERCITY_LINES: Readonly<Record<string, { base: number; perKm: number }>> = { "ogun-rail": { base: 400, perKm: 70 } };
+export function transitFare(kind: TransitKind, units: number, line?: string): number {
+  const t = (line && INTERCITY_LINES[line]) || TRANSIT[kind];
   return Math.max(t.base, Math.round((t.base + (t.perKm * units) / UNITS_PER_KM) / 10) * 10);
 }
 

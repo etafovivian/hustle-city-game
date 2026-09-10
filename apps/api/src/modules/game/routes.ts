@@ -31,6 +31,7 @@ const rideBody = z.object({
   units: z.number().int(),
   vehicle: z.enum(["bike", "keke", "saloon", "suv"]).optional(),
   transit: z.enum(["brt", "rail", "ferry", "coach"]).optional(),
+  line: z.string().max(40).optional(),
 });
 const stopBody = z.object({ choice: z.enum(AREA_BOYS_OPTIONS.map((o) => o.choice) as [string, ...string[]]) });
 const dreamClaimBody = z.object({ at: z.number().int().positive() });
@@ -220,8 +221,8 @@ export async function gameRoutes(app: FastifyInstance) {
 
   app.post("/api/game/rides", async (request) => {
     const user = requireUser(request);
-    const { mode, units, vehicle, transit } = rideBody.parse(request.body);
-    if (mode === "transit") return inTx(user.id, (ctx) => startTransit(ctx, transit ?? "brt", units));
+    const { mode, units, vehicle, transit, line } = rideBody.parse(request.body);
+    if (mode === "transit") return inTx(user.id, (ctx) => startTransit(ctx, transit ?? "brt", units, line));
     if (mode === "own") return inTx(user.id, (ctx) => startDrive(ctx, vehicle ?? "bike", units));
     return inTx(user.id, (ctx) => startRide(ctx, mode as never, units));
   });

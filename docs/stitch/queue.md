@@ -252,3 +252,9 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. Cutaway interior of a boxing gym: a raised ring with red and blue corners in the middle, two heavy bags hanging on chains, a speed bag, a mirror wall, benches and a water cooler. Clear floor around the ring, no people.
 3. A set of dumbbells on a small rack (four pairs, black and red), single object.
 4. A red leather punching bag hanging from a ceiling bracket, with boxing gloves hung on a hook beside it, single object.
+
+## Batch 54: Ogun State (Olumo Rock, the border and the Ogun towns use drawn stand-ins for now)
+1. Olumo Rock, Abeokuta: a huge granite outcrop with worn grey domes, small shrubs in the cracks, a stairway and railings winding up, a small viewing platform at the top with a flag. Tall image (1024x1536).
+2. A state border arch over a dual carriageway: a wide concrete arch with the words "WELCOME TO OGUN STATE · GATEWAY STATE", flower beds either side.
+3. A new housing estate gate in Mowe: a pillared gate with a guard post, the sign "PEACE ESTATE", a row of identical bungalows behind it, unpaved red-earth road.
+4. Adire dye pits: a row of clay dye pots and indigo-blue cloth hanging on lines to dry, a market stall beside it.

@@ -85,7 +85,8 @@ export async function presenceRoutes(app: FastifyInstance) {
 
   const body = z.object({
     x: z.number().finite().min(-1000).max(20_000),
-    y: z.number().finite().min(-1000).max(20_000),
+    // Ogun State lies north of Lagos on the map (y down to about -5600).
+    y: z.number().finite().min(-6000).max(20_000),
     place: z.string().max(80).nullable().optional(),
   });
 

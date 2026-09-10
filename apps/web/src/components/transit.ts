@@ -68,7 +68,7 @@ function score(legs: TripLeg[]): { seconds: number; fare: number } {
     if (l.kind === "walk") seconds += l.units / WALK_SPEED;
     else {
       seconds += TRANSIT[l.kind].wait + l.units / TRANSIT[l.kind].speed;
-      fare += transitFare(l.kind, l.units);
+      fare += transitFare(l.kind, l.units, l.line);
     }
   }
   return { seconds: Math.round(seconds), fare };
@@ -87,7 +87,8 @@ function plan(legs: (TripLeg | null)[]): TransitPlan | null {
     fare,
     seconds,
     kinds,
-    title: kinds.map((k) => TRANSIT[k].label).join(" + "),
+    // Trains go by their line's name (the Coast Line, the Ogun line); the rest by kind.
+    title: rides.map((r, i) => (r.kind === "rail" ? lines[i]!.name : TRANSIT[r.kind as TransitKind].label)).join(" + "),
     detail: rides.map((r) => `${stopName(r.board)} → ${stopName(r.alight)}`).join(", change, "),
     color: lines[0]!.color,
   };
@@ -97,7 +98,7 @@ function plan(legs: (TripLeg | null)[]): TransitPlan | null {
 export function transitPlans(from: P, to: P): TransitPlan[] {
   if (!TRANSIT_LINES.length) return [];
   const all: TransitPlan[] = [];
-  const usable = TRANSIT_LINES.filter((l) => l.mode !== "coach");
+  const usable = TRANSIT_LINES;
   for (const line of usable) {
     for (const b of near(line, from))
       for (const a of near(line, to)) {

@@ -43,15 +43,14 @@ export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, un
 }
 
 /** Public transport: the fare for the distance on the line; never stopped by area boys. */
-export async function startTransit({ tx, userId }: ShopCtx, kind: TransitKind, units: number): Promise<RideStart> {
+export async function startTransit({ tx, userId }: ShopCtx, kind: TransitKind, units: number, line?: string): Promise<RideStart> {
   const info = TRANSIT[kind];
   if (!info) throw new AppError(400, "bad_mode", "Pick a BRT, train or water bus.");
-  if (kind === "coach") throw new AppError(409, "coming_soon", "Coaches out of Lagos start soon. Ogun State is on its way.");
   if (!Number.isInteger(units) || units < 1 || units > MAX_RIDE_UNITS) throw new AppError(400, "bad_distance", "That trip is off the map.");
   const profile = await lockProfile(tx, userId);
-  const fare = transitFare(kind, units);
+  const fare = transitFare(kind, units, line);
   if (profile.coinBalance < fare) throw new AppError(422, "insufficient_coins", `The ${info.label} costs ${fare} coins.`);
-  const [ride] = await tx.insert(rides).values({ userId, mode: `transit:${kind}`, units, fare, stop: false }).returning({ id: rides.id });
+  const [ride] = await tx.insert(rides).values({ userId, mode: line ? `transit:${kind}:${line}` : `transit:${kind}`, units, fare, stop: false }).returning({ id: rides.id });
   const posting = await postCoins(tx, userId, -fare, "ride", `ride:${ride!.id}`);
   return { rideId: ride!.id, fare, stop: false, balance: posting.balance };
 }

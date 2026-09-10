@@ -294,7 +294,7 @@ export function CityMap({
   const takeTransit = async (plan: TransitPlan) => {
     const pick = ridePick!;
     let fare = 0;
-    for (const leg of plan.legs) if (leg.kind !== "walk") fare += (await api<RideStart>("POST", "/api/game/rides", { mode: "transit", transit: leg.kind, units: Math.min(leg.units, MAX_RIDE_UNITS) })).fare;
+    for (const leg of plan.legs) if (leg.kind !== "walk") fare += (await api<RideStart>("POST", "/api/game/rides", { mode: "transit", transit: leg.kind, line: leg.line, units: Math.min(leg.units, MAX_RIDE_UNITS) })).fare;
     setRidePick(null);
     onVisited();
     notify(`${plan.title} to ${pick.to}: ${formatCoins(fare)} coins`);
