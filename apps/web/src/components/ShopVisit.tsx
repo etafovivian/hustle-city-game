@@ -26,12 +26,15 @@ export function ShopVisit({ shopId, onClose, onVisited, notify }: { shopId: stri
     // onVisited is a fresh callback each render; visiting once per shop is what matters.
   }, [shopId]);
 
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const report = () => {
     api("POST", "/api/reports", { targetType: "shop", targetId: shopId, reason: "Offensive or inappropriate shop name (reported from a shop visit)" })

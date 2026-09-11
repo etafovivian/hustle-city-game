@@ -93,12 +93,15 @@ export function Phone({
   }, []);
   const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
 
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const now = new Date();
   const time = new Intl.DateTimeFormat("en-NG", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Lagos" }).format(now);

@@ -60,12 +60,15 @@ export function RidePicker({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sheet = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   const rush = isRushHour(hour);
   const rain = rainSurge(new Date());
   const km = (units / 1000).toFixed(1);

@@ -35,12 +35,15 @@ function placesFor(need: NeedKey, hour: number) {
 
 export function NeedsPanel({ view, onClose, onGo }: { view: NeedsView; onClose: () => void; onGo: (venueKey: string) => void }) {
   const sheet = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   const hour = lagosHourOf(new Date());
   const lowest = [...NEED_KEYS].sort((a, b) => view.needs[a] - view.needs[b]).slice(0, 2).filter((k) => view.needs[k] < 70);
 

@@ -24,12 +24,14 @@ export function openAd(ad: BoardAd) {
 }
 
 /** A board on the map: two posts and a lit panel showing the current banner, or a "your ad here" card. */
-export function BillboardOnMap({ board, x, y, tick, onOpen }: { board: BillboardView; x: number; y: number; tick: number; onOpen: () => void }) {
+export function BillboardOnMap({ board, x, y, tick, onOpen, preview = [] }: { board: BillboardView; x: number; y: number; tick: number; onOpen: () => void; preview?: MyAd[] }) {
   const mega = board.tier === "mega";
   const w = mega ? 360 : 300;
   const h = w / 3;
   const post = mega ? 170 : 150;
-  const ad = board.ads.length ? board.ads[tick % board.ads.length] : undefined;
+  // Your own ads that aren't on air yet show here for you only, marked PREVIEW.
+  const all = [...board.ads.map((a) => ({ ...a, preview: false })), ...preview.map((a) => ({ id: a.id, headline: a.headline, linkUrl: a.linkUrl, imageUrl: a.imageUrl, until: "", preview: true }))];
+  const ad = all.length ? all[tick % all.length] : undefined;
   return (
     <g
       className="hotspot billboard"
@@ -52,7 +54,17 @@ export function BillboardOnMap({ board, x, y, tick, onOpen }: { board: Billboard
       <rect x={x + w * 0.32 - 10} y={y - post} width="10" height={post} fill="#4b4f57" stroke="#1d1f24" strokeWidth="2" />
       <rect x={x - w / 2 - 8} y={y - post - h - 8} width={w + 16} height={h + 16} rx="6" fill="#1d1f24" stroke={mega ? "#ffc72c" : "#6b7280"} strokeWidth="4" />
       {ad ? (
-        <image href={ad.imageUrl} x={x - w / 2} y={y - post - h} width={w} height={h} preserveAspectRatio="xMidYMid slice" />
+        <g>
+          <image href={ad.imageUrl} x={x - w / 2} y={y - post - h} width={w} height={h} preserveAspectRatio="xMidYMid slice" />
+          {ad.preview && (
+            <g transform={`translate(${x - w / 2 + 6} ${y - post - h + 6})`}>
+              <rect width="150" height="18" rx="4" fill="rgb(223 56 43 / 92%)" />
+              <text x="75" y="13" textAnchor="middle" fontSize="11" fontWeight="800" fill="#fff">
+                PREVIEW · only you see this
+              </text>
+            </g>
+          )}
+        </g>
       ) : (
         <g>
           <rect x={x - w / 2} y={y - post - h} width={w} height={h} fill="#ffc72c" />
@@ -141,10 +153,15 @@ function BookAd({ board, onDone }: { board: BillboardView; onDone: () => void })
         <p className="notice">
           <CheckCircle2 size={18} aria-hidden="true" /> Booked. We check every ad first, then send bank transfer details for {formatNaira(board.priceKoboPerWeek * weeks)} to your email. It goes on air when payment arrives.
         </p>
-        <p className="small muted">Track it in Phone → Ads.</p>
-        <button type="button" className="btn" onClick={onDone}>
-          Done
-        </button>
+        <p className="small muted">Until it's on air, only you see it on the board, marked PREVIEW. Track it in Phone → Ads.</p>
+        <div className="row">
+          <button type="button" className="btn go" onClick={() => window.dispatchEvent(new CustomEvent("hc:show-board", { detail: board.key }))}>
+            📍 See it on the board
+          </button>
+          <button type="button" className="btn" onClick={onDone}>
+            Done
+          </button>
+        </div>
       </div>
     );
 
@@ -203,12 +220,15 @@ export function BillboardSheet({ boards, boardKey, signedIn, onPick, onClose }: 
   const [booking, setBooking] = useState(false);
   const sheet = useRef<HTMLDivElement>(null);
   const board = boards.find((b) => b.key === boardKey) ?? null;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   useEffect(() => {
     setBooking(false);
   }, [boardKey]);
@@ -276,9 +296,14 @@ export function BillboardSheet({ boards, boardKey, signedIn, onPick, onClose }: 
             ) : board.taken >= board.capacity ? (
               <p className="small muted">This board is full right now. Try another board.</p>
             ) : signedIn ? (
-              <button type="button" className="btn primary" onClick={() => setBooking(true)}>
-                <Megaphone size={16} aria-hidden="true" /> Add your ad to this board
-              </button>
+              <div className="row">
+                <button type="button" className="btn primary" onClick={() => setBooking(true)}>
+                  <Megaphone size={16} aria-hidden="true" /> Add your ad to this board
+                </button>
+                <button type="button" className="btn" onClick={() => window.dispatchEvent(new CustomEvent("hc:show-board", { detail: board.key }))}>
+                  📍 Show on map
+                </button>
+              </div>
             ) : (
               <p className="small muted">Sign in to book an ad.</p>
             )}
@@ -316,7 +341,11 @@ export function MyAds() {
             {AD_STATUS_LABEL[a.status]}
           </span>
           {a.reviewNote && <span className="small muted">Moderator note: {a.reviewNote}</span>}
-          {a.status === "awaiting_payment" && <span className="small">Approved. Our team will email you bank transfer details. It goes on air when payment arrives.</span>}
+          {a.status === "in_review" && <span className="small">Step 1 of 3: the Hustle City team checks every ad (usually within a day). Then we email bank transfer details; it goes on air when payment arrives. Meanwhile you can see it on the board, marked PREVIEW.</span>}
+          {a.status === "awaiting_payment" && <span className="small">Step 2 of 3: approved. Our team will email you bank transfer details. It goes on air when payment arrives.</span>}
+          <button type="button" className="btn sm quiet" style={{ justifySelf: "start" }} onClick={() => window.dispatchEvent(new CustomEvent("hc:show-board", { detail: a.billboardKey }))}>
+            📍 Show the board on the map
+          </button>
           {(a.status === "live" || a.status === "ended") && (
             <span className="small">
               {a.views.toLocaleString("en-NG")} views · {a.clicks.toLocaleString("en-NG")} clicks{a.endsAt ? ` · until ${fmtDay(a.endsAt)}` : ""}

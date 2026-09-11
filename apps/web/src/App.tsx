@@ -60,8 +60,13 @@ export function App() {
       setGame((e as CustomEvent<GameOpen>).detail);
       setPhone("games");
     };
+    const close = () => setPhone(null);
     window.addEventListener("hc:open-game", open);
-    return () => window.removeEventListener("hc:open-game", open);
+    window.addEventListener("hc:close-phone", close);
+    return () => {
+      window.removeEventListener("hc:open-game", open);
+      window.removeEventListener("hc:close-phone", close);
+    };
   }, []);
   // A one-time reset link opens straight into "choose a new password".
   const [resetToken, setResetToken] = useState<string | null>(() => new URLSearchParams(window.location.search).get("reset"));

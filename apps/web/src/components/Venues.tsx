@@ -115,12 +115,15 @@ export function VenueCard({
       .then((d) => setDone(new Set(d.done)))
       .catch(() => undefined);
   }, []);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
     sheet.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   // Inside the mosque you hear the call to prayer (with sound on); it stops when you leave.
   useEffect(() => {

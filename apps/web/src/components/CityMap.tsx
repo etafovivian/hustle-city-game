@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -271,6 +271,8 @@ export function CityMap({
 
   /** Go somewhere: short hops just walk; longer trips offer a ride. */
   const hunt = useHunt(notify, () => onVisited());
+  /** The chip stack on the map: open on wide screens, folded on phones. */
+  const [chipsOpen, setChipsOpen] = useState(() => (typeof window === "undefined" ? true : window.innerWidth >= 700));
   /** The place you last arrived at (you're inside it until you set off again). */
   const [arrived, setArrived] = useState<string | null>(null);
   const goTo = (to: { x: number; y: number }, label: string, venue?: string) => {
@@ -341,6 +343,29 @@ export function CityMap({
     };
     window.addEventListener("hc:go-to", go);
     return () => window.removeEventListener("hc:go-to", go);
+  }, []);
+  // Your own ads (to preview the ones not on air yet), and "Show the board on the map" from the ad screens.
+  const [myAds, setMyAds] = useState<MyAd[]>([]);
+  useEffect(() => {
+    const load = () =>
+      api<MyAd[]>("GET", "/api/billboards/ads/mine")
+        .then(setMyAds)
+        .catch(() => undefined);
+    void load();
+    const t = window.setInterval(() => void load(), 120_000);
+    const show = (e: Event) => {
+      const spot = BILLBOARD_SPOTS.find((s) => s.key === (e as CustomEvent<string>).detail);
+      if (!spot) return;
+      setBoardSheet(null);
+      void load();
+      window.dispatchEvent(new Event("hc:close-phone"));
+      pzRef.current?.flyTo(spot.x, spot.y - 160, 0.8);
+    };
+    window.addEventListener("hc:show-board", show);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("hc:show-board", show);
+    };
   }, []);
   // A sponsor's "Visit them" opens that business's card.
   useEffect(() => {
@@ -1169,7 +1194,7 @@ export function CityMap({
               {!far &&
                 BILLBOARD_SPOTS.map((spot) => {
                   const b = boards.find((bb) => bb.key === spot.key);
-                  return b ? <BillboardOnMap key={spot.key} board={b} x={spot.x} y={spot.y} tick={tick} onOpen={() => !pz.wasDragged() && setBoardSheet({ key: b.key })} /> : null;
+                  return b ? <BillboardOnMap key={spot.key} board={b} x={spot.x} y={spot.y} tick={tick} preview={myAds.filter((a) => a.billboardKey === b.key && ["in_review", "awaiting_payment", "scheduled"].includes(a.status))} onOpen={() => !pz.wasDragged() && setBoardSheet({ key: b.key })} /> : null;
                 })}
 
               {/* Night lights: street lamps, lit windows, the roundabout */}
@@ -1409,9 +1434,12 @@ export function CityMap({
       </button>
       <p className="map-clock tiny" aria-live="off">
         Lagos {clockLabel(light.hour)} · {PHASE_LABEL[light.phase]} · {WEATHER_ICON[weather]} {WEATHER_LABEL[weather]}
-        {dark.size > 0 && ` · 🕯️ No light: ${[...dark].join(", ")}`}
+        {dark.size > 0 && ` · 🕯️ No light: ${[...dark].slice(0, 2).join(", ")}${dark.size > 2 ? ` +${dark.size - 2}` : ""}`}
       </p>
-      <div className="map-events">
+      {(() => {
+        // On phones the chips fold into one pill (tap to open) so they don't cover the map.
+        const chips = (
+          <>
         {(weather === "rain" || weather === "storm") && (
           <p className="rain-chip">
             {weather === "storm" ? "⛈️ Storm" : "🌧️ Rain"}: rides cost more, roads slow
@@ -1431,7 +1459,18 @@ export function CityMap({
             {e.icon} {e.name} on now · {VENUES_BY_KEY.get(e.venues[0]!)?.name}
           </button>
         ))}
-      </div>
+          </>
+        );
+        const count = [weather === "rain" || weather === "storm", flooded.length > 0, isRushHour(light.hour), true, liveEvents.length > 0].filter(Boolean).length + Math.max(0, Math.min(2, liveEvents.length) - 1);
+        return (
+          <div className={`map-events ${chipsOpen ? "open" : "folded"}`}>
+            <button type="button" className="chips-toggle" onClick={() => setChipsOpen((x) => !x)} aria-expanded={chipsOpen}>
+              {chipsOpen ? "▴ Hide" : `📣 ${count} update${count === 1 ? "" : "s"} ▾`}
+            </button>
+            {chipsOpen && chips}
+          </div>
+        );
+      })()}
       {weather !== "rain" && weather !== "storm" && !flooded.length && !isRushHour(light.hour) && <p className="map-hint tiny">Tap the road to walk · drag to move · pinch to zoom</p>}
       {peek && (
         <div className="map-peek" role="dialog" aria-label={`${peek.shopName}`}>
