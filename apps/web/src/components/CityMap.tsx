@@ -19,7 +19,7 @@ import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { clockLabel, useLagosLight } from "./lagosTime.js";
-import { AvatarWalker } from "./AvatarWalker.js";
+import { AvatarWalker, YouPlate } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
 import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
@@ -37,6 +37,7 @@ import {
   walkRoute,
   roadRoute,
   kerbsideOf,
+  onBuiltPlot,
   BILLBOARD_SPOTS,
   DRIVEWAYS,
   STREETS,
@@ -1058,7 +1059,9 @@ export function CityMap({
             if (far || !pz.view || pz.wasDragged() || (e.target as Element).closest(".hotspot, .billboard, .venue-badge")) return;
             const box = ref.current!.getBoundingClientRect();
             const v = pz.view;
-            goTo({ x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k }, "there");
+            const tap = { x: (e.clientX - box.left - v.x) / v.k, y: (e.clientY - box.top - v.y) / v.k };
+            // Tapped on a building's plot: stop on the pavement in front, not on the house.
+            goTo(onBuiltPlot(tap.x, tap.y) ? kerbsideOf(tap) : tap, "there");
           }}
         >
           {pz.view && (
@@ -1135,47 +1138,58 @@ export function CityMap({
               {/* Buildings, trees, stalls, places, venues, shops and land signs, back to front, with the walkers
                   slotted in by depth (see People.tsx) */}
               <g className="map-scenery">
-                <DepthSorted items={depthItems} people={!far} />
+                {/* You: tap the ground to walk. Slotted in by depth, so buildings in front hide you. */}
+                <DepthSorted
+                  items={depthItems}
+                  people={!far}
+                  me={
+                    far
+                      ? undefined
+                      : {
+                          pos: meAt,
+                          node: (
+                            <AvatarWalker
+                              avatar={avatar}
+                              nickname={nickname}
+                              start={{ x: CX - 120, y: CY + 150 }}
+                              target={walkTo}
+                              plateScale={plateScale}
+                              onBlocked={() => {
+                                setTravelling(false);
+                                notify("You can't walk on water. Take the bridge to the Island.");
+                              }}
+                              posOut={meAt}
+                              onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
+                              onArrive={(trip) => {
+                                setTravelling(false);
+                                // Walked in the rain without an umbrella: soaked.
+                                if ((weather === "rain" || weather === "storm") && !umbrella && (!trip.mode || trip.mode === "walk" || trip.mode === "transit"))
+                                  void api<{ soaked: boolean }>("POST", "/api/game/soaked")
+                                    .then((r) => {
+                                      if (!r.soaked) return;
+                                      notify(`🌧️ You got soaked! −Style −Health. A hawker sells umbrellas for ${formatCoins(UMBRELLA.price)}.`);
+                                      onVisited();
+                                    })
+                                    .catch(() => undefined);
+                                if (arriveAt.current === "__home") setHomeOpen(true);
+                                else if (arriveAt.current) {
+                                  setArrived(arriveAt.current);
+                                  setVenueOpen(arriveAt.current);
+                                }
+                                arriveAt.current = null;
+                              }}
+                            />
+                          ),
+                        }
+                  }
+                />
               </g>
 
+              {!far && <YouPlate avatar={avatar} pos={meAt} plateScale={plateScale} />}
               {!far && <HuntLayer spots={hunt.spots} found={hunt.found} plateScale={plateScale} onPick={(i) => !pz.wasDragged() && void hunt.pick(i, meAt.current)} />}
               {/* Other players online right now */}
               {!far && <OtherPlayers players={others} plateScale={plateScale} onOpen={(p) => !pz.wasDragged() && setPlayerOpen(p)} />}
 
-              {/* You: tap the ground to walk */}
-              {!far && (
-                <AvatarWalker
-                  avatar={avatar}
-                  nickname={nickname}
-                  start={{ x: CX - 120, y: CY + 150 }}
-                  target={walkTo}
-                  plateScale={plateScale}
-                  onBlocked={() => {
-                    setTravelling(false);
-                    notify("You can't walk on water. Take the bridge to the Island.");
-                  }}
-                  posOut={meAt}
-                  onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
-                  onArrive={(trip) => {
-                    setTravelling(false);
-                    // Walked in the rain without an umbrella: soaked.
-                    if ((weather === "rain" || weather === "storm") && !umbrella && (!trip.mode || trip.mode === "walk" || trip.mode === "transit"))
-                      void api<{ soaked: boolean }>("POST", "/api/game/soaked")
-                        .then((r) => {
-                          if (!r.soaked) return;
-                          notify(`🌧️ You got soaked! −Style −Health. A hawker sells umbrellas for ${formatCoins(UMBRELLA.price)}.`);
-                          onVisited();
-                        })
-                        .catch(() => undefined);
-                    if (arriveAt.current === "__home") setHomeOpen(true);
-                    else if (arriveAt.current) {
-                      setArrived(arriveAt.current);
-                      setVenueOpen(arriveAt.current);
-                    }
-                    arriveAt.current = null;
-                  }}
-                />
-              )}
 
             </g>
           )}

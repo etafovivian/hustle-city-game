@@ -518,6 +518,11 @@ export function groundClear(cx: number, cy: number, hh: number) {
 
 /** Everything placed so far; each new thing must not overlap it. */
 const TAKEN: Patch[] = [];
+/** Is this ground point on something built (a building's or place's plot)? Taps there walk you to the pavement. */
+export function onBuiltPlot(x: number, y: number): boolean {
+  const p = toIso(x, y);
+  return TAKEN.some((q) => Math.abs(p.a - q.a) < q.hh && Math.abs(p.b - q.b) < q.hh);
+}
 function claim(cx: number, cy: number, hh: number, gap = 18) {
   const p = patchAt(cx, cy, hh);
   if (!groundClear(cx, cy, hh) || TAKEN.some((q) => overlaps(p, q, gap))) return false;

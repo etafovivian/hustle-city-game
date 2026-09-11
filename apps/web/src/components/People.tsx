@@ -60,7 +60,7 @@ function slotOf(ys: number[], y: number) {
   return lo;
 }
 
-export function DepthSorted({ items, people }: { items: DepthItem[]; people: boolean }) {
+export function DepthSorted({ items, people, me }: { items: DepthItem[]; people: boolean; me?: { pos: { current: { x: number; y: number } }; node: ReactNode } }) {
   const reduce = usePrefersReducedMotion();
   const walking = people && !reduce;
   const sorted = [...items].sort((a, b) => a.y - b.y);
@@ -71,6 +71,19 @@ export function DepthSorted({ items, people }: { items: DepthItem[]; people: boo
   const [slots, setSlots] = useState<number[]>(() => Array.from({ length: WALKERS }, () => 0));
 
   const probe = useRef<SVGGElement | null>(null);
+  // You: slotted into the same back-to-front order (hidden behind buildings, never walking over their roofs).
+  const [meSlot, setMeSlot] = useState(0);
+  const meRef = useRef(me);
+  meRef.current = me;
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const p = meRef.current?.pos.current;
+      if (!p) return;
+      const s = slotOf(ys.current, p.y);
+      setMeSlot((prev) => (prev === s ? prev : s));
+    }, 150);
+    return () => window.clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!walking) return;
@@ -203,10 +216,14 @@ export function DepthSorted({ items, people }: { items: DepthItem[]; people: boo
   const out: ReactNode[] = [<g key="walkers-probe" ref={(el) => void (probe.current = el)} />];
   const byslot = new Map<number, number[]>();
   if (walking) slots.forEach((s, i) => byslot.set(Math.min(s, sorted.length), [...(byslot.get(Math.min(s, sorted.length)) ?? []), i]));
+  const mine = me ? <g key="me-walker">{me.node}</g> : null;
+  const meAt = Math.min(meSlot, sorted.length);
   sorted.forEach((item, idx) => {
+    if (mine && idx === meAt) out.push(mine);
     for (const w of byslot.get(idx) ?? []) out.push(walker(w));
     out.push(<g key={item.key}>{item.node}</g>);
   });
+  if (mine && meAt >= sorted.length) out.push(mine);
   for (const w of byslot.get(sorted.length) ?? []) out.push(walker(w));
   return <>{out}</>;
 }

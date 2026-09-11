@@ -90,8 +90,6 @@ export function AvatarWalker({
   const [waiting, setWaiting] = useState<TransitKind | null>(null);
   /** Direction of travel in screen radians (the train lines up with its track). */
   const [heading, setHeading] = useState(0);
-  const face = useRef(avatarUri(avatar));
-  face.current = avatarUri(avatar);
 
   useEffect(() => {
     if (!target) return;
@@ -199,7 +197,6 @@ export function AvatarWalker({
     // A new tap replaces the walk in progress.
   }, [target?.seq]);
 
-  const plateW = 80;
   return (
     <g aria-label={`${nickname} (you)`} className="me-walker" pointerEvents="none">
       {walking && target && (
@@ -256,14 +253,37 @@ export function AvatarWalker({
             </text>
           </g>
         )}
-        {/* Name plate with the player's face, kept readable at any zoom. */}
-        <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>
-          <rect width={plateW} height="30" rx="15" fill="#ffc72c" stroke="#0a0f24" strokeWidth="2" />
-          <image href={face.current} x="3" y="3" width="24" height="24" />
-          <text x={(plateW + 26) / 2} y="20" textAnchor="middle" fontSize="15" fontWeight="900" fill="#0a0f24">
-            You
-          </text>
-        </g>
+      </g>
+    </g>
+  );
+}
+
+/**
+ * Your name plate, drawn above everything (your character is depth-sorted, so a building in front can hide you;
+ * the plate still shows where you are). It follows your position directly, without re-rendering the map.
+ */
+export function YouPlate({ avatar, pos, plateScale }: { avatar: AvatarConfig; pos: { current: Point }; plateScale: number }) {
+  const g = useRef<SVGGElement>(null);
+  const face = avatarUri(avatar);
+  useEffect(() => {
+    let raf = 0;
+    const step = () => {
+      const p = pos.current;
+      g.current?.setAttribute("transform", `translate(${p.x} ${p.y})`);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [pos]);
+  const plateW = 80;
+  return (
+    <g ref={g} className="you-plate" pointerEvents="none" aria-hidden="true">
+      <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.85}) translate(${-plateW / 2} -34)`}>
+        <rect width={plateW} height="30" rx="15" fill="#ffc72c" stroke="#0a0f24" strokeWidth="2" />
+        <image href={face} x="3" y="3" width="24" height="24" />
+        <text x={(plateW + 26) / 2} y="20" textAnchor="middle" fontSize="15" fontWeight="900" fill="#0a0f24">
+          You
+        </text>
       </g>
     </g>
   );

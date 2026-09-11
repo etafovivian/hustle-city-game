@@ -19,6 +19,7 @@ import {
   WATER_PATH,
   WORLD,
 } from "./cityLayout.js";
+import { TRANSIT_LINES, TRANSIT_STOPS } from "./transitData.js";
 
 export interface Spot {
   key: string;
@@ -27,7 +28,7 @@ export interface Spot {
   icon: string;
   x: number;
   y: number;
-  kind: "area" | "place" | "branch" | "business";
+  kind: "area" | "place" | "station" | "branch" | "business";
   /** Opens this place's card on arrival. */
   venue?: string;
 }
@@ -39,6 +40,13 @@ function useSpots(mapBiz: MapBusiness[]): Spot[] {
     for (const s of VENUE_SPOTS) {
       const v = VENUES_BY_KEY.get(s.key);
       if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key });
+    }
+    // Train stations, BRT stops, water-bus piers and coach parks.
+    const ICON = { rail: "🚆", brt: "🚌", ferry: "⛴️", coach: "🚍" } as const;
+    const LABEL = { rail: "Train station", brt: "BRT stop", ferry: "Water-bus pier", coach: "Coach park" } as const;
+    for (const st of TRANSIT_STOPS) {
+      const lines = TRANSIT_LINES.filter((l) => l.stops.includes(st.id)).map((l) => l.name);
+      out.push({ key: `stop-${st.id}`, label: st.name, sub: `${st.modes.map((m) => LABEL[m]).join(" · ")}${lines.length ? ` · ${lines.join(", ")}` : ""}`, icon: ICON[st.modes[0]!], x: st.x, y: st.y, kind: "station" });
     }
     for (const b of BRANCHES) {
       const v = VENUES_BY_KEY.get(b.base);
@@ -52,8 +60,8 @@ function useSpots(mapBiz: MapBusiness[]): Spot[] {
   }, [mapBiz]);
 }
 
-const KIND_ORDER: Spot["kind"][] = ["area", "place", "business", "branch"];
-const KIND_LABEL: Record<Spot["kind"], string> = { area: "Areas", place: "Places", business: "Real businesses", branch: "More places" };
+const KIND_ORDER: Spot["kind"][] = ["area", "place", "station", "business", "branch"];
+const KIND_LABEL: Record<Spot["kind"], string> = { area: "Areas", place: "Places", station: "Trains, BRT, water bus and coaches", business: "Real businesses", branch: "More places" };
 
 export function CityOverview({
   me,
@@ -123,6 +131,10 @@ export function CityOverview({
               <path d={RIVER_PTS.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" ")} fill="none" stroke="#2f8fb0" strokeWidth={RIVER_HALF * 2} strokeLinecap="round" strokeLinejoin="round" />
               {roads.map((r) => (
                 <path key={r.id} d={r.d} fill="none" stroke={r.kind === "bridge" ? "#cfd3d8" : "#4a4540"} strokeWidth="90" strokeLinecap="round" />
+              ))}
+              {/* Train lines and water-bus routes. */}
+              {TRANSIT_LINES.filter((l) => l.mode === "rail" || l.mode === "ferry").map((l) => (
+                <path key={l.key} d={l.path.map((p, k) => `${k ? "L" : "M"}${p.x} ${p.y}`).join(" ")} fill="none" stroke={l.mode === "rail" ? l.color : "#e8f6ff"} strokeWidth={l.mode === "rail" ? 70 : 45} strokeDasharray={l.mode === "ferry" ? "160 120" : undefined} strokeLinecap="round" strokeLinejoin="round" />
               ))}
               {DISTRICTS.map((d) => (
                 <text key={d.name} x={d.x} y={d.y - 420} textAnchor="middle" fontSize="230" fontWeight="900" fill="#fff" stroke="#0a0f24" strokeWidth="40" paintOrder="stroke" pointerEvents="none">
