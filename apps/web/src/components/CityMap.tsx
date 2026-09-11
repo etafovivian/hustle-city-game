@@ -2,7 +2,7 @@
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
 import { AD_ROTATE_SECONDS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
-import { Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Megaphone, Minus, Plus, Sparkles, Store, X } from "lucide-react";
+import { Eye, EyeOff, Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Maximize, Megaphone, Minimize, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { BusinessCard, LandCard, LandList } from "./Land.js";
@@ -272,6 +272,39 @@ export function CityMap({
 
   /** Go somewhere: short hops just walk; longer trips offer a ride. */
   const hunt = useHunt(notify, () => onVisited());
+  /** Clean view: hide the title card, clock line, chips and buttons over the map (remembered). */
+  const [hud, setHud] = useState(() => {
+    try {
+      return localStorage.getItem("hc_hud") !== "off";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    document.body.classList.toggle("hud-hidden", !hud);
+    try {
+      localStorage.setItem("hc_hud", hud ? "on" : "off");
+    } catch {
+      /* not essential */
+    }
+    return () => document.body.classList.remove("hud-hidden");
+  }, [hud]);
+  /** Full screen (Android and desktop; iPhones only allow it from a home-screen app). */
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      else notify("On iPhone: tap Share, then Add to Home Screen, and open the game from there to play full screen.");
+    } catch {
+      notify("Full screen isn't allowed here. On iPhone: Share → Add to Home Screen.");
+    }
+  };
   /** The chip stack on the map: open on wide screens, folded on phones. */
   const [chipsOpen, setChipsOpen] = useState(() => (typeof window === "undefined" ? true : window.innerWidth >= 700));
   /** The place you last arrived at (you're inside it until you set off again). */
@@ -1413,6 +1446,12 @@ export function CityMap({
       </div>
 
       <div className="map-controls" role="group" aria-label="Map zoom">
+        <button type="button" className="map-ctl" onClick={() => setHud((x) => !x)} aria-pressed={!hud} aria-label={hud ? "Hide the labels and buttons over the map" : "Show the labels and buttons"} title={hud ? "Clean view" : "Show everything"}>
+          {hud ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+        </button>
+        <button type="button" className="map-ctl" onClick={() => void toggleFullscreen()} aria-pressed={fullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"} title={fullscreen ? "Exit full screen" : "Full screen"}>
+          {fullscreen ? <Minimize size={18} aria-hidden="true" /> : <Maximize size={18} aria-hidden="true" />}
+        </button>
         <button type="button" className="map-ctl" onClick={() => setBoardSheet({ key: null })} aria-label="Billboards: advertise your business">
           <Megaphone size={18} aria-hidden="true" />
         </button>

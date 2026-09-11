@@ -987,3 +987,10 @@ body.map-full .map-events { top: calc(244px + env(safe-area-inset-top)); left: 1
   .map-events .map-event, .map-events .rain-chip, .map-events .flood-chip, .map-events .go-slow-chip, .map-events .play-night-pill, .map-events .hunt-chip { font-size: 11px; }
 }
 @media (min-width: 700px) { .map-events.folded > :not(.chips-toggle) { display: initial; } }
+
+/* Clean view (the eye button): only the map, its round buttons and the top bar stay. */
+body.hud-hidden .map-title,
+body.hud-hidden .map-clock,
+body.hud-hidden .map-events,
+body.hud-hidden .map-land,
+body.hud-hidden .map-hint { display: none !important; }
