@@ -466,23 +466,29 @@ export const STREETS: Street[] = [...JUNCTION_STREETS, ...AREA_GRIDS.flatMap((g)
 
 // ── Billboards ──
 /** Billboard spots: on the north kerb of a road, at an x along it. Keys match the `billboards` table. */
-const BOARD_AT: { key: string; road: string; x: number }[] = [
+const BOARD_AT: { key: string; road: string; x: number; drawX?: number }[] = [
   { key: "junction-101", road: "a", x: CX - 400 },
   { key: "third-mainland", road: "bridge", x: 6500 },
   { key: "danfo-terminal", road: "a", x: CX - 1450 },
   { key: "tech-mile", road: "a", x: CX + 1250 },
-  { key: "owambe-gardens", road: "b", x: CX - 1250 },
-  { key: "airport-ridge", road: "b", x: CX + 1250 },
-  { key: "island-heights", road: "island", x: 5650 },
-  { key: "lekki-gardens", road: "island", x: 7450 },
+  { key: "owambe-gardens", road: "b", x: CX - 1250, drawX: CX - 1300 },
+  // drawX: where a board is drawn when its first spot ended up crowded (houses right behind it, or the Ogun
+  // railway between its legs). The first spot stays reserved, so the buildings around it don't move.
+  { key: "airport-ridge", road: "b", x: CX + 1250, drawX: CX + 2400 },
+  { key: "island-heights", road: "island", x: 5650, drawX: 5000 },
+  { key: "lekki-gardens", road: "island", x: 7450, drawX: 7400 },
 ];
 // Both legs stand behind the pavement: roads run diagonally, so check the road under each leg.
 const LEG = 125;
-export const BILLBOARD_SPOTS = BOARD_AT.map((b) => {
-  const seg = ROADS.find((r) => r.id === b.road)!;
-  const roadTop = Math.min(yOn(seg, b.x - LEG), yOn(seg, b.x + LEG)) - HALF - PAVEMENT;
-  return { key: b.key, x: b.x, y: roadTop - 48 };
-});
+const boardAt = (road: string, x: number) => {
+  const seg = ROADS.find((r) => r.id === road)!;
+  const roadTop = Math.min(yOn(seg, x - LEG), yOn(seg, x + LEG)) - HALF - PAVEMENT;
+  return { x, y: roadTop - 48 };
+};
+/** Where the land is kept clear for each board (fixed: the city is laid out around these). */
+const BOARD_RESERVED = BOARD_AT.map((b) => ({ key: b.key, ...boardAt(b.road, b.x) }));
+/** Where each board is drawn. */
+export const BILLBOARD_SPOTS = BOARD_AT.map((b) => ({ key: b.key, ...boardAt(b.road, b.drawX ?? b.x) }));
 
 // ── Sites: where things may stand ──
 /**
@@ -512,7 +518,7 @@ export function groundClear(cx: number, cy: number, hh: number) {
   });
   // The roundabout, and the billboards' legs and boards
   const roundabout = ((cx - CX) / (150 + 2 * hh + 40)) ** 2 + ((cy - CY) / (75 + hh + 20)) ** 2 > 1;
-  const boards = BILLBOARD_SPOTS.every((s) => Math.abs(cx - s.x) > LEG + 30 + 2 * hh || Math.abs(cy - s.y) > hh + 50);
+  const boards = BOARD_RESERVED.every((s) => Math.abs(cx - s.x) > LEG + 30 + 2 * hh || Math.abs(cy - s.y) > hh + 50);
   return roads && streets && roundabout && boards;
 }
 

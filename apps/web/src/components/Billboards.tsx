@@ -65,6 +65,8 @@ export function BillboardOnMap({ board, x, y, tick, onOpen, preview = [] }: { bo
             </g>
           )}
         </g>
+      ) : tick % 2 === 0 ? (
+        <SampleAd n={Math.floor(tick / 2)} x={x - w / 2} y={y - post - h} w={w} h={h} />
       ) : (
         <g>
           <rect x={x - w / 2} y={y - post - h} width={w} height={h} fill="#ffc72c" />
@@ -449,5 +451,104 @@ export function AdminAds({ notify }: { notify: (m: string) => void }) {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Moving sample ads on empty boards (invented businesses, marked SAMPLE), to show what an animated banner looks
+ * like. They take turns with "Your ad here".
+ */
+function SampleAd({ n, x, y, w, h }: { n: number; x: number; y: number; w: number; h: number }) {
+  const which = n % 3;
+  const tag = (
+    <g transform={`translate(${x + 6} ${y + h - 20})`}>
+      <rect width="58" height="15" rx="3" fill="rgb(10 15 36 / 80%)" />
+      <text x="29" y="11" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff">
+        SAMPLE
+      </text>
+    </g>
+  );
+  const clip = `sample-clip-${Math.round(x)}-${Math.round(y)}`;
+  return (
+    <g>
+      <defs>
+        <clipPath id={clip}>
+          <rect x={x} y={y} width={w} height={h} />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`}>
+        {which === 0 && (
+          // Mama Put Express: a delivery okada rides across, steam rises from the plate.
+          <g>
+            <rect x={x} y={y} width={w} height={h} fill="#e8541e" />
+            <text x={x + 14} y={y + 34} fontSize="24" fontWeight="900" fill="#fff">
+              MAMA PUT EXPRESS
+            </text>
+            <text x={x + 14} y={y + 56} fontSize="14" fontWeight="700" fill="#ffe9c7">
+              Hot jollof to your door in 30 mins
+            </text>
+            <g>
+              <text y={y + h - 10} fontSize="30">
+                🛵
+                <animate attributeName="x" values={`${x - 40};${x + w + 10}`} dur="3.5s" repeatCount="indefinite" />
+              </text>
+            </g>
+            <text x={x + w - 46} y={y + 46} fontSize="30">
+              🍛
+            </text>
+            {[0, 1, 2].map((i) => (
+              <circle key={i} cx={x + w - 40 + i * 8} cy={y + 18} r="3" fill="rgb(255 255 255 / 70%)">
+                <animate attributeName="cy" values={`${y + 24};${y + 6}`} dur={`${1.2 + i * 0.3}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.9;0" dur={`${1.2 + i * 0.3}s`} repeatCount="indefinite" />
+              </circle>
+            ))}
+          </g>
+        )}
+        {which === 1 && (
+          // Glow Hair Studio: sparkles pulse, the offer bounces.
+          <g>
+            <rect x={x} y={y} width={w} height={h} fill="#7b2d8e" />
+            <text x={x + 14} y={y + 34} fontSize="24" fontWeight="900" fill="#ffd6f5">
+              GLOW HAIR STUDIO
+            </text>
+            <g>
+              <text x={x + 14} y={y + 60} fontSize="16" fontWeight="800" fill="#fff">
+                Knotless braids 20% OFF this week
+              </text>
+              <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="0.9s" repeatCount="indefinite" />
+            </g>
+            {[
+              [w - 40, 20],
+              [w - 70, 45],
+              [w - 25, 60],
+            ].map(([dx, dy], i) => (
+              <text key={i} x={x + dx!} y={y + dy!} fontSize="18" fill="#fff6c2">
+                ✦
+                <animate attributeName="opacity" values="0;1;0" dur="1.4s" begin={`${i * 0.4}s`} repeatCount="indefinite" />
+              </text>
+            ))}
+          </g>
+        )}
+        {which === 2 && (
+          // Tech Mile Phones: a ticker scrolls under a shaking phone.
+          <g>
+            <rect x={x} y={y} width={w} height={h} fill="#0b3d91" />
+            <text x={x + 14} y={y + 32} fontSize="22" fontWeight="900" fill="#fff">
+              TECH MILE PHONES
+            </text>
+            <text x={x + w - 44} y={y + 46} fontSize="30">
+              📱
+              <animateTransform attributeName="transform" type="rotate" values={`-8 ${x + w - 30} ${y + 36};8 ${x + w - 30} ${y + 36};-8 ${x + w - 30} ${y + 36}`} dur="0.5s" repeatCount="indefinite" />
+            </text>
+            <rect x={x} y={y + h - 34} width={w} height="22" fill="#ffc72c" />
+            <text y={y + h - 18} fontSize="13" fontWeight="800" fill="#0a0f24">
+              Cracked screen? Fixed in 1 hour · New and UK-used phones · Free screen guard ·
+              <animate attributeName="x" values={`${x + w};${x - w * 1.6}`} dur="7s" repeatCount="indefinite" />
+            </text>
+          </g>
+        )}
+      </g>
+      {tag}
+    </g>
   );
 }

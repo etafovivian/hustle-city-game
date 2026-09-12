@@ -666,6 +666,17 @@ export function CityMap({
 
   // Everything that stands up on the buildings layer, with its foot point for depth order.
   const depthItems: DepthItem[] = [];
+  // Billboards stand among the buildings: drawn back to front with them, so a shop in front hides the posts.
+  if (!far)
+    for (const spot of BILLBOARD_SPOTS) {
+      const b = boards.find((bb) => bb.key === spot.key);
+      if (!b || !inView(spot.x, spot.y)) continue;
+      depthItems.push({
+        key: `board-${spot.key}`,
+        y: spot.y,
+        node: <BillboardOnMap board={b} x={spot.x} y={spot.y} tick={tick} preview={myAds.filter((a) => a.billboardKey === b.key && ["in_review", "awaiting_payment", "scheduled"].includes(a.status))} onOpen={() => !pz.wasDragged() && setBoardSheet({ key: b.key })} />,
+      });
+    }
   for (const o of WORLD_OBJECTS) {
     // Zoomed far out, only each area's signature buildings are drawn (hundreds of houses would be dots anyway).
     if (!inView(o.x, o.y) || (far && (o.type !== "building" || !o.landmark))) continue;
@@ -1237,12 +1248,6 @@ export function CityMap({
           {pz.view && (
             <g transform={world}>
 
-              {/* Billboards: paid ads from real businesses. Drawn above the night tint because their screens are lit. */}
-              {!far &&
-                BILLBOARD_SPOTS.map((spot) => {
-                  const b = boards.find((bb) => bb.key === spot.key);
-                  return b ? <BillboardOnMap key={spot.key} board={b} x={spot.x} y={spot.y} tick={tick} preview={myAds.filter((a) => a.billboardKey === b.key && ["in_review", "awaiting_payment", "scheduled"].includes(a.status))} onOpen={() => !pz.wasDragged() && setBoardSheet({ key: b.key })} /> : null;
-                })}
 
               {/* Night lights: street lamps, lit windows, the roundabout */}
               {light.lamps > 0 && (
