@@ -451,7 +451,7 @@ export const ROOMS: Record<string, Room> = {
       {
         variant: "woman_buba",
         tasks: [
-          { at: [0.3, 0.77], pose: "stand_idle", dir: "se", secs: 5 },
+          { at: [0.42, 0.7], pose: "stand_idle", dir: "sw", secs: 5 },
           { at: [0.44, 0.6], pose: "serve", dir: "se", secs: 5 },
           { at: [0.56, 0.72], secs: 0 },
           { at: [0.72, 0.73], pose: "serve", dir: "se", secs: 6 },

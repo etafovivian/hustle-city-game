@@ -497,7 +497,11 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
           if (visitor && m.i === tasks.length - 1) m.leaving = true;
           else m.i = (m.i + 1) % tasks.length;
           const next = tasks[m.i]!;
-          if (!m.leaving && next.snap) m.at = next.at;
+          // Stepping straight onto it (onto a bed): arrived, so the pose starts at once.
+          if (!m.leaving && next.snap) {
+            m.at = next.at;
+            m.hold = next.secs;
+          }
         }
       } else {
         const to = target();
