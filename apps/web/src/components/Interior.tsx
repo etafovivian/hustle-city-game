@@ -523,5 +523,14 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [worker, reduce]);
-  return <div ref={el} className="interior-npc" aria-hidden="true" style={spriteBox(ph, shown)} />;
+  // Placed from the first render (the loop takes over on its first frame); a visitor starts out of the room.
+  const start = worker.visitor ? worker.visitor.door : (worker.tasks[0]?.at ?? [0.5, 0.8]);
+  return (
+    <div
+      ref={el}
+      className="interior-npc"
+      aria-hidden="true"
+      style={{ ...spriteBox(ph, shown), left: `${start[0] * 100}%`, top: `${start[1] * 100}%`, zIndex: Math.round(start[1] * 1000), display: worker.visitor ? "none" : undefined }}
+    />
+  );
 }

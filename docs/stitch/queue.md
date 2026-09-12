@@ -1,5 +1,25 @@
 # Stitch queue: paste one batch at a time (4 images each)
 
+## ▶ Start here (2026-10-13): batches 1–33 are done; this is the order for the rest
+Everything below is already in the game on drawn stand-ins, so each zip shows up straight away. Batch 39's
+landmarks are being built right now.
+
+1. **Batch 57**: rooms where people work (hospital ward, consulting room, restaurant, cocktail bar)
+2. **Batch 55**: the coach trip (coach sheet, window view, checkpoint, hawkers)
+3. **Batch 56**: more coach moments and the better train
+4. **Batch 39**: landmarks (arts theatre, Independence Square, arts park, palace), copied below
+5. **Batch 35**: BRT station, rail station, train, water bus, copied below
+6. **Batch 38**: the beach, copied below
+7. **Batch 53**: boxing and working out
+8. **Batch 54**: Ogun State
+9. **Batch 52**: Lagoon City University
+10. **Batch 50**: Balogun market
+11. **Batch 51**: car back views
+12. **Batch 42**: interiors for new places, copied below
+
+Batches 34, 36, 37, 40, 41 and 43 (docs/gap-review.md) and 44–49 (docs/regions-plan.md) are for features not built
+yet. Leave them for later.
+
 **Each time:**
 1. Attach `apps/web/public/art/market-square.webp` as the style reference.
 2. Paste the **style block** below.
@@ -276,3 +296,27 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. Cutaway interior of a doctor's consulting room: a desk, an examination couch, a scale, a cabinet with a red cross, a sink.
 3. Cutaway interior of a restaurant dining room: six tables with chairs, a kitchen pass with a hatch at the back, a bar counter on the side, clear aisles between the tables.
 4. Cutaway interior of a cocktail bar: a long bar counter with stools, shelves of unlabelled bottles behind it, a few high tables, clear floor behind and in front of the counter.
+
+## Batch 35: public transport
+1. A BRT bus station: a raised platform with a steel and glass shelter, turnstiles, a ramp, and the sign "BRT".
+2. An elevated light-rail station: concrete pillars, a platform with a canopy, stairs down to the street, the sign "CITY RAIL".
+3. A three-car light-rail train in blue and white, 2×2 sheet of four directions (no logos).
+4. A small commuter ferry (water bus) with a covered passenger deck and orange life jackets on the rails.
+
+## Batch 38: the beach
+1. A row of three thatched beach cabanas with loungers in front, on sand.
+2. A beach bar shack: a palm-roof hut, a counter, coconuts and a grill.
+3. A horse with a decorated saddle and a handler, standing on sand.
+4. A lifeguard tower with a red flag, and two jet skis pulled up on the sand.
+
+## Batch 39: culture and civic landmarks (tall: 1024×1536 where needed)
+1. A grand round arts theatre shaped like a military cap, on a plinth with steps, the sign "ARTS THEATRE".
+2. A parade square with stepped grandstands and four horse statues on tall pillars, flags on poles.
+3. An arts park: an old colonial prison wall with arches, a small open-air stage, trees and benches.
+4. A traditional palace: a long walled compound with a carved gate, a red and white facade and a courtyard.
+
+## Batch 42: interiors for new places
+1. Cutaway interior of the crusade tent: a stage with a keyboard and drums, rows of chairs, speakers.
+2. Cutaway interior of a theatre auditorium: a stage with red curtains and tiered seats.
+3. Cutaway interior of a beach cabana: loungers, a low table with coconuts, a sea view.
+4. Cutaway interior of a BRT bus: seats on both sides, standing rails, windows, a driver's cab.
