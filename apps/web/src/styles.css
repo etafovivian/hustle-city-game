@@ -772,6 +772,23 @@ body.map-full .map-title .muted { margin: 0; }
 .area-result { margin: 0; padding: 12px 14px; border-radius: 14px; font-weight: 700; }
 .area-result.ok { background: #123d26; color: #c6f6d9; }
 .area-result.bad { background: #3a1414; color: #ffd2cc; }
+/* The coach trip to Ogun: the road out of the window and what happens on it */
+.coach-sheet { width: min(500px, 100%); border-color: #e07b1f; }
+.coach-view { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 400 / 170; background: #1c2340; }
+.coach-window, .coach-window-art { display: block; width: 100%; height: 100%; object-fit: cover; }
+.coach-window .coach-far, .coach-window .coach-near, .coach-window .coach-lines { animation-play-state: paused; }
+.coach-window.moving .coach-far, .coach-window.moving .coach-near, .coach-window.moving .coach-lines { animation-play-state: running; }
+.coach-far { animation: coach-slide 14s linear infinite; }
+.coach-lines { animation: coach-slide-lines 0.9s linear infinite; }
+.coach-near { animation: coach-slide-near 3s linear infinite; }
+@keyframes coach-slide { to { transform: translateX(-400px); } }
+@keyframes coach-slide-lines { to { transform: translateX(-70px); } }
+@keyframes coach-slide-near { to { transform: translateX(-140px); } }
+.coach-event-icon { position: absolute; right: 14px; bottom: 8px; font-size: 54px; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 45%)); }
+.coach-event-art { position: absolute; right: 8px; bottom: 0; height: 92%; }
+.coach-step { position: absolute; left: 54px; top: 12px; padding: 3px 10px; border-radius: 999px; background: rgb(10 15 36 / 80%); color: #fff; font-weight: 800; }
+.coach-line { margin: 0; padding: 8px 12px; border-left: 4px solid #e07b1f; background: rgb(224 123 31 / 12%); border-radius: 0 10px 10px 0; font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .coach-far, .coach-near, .coach-lines { animation: none; } }
 @media (max-width: 420px) { .area-options { grid-template-columns: 1fr; } }
 .verified-tag { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #0e3b2a; color: #7ef0b0; font-size: 12px; font-weight: 800; vertical-align: middle; }
 .biz-art { width: 64px; height: 64px; object-fit: contain; }

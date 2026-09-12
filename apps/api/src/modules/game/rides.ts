@@ -2,13 +2,14 @@
 // stop it. The player picks how to handle the stop; the server rolls the outcome and settles it once.
 
 import { playerVehicles, profiles, rides } from "@hc/db";
-import { SKILL_ODDS, MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rainSurge, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
+import { COACH_EVENT_BY_KEY, NEED_KEYS, coachEventsFor, type CoachEventKey, type CoachResult, SKILL_ODDS, MAX_RIDE_UNITS, RIDE_BY_MODE, STOP_BY_CHOICE, VEHICLE_BY_KIND, fuelCost, lagosHourOf, rainSurge, rideFare, TRANSIT, transitFare, type TransitKind, type RideMode, type RideStart, type StopChoice, type StopResult, type VehicleKind } from "@hc/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { postCoins, type PostingResult } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import type { ShopCtx } from "./shop.js";
-import { skillLevelOf } from "./skills.js";
+import { loadNeeds, saveNeeds } from "./needs.js";
+import { addSkill, skillLevelOf } from "./skills.js";
 
 /** Dice for stops and their outcomes (tests swap it for fixed rolls). */
 export const dice = { roll: () => Math.random() };
@@ -82,4 +83,33 @@ export async function settleStop({ tx, userId }: ShopCtx, rideId: string, choice
         ? { talk: "Your mouth sweet. They waved you through.", run: "You ran, they gave up. Your heart is still racing.", stand: "You stood your ground and they backed off. Respect.", pay: "" }[choice]
         : { talk: "They didn't buy it.", run: "They caught up with you.", stand: "Bad move. They were too many.", pay: "" }[choice] + (cost ? ` You paid ${cost} coins.` : " Luckily you had nothing on you.");
   return { ok, cost, xp, message, balance: posting.balance };
+}
+
+/** Something on the road during a coach trip (see @hc/shared coach.ts): settled once per event; the ride's
+ * stop_choice keeps the settled events ("coach:checkpoint,hawkers"). */
+export async function settleCoachEvent({ tx, userId, now }: ShopCtx, rideId: string, eventKey: CoachEventKey, choiceKey: string): Promise<CoachResult> {
+  const event = COACH_EVENT_BY_KEY.get(eventKey);
+  const choice = event?.choices.find((c) => c.key === choiceKey);
+  if (!event || !choice) throw new AppError(400, "bad_choice", "Pick what to do.");
+  const profile = await lockProfile(tx, userId);
+  const [ride] = await tx.select().from(rides).where(and(eq(rides.id, rideId), eq(rides.userId, userId)));
+  if (!ride || !ride.mode.startsWith("transit:coach") || !coachEventsFor(ride.id).includes(eventKey)) throw notFound("Coach event");
+  const done = ride.stopChoice?.startsWith("coach:") ? ride.stopChoice.slice(6).split(",") : [];
+  if (done.includes(eventKey)) throw new AppError(409, "settled", "That's already behind you.");
+  const level = await skillLevelOf(tx, userId, choice.oddsSkill);
+  const ok = choice.odds === undefined || dice.roll() < Math.min(0.95, choice.odds + SKILL_ODDS * level);
+  const outcome = ok ? choice.win : (choice.fail ?? choice.win);
+  // Nobody pays more than they have.
+  const coins = outcome.coins ? Math.max(outcome.coins, -profile.coinBalance) : 0;
+  let posting: PostingResult = { applied: false, balance: profile.coinBalance };
+  if (coins) posting = await postCoins(tx, userId, coins, "coach", `coach:${ride.id}:${eventKey}`);
+  if (outcome.needs) {
+    const { needs, freeAt } = await loadNeeds(tx, userId, now);
+    for (const k of NEED_KEYS) needs[k] = Math.max(0, Math.min(100, needs[k] + (outcome.needs[k] ?? 0)));
+    await saveNeeds(tx, userId, needs, now, freeAt);
+  }
+  if (outcome.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${outcome.xp}` }).where(eq(profiles.userId, userId));
+  if (outcome.skill) await addSkill(tx, userId, outcome.skill[0], outcome.skill[1]);
+  await tx.update(rides).set({ stopChoice: `coach:${[...done, eventKey].join(",")}`, stopCost: (ride.stopCost ?? 0) - coins }).where(eq(rides.id, ride.id));
+  return { ok, outcome: { ...outcome, coins: coins || undefined }, balance: posting.balance };
 }

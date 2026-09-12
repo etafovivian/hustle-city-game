@@ -258,3 +258,21 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. A state border arch over a dual carriageway: a wide concrete arch with the words "WELCOME TO OGUN STATE · GATEWAY STATE", flower beds either side.
 3. A new housing estate gate in Mowe: a pillared gate with a guard post, the sign "PEACE ESTATE", a row of identical bungalows behind it, unpaved red-earth road.
 4. Adire dye pits: a row of clay dye pots and indigo-blue cloth hanging on lines to dry, a market stall beside it.
+
+## Batch 55: the coach trip and a better train (the coach scene and the train use drawn stand-ins for now)
+1. A long-distance Nigerian luxury coach (big white and green bus with tinted windows, luggage hatches, no logos or words), 2×2 sheet of four directions like the BRT sheet: driving down-left, down-right, up-left, up-right.
+2. A view out of a coach window, wide (1536×640): the Lagos–Ogun expressway, palm trees and bush, a few roadside kiosks, the window frame and a red curtain on the left edge. Daytime. Flat colours, no magenta background for this one.
+3. A roadside police checkpoint: a few drums and a plank across one lane, two officers in black uniform (no badges or words), one with a torch, a small canopy.
+4. Junction hawkers: three hawkers with trays on their heads (plantain chips, bread, roasted corn, sachet water) running alongside, single group.
+
+## Batch 56: more coach moments and the train in detail
+1. A coach on the road shoulder with a burst tyre, the driver and two passengers changing the wheel, a jack and spare tyre, a mango tree.
+2. A broken-down fuel tanker across two lanes with a queue of cars and a danfo behind it.
+3. Cutaway interior of a luxury coach: two rows of reclining seats, a centre aisle, a small TV at the front, curtains, passengers' bags on the rack. No words.
+4. A three-car light-rail train in blue, white and a yellow stripe, as one long object seen from the side at 2:1 isometric, travelling down-right, with the 4 directions on a 2×2 sheet (replaces batch 35 #3 if you haven't made it yet).
+
+## Batch 57: rooms where people work (staff move about in these)
+1. Cutaway interior of a hospital ward: four beds in a row with drips and curtains, a nurses' station desk with a computer and files, a door on the right, clear floor down the middle.
+2. Cutaway interior of a doctor's consulting room: a desk, an examination couch, a scale, a cabinet with a red cross, a sink.
+3. Cutaway interior of a restaurant dining room: six tables with chairs, a kitchen pass with a hatch at the back, a bar counter on the side, clear aisles between the tables.
+4. Cutaway interior of a cocktail bar: a long bar counter with stools, shelves of unlabelled bottles behind it, a few high tables, clear floor behind and in front of the counter.

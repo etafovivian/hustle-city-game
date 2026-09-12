@@ -9,7 +9,7 @@ import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
-import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey } from "./rooms.js";
+import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey, type Worker } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 export { ROOMS, type PlayerAction, type Room };
@@ -240,6 +240,7 @@ export function InteriorScene({
           onSettle={(at) => setTaken((prev) => (prev === at || (prev && at && close(prev, at, 0.001)) ? prev : at))}
         />
       )}
+      {h > 0 && (room?.workers ?? []).map((w, i) => <WorkerInRoom key={`${src}-w${i}`} worker={w} ph={ph} box={box} reduce={reduce} />)}
       {h > 0 &&
         variants.map((v, i) => <div key={`${v}-${i}`} ref={(el) => void (els.current[i] = el)} className="interior-npc" aria-hidden="true" style={size} />)}
       {h > 0 &&
@@ -427,4 +428,100 @@ function PlayerInRoom({
       </span>
     </div>
   );
+}
+
+/** A pose the look has a sheet for (the worker's own look, else the first that has it). */
+const poseLook = (pose: PoseAction, v: WalkerVariant) => (POSE_VARIANTS[pose].includes(v) ? v : POSE_VARIANTS[pose][0]!);
+
+/**
+ * Someone at work in a room (see Room.workers): walks from task to task and holds each task's pose for a while,
+ * round and round. A visitor comes in at the door, does the tasks once, leaves, and someone else comes in later.
+ */
+function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number; box: RefObject<HTMLDivElement | null>; reduce: boolean }) {
+  const el = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState<PoseAction | null>(null);
+  useEffect(() => {
+    const { tasks, visitor } = worker;
+    if (!tasks.length) return;
+    const first = visitor ? visitor.door : tasks[0]!.at;
+    // i: the task being walked to or done; hold: seconds left there; away: seconds out of the room (visitors).
+    const m = { at: first as Pt, i: 0, hold: -1, away: visitor ? (worker.start ?? 0) : 0, leaving: false, walked: 0, dir: "se" as WalkDir, look: worker.variant, visits: 0, shown: null as PoseAction | null, t0: 0 };
+    if (!visitor && worker.start) m.hold = worker.start;
+    let raf = 0;
+    let last = performance.now();
+    const target = (): Pt => (m.leaving ? visitor!.door : tasks[m.i]!.at);
+    const draw = (now: number) => {
+      const node = el.current;
+      if (!node) return;
+      node.style.display = m.away > 0 ? "none" : "";
+      node.style.left = `${m.at[0] * 100}%`;
+      node.style.top = `${m.at[1] * 100}%`;
+      node.style.zIndex = String(Math.round(m.at[1] * 1000));
+      const task = tasks[m.i]!;
+      const pose = m.hold >= 0 && !m.leaving && task.pose ? task.pose : m.hold >= 0 && !m.leaving ? "stand_idle" : null;
+      if (pose !== m.shown) {
+        m.shown = pose;
+        m.t0 = now;
+        setShown(pose);
+      }
+      if (!pose) {
+        node.style.backgroundImage = `url(${walkerSheet(m.look, m.dir)})`;
+        node.style.backgroundPosition = framePos(Math.floor(m.walked / 0.024) % 8, 8);
+      } else {
+        const { fps, frames } = POSE_SHEETS[pose];
+        const face: Facing = task.dir ?? (m.dir === "sw" || m.dir === "nw" ? "sw" : "se");
+        node.style.backgroundImage = `url(${poseSheet(pose, poseLook(pose, m.look), face)})`;
+        node.style.backgroundPosition = framePos(reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames, frames);
+      }
+    };
+    const step = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const b = box.current;
+      const aspect = b && b.clientHeight ? b.clientWidth / b.clientHeight : 1;
+      if (m.away > 0) {
+        m.away -= dt;
+        if (m.away <= 0) {
+          // The next visitor comes in.
+          m.visits += 1;
+          m.look = visitor!.variants[m.visits % visitor!.variants.length]!;
+          m.at = visitor!.door;
+          m.i = 0;
+          m.hold = -1;
+          m.leaving = false;
+        }
+      } else if (m.hold >= 0) {
+        m.hold -= dt;
+        if (m.hold < 0) {
+          // Done here: on to the next task (a visitor leaves after the last one).
+          if (visitor && m.i === tasks.length - 1) m.leaving = true;
+          else m.i = (m.i + 1) % tasks.length;
+          const next = tasks[m.i]!;
+          if (!m.leaving && next.snap) m.at = next.at;
+        }
+      } else {
+        const to = target();
+        const dx = (to[0] - m.at[0]) * aspect;
+        const dy = to[1] - m.at[1];
+        const d = Math.hypot(dx, dy);
+        const go = reduce ? d : 0.1 * dt; // image widths per second: purposeful, a bit quicker than browsers
+        if (d > 1e-6) m.dir = walkDir(dx, dy);
+        if (d <= go) {
+          m.at = to;
+          m.walked += d;
+          if (m.leaving) {
+            m.away = visitor!.away;
+          } else m.hold = tasks[m.i]!.secs;
+        } else {
+          m.at = [m.at[0] + (dx / d / aspect) * go, m.at[1] + (dy / d) * go];
+          m.walked += go;
+        }
+      }
+      draw(now);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [worker, reduce]);
+  return <div ref={el} className="interior-npc" aria-hidden="true" style={spriteBox(ph, shown)} />;
 }

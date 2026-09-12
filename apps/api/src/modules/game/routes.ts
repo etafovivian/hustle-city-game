@@ -1,5 +1,5 @@
 import { gameLedgerEntries, profiles, shopDecor, simShops, users } from "@hc/db";
-import { AREA_BOYS_OPTIONS, HAGGLE_TRIES, askPrice, dayKey, haggleFloor, isOpenAt, lagosHourOf, VENUES_BY_KEY, type HaggleResult, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
+import { AREA_BOYS_OPTIONS, COACH_EVENTS, HAGGLE_TRIES, askPrice, dayKey, haggleFloor, isOpenAt, lagosHourOf, VENUES_BY_KEY, type HaggleResult, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -12,7 +12,7 @@ import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
 import { doActivity, doFree, venueDay } from "./venues.js";
 import { loadNeeds, needsView } from "./needs.js";
-import { settleStop, startDrive, startRide, startTransit } from "./rides.js";
+import { settleCoachEvent, settleStop, startDrive, startRide, startTransit } from "./rides.js";
 import { collectTakings, fulfilOrder, getShop, restock, setPrice, stockFromMarket, type ShopCtx } from "./shop.js";
 
 const visitBody = z.object({ location: z.string().refine((l) => LOCATION_KEYS.includes(l), "Unknown location") });
@@ -33,6 +33,7 @@ const rideBody = z.object({
   transit: z.enum(["brt", "rail", "ferry", "coach"]).optional(),
   line: z.string().max(40).optional(),
 });
+const coachBody = z.object({ event: z.enum(COACH_EVENTS.map((e) => e.key) as [string, ...string[]]), choice: z.string().max(40) });
 const stopBody = z.object({ choice: z.enum(AREA_BOYS_OPTIONS.map((o) => o.choice) as [string, ...string[]]) });
 const dreamClaimBody = z.object({ at: z.number().int().positive() });
 const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });
@@ -232,6 +233,13 @@ export async function gameRoutes(app: FastifyInstance) {
     const { choice } = stopBody.parse(request.body);
     const id = z.uuid().parse(request.params.id);
     return inTx(user.id, (ctx) => settleStop(ctx, id, choice as never));
+  });
+
+  app.post<{ Params: { id: string } }>("/api/game/rides/:id/coach", async (request) => {
+    const user = requireUser(request);
+    const { event, choice } = coachBody.parse(request.body);
+    const id = z.uuid().parse(request.params.id);
+    return inTx(user.id, (ctx) => settleCoachEvent(ctx, id, event as never, choice));
   });
 
   app.get("/api/game/needs", async (request) => {

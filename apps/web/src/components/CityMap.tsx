@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, coachEventsFor, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Eye, EyeOff, Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Maximize, Megaphone, Minimize, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -15,6 +15,7 @@ import { transitPlans, worthIt, type TransitPlan } from "./transit.js";
 import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
+import { CoachJourney } from "./CoachJourney.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
@@ -267,6 +268,8 @@ export function CityMap({
   }, [travelling]);
   const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string; plans?: TransitPlan[]; walkable?: boolean } | null>(null);
   const [stopFor, setStopFor] = useState<{ rideId: string; done: () => void } | null>(null);
+  /** On the coach: something on the road to deal with before the trip goes on. */
+  const [coachFor, setCoachFor] = useState<{ rideId: string; event: string; step: string; done: () => void } | null>(null);
   /** A place to open on arrival (trips started from its card). */
   const arriveAt = useRef<string | null>(null);
 
@@ -330,11 +333,21 @@ export function CityMap({
   const takeTransit = async (plan: TransitPlan) => {
     const pick = ridePick!;
     let fare = 0;
-    for (const leg of plan.legs) if (leg.kind !== "walk") fare += (await api<RideStart>("POST", "/api/game/rides", { mode: "transit", transit: leg.kind, line: leg.line, units: Math.min(leg.units, MAX_RIDE_UNITS) })).fare;
+    const rideIds: (string | undefined)[] = [];
+    for (const leg of plan.legs) {
+      if (leg.kind === "walk") rideIds.push(undefined);
+      else {
+        const r = await api<RideStart>("POST", "/api/game/rides", { mode: "transit", transit: leg.kind, line: leg.line, units: Math.min(leg.units, MAX_RIDE_UNITS) });
+        fare += r.fare;
+        rideIds.push(r.rideId);
+      }
+    }
     setRidePick(null);
     onVisited();
     notify(`${plan.title} to ${pick.to}: ${formatCoins(fare)} coins`);
-    setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode: "transit", legs: plan.legs.map((l) => ({ kind: l.kind, path: l.path })) });
+    // The coach has things happen on the road (the same two the server expects for this ride).
+    const legs = plan.legs.map((l, i) => (l.kind === "coach" && rideIds[i] ? { kind: l.kind, path: l.path, rideId: rideIds[i], events: coachEventsFor(rideIds[i]!) } : { kind: l.kind, path: l.path }));
+    setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode: "transit", legs });
   };
   const ride = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
     const pick = ridePick!;
@@ -1204,6 +1217,12 @@ export function CityMap({
                               }}
                               posOut={meAt}
                               onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
+                              onCoach={(rideId, event) =>
+                                new Promise<void>((done) => {
+                                  const events = coachEventsFor(rideId);
+                                  setCoachFor({ rideId, event, step: `${events.indexOf(event as never) + 1} of ${events.length}`, done });
+                                })
+                              }
                               onArrive={(trip) => {
                                 setTravelling(false);
                                 // Walked in the rain without an umbrella: soaked.
@@ -1585,6 +1604,18 @@ export function CityMap({
           {housePick && <HousePick houses={houses} from={meAt.current} onPick={(h) => void goHouse(h)} onClose={() => setHousePick(false)} />}
           {ridePick && (
             <RidePicker units={ridePick.units} hour={light.hour} coins={null} to={ridePick.to} onPick={ride} onClose={() => setRidePick(null)} vehicles={vehicles} plans={ridePick.plans} walkable={ridePick.walkable} onTransit={takeTransit} />
+          )}
+          {coachFor && (
+            <CoachJourney
+              rideId={coachFor.rideId}
+              event={coachFor.event}
+              step={coachFor.step}
+              onDone={() => {
+                coachFor.done();
+                setCoachFor(null);
+                onVisited();
+              }}
+            />
           )}
           {stopFor && (
             <AreaBoys

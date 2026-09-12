@@ -101,6 +101,30 @@ export interface Room {
   /** `phase`: frames into its loop this person starts (so a row of people praying don't move in step). */
   stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number }[];
   spots?: Partial<Record<SpotKey, Spot>>;
+  /** People at work (or passing through) who move from task to task: the nurse doing her rounds, the barman
+   * going from customer to customer, a patient who comes in, lies down for a while and goes home. */
+  workers?: Worker[];
+}
+
+/** One stop on a worker's round: walk there (straight, they know the room), then hold the pose for `secs`. */
+export interface Task {
+  at: Pt;
+  /** The pose there (none: just walk through, or stand for `secs`). */
+  pose?: PoseAction;
+  dir?: Facing;
+  secs: number;
+  /** Step straight onto it instead of walking (onto a bed, behind a counter). */
+  snap?: boolean;
+}
+export interface Worker {
+  variant: WalkerVariant;
+  /** Done in order, round and round. */
+  tasks: Task[];
+  /** A visitor: comes in at `door`, does the tasks once, goes out, and someone else (the next look) comes in
+   * `away` seconds later. */
+  visitor?: { door: Pt; away: number; variants: WalkerVariant[] };
+  /** Seconds into the round they start (so two people in a room aren't in step). */
+  start?: number;
 }
 
 /** Hand-marked rooms, keyed by interior art name (public/art/interiors). Every room has 2-5 people. */
@@ -109,12 +133,31 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.25, 0.74], [0.33, 0.8], [0.44, 0.85], [0.54, 0.9], [0.64, 0.86]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.56, 0.58], dir: "sw", variant: "woman_buba" },
       { action: "stand_idle", at: [0.4, 0.75], dir: "se" },
       { action: "sit_eat", at: [0.24, 0.66], dir: "se", variant: "man_kaftan" },
       { action: "sit_eat", at: [0.38, 0.57], dir: "se", variant: "woman_gele" },
     ],
     spots: { door: { at: [0.54, 0.9], dir: "se" }, eat: { at: [0.3, 0.6], dir: "se" }, stand: { at: [0.33, 0.8], dir: "se" } },
+    workers: [
+      // Mama at the pots, then dishing at the counter.
+      {
+        variant: "woman_buba",
+        tasks: [
+          { at: [0.66, 0.55], pose: "serve", dir: "se", secs: 5, snap: true },
+          { at: [0.56, 0.58], pose: "serve", dir: "sw", secs: 5 },
+        ],
+      },
+      // Her boy takes the plates to the tables.
+      {
+        variant: "man_casual",
+        start: 2,
+        tasks: [
+          { at: [0.46, 0.76], pose: "stand_idle", dir: "sw", secs: 3 },
+          { at: [0.32, 0.72], pose: "serve", dir: "sw", secs: 3 },
+          { at: [0.42, 0.62], pose: "serve", dir: "sw", secs: 3 },
+        ],
+      },
+    ],
   },
   "event-centre": {
     walkway: [[0.36, 0.63], [0.46, 0.71], [0.56, 0.75], [0.62, 0.67], [0.52, 0.5]],
@@ -233,8 +276,30 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "dance", at: [0.22, 0.69], dir: "se", variant: "woman_gele" },
       { action: "dance", at: [0.29, 0.74], dir: "sw", variant: "man_kaftan" },
-      { action: "serve", at: [0.36, 0.41], dir: "sw", variant: "woman_buba" },
       { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_buba" },
+    ],
+    workers: [
+      // The barman works along the bar, serving one customer then the next.
+      {
+        variant: "man_casual",
+        tasks: [
+          { at: [0.36, 0.41], pose: "serve", dir: "sw", secs: 5, snap: true },
+          { at: [0.45, 0.37], pose: "serve", dir: "se", secs: 4 },
+          { at: [0.53, 0.35], pose: "stand_idle", dir: "se", secs: 3 },
+          { at: [0.45, 0.37], secs: 0 },
+        ],
+      },
+      // A waitress takes drinks from the bar to the tables.
+      {
+        variant: "woman_buba",
+        start: 3,
+        tasks: [
+          { at: [0.42, 0.53], pose: "stand_idle", dir: "se", secs: 3 },
+          { at: [0.44, 0.67], pose: "serve", dir: "sw", secs: 4 },
+          { at: [0.52, 0.6], secs: 0 },
+          { at: [0.6, 0.6], pose: "serve", dir: "se", secs: 4 },
+        ],
+      },
     ],
     spots: { door: { at: [0.52, 0.62], dir: "sw" }, dance: { at: [0.36, 0.66], dir: "se" }, sit: { at: [0.62, 0.62], dir: "sw" }, stand: { at: [0.4, 0.58], dir: "se" } },
   },
@@ -373,16 +438,37 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.74, 0.78], dir: "sw" }, stand: { at: [0.8, 0.65], dir: "sw" } },
   },
   "hospital-ward": {
-    // Patients lying in two of the beds, a visitor at the middle one, a nurse by the desk.
+    // A patient in the far bed, a visitor at the middle one. The nurse does her rounds from the desk to each bed
+    // and back; patients come in, lie in the bed by the window for a while and go home.
     walkway: [[0.42, 0.7], [0.5, 0.78], [0.58, 0.88], [0.62, 0.72]],
-    walkers: 1,
+    walkers: 0,
     stations: [
       { action: "sleep", at: [0.48, 0.42], dir: "sw", variant: "man_kaftan" },
-      { action: "sleep", at: [0.8, 0.58], dir: "sw", variant: "woman_buba" },
       { action: "stand_idle", at: [0.57, 0.67], dir: "se", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.43, 0.66], dir: "se", variant: "woman_buba" },
     ],
     spots: { door: { at: [0.58, 0.88], dir: "se" }, sleep: { at: [0.64, 0.5], dir: "sw" }, stand: { at: [0.5, 0.78], dir: "se" } },
+    workers: [
+      {
+        variant: "woman_buba",
+        tasks: [
+          { at: [0.3, 0.77], pose: "stand_idle", dir: "se", secs: 5 },
+          { at: [0.44, 0.6], pose: "serve", dir: "se", secs: 5 },
+          { at: [0.56, 0.72], secs: 0 },
+          { at: [0.72, 0.73], pose: "serve", dir: "se", secs: 6 },
+          { at: [0.5, 0.8], secs: 0 },
+        ],
+      },
+      {
+        variant: "man_casual",
+        start: 4,
+        visitor: { door: [0.58, 0.88], away: 8, variants: ["man_casual", "woman_gele", "man_kaftan", "woman_buba"] },
+        tasks: [
+          { at: [0.66, 0.78], secs: 0 },
+          { at: [0.8, 0.58], pose: "sleep", dir: "sw", secs: 30, snap: true },
+          { at: [0.66, 0.78], secs: 0, snap: true },
+        ],
+      },
+    ],
   },
   "library-room": {
     walkway: [[0.6, 0.62], [0.7, 0.72], [0.8, 0.78], [0.64, 0.83]],
