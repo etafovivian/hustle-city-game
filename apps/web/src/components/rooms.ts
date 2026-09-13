@@ -438,14 +438,11 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.74, 0.78], dir: "sw" }, stand: { at: [0.8, 0.65], dir: "sw" } },
   },
   "hospital-ward": {
-    // A patient in the far bed, a visitor at the middle one. The nurse does her rounds from the desk to each bed
-    // and back; patients come in, lie in the bed by the window for a while and go home.
+    // A patient in the far bed. The nurse does her rounds from the desk to each bed and back; patients come in, lie
+    // in the bed by the window for a while and go home. (No idle visitor standing in the aisle.)
     walkway: [[0.42, 0.7], [0.5, 0.78], [0.58, 0.88], [0.62, 0.72]],
     walkers: 0,
-    stations: [
-      { action: "sleep", at: [0.48, 0.42], dir: "sw", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.57, 0.67], dir: "se", variant: "woman_gele" },
-    ],
+    stations: [{ action: "sleep", at: [0.48, 0.42], dir: "sw", variant: "man_kaftan" }],
     spots: { door: { at: [0.58, 0.88], dir: "se" }, sleep: { at: [0.64, 0.5], dir: "sw" }, stand: { at: [0.5, 0.78], dir: "se" } },
     workers: [
       {
