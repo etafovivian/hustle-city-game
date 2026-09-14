@@ -3,7 +3,7 @@
 import { RIDE_BY_MODE, TRANSIT, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type TransitKind, type VehicleKind } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
-import { roadRoute, walkRoute } from "./cityLayout.js";
+import { CX, CY, HALF, ROUNDABOUT, roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
 import { outfitVariant, walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
@@ -46,6 +46,31 @@ function withHalts(path: Point[], rideId: string | undefined, events: string[] |
 }
 
 const SPEED = 300; // world units per second (walking)
+
+/**
+ * A road route moved into the lane for its direction (drive on the right, like the traffic: heading east, the
+ * lower half of the road), instead of straddling both lanes on the centre line. Round the Junction 101 roundabout
+ * the route is already on the ring's lane.
+ */
+function keepRight(route: Point[]): Point[] {
+  if (route.length < 2) return route;
+  const onRing = (p: Point) => ((p.x - CX) / (ROUNDABOUT.lane.rx + 40)) ** 2 + ((p.y - CY) / (ROUNDABOUT.lane.ry + 20)) ** 2 < 1;
+  const lane = (a: Point, b: Point) => (b.x >= a.x ? HALF / 2 : -HALF / 2);
+  const out: Point[] = [];
+  for (let i = 0; i < route.length; i++) {
+    const p = route[i]!;
+    if (onRing(p)) {
+      out.push(p);
+      continue;
+    }
+    const inLane = i > 0 ? lane(route[i - 1]!, p) : lane(p, route[1]!);
+    const outLane = i < route.length - 1 ? lane(p, route[i + 1]!) : inLane;
+    out.push({ x: p.x, y: p.y + inLane });
+    // Turning back the other way: cross over to the other lane here.
+    if (outLane !== inLane) out.push({ x: p.x, y: p.y + outLane });
+  }
+  return out;
+}
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
 const WALK = walkerSize(70);
 
@@ -129,7 +154,8 @@ export function AvatarWalker({
       });
     } else {
       // Rides keep to the roads; walkers to the pavements and zebras.
-      const route = target.mode && target.mode !== "walk" ? roadRoute(posRef.current, target) : walkRoute(posRef.current, target);
+      const road = target.mode && target.mode !== "walk" ? roadRoute(posRef.current, target) : null;
+      const route = target.mode && target.mode !== "walk" ? (road ? [...keepRight(road.slice(0, -1)), road[road.length - 1]!] : null) : walkRoute(posRef.current, target);
       if (!route) {
         onBlocked();
         return;
