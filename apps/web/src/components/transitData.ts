@@ -10,7 +10,7 @@
 // - Positions are map units (the same space as cityLayout's iso()).
 import { TRANSIT_LINES_L, TRANSIT_STOPS_L } from "./cityLayout.js";
 
-export type TransitMode = "brt" | "rail" | "ferry" | "coach";
+export type TransitMode = "brt" | "rail" | "ferry" | "coach" | "flight";
 
 export interface TransitStop {
   id: string;

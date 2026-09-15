@@ -286,6 +286,18 @@ export function AvatarWalker({
               </g>
             );
           })()
+        ) : walking && riding === "flight" ? (
+          // The plane (Stitch airport jets): nose up-right or down-left, mirrored for the other two ways.
+          (() => {
+            const d = walkDir(Math.cos(heading), Math.sin(heading));
+            const up = d === "ne" || d === "nw";
+            const mirror = d === "nw" || d === "se";
+            return (
+              <g transform={`translate(0 -60)${mirror ? " scale(-1 1)" : ""}`}>
+                {up ? <image href="/art/props/jet-ne.webp" x={-160} y={-94} width={320} height={187} /> : <image href="/art/props/jet-sw.webp" x={-130} y={-101} width={260} height={202} />}
+              </g>
+            );
+          })()
         ) : walking && riding === "ferry" ? (
           // The water bus (drawn bow to the left): flipped when it heads right.
           <g transform={Math.cos(heading) > 0 ? "scale(-1 1)" : undefined}>

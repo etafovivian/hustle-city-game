@@ -59,7 +59,7 @@ export function rideSeconds(mode: RideMode, units: number, hour: number, rainSlo
 // ---------------------------------------------------------------- public transport
 /** BRT, the Coast Line train, the water bus and the interstate coach: you walk to a stop, ride the line, walk on.
  * Flat-ish fares by distance on the line, no area boys, and the BRT and train ignore the go-slow. */
-export type TransitKind = "brt" | "rail" | "ferry" | "coach";
+export type TransitKind = "brt" | "rail" | "ferry" | "coach" | "flight";
 export interface TransitInfo {
   kind: TransitKind;
   label: string;
@@ -77,6 +77,8 @@ export const TRANSIT: Record<TransitKind, TransitInfo> = {
   rail: { kind: "rail", label: "Coast Line train", note: "Fastest way across the city", icon: "🚆", base: 150, perKm: 12, speed: 760, wait: 5 },
   ferry: { kind: "ferry", label: "Water bus", note: "Lagoon breeze, zero traffic", icon: "⛴️", base: 300, perKm: 20, speed: 480, wait: 6 },
   coach: { kind: "coach", label: "Interstate coach", note: "AC coach to Ogun State: Mowe, Sagamu, Abeokuta", icon: "🚍", base: 500, perKm: 90, speed: 560, wait: 6 },
+  // Lagos to Abuja is 530 km; on the map it's a short hop, so the fare is flat (no per-km part), not by map distance.
+  flight: { kind: "flight", label: "Flight", note: "From Airport Ridge to Abuja: check in, fly, land", icon: "✈️", base: 16_000, perKm: 0, speed: 2400, wait: 10 },
 };
 export const TRANSIT_KINDS = Object.keys(TRANSIT) as TransitKind[];
 /** Intercity lines priced on their own (the Lagos-Abeokuta train costs more than a city train, less than the coach). */

@@ -5,7 +5,20 @@
 import type { NeedKey } from "./needs.js";
 import type { SkillKey } from "./skills.js";
 
-export type CoachEventKey = "checkpoint" | "hawkers" | "preacher" | "tyre" | "goslow" | "medicine";
+export type CoachEventKey =
+  | "checkpoint"
+  | "hawkers"
+  | "preacher"
+  | "tyre"
+  | "goslow"
+  | "medicine"
+  // On a flight
+  | "gate"
+  | "turbulence"
+  | "trolley"
+  | "bigman"
+  | "overhead"
+  | "landing";
 
 export interface CoachOutcome {
   /** Coins (negative: you pay). */
@@ -130,18 +143,123 @@ export const COACH_EVENTS: readonly CoachEvent[] = [
     ],
   },
 ];
-export const COACH_EVENT_BY_KEY: ReadonlyMap<CoachEventKey, CoachEvent> = new Map(COACH_EVENTS.map((e) => [e.key, e]));
+
+/** Things that happen on a flight to Abuja (same shape, settled the same way). */
+export const FLIGHT_EVENTS: readonly CoachEvent[] = [
+  {
+    key: "gate",
+    title: "Delay at the gate",
+    icon: "🛫",
+    scene: "Boarding was meant to start twenty minutes ago. The screen still says ON TIME.",
+    line: "The gate agent, into the microphone: \"Abuja passengers, we apologise, there will be a short delay.\"",
+    choices: [
+      { key: "snack", label: "Meat pie and a drink in the lounge", note: "300 coins · +Food", win: { coins: -300, needs: { food: 15 }, message: "The meat pie is better than the airport has any right to make." } },
+      { key: "scroll", label: "Charge your phone and scroll", note: "Free · +Fun", win: { needs: { fun: 6 }, message: "You find the one working socket. Forty minutes pass in a blink." } },
+      {
+        key: "complain",
+        label: "Ask the agent what's going on",
+        note: "Charisma helps",
+        odds: 0.5,
+        oddsSkill: "charisma",
+        win: { xp: 10, skill: ["charisma", 6], needs: { social: 6 }, message: "You ask nicely. She moves you to the earlier flight that's boarding now. \"Go, go!\"" },
+        fail: { needs: { fun: -6 }, message: "\"Sir, please sit down. We will announce.\" You sit down." },
+      },
+    ],
+  },
+  {
+    key: "turbulence",
+    title: "Turbulence",
+    icon: "🌩️",
+    scene: "The plane drops, then shudders. The seatbelt sign pings on. Somebody's tea goes everywhere.",
+    line: "The aunty beside you grips your arm: \"Blood of Jesus! Is this normal?\"",
+    choices: [
+      { key: "calm", label: "Calm her down", note: "+Social · +Charisma", win: { needs: { social: 10 }, skill: ["charisma", 6], xp: 6, message: "You tell her it's like a pothole in the sky. She laughs, then holds your arm anyway." } },
+      { key: "pray", label: "Pray with her", note: "+Social", win: { needs: { social: 8, fun: -2 }, message: "Three rows join in. The plane steadies. Everyone takes the credit." } },
+      { key: "window", label: "Watch the clouds", note: "+Fun", win: { needs: { fun: 6 }, message: "Out of the window the clouds are piled like cotton. It's beautiful, honestly." } },
+    ],
+  },
+  {
+    key: "trolley",
+    title: "The trolley comes round",
+    icon: "🥤",
+    scene: "Cabin crew push the trolley down the aisle, smiling the airline smile.",
+    line: "\"Water, juice? Small chops are 500.\"",
+    choices: [
+      { key: "chops", label: "Small chops", note: "500 coins · ++Food", win: { coins: -500, needs: { food: 18 }, message: "Two puff-puffs, a samosa, a spring roll. Worth it at this height." } },
+      { key: "water", label: "Free water", note: "Free · +Health", win: { needs: { health: 3 }, message: "A tiny cup of water. You make it last." } },
+      { key: "sleep", label: "Sleep through it", note: "Free · +Energy", win: { needs: { energy: 12 }, message: "You wake up as the captain says \"cabin crew, prepare for landing\"." } },
+    ],
+  },
+  {
+    key: "bigman",
+    title: "A big man in the next seat",
+    icon: "🕴🏾",
+    scene: "Agbada, gold watch, two phones. He's been on a call about \"the contract\" since take-off.",
+    line: "He ends the call and sighs: \"This Abuja. You dey go for business?\"",
+    choices: [
+      {
+        key: "pitch",
+        label: "Pitch your hustle",
+        note: "Charisma helps",
+        odds: 0.45,
+        oddsSkill: "charisma",
+        win: { xp: 15, skill: ["business", 6], needs: { social: 10 }, message: "He listens, nods, and takes your number. \"Call my office on Monday.\"" },
+        fail: { needs: { social: -4 }, message: "Halfway through, his phone rings. He holds up a finger and never comes back." },
+      },
+      { key: "gist", label: "Just gist", note: "+Social", win: { needs: { social: 10 }, message: "Forty minutes of gist about Abuja traffic (there is none) and Lagos traffic (there is plenty)." } },
+      { key: "headphones", label: "Headphones on", note: "+Energy", win: { needs: { energy: 8 }, message: "You nod politely and put your headphones on. Peace." } },
+    ],
+  },
+  {
+    key: "overhead",
+    title: "No space in the overhead bin",
+    icon: "🧳",
+    scene: "Someone has put three bags and a cooler of jollof in the bin above your seat.",
+    line: "The owner, not moving: \"Abeg, push am small, e go enter.\"",
+    choices: [
+      { key: "help", label: "Rearrange the bin for everyone", note: "−Energy · +Fitness", win: { needs: { energy: -6, social: 6 }, skill: ["fitness", 6], xp: 4, message: "Ten minutes of bag Tetris and everything fits. The crew thanks you." } },
+      { key: "under", label: "Put your bag under the seat", note: "Free", win: { needs: { fun: -3 }, message: "Your legs are cramped all the way to Abuja." } },
+      {
+        key: "insist",
+        label: "Insist they move the cooler",
+        note: "Charisma helps",
+        odds: 0.55,
+        oddsSkill: "charisma",
+        win: { xp: 6, needs: { fun: 4 }, message: "The cooler goes under their seat. Justice." },
+        fail: { needs: { social: -6 }, message: "An argument starts. The crew moves YOUR bag to the back of the plane." },
+      },
+    ],
+  },
+  {
+    key: "landing",
+    title: "Touchdown in Abuja",
+    icon: "🛬",
+    scene: "The wheels hit the runway. The hills around the city come into view, and the granite rock.",
+    line: "Half the plane starts clapping. The captain: \"Welcome to Abuja.\"",
+    choices: [
+      { key: "clap", label: "Clap along", note: "+Social · +Fun", win: { needs: { social: 6, fun: 4 }, message: "You clap for the pilot. He can't hear you, but it counts." } },
+      { key: "stand", label: "Stand up before the seatbelt sign goes off", note: "Free", win: { needs: { social: -3, fun: 3 }, message: "You and twenty others stand, heads bent under the bins, for ten minutes." } },
+      { key: "wait", label: "Wait calmly", note: "+Energy", win: { needs: { energy: 4 }, message: "You wait until the aisle clears and walk off like a citizen." } },
+    ],
+  },
+];
+/** Every journey event, coach and flight. */
+export const JOURNEY_EVENTS: readonly CoachEvent[] = [...COACH_EVENTS, ...FLIGHT_EVENTS];
+export const COACH_EVENT_BY_KEY: ReadonlyMap<CoachEventKey, CoachEvent> = new Map(JOURNEY_EVENTS.map((e) => [e.key, e]));
+/** Transport with things happening on the way. */
+export type JourneyKind = "coach" | "flight";
 
 /** How many things happen on one coach trip. */
 export const COACH_EVENTS_PER_TRIP = 2;
 
-/** The events on this ride, in order: fixed by the ride id, so the client and the server agree. */
-export function coachEventsFor(rideId: string): CoachEventKey[] {
+/** The events on this ride, in order: fixed by the ride id (and coach or flight), so the client and the server agree. */
+export function coachEventsFor(rideId: string, kind: JourneyKind = "coach"): CoachEventKey[] {
+  const list = kind === "flight" ? FLIGHT_EVENTS : COACH_EVENTS;
   let h = 2166136261;
   for (let i = 0; i < rideId.length; i++) h = Math.imul(h ^ rideId.charCodeAt(i), 16777619) >>> 0;
-  const first = h % COACH_EVENTS.length;
-  const second = (first + 1 + ((h >>> 8) % (COACH_EVENTS.length - 1))) % COACH_EVENTS.length;
-  return [COACH_EVENTS[first]!.key, COACH_EVENTS[second]!.key].slice(0, COACH_EVENTS_PER_TRIP);
+  const first = h % list.length;
+  const second = (first + 1 + ((h >>> 8) % (list.length - 1))) % list.length;
+  return [list[first]!.key, list[second]!.key].slice(0, COACH_EVENTS_PER_TRIP);
 }
 
 export interface CoachResult {

@@ -42,8 +42,8 @@ function useSpots(mapBiz: MapBusiness[]): Spot[] {
       if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key });
     }
     // Train stations, BRT stops, water-bus piers and coach parks.
-    const ICON = { rail: "🚆", brt: "🚌", ferry: "⛴️", coach: "🚍" } as const;
-    const LABEL = { rail: "Train station", brt: "BRT stop", ferry: "Water-bus pier", coach: "Coach park" } as const;
+    const ICON = { rail: "🚆", brt: "🚌", ferry: "⛴️", coach: "🚍", flight: "✈️" } as const;
+    const LABEL = { rail: "Train station", brt: "BRT stop", ferry: "Water-bus pier", coach: "Coach park", flight: "Airport" } as const;
     for (const st of TRANSIT_STOPS) {
       const lines = TRANSIT_LINES.filter((l) => l.stops.includes(st.id)).map((l) => l.name);
       out.push({ key: `stop-${st.id}`, label: st.name, sub: `${st.modes.map((m) => LABEL[m]).join(" · ")}${lines.length ? ` · ${lines.join(", ")}` : ""}`, icon: ICON[st.modes[0]!], x: st.x, y: st.y, kind: "station" });

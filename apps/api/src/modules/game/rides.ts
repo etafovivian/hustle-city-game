@@ -46,7 +46,7 @@ export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, un
 /** Public transport: the fare for the distance on the line; never stopped by area boys. */
 export async function startTransit({ tx, userId }: ShopCtx, kind: TransitKind, units: number, line?: string): Promise<RideStart> {
   const info = TRANSIT[kind];
-  if (!info) throw new AppError(400, "bad_mode", "Pick a BRT, train or water bus.");
+  if (!info) throw new AppError(400, "bad_mode", "Pick a BRT, train, water bus, coach or flight.");
   if (!Number.isInteger(units) || units < 1 || units > MAX_RIDE_UNITS) throw new AppError(400, "bad_distance", "That trip is off the map.");
   const profile = await lockProfile(tx, userId);
   const fare = transitFare(kind, units, line);
@@ -93,7 +93,9 @@ export async function settleCoachEvent({ tx, userId, now }: ShopCtx, rideId: str
   if (!event || !choice) throw new AppError(400, "bad_choice", "Pick what to do.");
   const profile = await lockProfile(tx, userId);
   const [ride] = await tx.select().from(rides).where(and(eq(rides.id, rideId), eq(rides.userId, userId)));
-  if (!ride || !ride.mode.startsWith("transit:coach") || !coachEventsFor(ride.id).includes(eventKey)) throw notFound("Coach event");
+  // Coach and flight rides have things happen on the way ("transit:coach", "transit:flight:<line>").
+  const kind = ride?.mode.startsWith("transit:flight") ? "flight" : ride?.mode.startsWith("transit:coach") ? "coach" : null;
+  if (!ride || !kind || !coachEventsFor(ride.id, kind).includes(eventKey)) throw notFound("Journey event");
   const done = ride.stopChoice?.startsWith("coach:") ? ride.stopChoice.slice(6).split(",") : [];
   if (done.includes(eventKey)) throw new AppError(409, "settled", "That's already behind you.");
   const level = await skillLevelOf(tx, userId, choice.oddsSkill);
