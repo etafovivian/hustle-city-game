@@ -3,6 +3,9 @@
 # hustle_dir holds body-Male.glb, body-Female.glb, hair-Male/, hair-Female/. garment_dir holds the
 # garment-*.glb files from garments.py (used for the traditional outfits; re-bound to the body skeleton).
 # Output: walk-{variant}-{se|sw|ne|nw}.png (8 frames of 96x160 in a row = 768x160) + walk-contact.png.
+# Staff in uniform (nurse, doctor, chef, waiter, bartender) are variants too. With POSE=<actions> it renders pose
+# sheets instead (POSES), including the work poses (WORK_ACTIONS, see render_work), e.g.
+#   LOOK=toon POSE=stand_idle,check_patient,write_chart blender -b -P sprites.py -- ~/hustle <garments> <out> nurse doctor
 import bpy, bmesh, math, os, sys
 import numpy as np
 from mathutils import Vector, Matrix
@@ -1188,6 +1191,487 @@ def hijab(arm, body, rgb=(0.48, 0.12, 0.24)):
     return o
 
 
+# ------------------------------------------------------------------ staff in uniform (nurse, doctor, chef, waiter, bartender)
+# Walk sheets and work poses for the people who work inside places. Uniforms are painted on the body like the modern
+# outfits; the lab coat and the aprons are lofted round the body (garments.py Fit) and skinned; caps, the chef's hat
+# and the stethoscope are small meshes on the head or chest bones. These looks are for staff only (walkers.ts keeps
+# them out of the street walkers).
+def head_box(body):
+    vs = [v.co for v in body.data.vertices if any(g.weight > 0.5 and body.vertex_groups[g.group].name == "Head" for g in v.groups)]
+    lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
+    hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+    return lo, hi
+
+
+def reset_pose(arm):
+    arm.animation_data.action = None
+    for pb in arm.pose.bones:
+        pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
+    bpy.context.view_layer.update()
+
+
+def nurse_cap(arm, body):
+    """A small white nurse's cap perched on top of the head (over the hair), tipped back a little."""
+    lo, hi = head_box(body)
+    c, r = (lo + hi) / 2, (hi - lo) / 2
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(r.x * 1.75, r.y * 0.85, 0.05), verts=bm.verts)
+    # wider at the top, like a folded cap
+    for v in bm.verts:
+        if v.co.z > 0:
+            v.co.x *= 1.12
+            v.co.y *= 1.25
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.008, segments=1, affect="EDGES")
+    R = Matrix.Rotation(math.radians(-18), 4, "X")
+    bmesh.ops.transform(bm, matrix=Matrix.Translation((c.x, c.y + r.y * 0.1, hi.z + 0.035)) @ R, verts=bm.verts)
+    o = obj_from_bm(bm, "nurse_cap", make_mat("cap_white", (0.97, 0.97, 0.97)))
+    attach_rest(arm, o, "Head")
+    return o
+
+
+def chef_hat(arm, body):
+    """A tall white toque: a band round the head with a puffed top."""
+    lo, hi = head_box(body)
+    c, r = (lo + hi) / 2, (hi - lo) / 2
+    rad = max(r.x, r.y) * 1.08
+    bm = bmesh.new()
+    z0 = hi.z - 0.05
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=rad, radius2=rad * 1.12, depth=0.13,
+                          matrix=Matrix.Translation((c.x, c.y, z0 + 0.065)))
+    puff = bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=10, radius=1.0)
+    for v in puff["verts"]:
+        v.co = Vector((c.x + v.co.x * rad * 1.3, c.y + v.co.y * rad * 1.3, z0 + 0.14 + v.co.z * 0.06))
+    o = obj_from_bm(bm, "chef_hat", make_mat("hat_white", (0.97, 0.97, 0.96)))
+    attach_rest(arm, o, "Head")
+    return o
+
+
+def stethoscope(arm, body):
+    """Dark tubing round the back of the neck, both ends hanging down the front of the coat, a silver chest piece."""
+    bones = arm.data.bones
+    zn = bones["neck_01"].head_local.z
+    ring = [v.co for v in body.data.vertices if abs(v.co.z - (zn - 0.02)) < 0.02 and abs(v.co.x) < 0.12]
+    hw = max(abs(p.x) for p in ring) + 0.035
+    fy, by = min(p.y for p in ring) - 0.03, max(p.y for p in ring) + 0.03
+    zc = zn - 0.2
+    chest = [v.co for v in body.data.vertices if abs(v.co.z - zc) < 0.02 and abs(v.co.x) < 0.1]
+    cy = min(p.y for p in chest) - 0.045   # outside the coat
+    pts = [(-0.05, cy, zc - 0.03), (-0.07, cy + 0.01, zc + 0.08), (-hw * 0.95, fy + 0.02, zn - 0.02), (-hw, (fy + by) / 2, zn + 0.01),
+           (-hw * 0.6, by, zn + 0.02), (0, by + 0.01, zn + 0.02), (hw * 0.6, by, zn + 0.02), (hw, (fy + by) / 2, zn + 0.01),
+           (hw * 0.95, fy + 0.02, zn - 0.02), (0.07, cy + 0.01, zc + 0.08), (0.04, cy, zc - 0.07)]
+    # a smooth tube through the points (Catmull-Rom), as cylinders between samples
+    P_ = [Vector(p) for p in pts]
+    P_ = [P_[0]] + P_ + [P_[-1]]
+    samp = []
+    for i in range(1, len(P_) - 2):
+        p0, p1, p2, p3 = P_[i - 1], P_[i], P_[i + 1], P_[i + 2]
+        for k in range(4):
+            u = k / 4
+            samp.append(0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u ** 3))
+    samp.append(P_[-2])
+    bm = bmesh.new()
+    for a, b in zip(samp, samp[1:]):
+        if (b - a).length > 1e-4:
+            _cyl(bm, a, b, 0.011, seg=8)
+    o = obj_from_bm(bm, "steth", make_mat("steth", (0.2, 0.24, 0.34)))
+    attach_rest(arm, o, "spine_03")
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=0.022, radius2=0.022, depth=0.012,
+                          matrix=Matrix.Translation((0.04, cy - 0.005, zc - 0.085)) @ Matrix.Rotation(math.radians(90), 4, "X"))
+    bell = obj_from_bm(bm, "steth_bell", make_mat("steel", (0.8, 0.82, 0.85)))
+    attach_rest(arm, bell, "spine_03")
+    return o
+
+
+def front_apron(arm, body, rgb, top, hem, name="apron", wrap=0.25):
+    """An apron over the front of the body from `top` to `hem` (heights in rest pose), skinned like a skirt."""
+    F = G.Fit(arm, body)
+    p = G.Part()
+    zs = G.levels(top(F), hem(F), 0.045)
+    n = 24
+    rings = F.body_loft(zs, TORSO | UPPERLEGS | LEGS, n, lambda z, a: lerp(0.03, 0.075, smoothstep(top(F), hem(F), z)), shoulders=False)
+
+    def drop(i, j, c):
+        a = 2 * math.pi * (j + 0.5) / n
+        return math.sin(a) > -wrap   # keep the front (sin < 0: towards -y, the way the body faces)
+    v, f = G.grid(rings, closed=True, drop=drop)
+    p.add(v, f, [F.body_w(q) for q in v])
+    o = F.finish(p, name, make_mat(name, rgb))
+    reset_pose(arm)
+    return o
+
+
+def labcoat(arm, body, rgb):
+    """A knee-length white coat, open down the front (the shirt and tie show in the V), long sleeves."""
+    F = G.Fit(arm, body)
+    p = G.Part()
+    G.kaftan_like(F, p, F.z_knee + 0.02, n=24, m_top=0.03, m_hem=0.06, sleeve_m=(0.024, 0.03), sleeve_n=10)
+    zt = F.z_neck + 0.03
+
+    def opening(c):
+        if c.y > -0.03 or c.z > zt + 0.005:
+            return False
+        w = 0.022 + 0.07 * smoothstep(F.z_shoulder - 0.24, zt, c.z)
+        return abs(c.x) < w
+    keep = []
+    for f in p.f:
+        c = sum((p.v[k] for k in f), Vector()) / len(f)
+        if not opening(c):
+            keep.append(f)
+    p.f = keep
+    o = F.finish(p, "labcoat", make_mat("labcoat", rgb))
+    reset_pose(arm)
+    return o
+
+
+def uniform_rule(top=None, sleeve=0.28, bottom=None, feet=None, vest=None, tie=None, cuff=None, length="ankle"):
+    """Region rule for a painted uniform. vest: waistcoat over the torso with a V at the front showing the top."""
+    def rule(c, ds, L):
+        if feet and shoes(c, ds, L, 0.03):
+            return "feet"
+        if bottom and not is_arm(ds) and c.z < L["hip"] + 0.06:
+            return "bottom"
+        if top and top_rule(c, ds, L, sleeve):
+            arm_part = is_arm(ds) and not (ds & TORSO)
+            if cuff and arm_part:
+                f = (abs(c.x) - L["sh_x"]) / (L["wrist_x"] - L["sh_x"])
+                if f > sleeve - 0.07:
+                    return "cuff"
+            if tie and not arm_part and c.y < -0.02 and abs(c.x) < 0.022 and L["waist"] < c.z < L["neck"] - 0.02:
+                return "tie"
+            if vest and not arm_part:
+                if c.y < 0 and abs(c.x) < 0.075 * smoothstep(L["waist"] + 0.12, L["neck"], c.z):
+                    return "top"
+                if c.z < L["neck"] - 0.03 or (ds & {"clavicle_l", "clavicle_r"}):
+                    return "vest"
+            return "top"
+        return None
+    return rule
+
+
+def paint_uniform(arm, body, rule, colours):
+    region_paint(body, arm, rule, {k: make_mat(k, hexrgb(h)) for k, h in colours.items()})
+
+
+def v_nurse(arm, body):
+    paint_body(body, MEDIUM)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.28, bottom=True, feet=True),
+                  {"feet": "#f4f4f4", "bottom": "#7fb6e0", "top": "#8cc3ea"})
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Female", "hair-bob.glb"))
+    nurse_cap(arm, body)
+
+
+def v_doctor(arm, body):
+    paint_body(body, DARK)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.97, bottom=True, feet=True, tie=True),
+                  {"feet": "#1a1410", "bottom": "#353b45", "top": "#a9c9ec", "tie": "#8a1c2b"})
+    labcoat(arm, body, (0.96, 0.96, 0.95))
+    stethoscope(arm, body)
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Male", "hair-low_cut.glb"))
+
+
+def v_chef(arm, body):
+    paint_body(body, DARK)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.97, bottom=True, feet=True, cuff=True),
+                  {"feet": "#1a1410", "bottom": "#2c2c30", "top": "#f5f4ee", "cuff": "#e8e6dc"})
+    front_apron(arm, body, (0.93, 0.93, 0.9), lambda F: F.z_waist, lambda F: F.z_knee - 0.05, "chef_apron")
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Female", "hair-low_cut.glb"))
+    chef_hat(arm, body)
+
+
+def v_waiter(arm, body):
+    paint_body(body, MEDIUM)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.97, bottom=True, feet=True, vest=True),
+                  {"feet": "#141414", "bottom": "#1c1c1f", "top": "#f6f6f2", "vest": "#18181b"})
+    front_apron(arm, body, (0.95, 0.95, 0.93), lambda F: F.z_waist - 0.02, lambda F: F.z_knee - 0.16, "waiter_apron", wrap=0.35)
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Female", "hair-braids.glb"))
+
+
+def v_bartender(arm, body):
+    paint_body(body, MEDIUM)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.6, bottom=True, feet=True, cuff=True),
+                  {"feet": "#3a2414", "bottom": "#151517", "top": "#2a3340", "cuff": "#3c4757"})
+    front_apron(arm, body, (0.42, 0.24, 0.12), lambda F: F.z_waist + 0.02, lambda F: F.z_knee + 0.02, "bar_apron")
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Male", "hair-high_top.glb"))
+
+
+STAFF_VARIANTS = [
+    ("nurse", "Female", v_nurse),
+    ("doctor", "Male", v_doctor),
+    ("chef", "Female", v_chef),
+    ("waiter", "Female", v_waiter),
+    ("bartender", "Male", v_bartender),
+]
+STAFF_NAMES = [n for n, _, _ in STAFF_VARIANTS]
+VARIANTS += STAFF_VARIANTS
+
+
+# ------------------------------------------------------------------ work poses (posed bone by bone, IK hands, props)
+# Each frame: joint angles (apply_pose), hand targets for the arm IK (armature space: x = the character's left,
+# -y = forward, z = up, feet at the origin), and props built at the posed hands. carry_tray is a walk sheet instead
+# (the library's Walk_Loop with the right hand up under a tray). All 8 frames of 96x160, feet 16 px up.
+ALL_DIRS = ["se", "sw", "ne", "nw"]
+REACH = 0.43  # m from the shoulder
+WORK_DIRS = {"sick_sit": ["se", "sw"]}
+WORK_FPS = {}
+WORK_ACTIONS = ["check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
+LEGACY_ADULTS = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"]
+POSES.update({
+    "stand_idle": (POSES["stand_idle"][0], POSES["stand_idle"][1] + STAFF_NAMES),
+    "check_patient": ("Idle_Loop", ["nurse", "doctor"]),
+    "write_chart": ("Idle_Loop", ["nurse", "doctor"]),
+    "pour_drink": ("Idle_Loop", ["bartender", "man_casual"]),
+    "carry_tray": ("Walk_Loop", ["waiter", "chef", "man_casual"]),
+    "serve_tray": ("Idle_Loop", ["waiter", "chef", "man_casual"]),
+    "cook_stir": ("Idle_Loop", ["chef", "woman_buba"]),
+    "wipe_counter": ("Idle_Loop", ["bartender", "waiter", "chef", "woman_buba"]),
+    "sick_sit": ("Idle_Loop", LEGACY_ADULTS),
+    "take_order": ("Idle_Loop", ["waiter", "bartender"]),
+})
+
+
+def bp(bone, off):
+    return lambda arm: body_point(arm, bone, off)
+
+
+def ab(x, y, z):
+    v = Vector((x, y, z))
+    return lambda arm: v.copy()
+
+
+def work_frame(action, i, n):
+    """dict(q=joint angles, l/r=hand target fns, props=[(kind, args)], sit=bool) for frame i."""
+    t = i / n
+    ph = 2 * math.pi * t
+    k = 0.5 - 0.5 * math.cos(ph)
+    if action == "check_patient":
+        # bent over the bed: one hand on the patient's arm, the other giving an injection (pushing in, easing out)
+        q = P(sp1=16 + 3 * k, sp2=6, sp3=4, neck=10, head=16, knee=6, hip=2)
+        return dict(q=q, l=ab(0.07, -0.44, 1.0), r=ab(-0.07, -0.4 - 0.04 * k, 1.12 - 0.07 * k), props=[("syringe", "r", "l")])
+    if action == "write_chart":
+        q = P(head=24, neck=10, sp3=4)
+        dx = 0.035 * math.sin(2 * ph)
+        return dict(q=q, l=bp("spine_03", (0.07, -0.3, -0.03)), r=bp("spine_03", (-0.03 + dx, -0.32, 0.02 - 0.05 * t)),
+                    props=[("clipboard", "l"), ("pen", "r")])
+    if action == "take_order":
+        look = i >= 5  # writes, then looks up at the customer
+        q = P(head=-2 if look else 22, neck=0 if look else 8, sp3=2)
+        dx = 0.025 * math.sin(2 * ph)
+        return dict(q=q, l=bp("spine_03", (0.06, -0.28, 0.05)), r=bp("spine_03", (-0.02 + dx, -0.3, 0.07 - 0.03 * min(t, 0.6))),
+                    props=[("notepad", "l"), ("pen", "r")])
+    if action == "pour_drink":
+        if i < 4:  # shaking the shaker over the right shoulder
+            dz = 0.07 if i % 2 else -0.05
+            return dict(q=P(head=4, sp3=-2, twist=6), r=bp("spine_03", (-0.14, -0.24, 0.12 + dz)), l=bp("spine_03", (-0.08, -0.26, 0.3 + dz)),
+                        props=[("shaker", "r", "l")])
+        # pouring into a glass held low in the left hand
+        tilt = [70, 110, 120, 90][i - 4]
+        return dict(q=P(head=20, neck=6, sp1=6), l=bp("spine_01", (0.04, -0.36, 0.08)), r=bp("spine_01", (-0.06, -0.36, 0.3)),
+                    props=[("glass", "l"), ("shaker_pour", "r", tilt, i in (5, 6))])
+    if action == "serve_tray":
+        # tray up on the left hand; the right hand lifts a plate off it and sets it down on the table, then back
+        q = P(head=10 + 10 * k, sp1=6 + 10 * k, knee=4 * k)
+        tray = bp("spine_03", (0.24, -0.16, 0.16))
+        top = Vector((0.08, -0.28, 1.42))
+        table = Vector((-0.06, -0.5, 0.82))
+        hand = top.lerp(table, smoothstep(0.0, 1.0, k))
+        return dict(q=q, l=tray, r=ab(*hand), props=[("tray", "l", False), ("plate", "r")])
+    if action == "cook_stir":
+        # a big pot on a low stove in front of her: bent over it, working the ladle round the pot
+        q = P(sp1=22, sp2=6, head=18, neck=6, knee=6, arm_fwd_l=14, elbow_l=30)
+        return dict(q=q, r=ab(-0.04 + 0.05 * math.cos(ph), -0.3 + 0.04 * math.sin(ph), 0.9), props=[("pot",), ("ladle", "r")])
+    if action == "wipe_counter":
+        q = P(sp1=20, sp2=4, head=8, knee=4)
+        return dict(q=q, r=ab(-0.06 + 0.1 * math.cos(ph), -0.4 + 0.05 * math.sin(ph), 1.03), l=ab(0.18, -0.36, 1.03), props=[("cloth", "r")])
+    if action == "sick_sit":
+        # sitting on the edge of the bed, bent over: one hand on the stomach, the other on the forehead, rocking
+        q = P(hip=88, knee=88, ankle=0, sp1=14 + 6 * k, sp2=6, sp3=4, head=16 + 6 * k, neck=6)
+        return dict(q=q, l=bp("spine_01", (0.03, -0.16, 0.04)), r=bp("Head", (-0.03, -0.12, 0.1)), props=[], sit=True)
+    if action == "carry_tray":
+        return dict(walk=True, r=bp("spine_03", (-0.27, -0.12, 0.15)), props=[("tray", "r", True)])
+    raise KeyError(action)
+
+
+def _cyl(bm, p0, p1, r0, r1=None, seg=10):
+    d = p1 - p0
+    rot = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix().to_4x4()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=seg, radius1=r0, radius2=r1 if r1 is not None else r0, depth=d.length,
+                          matrix=Matrix.Translation((p0 + p1) / 2) @ rot)
+
+
+def _box(bm, c, ax, size):
+    """Box centred at c with axes ax = (u, v, w) (unit vectors) and full sizes."""
+    res = bmesh.ops.create_cube(bm, size=1.0)
+    M = Matrix((ax[0] * size[0], ax[1] * size[1], ax[2] * size[2])).transposed()
+    for v in res["verts"]:
+        v.co = c + M @ v.co
+
+
+def _prop(name, rgb, build):
+    bm = bmesh.new()
+    build(bm)
+    o = obj_from_bm(bm, name, make_mat(name, rgb))
+    return toon_obj(o, rgb, name)
+
+
+POT = [None]
+
+
+def build_props(arm, specs):
+    """Props in world space at the posed hands (removed after the frame renders)."""
+    bpy.context.view_layer.update()
+    mw = arm.matrix_world
+    R = mw.to_3x3()
+    fwd = (R @ Vector((0, -1, 0))).normalized()
+    left = (R @ Vector((1, 0, 0))).normalized()
+    up = Vector((0, 0, 1))
+    H = {}
+    for s in "lr":
+        hd = mw @ arm.pose.bones[f"hand_{s}"].head
+        tl = mw @ arm.pose.bones[f"hand_{s}"].tail
+        H[s] = hd + (tl - hd) * 0.8 + (tl - hd).normalized() * 0.02   # the grip, in the fingers
+    made = []
+    POT[0] = None
+    for sp in specs:
+        kind = sp[0]
+        if kind == "syringe":
+            g, aim = H[sp[1]], H[sp[2]]
+            d = (aim - g).normalized()
+            made.append(_prop("syringe", (0.86, 0.92, 0.98), lambda bm: _cyl(bm, g - d * 0.03, g + d * 0.08, 0.011)))
+            made.append(_prop("plunger", (0.2, 0.45, 0.85), lambda bm: _cyl(bm, g - d * 0.06, g - d * 0.03, 0.006)))
+            made.append(_prop("needle", (0.75, 0.75, 0.78), lambda bm: _cyl(bm, g + d * 0.08, g + d * 0.12, 0.0025, seg=6)))
+        elif kind in ("clipboard", "notepad"):
+            g = H[sp[1]]
+            tilt = math.radians(62 if kind == "clipboard" else 55)
+            u = left
+            v = (up * math.cos(tilt) + fwd * math.sin(tilt)).normalized()
+            w = u.cross(v)   # towards the face
+            if w.dot(fwd) > 0:
+                w = -w
+            if kind == "clipboard":
+                c = g - left * 0.07 + v * 0.05
+                made.append(_prop("board", (0.74, 0.54, 0.3), lambda bm: _box(bm, c, (u, v, w), (0.2, 0.27, 0.012))))
+                made.append(_prop("paper", (0.98, 0.98, 0.96), lambda bm: _box(bm, c + w * 0.008 - v * 0.012, (u, v, w), (0.17, 0.22, 0.004))))
+                made.append(_prop("clip", (0.75, 0.76, 0.8), lambda bm: _box(bm, c + w * 0.01 + v * 0.12, (u, v, w), (0.08, 0.03, 0.012))))
+            else:
+                c = g - left * 0.04 + v * 0.03
+                made.append(_prop("pad", (0.99, 0.98, 0.9), lambda bm: _box(bm, c, (u, v, w), (0.1, 0.14, 0.012))))
+                made.append(_prop("padtop", (0.75, 0.15, 0.12), lambda bm: _box(bm, c + v * 0.065 + w * 0.002, (u, v, w), (0.105, 0.02, 0.016))))
+        elif kind == "pen":
+            g = H[sp[1]]
+            d = (fwd * 0.4 - up + left * 0.3).normalized()
+            made.append(_prop("pen", (0.1, 0.15, 0.45), lambda bm: _cyl(bm, g - d * 0.07, g + d * 0.05, 0.006, seg=6)))
+        elif kind == "shaker":
+            a, b = H[sp[1]], H[sp[2]]
+            d = (b - a).normalized()
+            made.append(_prop("shaker", (0.78, 0.8, 0.84), lambda bm: _cyl(bm, a - d * 0.05, b + d * 0.03, 0.038, 0.03, seg=14)))
+        elif kind == "shaker_pour":
+            g, tilt, stream = H[sp[1]], sp[2], sp[3]
+            d = (up * math.cos(math.radians(tilt)) + left * math.sin(math.radians(tilt))).normalized()  # bottom -> mouth
+            made.append(_prop("shaker", (0.78, 0.8, 0.84), lambda bm: _cyl(bm, g - d * 0.07, g + d * 0.11, 0.036, 0.028, seg=14)))
+            if stream:
+                m = g + d * 0.11
+                gl = H["l"] + up * 0.1
+                made.append(_prop("drink", (0.85, 0.45, 0.08), lambda bm: _cyl(bm, m, gl, 0.006, seg=6)))
+        elif kind == "glass":
+            g = H[sp[1]]
+            made.append(_prop("glass", (0.72, 0.9, 0.95), lambda bm: _cyl(bm, g - up * 0.02, g + up * 0.1, 0.032, 0.038, seg=12)))
+            made.append(_prop("drink", (0.85, 0.45, 0.08), lambda bm: _cyl(bm, g - up * 0.015, g + up * 0.05, 0.03, 0.033, seg=12)))
+        elif kind == "tray":
+            g = H[sp[1]] + up * 0.035
+            side = left if sp[1] == "l" else -left
+            c = g + side * 0.04 + fwd * 0.04
+            made.append(_prop("tray", (0.62, 0.64, 0.68), lambda bm: _cyl(bm, c - up * 0.008, c + up * 0.008, 0.17, seg=24)))
+            # a plate of jollof, a bottle and a glass on the tray
+            pc = c - side * 0.06 + fwd * 0.04
+            made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, pc, pc + up * 0.012, 0.075, 0.085, seg=18)))
+            made.append(_prop("jollof", (0.88, 0.32, 0.08), lambda bm: _cyl(bm, pc + up * 0.012, pc + up * 0.04, 0.055, 0.02, seg=14)))
+            bc = c + side * 0.07 - fwd * 0.03
+            made.append(_prop("bottle", (0.12, 0.42, 0.18), lambda bm: (_cyl(bm, bc, bc + up * 0.14, 0.026, seg=10), _cyl(bm, bc + up * 0.14, bc + up * 0.2, 0.024, 0.01, seg=10))))
+            gc = c + fwd * 0.1 + side * 0.02
+            made.append(_prop("glass", (0.72, 0.9, 0.95), lambda bm: _cyl(bm, gc, gc + up * 0.1, 0.028, 0.034, seg=10)))
+        elif kind == "plate":
+            g = H[sp[1]] - up * 0.03
+            made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, g, g + up * 0.012, 0.075, 0.085, seg=18)))
+            made.append(_prop("jollof", (0.88, 0.32, 0.08), lambda bm: _cyl(bm, g + up * 0.012, g + up * 0.04, 0.055, 0.02, seg=14)))
+        elif kind == "pot":
+            base = Vector((mw.translation.x, mw.translation.y, 0.0)) + fwd * 0.4
+            made.append(_prop("stove", (0.16, 0.16, 0.18), lambda bm: _cyl(bm, base, base + up * 0.18, 0.13, 0.15, seg=16)))
+            made.append(_prop("pot", (0.72, 0.74, 0.78), lambda bm: _cyl(bm, base + up * 0.18, base + up * 0.46, 0.16, 0.175, seg=20)))
+            made.append(_prop("stew", (0.82, 0.24, 0.06), lambda bm: _cyl(bm, base + up * 0.445, base + up * 0.458, 0.16, seg=20)))
+            POT[0] = base + up * 0.36
+        elif kind == "ladle":
+            g = H[sp[1]]
+            aim = POT[0] if POT[0] is not None else g - up * 0.4 + fwd * 0.15
+            d = (aim - g).normalized()
+            tip = g + d * min(0.5, (aim - g).length)
+            made.append(_prop("ladle", (0.55, 0.57, 0.6), lambda bm: _cyl(bm, g - d * 0.06, tip, 0.009, seg=8)))
+            made.append(_prop("ladle_bowl", (0.55, 0.57, 0.6), lambda bm: bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=6, radius=0.045, matrix=Matrix.Translation(tip))))
+        elif kind == "cloth":
+            g = H[sp[1]] - up * 0.035
+            made.append(_prop("cloth", (0.96, 0.78, 0.2), lambda bm: _box(bm, g, (left, fwd, up), (0.15, 0.12, 0.018))))
+    return made
+
+
+def render_work(arm, scene, look, name, action, tmp, first):
+    n = NF
+    clear_ik(arm)
+    er, cr = ik_hand(arm, "r")
+    el, cl = ik_hand(arm, "l")
+    dirs = os.environ["PRAYDIRS"].split(",") if os.environ.get("PRAYDIRS") else WORK_DIRS.get(action, ALL_DIRS)
+    for d in dirs:
+        sx, sy = DIRS[d]
+        sheet = np.zeros((FH, FW * n, 4), dtype=np.float32)
+        for i in range(n):
+            spec = work_frame(action, i, n)
+            cr.influence = cl.influence = 0.0
+            arm.location = (0, 0, 0)
+            arm.rotation_euler = (0, 0, 0)
+            if spec.get("walk"):
+                set_action(arm, "Walk_Loop", 1.0 + 32.0 * i / n)
+            else:
+                apply_pose(arm, spec["q"])
+            bpy.context.view_layer.update()
+            for side, e, c in (("r", er, cr), ("l", el, cl)):
+                if side in spec:
+                    tg = spec[side](arm)
+                    sh = arm.pose.bones[f"upperarm_{side}"].head
+                    if (tg - sh).length > REACH:  # keep a bend in the elbow (a straight arm reads as stiff)
+                        tg = sh + (tg - sh).normalized() * REACH
+                    e.location = tg
+            bpy.context.view_layer.update()
+            cr.influence = 1.0 if "r" in spec else 0.0
+            cl.influence = 1.0 if "l" in spec else 0.0
+            bpy.context.view_layer.update()
+            arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy)))
+            if not spec.get("walk"):
+                ground(arm)
+            if spec.get("sit"):
+                # the anchor is the feet (the seat is behind them), as in the library's seated sheets
+                bpy.context.view_layer.update()
+                mw = arm.matrix_world
+                fm = (mw @ arm.pose.bones["ball_l"].head + mw @ arm.pose.bones["ball_r"].head) / 2
+                arm.location.x -= fm.x
+                arm.location.y -= fm.y
+            props = build_props(arm, spec.get("props", []))
+            pth = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
+            scene.render.filepath = pth
+            bpy.ops.render.render(write_still=True)
+            for o in props:
+                bpy.data.objects.remove(o)
+            a = read_png(pth)
+            if look == "toon":
+                a = downsample(a)
+            sheet[:, i * FW:(i + 1) * FW] = a
+            first[(action, d, i)] = a
+        write_png(sheet, os.path.join(OUT, f"{action}-{name}-{d}.png"))
+        print("SHEET", action, name, d)
+    clear_ik(arm)
+    arm.location = (0, 0, 0)
+    arm.rotation_euler = (0, 0, 0)
+
+
 def render_poses(name, sex, fn, jobs, tmp):
     bases = sorted({POSES[a][0] for a in jobs})
     arm, scene, look = prepare_variant(name, sex, fn, extra_actions=[b for b in bases if b not in bpy.data.actions] if False else
@@ -1201,6 +1685,9 @@ def render_poses(name, sex, fn, jobs, tmp):
             continue
         if action in EX_FRAME:
             render_exercise(arm, scene, look, name, action, tmp, first)
+            continue
+        if action in WORK_ACTIONS:
+            render_work(arm, scene, look, name, action, tmp, first)
             continue
         if action == "sleep":
             continue
@@ -1268,12 +1755,12 @@ if os.environ.get("POSE"):
                 cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] = a[..., :3] * al + cs[y0:y0 + SLEEP_H, x0:x0 + SLEEP_W, :3] * (1 - al)
                 cs[y0 + SLEEP_H // 2, x0 + SLEEP_W // 2 - 3:x0 + SLEEP_W // 2 + 4, :3] = (0.8, 0.2, 0.2)  # anchor
         write_png(cs, os.path.join(OUT, "sleep-contact.png"))
-    for action in ("pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope"):
+    for action in ("pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope", *WORK_ACTIONS):
         rows = [n for n in POSES[action][1] if any(len(k) == 3 and k[0] == action for k in got.get(n, {}))]
         if not rows:
             continue
-        W, n = PRAY_FRAME.get(action) or EX_FRAME[action]
-        dirs = [d for d in (PRAY_DIRS.get(action) or EX_DIRS[action]) if any((action, d, 0) in got[nm] for nm in rows)] or sorted({k[1] for nm in rows for k in got[nm] if k[0] == action})
+        W, n = PRAY_FRAME.get(action) or EX_FRAME.get(action) or (FW, NF)
+        dirs = [d for d in (PRAY_DIRS.get(action) or EX_DIRS.get(action) or WORK_DIRS.get(action, ALL_DIRS)) if any((action, d, 0) in got[nm] for nm in rows)] or sorted({k[1] for nm in rows for k in got[nm] if k[0] == action})
         FHc = 112 if action in EX_CENTRED else FH
         cs = np.zeros((FHc * len(rows) * len(dirs), W * n, 4), dtype=np.float32)
         cs[..., :3], cs[..., 3] = 0.9, 1
@@ -1292,7 +1779,7 @@ if os.environ.get("POSE"):
         write_png(cs, os.path.join(OUT, f"{action}-contact.png"))
     cells = []
     for action in POSES:
-        if action in ("sleep", "pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope"):
+        if action in ("sleep", "pray_salah", "pray_church", "kneel_pray", "lift_weights", "boxing", "pushups", "skip_rope", *WORK_ACTIONS):
             continue
         row = []
         for name in POSES[action][1]:

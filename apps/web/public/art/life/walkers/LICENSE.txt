@@ -9,3 +9,9 @@ Outfit looks (one per body and outfit a player can wear, named <body>-<outfit>, 
 painted in the outfit colours of src/components/Avatar3D.tsx OUTFITS; agbada, kaftan, buba and peplum garments from
 garments.py recoloured (the woman's kaftan is built on her body by sprites.py). Hair: man low_cut, woman braids, gele
 with the peplum. Their pose sheets are in ../poses.
+
+Staff in uniform (sprites.py STAFF_VARIANTS; for people at work in rooms only, never street walkers): nurse (light-blue
+scrubs, white cap, bob hair), doctor (white coat open over a blue shirt and tie, stethoscope), chef (whites, white
+apron, toque), waiter (white shirt, black waistcoat, long white apron) and bartender (dark shirt with rolled sleeves,
+leather apron). Uniforms are painted on the body; the coat and aprons are lofted round the body and skinned (garments.py
+Fit); the cap, toque and stethoscope are small meshes on the head and chest bones. Their work poses are in ../poses.

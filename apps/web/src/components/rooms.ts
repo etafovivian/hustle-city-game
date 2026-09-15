@@ -3,7 +3,7 @@
 //   walkway  open floor, in order: walkers go back and forth along it, and the player walks on it (taps snap to it);
 //   stations people who stay put and do something (pose sheets in public/art/life/poses);
 //   spots    where the player goes for each thing they can do in the room (door = where they come in).
-import { OUTFIT_VARIANTS, type WalkerVariant } from "./walkers.js";
+import { OUTFIT_VARIANTS, STAFF_VARIANTS, type WalkerVariant } from "./walkers.js";
 
 /** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
 export type PoseAction =
@@ -20,14 +20,24 @@ export type PoseAction =
   | "boxing"
   | "run"
   | "pushups"
-  | "skip_rope";
+  | "skip_rope"
+  // Work (staff in uniform, and a few everyday looks): see WORK below.
+  | "check_patient"
+  | "write_chart"
+  | "pour_drink"
+  | "carry_tray"
+  | "serve_tray"
+  | "cook_stir"
+  | "wipe_counter"
+  | "sick_sit"
+  | "take_order";
 /** Adult looks that have every pose, prayer included. */
 const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
 export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   dance: ["woman_gele", "man_kaftan", "woman_buba", "man_casual", ...OUTFIT_VARIANTS],
   serve: ["woman_buba", "man_casual"],
-  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  stand_idle: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS, ...STAFF_VARIANTS],
   sit_eat: ["woman_buba", "man_kaftan", "man_casual", "woman_gele", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
   sit_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
   sleep: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
@@ -40,13 +50,22 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   run: ADULTS,
   pushups: ADULTS,
   skip_rope: ADULTS,
+  check_patient: ["nurse", "doctor"],
+  write_chart: ["nurse", "doctor"],
+  pour_drink: ["bartender", "man_casual"],
+  carry_tray: ["waiter", "chef", "man_casual"],
+  serve_tray: ["waiter", "chef", "man_casual"],
+  cook_stir: ["chef", "woman_buba"],
+  wipe_counter: ["bartender", "waiter", "chef", "woman_buba"],
+  sick_sit: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
+  take_order: ["waiter", "bartender"],
 };
 /**
  * Each pose sheet's frame size, frame count and speed. Standing, seated and praying frames have the feet 16 px above
  * the bottom; lying (sleep) frames are centred on the middle of the body. Salah frames are wider (prostration reaches
  * forward) and only salah has a "nw" sheet (facing the mihrab).
  */
-export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean; nw?: boolean }> = {
+export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean; nw?: boolean; ne?: boolean; walk?: boolean }> = {
   dance: { w: 96, h: 160, frames: 8, fps: 10 },
   serve: { w: 96, h: 160, frames: 8, fps: 7 },
   stand_idle: { w: 96, h: 160, frames: 8, fps: 7 },
@@ -63,11 +82,28 @@ export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: num
   run: { w: 96, h: 160, frames: 8, fps: 11, nw: true },
   pushups: { w: 192, h: 112, frames: 8, fps: 5, centred: true },
   skip_rope: { w: 112, h: 160, frames: 8, fps: 10 },
+  // Work, facing all four ways so they can face what they work on (the bed, the pots, the counter, the customer).
+  // check_patient: bent over the bed, a hand on the patient's arm, giving an injection; write_chart: writing on a
+  // clipboard; take_order: a notepad, looking up at the customer now and then; pour_drink: shaking, then pouring into
+  // a glass; serve_tray: a tray up on one hand, setting a plate down on the table; cook_stir: stirring a big pot on a
+  // low stove (the pot is in the sheet); wipe_counter: a cloth going round on the counter top; sick_sit: a patient on
+  // the edge of the bed, bent over, a hand on the stomach and one on the forehead (se/sw; the seat is behind the feet).
+  // carry_tray is a walk sheet (the walk cycle with a tray up on the right hand): used while walking (Task.carry).
+  check_patient: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
+  write_chart: { w: 96, h: 160, frames: 8, fps: 5, nw: true, ne: true },
+  take_order: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
+  pour_drink: { w: 96, h: 160, frames: 8, fps: 5, nw: true, ne: true },
+  serve_tray: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
+  cook_stir: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  wipe_counter: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
+  sick_sit: { w: 96, h: 160, frames: 8, fps: 3 },
+  carry_tray: { w: 96, h: 160, frames: 8, fps: 10, nw: true, ne: true, walk: true },
 };
 
 export type Pt = [number, number];
-/** Pose sheets face se or sw (towards the viewer); salah also faces nw (towards a mihrab on the left wall). */
-export type Facing = "se" | "sw" | "nw";
+/** Pose sheets face se or sw (towards the viewer); some also face nw or ne (POSE_SHEETS nw/ne): salah towards a mihrab
+ * on the left wall, the work poses towards whatever is being worked on. */
+export type Facing = "se" | "sw" | "nw" | "ne";
 /** What the player is doing in a room. */
 export type PlayerAction =
   | "walk"
@@ -115,6 +151,11 @@ export interface Task {
   secs: number;
   /** Step straight onto it instead of walking (onto a bed, behind a counter). */
   snap?: boolean;
+  /** Walk there carrying something (a walk-style pose sheet, e.g. carry_tray) when the look has that sheet. */
+  carry?: PoseAction;
+  /** Hidden below this height (fraction of the image): someone standing behind a counter or bar, whose legs the
+   * counter would hide. */
+  behind?: number;
 }
 export interface Worker {
   variant: WalkerVariant;
@@ -139,22 +180,25 @@ export const ROOMS: Record<string, Room> = {
     ],
     spots: { door: { at: [0.54, 0.9], dir: "se" }, eat: { at: [0.3, 0.6], dir: "se" }, stand: { at: [0.33, 0.8], dir: "se" } },
     workers: [
-      // Mama at the pots, then dishing at the counter.
+      // The cook in her whites at a big pot on a low stove in front of the stoves, then dishing a plate up to the
+      // glass counter.
       {
-        variant: "woman_buba",
+        variant: "chef",
         tasks: [
-          { at: [0.66, 0.55], pose: "serve", dir: "se", secs: 5, snap: true },
-          { at: [0.56, 0.58], pose: "serve", dir: "sw", secs: 5 },
+          { at: [0.7, 0.84], pose: "cook_stir", dir: "ne", secs: 8 },
+          { at: [0.55, 0.88], pose: "serve_tray", dir: "ne", secs: 4, carry: "carry_tray" },
+          { at: [0.7, 0.84], pose: "cook_stir", dir: "nw", secs: 6 },
         ],
       },
-      // Her boy takes the plates to the tables.
+      // Her boy takes the plates from the counter to the tables.
       {
         variant: "man_casual",
-        start: 2,
+        start: 3,
         tasks: [
-          { at: [0.46, 0.76], pose: "stand_idle", dir: "sw", secs: 3 },
-          { at: [0.32, 0.72], pose: "serve", dir: "sw", secs: 3 },
-          { at: [0.42, 0.62], pose: "serve", dir: "sw", secs: 3 },
+          { at: [0.45, 0.8], pose: "stand_idle", dir: "ne", secs: 3 },
+          { at: [0.31, 0.73], pose: "serve_tray", dir: "nw", secs: 4, carry: "carry_tray" },
+          { at: [0.4, 0.8], secs: 0 },
+          { at: [0.43, 0.63], pose: "serve_tray", dir: "nw", secs: 4, carry: "carry_tray" },
         ],
       },
     ],
@@ -279,25 +323,26 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_buba" },
     ],
     workers: [
-      // The barman works along the bar, serving one customer then the next.
+      // The barman behind the bar: shaking and pouring, wiping down the bar top, along to the next customer.
       {
-        variant: "man_casual",
+        variant: "bartender",
         tasks: [
-          { at: [0.36, 0.41], pose: "serve", dir: "sw", secs: 5, snap: true },
-          { at: [0.45, 0.37], pose: "serve", dir: "se", secs: 4 },
-          { at: [0.53, 0.35], pose: "stand_idle", dir: "se", secs: 3 },
-          { at: [0.45, 0.37], secs: 0 },
+          { at: [0.41, 0.5], pose: "pour_drink", dir: "sw", secs: 6, snap: true, behind: 0.43 },
+          { at: [0.5, 0.52], pose: "wipe_counter", dir: "se", secs: 5, behind: 0.45 },
+          { at: [0.6, 0.47], pose: "pour_drink", dir: "se", secs: 5, behind: 0.405 },
+          { at: [0.5, 0.52], pose: "wipe_counter", dir: "sw", secs: 4, behind: 0.45 },
         ],
       },
-      // A waitress takes drinks from the bar to the tables.
+      // The waitress takes an order at a table, fetches the drinks from the bar on a tray and sets them down.
       {
-        variant: "woman_buba",
+        variant: "waiter",
         start: 3,
         tasks: [
-          { at: [0.42, 0.53], pose: "stand_idle", dir: "se", secs: 3 },
-          { at: [0.44, 0.67], pose: "serve", dir: "sw", secs: 4 },
-          { at: [0.52, 0.6], secs: 0 },
-          { at: [0.6, 0.6], pose: "serve", dir: "se", secs: 4 },
+          { at: [0.62, 0.68], pose: "take_order", dir: "ne", secs: 5 },
+          { at: [0.56, 0.56], pose: "stand_idle", dir: "nw", secs: 3 },
+          { at: [0.43, 0.69], pose: "serve_tray", dir: "se", secs: 4, carry: "carry_tray" },
+          { at: [0.56, 0.62], secs: 0 },
+          { at: [0.62, 0.68], pose: "serve_tray", dir: "ne", secs: 4, carry: "carry_tray" },
         ],
       },
     ],
@@ -373,20 +418,48 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.25, 0.72], [0.35, 0.8], [0.5, 0.86], [0.62, 0.8], [0.66, 0.73]],
     walkers: 2,
     stations: [
-      { action: "stand_idle", at: [0.3, 0.65], dir: "se", variant: "man_kaftan" },
+      { action: "stand_idle", at: [0.38, 0.7], dir: "se", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.66, 0.63], dir: "sw", variant: "woman_gele" },
     ],
     spots: { door: { at: [0.5, 0.86], dir: "se" }, sit: { at: [0.78, 0.64], dir: "sw" }, stand: { at: [0.35, 0.8], dir: "se" } },
+    workers: [
+      // The receptionist behind the desk, writing guests in.
+      {
+        variant: "waiter",
+        tasks: [
+          { at: [0.26, 0.64], pose: "take_order", dir: "se", secs: 8, behind: 0.585 },
+          { at: [0.33, 0.62], pose: "stand_idle", dir: "se", secs: 4, behind: 0.565 },
+        ],
+      },
+      // Room service brings drinks to the guest in the armchair, takes the next order and goes back out.
+      {
+        variant: "waiter",
+        start: 6,
+        visitor: { door: [0.5, 0.86], away: 14, variants: ["waiter"] },
+        tasks: [
+          { at: [0.64, 0.84], secs: 0, carry: "carry_tray" },
+          { at: [0.64, 0.75], pose: "serve_tray", dir: "ne", secs: 4, carry: "carry_tray" },
+          { at: [0.64, 0.75], pose: "take_order", dir: "ne", secs: 4 },
+        ],
+      },
+    ],
   },
   // Zip 15 (batches 29-31): rooms for the new places and clean redos.
   "provision-shop": {
     walkway: [[0.72, 0.63], [0.77, 0.71], [0.72, 0.78], [0.69, 0.82]],
     walkers: 1,
-    stations: [
-      { action: "stand_idle", at: [0.68, 0.67], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.76, 0.79], dir: "sw", variant: "man_casual" },
-    ],
+    stations: [{ action: "stand_idle", at: [0.76, 0.79], dir: "sw", variant: "man_casual" }],
     spots: { door: { at: [0.69, 0.82], dir: "sw" }, stand: { at: [0.72, 0.74], dir: "sw" } },
+    workers: [
+      // Madam behind her counter: wiping it down, then at the till end waiting on the customer.
+      {
+        variant: "woman_buba",
+        tasks: [
+          { at: [0.42, 0.66], pose: "wipe_counter", dir: "sw", secs: 6, behind: 0.62 },
+          { at: [0.56, 0.7], pose: "stand_idle", dir: "se", secs: 5, behind: 0.66 },
+        ],
+      },
+    ],
   },
   "golf-lounge": {
     walkway: [[0.6, 0.64], [0.68, 0.7], [0.78, 0.74], [0.72, 0.82]],
@@ -394,9 +467,29 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "sit_talk", at: [0.27, 0.6], dir: "se", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.18, 0.68], dir: "se", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.63, 0.66], dir: "sw" },
     ],
     spots: { door: { at: [0.72, 0.82], dir: "se" }, stand: { at: [0.68, 0.7], dir: "sw" } },
+    workers: [
+      // The barman behind the bar: pouring for the stools, wiping the bar top.
+      {
+        variant: "bartender",
+        tasks: [
+          { at: [0.64, 0.58], pose: "pour_drink", dir: "sw", secs: 6, behind: 0.5 },
+          { at: [0.71, 0.58], pose: "wipe_counter", dir: "sw", secs: 5, behind: 0.52 },
+        ],
+      },
+      // The waitress takes the members' order at the sofas and brings it over on a tray.
+      {
+        variant: "waiter",
+        start: 2,
+        tasks: [
+          { at: [0.45, 0.6], pose: "take_order", dir: "sw", secs: 5 },
+          { at: [0.55, 0.67], pose: "stand_idle", dir: "ne", secs: 3 },
+          { at: [0.24, 0.77], pose: "serve_tray", dir: "ne", secs: 4, carry: "carry_tray" },
+          { at: [0.4, 0.86], secs: 0 },
+        ],
+      },
+    ],
   },
   "stadium-room": {
     walkway: [[0.45, 0.62], [0.6, 0.7], [0.72, 0.8], [0.55, 0.85], [0.4, 0.75]],
@@ -417,6 +510,16 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.66, 0.52], dir: "sw" },
     ],
     spots: { door: { at: [0.48, 0.9], dir: "se" }, sit: { at: [0.57, 0.48], dir: "sw" }, stand: { at: [0.62, 0.86], dir: "sw" } },
+    workers: [
+      // The attendant (dark shirt, apron) wipes down the table rail between frames and waits by the drinks fridge.
+      {
+        variant: "bartender",
+        tasks: [
+          { at: [0.6, 0.79], pose: "wipe_counter", dir: "nw", secs: 6 },
+          { at: [0.71, 0.71], pose: "stand_idle", dir: "sw", secs: 5 },
+        ],
+      },
+    ],
   },
   "police-desk": {
     walkway: [[0.4, 0.62], [0.5, 0.72], [0.62, 0.8], [0.5, 0.88], [0.35, 0.78]],
@@ -448,24 +551,40 @@ export const ROOMS: Record<string, Room> = {
     ],
     spots: { door: { at: [0.58, 0.88], dir: "se" }, sleep: { at: [0.64, 0.5], dir: "sw" }, stand: { at: [0.5, 0.78], dir: "se" } },
     workers: [
+      // The nurse writes up her notes at the desk, then goes bed to bed: at the foot of each, bent over the patient
+      // (checking them and giving an injection).
       {
-        variant: "woman_buba",
+        variant: "nurse",
         tasks: [
-          { at: [0.3, 0.77], pose: "stand_idle", dir: "se", secs: 5 },
-          { at: [0.44, 0.6], pose: "serve", dir: "se", secs: 5 },
-          { at: [0.56, 0.72], secs: 0 },
-          { at: [0.72, 0.73], pose: "serve", dir: "se", secs: 6 },
-          { at: [0.5, 0.8], secs: 0 },
+          { at: [0.38, 0.72], pose: "write_chart", dir: "nw", secs: 6 },
+          { at: [0.5, 0.66], pose: "check_patient", dir: "ne", secs: 6 },
+          { at: [0.56, 0.8], secs: 0 },
+          { at: [0.635, 0.725], pose: "check_patient", dir: "ne", secs: 6 },
+          { at: [0.45, 0.8], secs: 0 },
         ],
       },
+      // The doctor comes round now and then: looks at the patient in the far bed, writes on his chart, goes out.
+      {
+        variant: "doctor",
+        start: 12,
+        visitor: { door: [0.58, 0.88], away: 25, variants: ["doctor"] },
+        tasks: [
+          { at: [0.42, 0.61], pose: "check_patient", dir: "ne", secs: 7 },
+          { at: [0.44, 0.7], pose: "write_chart", dir: "nw", secs: 6 },
+        ],
+      },
+      // Patients come in feeling poorly, sit on the edge of the bed by the window holding their head and stomach,
+      // lie down for a while and go home.
       {
         variant: "man_casual",
         start: 4,
         visitor: { door: [0.58, 0.88], away: 8, variants: ["man_casual", "woman_gele", "man_kaftan", "woman_buba"] },
         tasks: [
-          { at: [0.66, 0.78], secs: 0 },
+          { at: [0.72, 0.81], secs: 0 },
+          { at: [0.84, 0.745], pose: "sick_sit", dir: "se", secs: 8 },
           { at: [0.8, 0.58], pose: "sleep", dir: "sw", secs: 30, snap: true },
-          { at: [0.66, 0.78], secs: 0, snap: true },
+          { at: [0.84, 0.745], secs: 0, snap: true },
+          { at: [0.72, 0.81], secs: 0 },
         ],
       },
     ],

@@ -14,9 +14,12 @@ import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant
 
 export { ROOMS, type PlayerAction, type Room };
 
-// Only some poses have a nw sheet (POSE_SHEETS nw); the others facing nw use their sw sheet.
-const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing) =>
-  `/art/life/poses/${action}-${v}-${d === "nw" && !POSE_SHEETS[action].nw ? "sw" : d}.webp`;
+// Only some poses have nw/ne sheets (POSE_SHEETS nw, ne); the others facing nw use their sw sheet, ne their se one.
+const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing | WalkDir) => {
+  const s = POSE_SHEETS[action];
+  const dir = d === "nw" && !s.nw ? "sw" : d === "ne" && !s.ne ? "se" : d;
+  return `/art/life/poses/${action}-${v}-${dir}.webp`;
+};
 
 /** Box for a person `ph` tall showing a pose sheet (null: a walk sheet). Frames are sized in px of a 160 px tall
  * person; most are anchored at the feet (16 px up), lying ones on the middle of the body. */
@@ -430,8 +433,10 @@ function PlayerInRoom({
   );
 }
 
-/** A pose the look has a sheet for (the worker's own look, else the first that has it). */
-const poseLook = (pose: PoseAction, v: WalkerVariant) => (POSE_VARIANTS[pose].includes(v) ? v : POSE_VARIANTS[pose][0]!);
+/** The pose and look to show: the worker's own look in that pose, else their own look standing (so a nurse stays a
+ * nurse), else the first look that has the pose. */
+const poseLook = (pose: PoseAction, v: WalkerVariant): [PoseAction, WalkerVariant] =>
+  POSE_VARIANTS[pose].includes(v) ? [pose, v] : POSE_VARIANTS.stand_idle.includes(v) ? ["stand_idle", v] : [pose, POSE_VARIANTS[pose][0]!];
 
 /**
  * Someone at work in a room (see Room.workers): walks from task to task and holds each task's pose for a while,
@@ -453,24 +458,31 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
     const draw = (now: number) => {
       const node = el.current;
       if (!node) return;
+      const b = box.current;
       node.style.display = m.away > 0 ? "none" : "";
       node.style.left = `${m.at[0] * 100}%`;
       node.style.top = `${m.at[1] * 100}%`;
       node.style.zIndex = String(Math.round(m.at[1] * 1000));
       const task = tasks[m.i]!;
-      const pose = m.hold >= 0 && !m.leaving && task.pose ? task.pose : m.hold >= 0 && !m.leaving ? "stand_idle" : null;
+      const held = m.hold >= 0 && !m.leaving;
+      const [pose, look] = held ? poseLook(task.pose ?? "stand_idle", m.look) : [null, m.look];
       if (pose !== m.shown) {
         m.shown = pose;
         m.t0 = now;
         setShown(pose);
       }
+      // Behind a counter: hide the legs below the counter's edge (the box's bottom is 10% of a person below the feet).
+      const cut = held && task.behind != null ? Math.max(0, (m.at[1] - task.behind) * (b?.clientHeight ?? 0) + ph * 0.1) : 0;
+      node.style.clipPath = cut > 0 ? `inset(0 0 ${cut}px 0)` : "";
       if (!pose) {
-        node.style.backgroundImage = `url(${walkerSheet(m.look, m.dir)})`;
+        // Walking: with a tray (or whatever the task says they carry) when the look has that sheet.
+        const carry = !m.leaving && task.carry && POSE_VARIANTS[task.carry].includes(m.look) ? task.carry : null;
+        node.style.backgroundImage = `url(${carry ? poseSheet(carry, m.look, m.dir) : walkerSheet(m.look, m.dir)})`;
         node.style.backgroundPosition = framePos(Math.floor(m.walked / 0.024) % 8, 8);
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
         const face: Facing = task.dir ?? (m.dir === "sw" || m.dir === "nw" ? "sw" : "se");
-        node.style.backgroundImage = `url(${poseSheet(pose, poseLook(pose, m.look), face)})`;
+        node.style.backgroundImage = `url(${poseSheet(pose, look, face)})`;
         node.style.backgroundPosition = framePos(reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames, frames);
       }
     };
@@ -522,6 +534,6 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [worker, reduce]);
+  }, [worker, reduce, ph]);
   return <div ref={el} className="interior-npc" aria-hidden="true" style={spriteBox(ph, shown)} />;
 }
