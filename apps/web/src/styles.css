@@ -1014,3 +1014,9 @@ body.hud-hidden .map-clock,
 body.hud-hidden .map-events,
 body.hud-hidden .map-land,
 body.hud-hidden .map-hint { display: none !important; }
+
+/* Hustle board */
+.hustle-fee { flex: none; padding: 2px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 13px; }
+.hustle-status { font-weight: 700; }
+.hustle-status.paid { color: #15803d; }
+.hustle-status.disputed, .hustle-status.removed { color: #b91c1c; }

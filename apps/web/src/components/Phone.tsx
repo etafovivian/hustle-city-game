@@ -1,6 +1,6 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { AvatarConfig, DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, Briefcase, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, Handshake, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { AcademyApp, AdminAcademy } from "./Academy.js";
@@ -19,13 +19,15 @@ import { GamesApp, type GameOpen } from "./Games.js";
 import { Hangout, WorkHub } from "./Locations.js";
 import { AdminSponsors } from "./Sponsors.js";
 import { JobsBoard } from "./JobsBoard.js";
+import { AdminHustle, HustleBoard } from "./HustleBoard.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games" | "hustle";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
   { key: "jobs", label: "Jobs", Icon: Briefcase, tint: "#1e2a5e" },
+  { key: "hustle", label: "Hustle", Icon: Handshake, tint: "#b45309" },
   { key: "quests", label: "Quests", Icon: ListChecks, tint: "#00a859" },
   { key: "standings", label: "Standings", Icon: Trophy, tint: "#df382b" },
   { key: "messages", label: "Messages", Icon: MessageCircle, tint: "#3b5bdb" },
@@ -43,7 +45,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", hustle: "Hustle board", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -174,6 +176,7 @@ export function Phone({
               <WorkHub />
             </div>
           )}
+          {app === "hustle" && <HustleBoard notify={notify} onChanged={onChanged} />}
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}
@@ -215,6 +218,7 @@ export function Phone({
               <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
               <AdminSponsors notify={notify} />
+              <AdminHustle notify={notify} />
               <AdminReview notify={notify} />
               <h2 style={{ fontSize: 20 }}>Deal review</h2>
               <AdminDeals notify={notify} />

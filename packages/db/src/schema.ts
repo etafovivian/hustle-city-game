@@ -1065,3 +1065,46 @@ export const jobApplications = pgTable(
   },
   (t) => [uniqueIndex("job_applications_vacancy_user_uq").on(t.vacancyId, t.userId)],
 );
+
+/** The hustle board (see @hc/shared hustle.ts): players hire players. The fee is held from the poster when the job
+ * goes up (ledger "hustle_escrow"), paid to the worker when it's confirmed or on its own a day after it's marked
+ * done ("hustle_pay"), or returned ("hustle_refund"). */
+export const hustleJobs = pgTable(
+  "hustle_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    posterId: uuid("poster_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workerId: uuid("worker_id").references(() => users.id, { onDelete: "set null" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    details: text("details").notNull().default(""),
+    fee: integer("fee").notNull(),
+    place: text("place"),
+    // open | taken | done | paid | cancelled | disputed | removed
+    status: text("status").notNull().default("open"),
+    takenAt: timestamp("taken_at", { withTimezone: true }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("hustle_jobs_status_idx").on(t.status, t.createdAt), index("hustle_jobs_poster_idx").on(t.posterId), index("hustle_jobs_worker_idx").on(t.workerId)],
+);
+
+/** One report per player per job; enough of them hide the job until an admin looks. */
+export const hustleReports = pgTable(
+  "hustle_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => hustleJobs.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("hustle_reports_job_reporter_uq").on(t.jobId, t.reporterId)],
+);

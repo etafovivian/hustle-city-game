@@ -33,6 +33,9 @@ export type CoinKind =
   | "university_fees"
   | "rent"
   | "coach"
+  | "hustle_escrow"
+  | "hustle_pay"
+  | "hustle_refund"
   | "admin_adjustment";
 
 export interface PostingResult {

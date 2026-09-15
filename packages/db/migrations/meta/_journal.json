@@ -204,6 +204,13 @@
       "when": 1791906385625,
       "tag": "0028_jobs_board",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791922803828,
+      "tag": "0029_hustle_board",
+      "breakpoints": true
     }
   ]
 }
