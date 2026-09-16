@@ -29,6 +29,12 @@ function spriteBox(ph: number, pose: PoseAction | null): CSSProperties {
   const base = { width: s.w * k, height: s.h * k, backgroundSize: `${s.frames * 100}% 100%` };
   return s.centred ? { ...base, marginTop: 0, transform: "translate(-50%, -50%)" } : { ...base, marginTop: ph * 0.1 };
 }
+/** Clip for someone whose feet are at image height `y` hidden below `behind` (a table or counter in front of them): the
+ * box's bottom is 10% of a person below the feet. */
+const behindClip = (y: number, behind: number | undefined, h: number, ph: number) => {
+  const cut = behind == null ? 0 : (y - behind) * h + ph * 0.1;
+  return cut > 0 ? `inset(0 0 ${cut}px 0)` : undefined;
+};
 /** Background position for frame `f` of a sheet with `n` frames. */
 const framePos = (f: number, n: number) => `${(f / (n - 1)) * 100}% 0`;
 
@@ -260,6 +266,7 @@ export function InteriorScene({
               top: `${p.at[1] * 100}%`,
               zIndex: Math.round(p.at[1] * 1000),
               backgroundImage: `url(${poseSheet(p.action, p.variant, p.dir)})`,
+              clipPath: behindClip(p.at[1], p.behind, h, ph),
               display: taken && close(taken, p.at) ? "none" : undefined,
             }}
           />
@@ -296,7 +303,7 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -313,6 +320,7 @@ function PlayerInRoom({
     m.route = close(m.at, to, 0.002) ? [] : routeTo(walkway, m.at, to, aspect).slice(1);
     m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
     m.face = target?.spot.dir ?? m.face;
+    m.behind = target?.spot.behind;
     m.atSpot = !!target;
     m.t0 = performance.now();
     m.settled = false;
@@ -361,6 +369,8 @@ function PlayerInRoom({
         node.style.backgroundImage = `url(${poseSheet(pose, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
+      // At a spot behind a table or counter: hide what it hides.
+      node.style.clipPath = (pose && m.atSpot && !m.free && behindClip(m.at[1], m.behind, box.current?.clientHeight ?? 0, ph)) || "";
     };
     const step = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
@@ -408,7 +418,7 @@ function PlayerInRoom({
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant, reduce]);
+  }, [variant, reduce, ph]);
 
   return (
     <div ref={el} className="interior-npc interior-player" aria-label="You" style={{ ...spriteBox(ph, shown), left: `${door[0] * 100}%`, top: `${door[1] * 100}%` }}>
@@ -471,9 +481,8 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
         m.t0 = now;
         setShown(pose);
       }
-      // Behind a counter: hide the legs below the counter's edge (the box's bottom is 10% of a person below the feet).
-      const cut = held && task.behind != null ? Math.max(0, (m.at[1] - task.behind) * (b?.clientHeight ?? 0) + ph * 0.1) : 0;
-      node.style.clipPath = cut > 0 ? `inset(0 0 ${cut}px 0)` : "";
+      // Behind a counter: hide the legs below the counter's edge.
+      node.style.clipPath = (held && behindClip(m.at[1], task.behind, b?.clientHeight ?? 0, ph)) || "";
       if (!pose) {
         // Walking: with a tray (or whatever the task says they carry) when the look has that sheet.
         const carry = !m.leaving && task.carry && POSE_VARIANTS[task.carry].includes(m.look) ? task.carry : null;

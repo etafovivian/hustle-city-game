@@ -30,7 +30,14 @@ export type PoseAction =
   | "cook_stir"
   | "wipe_counter"
   | "sick_sit"
-  | "take_order";
+  | "take_order"
+  | "stand_talk"
+  | "cook_hob"
+  | "cut_hair"
+  | "sew"
+  | "sit_desk"
+  | "eat_table"
+  | "sit_table";
 /** Adult looks that have every pose, prayer included. */
 const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
@@ -59,6 +66,13 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   wipe_counter: ["bartender", "waiter", "chef", "woman_buba"],
   sick_sit: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
   take_order: ["waiter", "bartender"],
+  stand_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS, ...STAFF_VARIANTS],
+  cook_hob: ["woman_buba", "woman_gele", "chef", "man_casual"],
+  cut_hair: ["man_casual", "woman_buba", "woman_gele"],
+  sew: ["woman_buba", "man_kaftan"],
+  sit_desk: ["man_casual", "woman_buba", "man_kaftan", "woman_gele"],
+  eat_table: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  sit_table: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
 };
 /**
  * Each pose sheet's frame size, frame count and speed. Standing, seated and praying frames have the feet 16 px above
@@ -69,8 +83,9 @@ export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: num
   dance: { w: 96, h: 160, frames: 8, fps: 10 },
   serve: { w: 96, h: 160, frames: 8, fps: 7 },
   stand_idle: { w: 96, h: 160, frames: 8, fps: 7 },
-  sit_eat: { w: 96, h: 160, frames: 8, fps: 7 },
-  sit_talk: { w: 96, h: 160, frames: 8, fps: 7 },
+  // Seated: all four ways (a seat can face away from the viewer). sit_eat has a plate of jollof on the lap and a spoon.
+  sit_eat: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
+  sit_talk: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
   sleep: { w: 192, h: 112, frames: 8, fps: 3, centred: true },
   pray_salah: { w: 144, h: 160, frames: 16, fps: 1.6, nw: true },
   pray_church: { w: 96, h: 160, frames: 8, fps: 4 },
@@ -98,6 +113,20 @@ export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: num
   wipe_counter: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
   sick_sit: { w: 96, h: 160, frames: 8, fps: 3 },
   carry_tray: { w: 96, h: 160, frames: 8, fps: 10, nw: true, ne: true, walk: true },
+  // stand_talk: standing and chatting, hands moving (the library's talking idle): visitors, customers, a preacher.
+  // cook_hob: stirring a pot on a cooker's hob (the pot is in the sheet at hob height, ~0.9 m); cut_hair: clippers
+  // round a seated client's head; sew: seated at a machine feeding cloth; sit_desk: seated at a desk, typing or writing.
+  // The seated ones (sew, sit_desk) are anchored at the feet like sit_talk.
+  stand_talk: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  cook_hob: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  cut_hair: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  sew: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  sit_desk: { w: 96, h: 160, frames: 8, fps: 5, nw: true, ne: true },
+  // eat_table: seated at a table, the plate (and a drink) on the table in front at 0.75 m, spoon to the mouth. Seated
+  // on the far side of a table facing the viewer, use `behind` (the table's near edge) so the table hides the legs.
+  eat_table: { w: 96, h: 160, frames: 8, fps: 5, nw: true, ne: true },
+  // sit_table: seated at a table chatting, forearms on it (the legs under the table are cut away like eat_table).
+  sit_table: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
 };
 
 export type Pt = [number, number];
@@ -129,13 +158,15 @@ export interface Spot {
   dir: Facing;
   /** The pose played there, when not the usual one for the action (e.g. standing in a prayer row). */
   pose?: PoseAction;
+  /** Hidden below this height (fraction of the image) once settled: seated behind a table, standing behind a counter. */
+  behind?: number;
 }
 export interface Room {
   /** Open floor, in order: walkers go back and forth along it, pausing at each spot. */
   walkway: Pt[];
   walkers: number;
   /** `phase`: frames into its loop this person starts (so a row of people praying don't move in step). */
-  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number }[];
+  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number; behind?: number }[];
   spots?: Partial<Record<SpotKey, Spot>>;
   /** People at work (or passing through) who move from task to task: the nurse doing her rounds, the barman
    * going from customer to customer, a patient who comes in, lies down for a while and goes home. */
@@ -625,7 +656,7 @@ export const ROOMS: Record<string, Room> = {
     // One room: a mattress on the floor, a plastic chair, a stove on the floor.
     walkway: [[0.48, 0.73], [0.6, 0.72], [0.72, 0.76], [0.64, 0.84]],
     walkers: 1,
-    stations: [{ action: "sit_talk", at: [0.38, 0.79], dir: "se", variant: "woman_buba" }],
+    stations: [{ action: "sit_eat", at: [0.38, 0.79], dir: "se", variant: "woman_buba" }],
     spots: {
       door: { at: [0.64, 0.84], dir: "sw" },
       sleep: { at: [0.46, 0.54], dir: "sw" },
@@ -640,7 +671,7 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.6, 0.6], [0.62, 0.68], [0.58, 0.78], [0.5, 0.86]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.53, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "cook_hob", at: [0.5, 0.5], dir: "ne", variant: "woman_buba" },
       { action: "sit_talk", at: [0.46, 0.72], dir: "se", variant: "man_casual" },
     ],
     spots: {
@@ -659,7 +690,6 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "sit_talk", at: [0.4, 0.69], dir: "se", variant: "man_kaftan" },
       { action: "sit_eat", at: [0.5, 0.645], dir: "se", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.78, 0.74], dir: "sw", variant: "schoolgirl" },
     ],
     spots: {
       door: { at: [0.48, 0.86], dir: "se" },
@@ -678,14 +708,15 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sit_talk", at: [0.4, 0.71], dir: "se", variant: "woman_gele" },
-      { action: "sit_eat", at: [0.5, 0.67], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.78, 0.64], dir: "sw", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.5, 0.67], dir: "se", variant: "man_kaftan", phase: 4 },
+      // the daughter at the dining table, eating
+      { action: "eat_table", at: [0.245, 0.59], dir: "se", variant: "schoolgirl" },
     ],
     spots: {
       door: { at: [0.6, 0.88], dir: "se" },
       sleep: { at: [0.44, 0.64], dir: "sw" },
       sit: { at: [0.4, 0.71], dir: "se" },
-      eat: { at: [0.5, 0.67], dir: "se" },
+      eat: { at: [0.18, 0.625], dir: "se", pose: "eat_table" },
       stand: { at: [0.74, 0.72], dir: "sw" },
       dance: { at: [0.7, 0.8], dir: "se" },
       workout: { at: [0.7, 0.8], dir: "se" },
@@ -699,7 +730,7 @@ export const ROOMS: Record<string, Room> = {
       { action: "sit_talk", at: [0.44, 0.635], dir: "se", variant: "woman_gele" },
       { action: "sit_eat", at: [0.54, 0.6], dir: "se", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.68, 0.745], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.76, 0.66], dir: "sw", variant: "man_casual" },
+      { action: "stand_talk", at: [0.76, 0.66], dir: "sw", variant: "man_casual" },
     ],
     spots: {
       door: { at: [0.62, 0.88], dir: "se" },
@@ -717,7 +748,7 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sit_talk", at: [0.31, 0.665], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.62, 0.7], dir: "sw", variant: "woman_buba" },
+      { action: "stand_talk", at: [0.62, 0.7], dir: "nw", variant: "woman_buba" },
       { action: "dance", at: [0.6, 0.8], dir: "se", variant: "woman_gele" },
     ],
     spots: {
@@ -735,7 +766,7 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "sit_talk", at: [0.555, 0.44], dir: "sw", variant: "woman_buba" },
       { action: "sit_talk", at: [0.625, 0.48], dir: "sw", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.3, 0.62], dir: "se", variant: "schoolboy" },
+      { action: "stand_talk", at: [0.5, 0.52], dir: "ne", variant: "man_casual" },
     ],
     spots: {
       door: { at: [0.45, 0.82], dir: "se" },
@@ -752,14 +783,15 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sleep", at: [0.26, 0.63], dir: "se", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.53, 0.47], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.575, 0.435], dir: "ne", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.78, 0.66], dir: "sw", variant: "woman_buba" },
     ],
     spots: {
       door: { at: [0.32, 0.44], dir: "se" },
       sleep: { at: [0.36, 0.575], dir: "se" },
       sit: { at: [0.78, 0.66], dir: "sw" },
-      eat: { at: [0.62, 0.47], dir: "se" },
+      // the second stool at the tiki bar (bar stools: feet on the footrest, a bit above the floor)
+      eat: { at: [0.64, 0.475], dir: "ne", pose: "eat_table" },
       stand: { at: [0.45, 0.47], dir: "se" },
       dance: { at: [0.5, 0.5], dir: "se" },
       workout: { at: [0.5, 0.5], dir: "se" },
@@ -788,13 +820,14 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.35, 0.72], [0.45, 0.62], [0.55, 0.55], [0.6, 0.7], [0.5, 0.82], [0.4, 0.8]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.28, 0.68], dir: "se", variant: "woman_buba" },
-      { action: "sit_eat", at: [0.71, 0.63], dir: "se", variant: "man_kaftan" },
+      // mum at the cooker stirring the pot; dad at the table eating
+      { action: "cook_hob", at: [0.3, 0.665], dir: "nw", variant: "woman_buba" },
+      { action: "eat_table", at: [0.73, 0.67], dir: "se", variant: "man_kaftan" },
     ],
     spots: {
       door: { at: [0.5, 0.85], dir: "se" },
-      eat: { at: [0.71, 0.63], dir: "se" },
-      sit: { at: [0.71, 0.63], dir: "se" },
+      eat: { at: [0.855, 0.64], dir: "sw", pose: "eat_table" },
+      sit: { at: [0.855, 0.64], dir: "sw", pose: "sit_table" },
       stand: { at: [0.45, 0.62], dir: "se" },
       dance: { at: [0.48, 0.75], dir: "se" },
     },
@@ -836,18 +869,29 @@ export const ROOMS: Record<string, Room> = {
     },
   },
   "home-villa-kitchen": {
-    // Fitted kitchen with an island and three bar stools, big fridge on the right.
+    // Fitted kitchen: hob and oven on the left run, an island with three bar stools facing it (ne), big fridge on the
+    // right. Bar stools are tall: seated people are anchored with their feet on the stool's footrest (a bit above the
+    // floor), so they sit at the stool's seat height.
     walkway: [[0.3, 0.62], [0.4, 0.72], [0.52, 0.8], [0.65, 0.76], [0.75, 0.68], [0.8, 0.62]],
-    walkers: 1,
+    walkers: 0,
     stations: [
-      { action: "serve", at: [0.37, 0.53], dir: "se", variant: "woman_buba" },
-      { action: "sit_eat", at: [0.48, 0.63], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.55, 0.67], dir: "sw", variant: "woman_gele" },
+      { action: "eat_table", at: [0.535, 0.598], dir: "ne", variant: "man_casual" },
+      { action: "sit_talk", at: [0.595, 0.643], dir: "ne", variant: "woman_gele", phase: 3 },
+    ],
+    workers: [
+      // Mum at the hob stirring the pot, turning now and then to talk to the two at the island.
+      {
+        variant: "woman_buba",
+        tasks: [
+          { at: [0.41, 0.515], pose: "cook_hob", dir: "nw", secs: 10 },
+          { at: [0.42, 0.53], pose: "stand_talk", dir: "se", secs: 4 },
+        ],
+      },
     ],
     spots: {
       door: { at: [0.52, 0.82], dir: "se" },
-      eat: { at: [0.48, 0.63], dir: "sw" },
-      sit: { at: [0.55, 0.67], dir: "sw" },
+      eat: { at: [0.475, 0.553], dir: "ne", pose: "eat_table" },
+      sit: { at: [0.475, 0.553], dir: "ne" },
       stand: { at: [0.65, 0.76], dir: "sw" },
       dance: { at: [0.42, 0.74], dir: "se" },
     },

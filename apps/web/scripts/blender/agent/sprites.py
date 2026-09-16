@@ -694,10 +694,10 @@ def pose_frames(arm, action, base):
             if action == "sit_eat":
                 # left hand holds the bowl above the lap; right hand goes bowl -> mouth -> bowl once per loop
                 k = smoothstep(0.0, 1.0, 0.5 - 0.5 * math.cos(2 * math.pi * t))
-                bowl = body_point(arm, "spine_01", (-0.05, -0.3, 0.05))
+                bowl = body_point(arm, "spine_01", (0.0, -0.36, 0.12))
                 mouth = body_point(arm, "Head", (-0.02, -0.13, 0.03))
                 er.location = bowl.lerp(mouth, k)
-                el.location = body_point(arm, "spine_01", (0.07, -0.28, 0.02))
+                el.location = body_point(arm, "spine_01", (0.06, -0.36, 0.09))
             elif action == "dance":
                 # owambe: both hands up around head height, waving/swaying in alternation over the clip
                 a = 2 * math.pi * t
@@ -1412,10 +1412,13 @@ VARIANTS += STAFF_VARIANTS
 # -y = forward, z = up, feet at the origin), and props built at the posed hands. carry_tray is a walk sheet instead
 # (the library's Walk_Loop with the right hand up under a tray). All 8 frames of 96x160, feet 16 px up.
 ALL_DIRS = ["se", "sw", "ne", "nw"]
+GENERIC_DIRS = {"run": ["se", "sw", "nw"], "sit_eat": ALL_DIRS, "sit_talk": ALL_DIRS, "stand_talk": ALL_DIRS}
+# props on the library-clip poses: a plate of food on the lap and a spoon when eating
+GENERIC_PROPS = {"sit_eat": [("plate_lap", "l"), ("spoon", "r")]}
 REACH = 0.43  # m from the shoulder
 WORK_DIRS = {"sick_sit": ["se", "sw"]}
 WORK_FPS = {}
-WORK_ACTIONS = ["check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
+WORK_ACTIONS = ["sit_table", "eat_table", "cook_hob", "cut_hair", "sew", "sit_desk", "check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
 LEGACY_ADULTS = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"]
 POSES.update({
     "stand_idle": (POSES["stand_idle"][0], POSES["stand_idle"][1] + STAFF_NAMES),
@@ -1428,6 +1431,16 @@ POSES.update({
     "wipe_counter": ("Idle_Loop", ["bartender", "waiter", "chef", "woman_buba"]),
     "sick_sit": ("Idle_Loop", LEGACY_ADULTS),
     "take_order": ("Idle_Loop", ["waiter", "bartender"]),
+    # standing and chatting (visitors at a bedside, customers at a counter, a pastor or teacher): the library clip
+    "stand_talk": ("Idle_Talking_Loop", LEGACY_ADULTS + OUTFIT_NAMES + STAFF_NAMES),
+    "cook_hob": ("Idle_Loop", ["woman_buba", "woman_gele", "chef", "man_casual"]),
+    # seated at a table with the plate on the table in front: spoon from the plate to the mouth (every everyday look,
+    # so the player can eat at a table in whatever they wear)
+    "sit_table": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
+    "eat_table": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
+    "cut_hair": ("Idle_Loop", ["man_casual", "woman_buba", "woman_gele"]),
+    "sew": ("Idle_Loop", ["woman_buba", "man_kaftan"]),
+    "sit_desk": ("Idle_Loop", ["man_casual", "woman_buba", "man_kaftan", "woman_gele"]),
 })
 
 
@@ -1435,9 +1448,13 @@ def bp(bone, off):
     return lambda arm: body_point(arm, bone, off)
 
 
+FLOOR = [0.0]  # armature-space height of the floor this frame (seated poses: the body is lowered onto the seat after)
+
+
 def ab(x, y, z):
+    """A target fixed in the room: x, y from the feet, z above the floor."""
     v = Vector((x, y, z))
-    return lambda arm: v.copy()
+    return lambda arm: v + Vector((0, 0, FLOOR[0]))
 
 
 def work_frame(action, i, n):
@@ -1488,6 +1505,40 @@ def work_frame(action, i, n):
         # sitting on the edge of the bed, bent over: one hand on the stomach, the other on the forehead, rocking
         q = P(hip=88, knee=88, ankle=0, sp1=14 + 6 * k, sp2=6, sp3=4, head=16 + 6 * k, neck=6)
         return dict(q=q, l=bp("spine_01", (0.03, -0.16, 0.04)), r=bp("Head", (-0.03, -0.12, 0.1)), props=[], sit=True)
+    if action == "sit_table":
+        # seated at a table, chatting: forearms on the table, one hand moving as they talk, the head nodding
+        q = P(hip=88, knee=88, ankle=0, sp1=6, head=4 + 6 * math.sin(ph), neck=2, side=2 * math.sin(ph))
+        return dict(q=q, r=ab(-0.12 + 0.05 * math.sin(ph), -0.4, 0.8 + 0.06 * max(0.0, math.sin(ph))), l=ab(0.14, -0.36, 0.77),
+                    props=[("table_holdout",)], sit=True)
+    if action == "eat_table":
+        k2 = smoothstep(0.0, 1.0, 0.5 - 0.5 * math.cos(ph))
+        q = P(hip=88, knee=88, ankle=0, sp1=10 + 6 * (1 - k2), head=14 * (1 - k2) + 2, neck=4)
+        plate = Vector((0.0, -0.42, 0.8))
+
+        def r(arm):
+            mouth = body_point(arm, "Head", (-0.02, -0.12, 0.02))
+            return (plate + Vector((0, 0, FLOOR[0]))).lerp(mouth, k2)
+        return dict(q=q, r=r, l=ab(0.17, -0.36, 0.79), props=[("table_holdout",), ("plate_at", (0.0, -0.42, 0.75)), ("spoon", "r")], sit=True)
+    if action == "cook_hob":
+        # at a cooker: stirring a pot on the hob (the pot is in the sheet, at hob height), the other hand on its handle
+        q = P(sp1=8, sp2=2, head=18, neck=6)
+        return dict(q=q, r=ab(-0.06 + 0.05 * math.cos(ph), -0.34 + 0.04 * math.sin(ph), 1.12), l=ab(0.2, -0.32, 1.02),
+                    props=[("pot_hob",), ("ladle", "r")])
+    if action == "cut_hair":
+        # behind a seated client: clippers (or a comb) working round their head, the other hand steadying it
+        q = P(sp1=6, head=14, neck=4)
+        return dict(q=q, r=ab(-0.06 + 0.05 * math.cos(ph), -0.36 + 0.03 * math.sin(ph), 1.22 + 0.04 * math.sin(2 * ph)),
+                    l=ab(0.1, -0.36, 1.26), props=[("clipper", "r")])
+    if action == "sew":
+        # seated at a sewing machine (the machine is in the room art): feeding the cloth through with both hands
+        q = P(hip=88, knee=88, ankle=0, sp1=12, head=22, neck=8)
+        dy = 0.03 * math.sin(ph)
+        return dict(q=q, r=ab(-0.1, -0.42 + dy, 0.74), l=ab(0.1, -0.4 + dy, 0.74), props=[("fabric", "r", "l")], sit=True)
+    if action == "sit_desk":
+        # seated at a desk or counter: typing, writing, turning a page
+        q = P(hip=88, knee=88, ankle=0, sp1=8, head=16 if i < 6 else 4, neck=6)
+        tap = 0.015 * (1 if i % 2 else -1)
+        return dict(q=q, r=ab(-0.1, -0.4, 0.76 + tap), l=ab(0.1, -0.4, 0.76 - tap), props=[("table_holdout",), ("papers",)], sit=True)
     if action == "carry_tray":
         return dict(walk=True, r=bp("spine_03", (-0.27, -0.12, 0.15)), props=[("tray", "r", True)])
     raise KeyError(action)
@@ -1516,6 +1567,19 @@ def _prop(name, rgb, build):
 
 
 POT = [None]
+
+
+def NOLINE():
+    """A collection Freestyle leaves out (invisible helper geometry such as the table holdout)."""
+    col = bpy.data.collections.get("noline")
+    if col is None:
+        col = bpy.data.collections.new("noline")
+        bpy.context.scene.collection.children.link(col)
+        for ls in bpy.context.view_layer.freestyle_settings.linesets:
+            ls.select_by_collection = True
+            ls.collection = col
+            ls.collection_negation = "EXCLUSIVE"
+    return col
 
 
 def build_props(arm, specs):
@@ -1595,6 +1659,64 @@ def build_props(arm, specs):
             g = H[sp[1]] - up * 0.03
             made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, g, g + up * 0.012, 0.075, 0.085, seg=18)))
             made.append(_prop("jollof", (0.88, 0.32, 0.08), lambda bm: _cyl(bm, g + up * 0.012, g + up * 0.04, 0.055, 0.02, seg=14)))
+        elif kind == "pot_hob":
+            base = Vector((mw.translation.x, mw.translation.y, 0.92)) + fwd * 0.38
+            made.append(_prop("pot", (0.72, 0.74, 0.78), lambda bm: _cyl(bm, base, base + up * 0.2, 0.13, 0.14, seg=20)))
+            made.append(_prop("stew", (0.82, 0.24, 0.06), lambda bm: _cyl(bm, base + up * 0.185, base + up * 0.197, 0.13, seg=20)))
+            POT[0] = base + up * 0.1
+        elif kind == "clipper":
+            g = H[sp[1]]
+            made.append(_prop("clipper", (0.12, 0.12, 0.14), lambda bm: _box(bm, g + fwd * 0.03, (left, fwd, up), (0.04, 0.1, 0.035))))
+        elif kind == "fabric":
+            a, b = H[sp[1]], H[sp[2]]
+            c = (a + b) / 2 - up * 0.02
+            made.append(_prop("fabric", (0.85, 0.35, 0.1), lambda bm: _box(bm, c + fwd * 0.05, (left, fwd, up), (0.42, 0.3, 0.008))))
+        elif kind == "papers":
+            base = Vector((mw.translation.x, mw.translation.y, 0.0))
+            # (the anchor is the feet; the desk top is in the room art) a sheet of paper under the hands
+            c = (H["l"] + H["r"]) / 2 - up * 0.025
+            made.append(_prop("paper", (0.98, 0.98, 0.96), lambda bm: _box(bm, c, (left, fwd, up), (0.21, 0.28, 0.004))))
+        elif kind == "table_holdout":
+            # an invisible table: holds out (cuts away) the legs under the table top and behind its front, so the
+            # sprite shows the body above the table and what is on it; the room art draws the table itself
+            o = _prop("holdout", (0, 0, 0), lambda bm: None)
+            bm = bmesh.new()
+            c = mw @ Vector((0.0, -0.6, 0.0))
+            c.z = 0.37
+            _box(bm, c, (left, fwd, up), (1.1, 0.62, 0.74))
+            bm.to_mesh(o.data)
+            bm.free()
+            hm = bpy.data.materials.new("holdout")
+            hm.use_nodes = True
+            nt = hm.node_tree
+            nt.nodes.clear()
+            out = nt.nodes.new("ShaderNodeOutputMaterial")
+            ho = nt.nodes.new("ShaderNodeHoldout")
+            nt.links.new(ho.outputs[0], out.inputs["Surface"])
+            o.data.materials.clear()
+            o.data.materials.append(hm)
+            for col in o.users_collection:
+                col.objects.unlink(o)
+            NOLINE().objects.link(o)
+            made.append(o)
+        elif kind == "plate_at":
+            g = mw @ Vector((sp[1][0], sp[1][1], 0.0))
+            g.z = sp[1][2]
+            made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, g, g + up * 0.014, 0.11, 0.125, seg=20)))
+            made.append(_prop("jollof", (0.9, 0.34, 0.08), lambda bm: _cyl(bm, g + up * 0.014, g + up * 0.05, 0.085, 0.03, seg=16)))
+            made.append(_prop("meat", (0.45, 0.22, 0.1), lambda bm: _box(bm, g + up * 0.045 + fwd * 0.05 + left * 0.03, (left, fwd, up), (0.05, 0.04, 0.03))))
+            gl = g + left * 0.2 - fwd * 0.02
+            made.append(_prop("glass", (0.72, 0.9, 0.95), lambda bm: _cyl(bm, gl, gl + up * 0.11, 0.03, 0.036, seg=10)))
+            made.append(_prop("drink", (0.85, 0.45, 0.08), lambda bm: _cyl(bm, gl + up * 0.005, gl + up * 0.07, 0.028, 0.032, seg=10)))
+        elif kind == "plate_lap":
+            g = H[sp[1]] + up * 0.012 + fwd * 0.02 - left * 0.04
+            made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, g, g + up * 0.014, 0.1, 0.115, seg=20)))
+            made.append(_prop("jollof", (0.9, 0.34, 0.08), lambda bm: _cyl(bm, g + up * 0.014, g + up * 0.045, 0.075, 0.03, seg=16)))
+            made.append(_prop("meat", (0.45, 0.22, 0.1), lambda bm: _box(bm, g + up * 0.04 + fwd * 0.05, (left, fwd, up), (0.05, 0.04, 0.03))))
+        elif kind == "spoon":
+            g = H[sp[1]]
+            d = (fwd * 0.7 + up * 0.3 - left * 0.3).normalized()
+            made.append(_prop("spoon", (0.75, 0.76, 0.8), lambda bm: _cyl(bm, g - d * 0.03, g + d * 0.09, 0.006, seg=6)))
         elif kind == "pot":
             base = Vector((mw.translation.x, mw.translation.y, 0.0)) + fwd * 0.4
             made.append(_prop("stove", (0.16, 0.16, 0.18), lambda bm: _cyl(bm, base, base + up * 0.18, 0.13, 0.15, seg=16)))
@@ -1633,6 +1755,7 @@ def render_work(arm, scene, look, name, action, tmp, first):
             else:
                 apply_pose(arm, spec["q"])
             bpy.context.view_layer.update()
+            FLOOR[0] = body_bounds()[0].z if spec.get("sit") else 0.0
             for side, e, c in (("r", er, cr), ("l", el, cl)):
                 if side in spec:
                     tg = spec[side](arm)
@@ -1695,13 +1818,19 @@ def render_poses(name, sex, fn, jobs, tmp):
         yaw = clip_yaw(arm, base)
         print("CLIP", base, "body yaw", round(yaw, 1))
         # runners also face nw (on a treadmill, towards its console)
-        for d, (sx, sy) in (dict(POSE_DIRS, nw=DIRS["nw"]) if action == "run" else POSE_DIRS).items():
+        # seated and talking people also face ne/nw (sofas facing a TV, the far side of a table)
+        dl = os.environ["PRAYDIRS"].split(",") if os.environ.get("PRAYDIRS") else GENERIC_DIRS.get(action, ["se", "sw"])
+        for d in dl:
+            sx, sy = DIRS[d]
             arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy) - yaw))
             sheet = np.zeros((FH, FW * NF, 4), dtype=np.float32)
             for i in pose_frames(arm, action, base):
                 p = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
                 scene.render.filepath = p
+                props = build_props(arm, GENERIC_PROPS.get(action, []))
                 bpy.ops.render.render(write_still=True)
+                for o in props:
+                    bpy.data.objects.remove(o)
                 a = read_png(p)
                 if look == "toon":
                     a = downsample(a)
