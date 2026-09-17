@@ -922,4 +922,299 @@ export const ROOMS: Record<string, Room> = {
       dance: { at: [0.4, 0.66], dir: "se" },
     },
   },
+  // ---- Stitch zip 18: new rooms (2026-10-13). Bar stools and stages: people are anchored a little above the floor
+  // (feet on the footrest or the stage) so they sit or stand at the right height.
+  "hospital-ward-4": {
+    // Two beds with drips and curtains, the nurses' desk on the left, the door on the right wall.
+    walkway: [[0.8, 0.63], [0.7, 0.7], [0.58, 0.74], [0.45, 0.72], [0.35, 0.8]],
+    walkers: 0,
+    stations: [
+      { action: "sleep", at: [0.53, 0.41], dir: "se", variant: "man_kaftan" },
+      // the player's bed: she makes way when the player lies down there
+      { action: "sleep", at: [0.35, 0.5], dir: "se", variant: "woman_buba", phase: 3 },
+    ],
+    spots: { door: { at: [0.8, 0.63], dir: "sw" }, sleep: { at: [0.35, 0.5], dir: "se" }, stand: { at: [0.6, 0.74], dir: "sw" } },
+    workers: [
+      // The nurse writes up her notes at the desk, then checks each patient at the foot of the bed.
+      {
+        variant: "nurse",
+        tasks: [
+          { at: [0.27, 0.8], pose: "write_chart", dir: "nw", secs: 6 },
+          { at: [0.48, 0.63], pose: "check_patient", dir: "nw", secs: 6 },
+          { at: [0.6, 0.63], secs: 0 },
+          { at: [0.66, 0.525], pose: "check_patient", dir: "nw", secs: 6 },
+          { at: [0.5, 0.75], secs: 0 },
+        ],
+      },
+      // The doctor comes round now and then: at the bedside, then writing on the chart, and out.
+      {
+        variant: "doctor",
+        start: 10,
+        visitor: { door: [0.8, 0.63], away: 30, variants: ["doctor"] },
+        tasks: [
+          { at: [0.37, 0.655], pose: "check_patient", dir: "ne", secs: 7 },
+          { at: [0.45, 0.72], pose: "write_chart", dir: "nw", secs: 5 },
+        ],
+      },
+      // Family come to see the man in the far bed, talk for a while at the foot of it and go.
+      {
+        variant: "woman_gele",
+        start: 4,
+        visitor: { door: [0.8, 0.63], away: 12, variants: ["woman_gele", "man-agbada_white", "woman-ankara_green", "man_casual"] },
+        tasks: [{ at: [0.6, 0.575], pose: "stand_talk", dir: "nw", secs: 14 }],
+      },
+    ],
+  },
+  "consulting-room": {
+    // The doctor's desk with his chair behind it and two patient chairs in front (seen from behind), the examination
+    // couch, scales, cabinet and sink.
+    walkway: [[0.6, 0.88], [0.55, 0.78], [0.5, 0.7], [0.62, 0.68]],
+    walkers: 0,
+    stations: [{ action: "sit_desk", at: [0.21, 0.595], dir: "se", variant: "doctor" }],
+    spots: {
+      door: { at: [0.6, 0.88], dir: "se" },
+      sit: { at: [0.39, 0.67], dir: "nw", behind: 0.6 },
+      sleep: { at: [0.52, 0.43], dir: "se" },
+      stand: { at: [0.6, 0.76], dir: "sw" },
+    },
+    workers: [
+      // Patients come in, sit in front of the doctor, get up on the couch to be examined and go home.
+      {
+        variant: "man_casual",
+        start: 2,
+        visitor: { door: [0.6, 0.88], away: 6, variants: ["man_casual", "woman_buba", "man_kaftan", "woman_gele"] },
+        tasks: [
+          { at: [0.28, 0.73], pose: "sit_talk", dir: "nw", secs: 10, behind: 0.665 },
+          { at: [0.5, 0.7], secs: 0 },
+          { at: [0.52, 0.43], pose: "sleep", dir: "se", secs: 10, snap: true },
+          { at: [0.5, 0.7], secs: 0, snap: true },
+        ],
+      },
+      // The nurse writes at the cabinet and checks the patient on the couch.
+      {
+        variant: "nurse",
+        start: 6,
+        tasks: [
+          { at: [0.7, 0.66], pose: "write_chart", dir: "ne", secs: 8 },
+          { at: [0.6, 0.62], pose: "check_patient", dir: "nw", secs: 6 },
+        ],
+      },
+    ],
+  },
+  restaurant: {
+    // Four tables with white cloths, the kitchen pass on the left wall, the bar counter with the till on the right.
+    walkway: [[0.5, 0.92], [0.38, 0.84], [0.35, 0.74], [0.42, 0.63], [0.56, 0.6], [0.6, 0.5]],
+    walkers: 0,
+    stations: [
+      // Seated at a table (eat_table, sit_table): the anchor is the feet, under the table, so that the hips land on the
+      // chair's seat: seat + (0.03, 0.054) facing se, seat + (-0.03, 0.054) facing sw.
+      { action: "eat_table", at: [0.405, 0.574], dir: "se", variant: "man-agbada_white" },
+      { action: "eat_table", at: [0.47, 0.554], dir: "sw", variant: "woman-peplum_coral", phase: 3 },
+      { action: "eat_table", at: [0.64, 0.69], dir: "se", variant: "woman_gele", phase: 5 },
+      { action: "sit_table", at: [0.71, 0.674], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_table", at: [0.435, 0.844], dir: "se", variant: "woman-tee_blue", phase: 2 },
+    ],
+    spots: {
+      door: { at: [0.5, 0.92], dir: "se" },
+      eat: { at: [0.185, 0.694], dir: "se", pose: "eat_table" },
+      sit: { at: [0.26, 0.674], dir: "sw", pose: "sit_table" },
+      stand: { at: [0.56, 0.6], dir: "se" },
+    },
+    workers: [
+      // The waiter takes orders and carries plates from the kitchen pass to the tables.
+      {
+        variant: "waiter",
+        tasks: [
+          { at: [0.35, 0.61], pose: "take_order", dir: "ne", secs: 5 },
+          { at: [0.36, 0.52], pose: "stand_idle", dir: "nw", secs: 3 },
+          { at: [0.6, 0.72], pose: "serve_tray", dir: "ne", secs: 4, carry: "carry_tray" },
+          { at: [0.42, 0.68], secs: 0 },
+        ],
+      },
+      // The chef at the pass, wiping down and dishing up.
+      { variant: "chef", tasks: [{ at: [0.28, 0.5], pose: "wipe_counter", dir: "se", secs: 8, behind: 0.455 }] },
+      // The barman at the till end of the counter.
+      {
+        variant: "bartender",
+        tasks: [
+          { at: [0.8, 0.5], pose: "pour_drink", dir: "sw", secs: 6, behind: 0.47 },
+          { at: [0.74, 0.47], pose: "wipe_counter", dir: "sw", secs: 5, behind: 0.44 },
+        ],
+      },
+    ],
+  },
+  "cocktail-bar": {
+    // A long bar with green stools facing it (ne), high tables on the left, one in front. Bar stools: feet on the
+    // footrest.
+    walkway: [[0.3, 0.75], [0.38, 0.68], [0.48, 0.66], [0.6, 0.72], [0.72, 0.78]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.488, 0.52], dir: "ne", variant: "woman-peplum_coral" },
+      { action: "sit_talk", at: [0.618, 0.59], dir: "ne", variant: "man-agbada_white", phase: 3 },
+      { action: "sit_talk", at: [0.683, 0.63], dir: "ne", variant: "woman_gele", phase: 6 },
+    ],
+    spots: {
+      door: { at: [0.3, 0.75], dir: "se" },
+      sit: { at: [0.553, 0.575], dir: "ne" },
+      eat: { at: [0.553, 0.575], dir: "ne", pose: "eat_table" },
+      dance: { at: [0.42, 0.66], dir: "se" },
+      stand: { at: [0.38, 0.68], dir: "se" },
+    },
+    workers: [
+      {
+        variant: "bartender",
+        tasks: [
+          { at: [0.56, 0.47], pose: "pour_drink", dir: "sw", secs: 6, behind: 0.44 },
+          { at: [0.66, 0.52], pose: "wipe_counter", dir: "sw", secs: 4, behind: 0.49 },
+          { at: [0.5, 0.44], pose: "take_order", dir: "sw", secs: 4, behind: 0.41 },
+        ],
+      },
+      // The waitress takes drinks from the end of the bar to the table in front.
+      {
+        variant: "waiter",
+        start: 3,
+        tasks: [
+          { at: [0.8, 0.68], pose: "stand_idle", dir: "nw", secs: 3 },
+          { at: [0.58, 0.8], pose: "serve_tray", dir: "sw", secs: 4, carry: "carry_tray" },
+          { at: [0.43, 0.75], pose: "take_order", dir: "se", secs: 4 },
+        ],
+      },
+    ],
+  },
+  "boxing-gym": {
+    // The ring in the middle (raised: people in it stand a little above the floor), heavy bags hanging at the back,
+    // a speed bag on the left wall, benches and gear on the right.
+    walkway: [[0.5, 0.92], [0.3, 0.84], [0.2, 0.7], [0.3, 0.55], [0.8, 0.72]],
+    walkers: 0,
+    stations: [
+      { action: "boxing", at: [0.44, 0.585], dir: "se", variant: "man-hoodie_black" },
+      { action: "boxing", at: [0.56, 0.645], dir: "nw", variant: "man-jersey_red", phase: 4 },
+      { action: "boxing", at: [0.47, 0.445], dir: "nw", variant: "woman-tee_blue", phase: 2 },
+      { action: "skip_rope", at: [0.72, 0.84], dir: "sw", variant: "man-tee_blue" },
+      { action: "stand_talk", at: [0.8, 0.66], dir: "nw", variant: "man_kaftan" },
+    ],
+    spots: {
+      door: { at: [0.5, 0.92], dir: "se" },
+      boxing: { at: [0.56, 0.43], dir: "nw" },
+      skip: { at: [0.3, 0.8], dir: "se" },
+      stand: { at: [0.3, 0.84], dir: "se" },
+    },
+  },
+  "beach-cabana": {
+    // Two striped loungers under a thatched roof, a low table with coconuts and fruit, the sea beyond.
+    walkway: [[0.75, 0.88], [0.66, 0.8], [0.58, 0.74], [0.7, 0.68]],
+    walkers: 0,
+    stations: [{ action: "sleep", at: [0.55, 0.57], dir: "se", variant: "woman_gele" }],
+    spots: {
+      door: { at: [0.75, 0.88], dir: "sw" },
+      sleep: { at: [0.36, 0.7], dir: "se" },
+      dance: { at: [0.7, 0.8], dir: "sw" },
+      stand: { at: [0.62, 0.78], dir: "sw" },
+    },
+    workers: [
+      // The attendant brings coconuts and drinks on a tray and goes back to the beach bar.
+      {
+        variant: "waiter",
+        start: 4,
+        visitor: { door: [0.75, 0.88], away: 18, variants: ["waiter"] },
+        tasks: [{ at: [0.56, 0.74], pose: "serve_tray", dir: "nw", secs: 5, carry: "carry_tray" }],
+      },
+    ],
+  },
+  "lecture-theatre": {
+    // Two banks of long desks with seats on their near side, students facing the screen and whiteboard (ne); the
+    // lecturer by the lectern.
+    walkway: [[0.6, 0.9], [0.66, 0.78], [0.74, 0.68], [0.8, 0.6]],
+    walkers: 0,
+    stations: [
+      { action: "stand_talk", at: [0.78, 0.58], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_desk", at: [0.235, 0.645], dir: "ne", variant: "woman_buba" },
+      { action: "sit_desk", at: [0.36, 0.595], dir: "ne", variant: "man_casual", phase: 3 },
+      { action: "sit_desk", at: [0.5, 0.835], dir: "ne", variant: "woman_gele", phase: 5 },
+      { action: "sit_desk", at: [0.62, 0.765], dir: "ne", variant: "man_kaftan", phase: 1 },
+    ],
+    spots: {
+      door: { at: [0.6, 0.9], dir: "se" },
+      sit: { at: [0.42, 0.765], dir: "ne", pose: "sit_table" },
+      stand: { at: [0.74, 0.68], dir: "sw" },
+    },
+  },
+  "uni-cafeteria": {
+    // The serving counter with trays of rice, stew and plantain on the left; long tables with benches.
+    walkway: [[0.35, 0.88], [0.3, 0.76], [0.25, 0.68], [0.45, 0.48], [0.6, 0.38]],
+    walkers: 1,
+    stations: [
+      // on the far benches facing the room (anchor: the feet, under the table)
+      { action: "eat_table", at: [0.41, 0.67], dir: "se", variant: "schoolboy" },
+      { action: "eat_table", at: [0.475, 0.64], dir: "se", variant: "woman-tee_blue", phase: 3 },
+      { action: "eat_table", at: [0.625, 0.535], dir: "se", variant: "man-hoodie_black", phase: 5 },
+      { action: "sit_table", at: [0.69, 0.505], dir: "se", variant: "woman-jersey_red" },
+      { action: "eat_table", at: [0.63, 0.735], dir: "se", variant: "schoolgirl", phase: 2 },
+    ],
+    spots: {
+      door: { at: [0.35, 0.88], dir: "se" },
+      eat: { at: [0.565, 0.765], dir: "se", pose: "eat_table" },
+      sit: { at: [0.817, 0.603], dir: "nw", pose: "sit_table" },
+      stand: { at: [0.3, 0.76], dir: "ne" },
+    },
+    workers: [
+      // Behind the counter, dishing up from the trays.
+      { variant: "chef", tasks: [{ at: [0.28, 0.5], pose: "serve_tray", dir: "se", secs: 6, behind: 0.43 }, { at: [0.38, 0.45], pose: "wipe_counter", dir: "se", secs: 5, behind: 0.39 }] },
+    ],
+  },
+  "brt-bus": {
+    // Inside a BRT bus: the driver at the front (left), pairs of seats facing forward (sw), grab rails for standing.
+    walkway: [[0.62, 0.86], [0.5, 0.74], [0.4, 0.66]],
+    walkers: 0,
+    stations: [
+      { action: "sit_talk", at: [0.17, 0.62], dir: "sw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.37, 0.555], dir: "sw", variant: "woman_buba", phase: 2 },
+      { action: "sit_talk", at: [0.62, 0.56], dir: "sw", variant: "man-tee_blue", phase: 5 },
+      { action: "sit_talk", at: [0.67, 0.6], dir: "sw", variant: "woman-hoodie_black", phase: 1 },
+      { action: "stand_idle", at: [0.48, 0.72], dir: "sw", variant: "man-jersey_red" },
+    ],
+    spots: { door: { at: [0.62, 0.86], dir: "sw" }, sit: { at: [0.5, 0.62], dir: "sw" }, stand: { at: [0.4, 0.66], dir: "sw" } },
+  },
+  coach: {
+    // Inside an interstate coach: rows of reclining seats facing the front (sw), tables between some, luggage racks.
+    walkway: [[0.32, 0.6], [0.4, 0.68], [0.5, 0.75]],
+    walkers: 0,
+    stations: [
+      { action: "sit_talk", at: [0.58, 0.46], dir: "sw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.7, 0.6], dir: "sw", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.62, 0.7], dir: "sw", variant: "woman-buba_wrapper", phase: 3 },
+    ],
+    spots: { door: { at: [0.32, 0.6], dir: "se" }, sit: { at: [0.5, 0.6], dir: "sw" }, stand: { at: [0.4, 0.68], dir: "se" } },
+  },
+  theatre: {
+    // Rows of red seats facing the stage (ne); performers on the raised stage.
+    walkway: [[0.32, 0.84], [0.3, 0.78], [0.45, 0.72]],
+    walkers: 0,
+    stations: [
+      { action: "dance", at: [0.63, 0.44], dir: "sw", variant: "woman-peplum_coral" },
+      { action: "stand_talk", at: [0.68, 0.48], dir: "sw", variant: "man-agbada_white" },
+      { action: "sit_talk", at: [0.3, 0.6], dir: "ne", variant: "woman_gele" },
+      { action: "sit_talk", at: [0.46, 0.7], dir: "ne", variant: "man_kaftan", phase: 3 },
+      { action: "sit_talk", at: [0.38, 0.8], dir: "ne", variant: "woman-tee_blue", phase: 5 },
+    ],
+    spots: { door: { at: [0.32, 0.84], dir: "se" }, sit: { at: [0.53, 0.75], dir: "ne" }, stand: { at: [0.45, 0.72], dir: "ne" } },
+  },
+  "crusade-tent": {
+    // A big white tent: the stage with pulpit, keyboard and drums at the back, rows of folding chairs facing it (ne).
+    walkway: [[0.62, 0.92], [0.55, 0.8], [0.45, 0.68], [0.68, 0.62]],
+    walkers: 0,
+    stations: [
+      { action: "stand_talk", at: [0.585, 0.47], dir: "sw", variant: "man-agbada_white", behind: 0.45 },
+      { action: "pray_church", at: [0.3, 0.66], dir: "ne", variant: "woman_gele" },
+      { action: "pray_church", at: [0.4, 0.6], dir: "ne", variant: "man_kaftan", phase: 3 },
+      { action: "sit_talk", at: [0.52, 0.76], dir: "ne", variant: "woman-ankara_green" },
+      { action: "pray_church", at: [0.66, 0.68], dir: "ne", variant: "man-tee_blue", phase: 5 },
+    ],
+    spots: {
+      door: { at: [0.62, 0.92], dir: "se" },
+      sit: { at: [0.44, 0.83], dir: "ne" },
+      pray: { at: [0.55, 0.8], dir: "ne", pose: "pray_church" },
+      stand: { at: [0.45, 0.68], dir: "ne" },
+    },
+  },
 };
