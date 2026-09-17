@@ -425,7 +425,7 @@ export const VENUES: readonly Venue[] = [
     area: "Danfo Terminal",
     icon: "🥊",
     art: "/art/buildings/gym.webp",
-    interior: "/art/interiors/gym.webp",
+    interior: "/art/interiors/boxing-gym.webp",
     blurb: "Sweat, sawdust and a ring with old ropes. Coach Dele has trained champions; he'll train you too if you show up at 6am.",
     regulars: ["Coach Dele", "Kid Lightning"],
     activities: [
@@ -441,7 +441,7 @@ export const VENUES: readonly Venue[] = [
     area: "Sandbar Bay",
     icon: "🏖️",
     art: "/art/buildings/restaurant-terrace.webp",
-    interior: "/art/interiors/home-villa-pool.webp",
+    interior: "/art/interiors/beach-cabana.webp",
     blurb: "A strip of white sand you only reach by water bus. Cabanas, coconut, horses on the shore, and on Sundays the beach rave goes till late.",
     regulars: ["Lifeguard Kunle", "Mama Coconut", "Horse man Sule"],
     activities: [
@@ -458,7 +458,7 @@ export const VENUES: readonly Venue[] = [
     area: "Tech Mile",
     icon: "🏛️",
     art: "/art/buildings/university.webp",
-    interior: "/art/interiors/lecture-hall.webp",
+    interior: "/art/interiors/lecture-theatre.webp",
     blurb: "Big campus, bigger dreams. Enrol in a degree, go to lectures, write your exams and graduate in front of the whole family.",
     regulars: ["Prof. Adebayo-Okafor", "Course rep Tolu"],
     activities: [
@@ -500,7 +500,7 @@ export const VENUES: readonly Venue[] = [
     area: "Airport Ridge",
     icon: "🏥",
     art: "/art/buildings/hospital.webp",
-    interior: "/art/interiors/hospital-ward.webp",
+    interior: "/art/interiors/hospital-ward-4.webp",
     blurb: "Doctors, nurses and a pharmacy that is always out of one thing. Get checked before you break down.",
     regulars: ["Dr Okafor", "Nurse Amaka"],
     activities: [

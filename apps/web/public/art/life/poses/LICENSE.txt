@@ -15,3 +15,14 @@ Workouts (every adult look): run is the library's Jog_Fwd_Loop (se, sw, nw); lif
 curls, 96x160), boxing (guard, jab, cross in red gloves, 112x160, se/sw/nw), pushups (plank, lowering and pushing up,
 192x112 centred on the body like sleep) and skip_rope (112x160) are posed bone by bone in sprites.py, with the
 dumbbells, gloves and rope modelled per frame. 8 frames each.
+Work poses (posed bone by bone in sprites.py work_frame, arm IK to hand targets, props modelled per frame; 8 frames of
+96x160, feet 16 px up; se/sw/ne/nw so a worker can face what they work on): check_patient (bent over a bed, a hand on
+the patient's arm, injection), write_chart (clipboard and pen), take_order (notepad, looking up now and then),
+pour_drink (shaker, then pouring into a glass), serve_tray (tray on one hand, setting a plate down), cook_stir (ladle
+in a big pot on a low stove; the pot is in the sheet), wipe_counter (cloth going round on the counter top), sick_sit
+(a patient on a bed edge holding head and stomach; se/sw, the seat behind the feet). carry_tray is a walk sheet: the
+library Walk_Loop with the right hand up under a tray (plate of jollof, a bottle, a glass). Looks: nurse and doctor
+(check_patient, write_chart), bartender (pour_drink, wipe_counter, take_order), waiter (carry_tray, serve_tray,
+take_order, wipe_counter), chef (cook_stir, carry_tray, serve_tray, wipe_counter), plus man_casual (pour_drink,
+carry_tray, serve_tray), woman_buba (cook_stir, wipe_counter) and the four first adults (sick_sit). Staff also have
+stand_idle (se/sw).
