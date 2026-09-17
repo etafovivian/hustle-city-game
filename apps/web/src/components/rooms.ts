@@ -572,16 +572,24 @@ export const ROOMS: Record<string, Room> = {
     spots: { door: { at: [0.74, 0.78], dir: "sw" }, stand: { at: [0.8, 0.65], dir: "sw" } },
   },
   "hospital-ward": {
-    // A patient in the far bed, a visitor at the middle one. The nurse does her rounds from the desk to each bed
-    // and back; patients come in, lie in the bed by the window for a while and go home.
+    // A patient in the far bed. The nurse does her rounds from the desk to each bed and back; patients come in, lie
+    // in the bed by the window for a while and go home. (No idle visitor standing in the aisle.)
     walkway: [[0.42, 0.7], [0.5, 0.78], [0.58, 0.88], [0.62, 0.72]],
     walkers: 0,
     stations: [
       { action: "sleep", at: [0.48, 0.42], dir: "sw", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.57, 0.67], dir: "se", variant: "woman_gele" },
+      // a patient in the middle bed (the player's bed: she makes way when the player lies there)
+      { action: "sleep", at: [0.64, 0.5], dir: "sw", variant: "woman_buba", phase: 3 },
     ],
     spots: { door: { at: [0.58, 0.88], dir: "se" }, sleep: { at: [0.64, 0.5], dir: "sw" }, stand: { at: [0.5, 0.78], dir: "se" } },
     workers: [
+      // Family come to see the patient in the middle bed: they talk at the foot of the bed for a while and go.
+      {
+        variant: "woman_gele",
+        start: 5,
+        visitor: { door: [0.58, 0.88], away: 14, variants: ["woman_gele", "man-agbada_white", "woman-ankara_green", "man_kaftan"] },
+        tasks: [{ at: [0.575, 0.675], pose: "stand_talk", dir: "ne", secs: 14 }],
+      },
       // The nurse writes up her notes at the desk, then goes bed to bed: at the foot of each, bent over the patient
       // (checking them and giving an injection).
       {

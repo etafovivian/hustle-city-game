@@ -251,27 +251,23 @@ export function AvatarWalker({
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
         {walking && riding === "rail" ? (
-          // The train (a drawn stand-in until the Stitch art): three carriages along the track, sized like the
-          // buildings around it.
-          <g transform={`rotate(${(heading * 180) / Math.PI})`}>
-            {[-210, -68, 74].map((x, i) => (
-              <g key={x}>
-                <rect x={x} y={-30} width={136} height={56} rx={i === 2 ? 26 : 12} fill="#f4f6fb" stroke="#0a0f24" strokeWidth={4} />
-                {[0, 1, 2, 3].map((w) => (
-                  <rect key={w} x={x + 12 + w * 30} y={-21} width={22} height={18} rx={4} fill="#5b8def" />
-                ))}
-                <rect x={x} y={8} width={136} height={9} fill="#1e5bd8" />
-                <rect x={x} y={17} width={136} height={4} fill="#ffc72c" />
+          // The train (Stitch three-car sheet), turned to the way it's going along the track.
+          (() => {
+            const v = vehicleView("train", walkDir(Math.cos(heading), Math.sin(heading)));
+            return (
+              <g transform={v.mirror ? "scale(-1 1)" : undefined}>
+                <image href={v.href} x={-v.w / 2} y={-v.h + 20} width={v.w} height={v.h} />
               </g>
-            ))}
-          </g>
+            );
+          })()
         ) : walking && riding === "ferry" ? (
-          <g transform={Math.cos(heading) < 0 ? "scale(-1 1)" : undefined}>
-            <image href="/art/props/tugboat.webp" x={-60} y={-70} width={120} height={80} />
+          // The water bus (drawn bow to the left): flipped when it heads right.
+          <g transform={Math.cos(heading) > 0 ? "scale(-1 1)" : undefined}>
+            <image href="/art/life/water-bus.webp" x={-110} y={-140} width={220} height={156} />
           </g>
         ) : walking && riding !== "walk" ? (
           (() => {
-            const v = vehicleView(riding === "coach" ? "brt" : riding, facing);
+            const v = vehicleView(riding, facing);
             const w = v.w * 1.25;
             const h = v.h * 1.25;
             return (

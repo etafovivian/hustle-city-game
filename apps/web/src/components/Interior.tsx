@@ -518,7 +518,11 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
           if (visitor && m.i === tasks.length - 1) m.leaving = true;
           else m.i = (m.i + 1) % tasks.length;
           const next = tasks[m.i]!;
-          if (!m.leaving && next.snap) m.at = next.at;
+          // Stepping straight onto it (onto a bed): arrived, so the pose starts at once.
+          if (!m.leaving && next.snap) {
+            m.at = next.at;
+            m.hold = next.secs;
+          }
         }
       } else {
         const to = target();
@@ -544,5 +548,14 @@ function WorkerInRoom({ worker, ph, box, reduce }: { worker: Worker; ph: number;
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [worker, reduce, ph]);
-  return <div ref={el} className="interior-npc" aria-hidden="true" style={spriteBox(ph, shown)} />;
+  // Placed from the first render (the loop takes over on its first frame); a visitor starts out of the room.
+  const start = worker.visitor ? worker.visitor.door : (worker.tasks[0]?.at ?? [0.5, 0.8]);
+  return (
+    <div
+      ref={el}
+      className="interior-npc"
+      aria-hidden="true"
+      style={{ ...spriteBox(ph, shown), left: `${start[0] * 100}%`, top: `${start[1] * 100}%`, zIndex: Math.round(start[1] * 1000), display: worker.visitor ? "none" : undefined }}
+    />
+  );
 }

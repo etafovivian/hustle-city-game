@@ -536,10 +536,20 @@ export function CityMap({
     goTo(kerbsideOf({ x: plot.x, y: plot.y }), "home", "__home");
   };
   const homeSpot = myPlot ? kerbsideOf({ x: myPlot.x, y: myPlot.y }) : kerbsideOf({ x: room.x, y: room.y });
+  // What's on the boards: on load, every few minutes (ads go on air when they're approved and paid), and straight
+  // after an admin decision.
   useEffect(() => {
-    api<BillboardView[]>("GET", "/api/billboards")
-      .then(setBoards)
-      .catch(() => setBoards([]));
+    const load = () =>
+      api<BillboardView[]>("GET", "/api/billboards")
+        .then(setBoards)
+        .catch(() => undefined);
+    void load();
+    const t = window.setInterval(() => void load(), 180_000);
+    window.addEventListener("hc:ads-changed", load);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("hc:ads-changed", load);
+    };
   }, []);
   useEffect(() => {
     api<NeighbourShop[]>("GET", "/api/game/neighbours")

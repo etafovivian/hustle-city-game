@@ -4,12 +4,20 @@ import { COACH_EVENT_BY_KEY, NEED_ICON, NEED_LABEL, SKILL_BY_KEY, type CoachEven
 import { useEffect, useState } from "react";
 import { api, formatCoins } from "../api.js";
 
-/** Stand-in art for the window view and each event until the Stitch images arrive (swap the paths here). */
-const ART: { window?: string } & Partial<Record<CoachEventKey, string>> = {};
+/** The view out of the window and each event's picture (Stitch batches 55-56); events without one show the window
+ * view with the event's icon. */
+const ART: { window?: string } & Partial<Record<CoachEventKey, string>> = {
+  window: "/art/coach/window.webp",
+  checkpoint: "/art/coach/checkpoint.webp",
+  hawkers: "/art/coach/hawkers.webp",
+  tyre: "/art/coach/tyre.webp",
+  goslow: "/art/coach/tanker.webp",
+};
 
 /** The expressway sliding past: sky, distant bush, palms and the verge, each at its own speed. Stops for an event. */
 function WindowView({ moving }: { moving: boolean }) {
-  if (ART.window) return <img className="coach-window-art" src={ART.window} alt="" />;
+  // The painted view, panning slowly while the coach drives on.
+  if (ART.window) return <div className={`coach-window-art ${moving ? "moving" : ""}`} style={{ backgroundImage: `url(${ART.window})` }} aria-hidden="true" />;
   const palms = [40, 190, 330, 470, 620, 760];
   return (
     <svg className={`coach-window ${moving ? "moving" : ""}`} viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -85,8 +93,8 @@ export function CoachJourney({ rideId, event, step, onDone }: { rideId: string; 
       <div className="visit-sheet coach-sheet" role="alertdialog" aria-modal="true" aria-label={`On the coach: ${ev.title}`}>
         <div className="coach-view">
           <WindowView moving={!!result} />
-          {ART[ev.key] ? (
-            <img className="coach-event-art" src={ART[ev.key]} alt="" />
+          {result ? null : ART[ev.key] ? (
+            <img className="coach-event-art" src={ART[ev.key]} alt={ev.title} />
           ) : (
             <span className="coach-event-icon" aria-hidden="true">
               {ev.icon}
