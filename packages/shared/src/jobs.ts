@@ -38,6 +38,9 @@ export const JOBS: readonly Job[] = [
   { venue: "city_fm", titles: ["Runner", "Producer", "OAP", "Station manager"], task: "Take calls and run the morning show", tier: 1.2 },
   { venue: "ring_kings_boxing", titles: ["Towel boy", "Sparring partner", "Assistant coach", "Head coach"], task: "Hold the pads, wrap hands and run the morning session", tier: 1 },
   { venue: "sandbar_beach", titles: ["Beach cleaner", "Cabana attendant", "Lifeguard", "Beach manager"], task: "Rake the sand, serve the cabanas and watch the water", tier: 1.1 },
+  // The phone-repair apprentice side hustle: changes screens and flashes phones, trains Tech
+  { venue: "gadget_village", titles: ["Phone repair apprentice", "Repair engineer", "Shop manager", "Plaza boss"], task: "Change screens, flash phones and price accessories", tier: 1.1 },
+  { venue: "crown_arts_theatre", titles: ["Usher", "Stagehand", "Stage manager", "Artistic director"], task: "Seat the audience and move the set between scenes", tier: 1 },
   { venue: "general_hospital", titles: ["Porter", "Nurse aide", "Nurse", "Matron"], task: "Push trolleys and check blood pressure", tier: 1.2 },
 ];
 export const JOB_BY_VENUE: ReadonlyMap<string, Job> = new Map(JOBS.map((j) => [j.venue, j]));

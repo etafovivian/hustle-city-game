@@ -2,6 +2,7 @@
 // Run: node scripts/check-clearance.ts (Node 24 runs TypeScript directly). Exits 1 on any problem.
 import * as L from "../src/components/cityLayout.ts";
 import { audit, STRICT } from "./audit-layout.ts";
+import { VENUES } from "../../../packages/shared/src/venues.ts";
 
 type Box = { name: string; cx: number; cy: number; hh: number };
 const boxes: Box[] = [];
@@ -76,6 +77,16 @@ for (const l of L.TRANSIT_LINES_L) {
       }
     }
   }
+}
+
+// Landmarks and Gadget Village: each found its room (cityLayout LANDMARK_ISSUES), and every venue on the map is drawn
+// with the art its card shows (the map's shapes use VENUE_ART; swapping a stand-in means changing both, in step).
+for (const i of L.LANDMARK_ISSUES) bad.push(`landmark: ${i}`);
+for (const v of L.VENUE_SPOTS) {
+  const name = L.VENUE_ART[v.key];
+  const art = VENUES.find((vv) => vv.key === v.key)?.art;
+  if (!art) bad.push(`venue ${v.key} is on the map but not in venues.ts`);
+  else if (name && art.split("/").pop()!.replace(/\.(webp|svg)$/, "") !== name) bad.push(`venue ${v.key}: the map draws "${name}", its card shows ${art}`);
 }
 
 console.log(bad.length ? bad.join("\n") : "all clear");

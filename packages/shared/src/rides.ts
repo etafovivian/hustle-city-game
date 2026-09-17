@@ -123,4 +123,6 @@ export interface StopResult {
   xp: number;
   message: string;
   balance: number;
+  /** The area boys caught you and your phone's screen cracked (fix it at Gadget Village). */
+  cracked?: boolean;
 }

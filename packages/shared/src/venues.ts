@@ -25,8 +25,10 @@ export interface Venue {
   activities: VenueActivity[];
   /** Real-world artisans or shops to suggest from this venue (artisan category key). */
   realCategory?: string;
-  /** A phone app this place opens (the Academy at the school). */
-  opens?: "academy";
+  /** A phone app this place opens (the Academy at the school, the gadget counter at Gadget Village). */
+  opens?: "academy" | "gadgets";
+  /** Extra words the city map's search matches (what people call this kind of place). */
+  keywords?: readonly string[];
 }
 
 export const VENUES: readonly Venue[] = [
@@ -508,6 +510,72 @@ export const VENUES: readonly Venue[] = [
       { key: "pharmacy", label: "Pick up malaria drugs", cost: 200, xp: 6 },
     ],
   },
+  // ── Landmarks (drawn stand-ins in public/art/landmarks until the Stitch batch 39 art arrives) ──
+  {
+    key: "crown_arts_theatre",
+    name: "Crown Arts Theatre",
+    area: "Owambe Gardens",
+    icon: "🎭",
+    art: "/art/landmarks/crown-arts-theatre.svg",
+    interior: "/art/interiors/event-centre.webp",
+    blurb: "The big round theatre with the roof like a general's cap. Plays, stand-up nights, and on Fridays the premiere everybody dresses up for.",
+    regulars: ["Director Funmilayo", "Comedian Gbenga Laffs"],
+    activities: [
+      { key: "play", label: "Ticket for tonight's play", cost: 1_200, xp: 20 },
+      { key: "standup", label: "Stand-up comedy night", cost: 800, xp: 16 },
+      { key: "interval", label: "Puff-puff and zobo at the interval", cost: 200, xp: 6 },
+    ],
+    keywords: ["theatre", "theater", "play", "drama", "stand-up", "comedy", "national theatre", "iganmu", "surulere"],
+  },
+  {
+    key: "independence_square",
+    name: "Independence Square",
+    area: "Marina Wharf",
+    icon: "🎖️",
+    art: "/art/landmarks/independence-square.svg",
+    blurb: "A huge parade ground with grandstands and four horses on tall pillars. Parades on 1 October, concerts on Saturday nights, crusades at the weekend, and people gisting on the steps every day.",
+    regulars: ["Parade marshal Okon", "Mama Flags"],
+    activities: [
+      { key: "parade", label: "Watch the march-past from the stands", cost: 100, xp: 8 },
+      { key: "flag", label: "Buy a flag and a pack of small chops", cost: 300, xp: 8 },
+      { key: "concert", label: "Concert ticket in the grandstand", cost: 1_500, xp: 20 },
+    ],
+    keywords: ["square", "parade", "concert", "crusade", "independence", "tafawa balewa", "tbs", "race course"],
+  },
+  {
+    key: "liberty_arts_park",
+    name: "Liberty Arts Park",
+    area: "Marina Wharf",
+    icon: "🎨",
+    art: "/art/landmarks/liberty-arts-park.svg",
+    blurb: "An old colonial prison turned into a park: arches in the old wall, an open-air stage, painters under the trees and poetry when the sun goes down.",
+    regulars: ["Poet Adaeze", "Painter Kunle"],
+    activities: [
+      { key: "open_mic", label: "Open mic: perform a song", cost: 300, xp: 12 },
+      { key: "poetry", label: "Poetry night under the arches", cost: 200, xp: 10 },
+      { key: "art_market", label: "Buy a painting at the art market", cost: 1_500, xp: 15 },
+      { key: "chill", label: "Chapman and chilling by the stage", cost: 500, xp: 10 },
+    ],
+    keywords: ["park", "arts", "art market", "open mic", "poetry", "stage", "freedom park"],
+  },
+  {
+    key: "gadget_village",
+    name: "Gadget Village",
+    area: "Airport Ridge",
+    icon: "📱",
+    // Stand-in until the gadget plaza block (Stitch batch 34) arrives
+    art: "/art/buildings/commercial-block.webp",
+    interior: "/art/interiors/gadget-market.webp",
+    blurb: "Street after street of phone shops, laptop stalls and repair benches. Buy a new phone, fix your screen, and never pay the first price.",
+    regulars: ["Chinedu the phone dealer", "Engineer Bayo (screens while you wait)"],
+    activities: [
+      { key: "browse", label: "Window-shop the newest phones", cost: 50, xp: 5 },
+      { key: "data", label: "New SIM and a data bundle", cost: 300, xp: 8 },
+      { key: "flash", label: "Get your phone flashed and cleaned", cost: 500, xp: 10 },
+    ],
+    opens: "gadgets",
+    keywords: ["gadget", "gadgets", "phone", "phones", "laptop", "laptops", "computer", "computer village", "repair", "screen", "accessories", "ikeja"],
+  },
 ];
 
 export const VENUES_BY_KEY: ReadonlyMap<string, Venue> = new Map(VENUES.map((v) => [v.key, v]));
@@ -583,6 +651,10 @@ const LIFE: Record<string, VenueLife> = {
   city_library: { hours: [8, 21], gives: ["brain"], free: "Read the day's newspapers" },
   city_fm: { gives: ["fun", "rep"], free: "Listen to the show in reception", flex: { label: "Sponsor the morning show for a week", cost: 100_000 } },
   general_hospital: { gives: ["health"], free: "Free blood-pressure check at the stand" },
+  crown_arts_theatre: { hours: [12, 24], gives: ["fun", "social"], free: "Look at the posters in the foyer", flex: { label: "Book a box for the premiere for all your friends", cost: 80_000 } },
+  independence_square: { gives: ["fun", "social", "rep"], free: "Hang out on the square and watch the crowd", flex: { label: "Sponsor the fireworks over the square", cost: 120_000 } },
+  liberty_arts_park: { hours: [10, 24], gives: ["fun", "rest", "social"], free: "Sit under the arches and people-watch", flex: { label: "Commission a mural on the old prison wall", cost: 50_000 } },
+  gadget_village: { hours: [8, 19], gives: ["hustle", "style"], free: "Watch the engineers change a screen" },
 };
 
 export interface VenueAction extends VenueActivity {

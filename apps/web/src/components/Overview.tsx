@@ -31,6 +31,8 @@ export interface Spot {
   kind: "area" | "place" | "station" | "branch" | "business";
   /** Opens this place's card on arrival. */
   venue?: string;
+  /** More words the search matches (what people call this kind of place). */
+  keywords?: readonly string[];
 }
 
 function useSpots(mapBiz: MapBusiness[]): Spot[] {
@@ -39,7 +41,7 @@ function useSpots(mapBiz: MapBusiness[]): Spot[] {
     for (const d of DISTRICTS) out.push({ key: `area-${d.name}`, label: d.name, sub: "Area", icon: "📍", x: d.x, y: d.y, kind: "area" });
     for (const s of VENUE_SPOTS) {
       const v = VENUES_BY_KEY.get(s.key);
-      if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key });
+      if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key, keywords: v.keywords });
     }
     // Train stations, BRT stops, water-bus piers and coach parks.
     const ICON = { rail: "🚆", brt: "🚌", ferry: "⛴️", coach: "🚍" } as const;
@@ -93,7 +95,7 @@ export function CityOverview({
   }, [onClose]);
 
   const term = q.trim().toLowerCase();
-  const found = term ? spots.filter((s) => s.label.toLowerCase().includes(term) || s.sub.toLowerCase().includes(term)).slice(0, 30) : [];
+  const found = term ? spots.filter((s) => s.label.toLowerCase().includes(term) || s.sub.toLowerCase().includes(term) || s.keywords?.some((w) => w.includes(term))).slice(0, 30) : [];
   const roads = ROAD_PATHS.filter((r) => r.kind === "road" || r.kind === "bridge");
   // Frame the city (everything with a name on it), not the open sea around it.
   const box = useMemo(() => {

@@ -152,6 +152,12 @@ interior line for batch 42 and the "clear walkway, no people" line from batches 
 3. An arts park: an old colonial prison wall with arches, a small open-air stage, trees and benches.
 4. A traditional palace: a long walled compound with a carved gate, a red and white facade and a courtyard.
 
+Built with drawn stand-ins (`apps/web/public/art/landmarks/*.svg`): image 1 replaces `crown-arts-theatre.svg`, 2
+`independence-square.svg`, 3 `liberty-arts-park.svg`. To swap one: put the cut-out in `public/art/buildings/`, run
+`python3 scripts/art-sizes.py`, then change the venue's `art` in `packages/shared/src/venues.ts` and its name in
+`VENUE_ART` and `ART_ASPECT` in `cityLayout.ts` (check-clearance fails if the two disagree). Gadget Village's plaza uses
+`commercial-block` until the batch 34 gadget plaza block.
+
 ## Batch 40: bridges, nature and the new city
 1. A canopy walkway: a rope and timber bridge high between tall forest trees, with platforms.
 2. A cable-stayed bridge pylon: one tall white pylon with cables fanning down to a short section of deck.

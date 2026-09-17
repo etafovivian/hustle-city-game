@@ -22,7 +22,7 @@ import { clockLabel, useLagosLight } from "./lagosTime.js";
 import { AvatarWalker, YouPlate } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
-import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
+import { VenueBadge, VenueCard, crowdDepthItems, venueDepthItems } from "./Venues.js";
 import { DepthSorted, type DepthItem } from "./People.js";
 import { StreetLife } from "./StreetLife.js";
 import { TransitLayer } from "./TransitLayer.js";
@@ -48,6 +48,8 @@ import {
   BRANCH_BY_KEY,
   starterRoom,
   FORESTS,
+  GADGET_VILLAGE,
+  LANDMARK_GROUNDS,
   GRASS,
   RUNWAY,
   iso,
@@ -731,7 +733,11 @@ export function CityMap({
     for (const spot of VENUE_SPOTS) {
       const v = VENUES_BY_KEY.get(spot.key);
       if (v && inView(spot.x, spot.y))
-        depthItems.push({ key: `venue-${spot.key}`, y: spot.y, node: <VenueBuilding venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> });
+        depthItems.push(
+          ...venueDepthItems(v, spot.x, spot.y, spot.scale, () => !pz.wasDragged() && setVenueOpen(v.key)),
+          // On event days the landmark's open ground fills with people
+          ...(liveAt(spot.key) ? crowdDepthItems(v, spot.x, spot.y, spot.scale) : []),
+        );
     }
     for (const l of FOR_SALE) {
       if (!inView(l.x, l.y)) continue;
@@ -985,6 +991,10 @@ export function CityMap({
               {/* Forest floor: dark green ground under the forest reserves (their trees are on the buildings layer) */}
               {FORESTS.map((f) => (
                 <path key={f.name} d={f.path} fill="#3f6e33" stroke="#3f6e33" strokeWidth="90" strokeLinejoin="round" opacity=".9" />
+              ))}
+              {/* Landmarks' open ground (Liberty Arts Park's lawn): flat, people walk on it */}
+              {LANDMARK_GROUNDS.map((g) => (
+                <path key={g.key} d={g.path} fill={g.kind === "lawn" ? "#7fae4f" : "#d9d2c3"} stroke={g.kind === "lawn" ? "#6d9a43" : "#bdb4a2"} strokeWidth="6" strokeLinejoin="round" />
               ))}
               {/* Airport: apron, taxiway and runway (centre line dashes, threshold bars at both ends) */}
               <path d={isoRect(RUNWAY.apron.a0, RUNWAY.apron.a1, RUNWAY.apron.b0, RUNWAY.apron.b1)} fill="#8f949b" stroke="#6d7279" strokeWidth="4" />
@@ -1358,6 +1368,10 @@ export function CityMap({
                       </g>
                     );
                   })}
+                {/* Gadget Village: a quarter of Airport Ridge, named on the ground like the beaches */}
+                <text x={GADGET_VILLAGE.x} y={GADGET_VILLAGE.y} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#3a2a6b" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
+                  {GADGET_VILLAGE.name}
+                </text>
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
                   <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
                     {d.name}

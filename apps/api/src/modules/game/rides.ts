@@ -9,6 +9,7 @@ import { lockProfile } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import type { ShopCtx } from "./shop.js";
 import { skillLevelOf } from "./skills.js";
+import { crackScreen } from "./gadgets.js";
 
 /** Dice for stops and their outcomes (tests swap it for fixed rolls). */
 export const dice = { roll: () => Math.random() };
@@ -81,5 +82,7 @@ export async function settleStop({ tx, userId }: ShopCtx, rideId: string, choice
       : ok
         ? { talk: "Your mouth sweet. They waved you through.", run: "You ran, they gave up. Your heart is still racing.", stand: "You stood your ground and they backed off. Respect.", pay: "" }[choice]
         : { talk: "They didn't buy it.", run: "They caught up with you.", stand: "Bad move. They were too many.", pay: "" }[choice] + (cost ? ` You paid ${cost} coins.` : " Luckily you had nothing on you.");
-  return { ok, cost, xp, message, balance: posting.balance };
+  // Caught running or standing your ground: the phone hits the ground and the screen cracks (a case saves it).
+  const cracked = !ok && (choice === "run" || choice === "stand") && (await crackScreen(tx, userId));
+  return { ok, cost, xp, message: cracked ? `${message} Your phone fell and the screen cracked. Fix it at Gadget Village.` : message, balance: posting.balance, ...(cracked ? { cracked } : {}) };
 }

@@ -819,7 +819,7 @@ function settle(d: District, arts: string[], tag: string) {
   return out;
 }
 
-const VENUE_ART: Record<string, string> = {
+export const VENUE_ART: Record<string, string> = {
   fit_lagos: "gym",
   skyline_lounge: "skyline-lounge",
   island_motors: "car-showroom",
@@ -851,6 +851,12 @@ const VENUE_ART: Record<string, string> = {
   // A drawn stand-in (public/art/landmarks/olumo-rock.svg) until the rock's art arrives
   olumo_rock: "olumo-rock",
   itoku_adire_market: "market-hall",
+  // Landmarks, placed late (see "Landmarks and Gadget Village" below). Drawn stand-ins until Stitch batch 39; keep
+  // each name in step with the venue's art in packages/shared venues.ts (check-clearance.ts checks it).
+  crown_arts_theatre: "crown-arts-theatre",
+  independence_square: "independence-square",
+  liberty_arts_park: "liberty-arts-park",
+  gadget_village: "commercial-block",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
   if (v.a !== undefined && v.b !== undefined) {
@@ -1158,6 +1164,8 @@ interface FillOpts {
   growing?: boolean;
   /** Where a growing plot may stand (default: well inside Lagos's part of the map). */
   within?: (x: number, y: number, hh?: number) => boolean;
+  /** What to build, instead of the area's own mix (a quarter inside an area, like Gadget Village). */
+  preset?: AreaPreset;
 }
 /**
  * The area generator: plots on both sides of every front line, shops on busy frontages and corners, homes and
@@ -1165,7 +1173,7 @@ interface FillOpts {
  */
 function fillArea(area: string, lines: FrontLine[], opts: FillOpts = {}) {
   const { context = lines, forSale: forSaleShare, growing = false } = opts;
-  const P = AREA_PRESETS[area]!;
+  const P = opts.preset ?? AREA_PRESETS[area]!;
   const slug = area.toLowerCase().replace(/\s+/g, "-");
   const houses: Building[] = [];
   const driveways: { x0: number; y0: number; x1: number; y1: number; key: string }[] = [];
@@ -1699,7 +1707,7 @@ export const ART_ASPECT: Record<string, number> = {
   snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82, university: 0.87, "campus-quad": 0.86, "market-stalls": 0.74,
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
   // Drawn stand-ins (public/art/landmarks)
-  "olumo-rock": 0.85,
+  "olumo-rock": 0.85, "crown-arts-theatre": 0.72, "independence-square": 0.62, "liberty-arts-park": 0.7,
 };
 export type Pt = [number, number];
 const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
@@ -2049,6 +2057,129 @@ export const PORT_AND_PLANES: Prop[] = (() => {
   return out;
 })();
 
+// ── Landmarks and Gadget Village ──
+// Laid after everything above (every older plot, building, transit stop and stall keeps its place and id) and before
+// the trees (which keep clear of them). Problems placing them go in LANDMARK_ISSUES; check-clearance fails on any.
+//   Crown Arts Theatre: Owambe Gardens' north-east corner, between Junction 101's south streets and the frontage row.
+//   Marina Wharf's civic strip, between Marina's last collector and Island Heights: Liberty Arts Park (its old prison
+//   wall and stage) just off the Island road, its lawn and trees running down behind the bank, and Independence Square
+//   filling the open ground towards the beach.
+//   Gadget Village: a dense quarter north of the airport's runway, reached by a road through the Lagoon Forest from
+//   Ikodu Town's top street (the plots on Airport Ridge's top collector leave no gap for a road north).
+export const LANDMARK_ISSUES: string[] = [];
+/** Adds a building drawn after the declutter pass: it must not hide, or be hidden by, more than MAX_COVER of anything. */
+function lateShape(name: string, art: string, x: number, y: number, scale: number, strict: boolean) {
+  const shape: Shaped = { name, kind: "fixed", fy: y, grown: false, ...buildingShape(art, x, y, scale) };
+  for (const o of BUILDING_SHAPES.near(shape.poly)) {
+    const [back, front] = o.fy <= shape.fy ? [o, shape] : [shape, o];
+    const cover = coverShare(back.poly, front.poly);
+    if (cover > MAX_COVER) {
+      if (strict) LANDMARK_ISSUES.push(`${front.name} covers ${(cover * 100).toFixed(0)}% of ${back.name}`);
+      return false;
+    }
+  }
+  BUILDING_SHAPES.add(shape);
+  return true;
+}
+/** A landmark venue on its own spot (iso centre a, b), drawn with its venue's art (VENUE_ART). */
+function landmark(key: string, a: number, b: number, scale: number) {
+  const c = iso(a, b);
+  const hh = siteOf(scale).hh;
+  if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh)) return void LANDMARK_ISSUES.push(`${key} has no room at iso ${a},${b}`);
+  const foot = footAt(a, b, scale);
+  lateShape(`venue ${key}`, VENUE_ART[key]!, foot.x, foot.y, scale, true);
+  VENUE_SPOTS.push({ key, x: foot.x, y: foot.y, scale });
+}
+landmark("crown_arts_theatre", 700, -1447, 1.4);
+landmark("liberty_arts_park", 2438, -2640, 1.07);
+landmark("independence_square", 2510, -3170, 2.25);
+
+/** Flat ground drawn under a landmark (Liberty Arts Park's lawn): people walk on it; nothing is built on it. */
+export const LANDMARK_GROUNDS: { key: string; kind: "lawn" | "paving"; path: string }[] = [
+  { key: "liberty-lawn", kind: "lawn", path: isoRect(2372, 2505, -3012, -2712) },
+  { key: "liberty-lawn-east", kind: "lawn", path: isoRect(2505, 2650, -2836, -2698) },
+];
+/** Trees in Liberty Arts Park's lawn (planted with the other trees below). */
+const LANDMARK_TREE_AT: [number, number, TreeKind][] = [
+  [2560, -2730, "almond"],
+  [2620, -2800, "palm"],
+  [2400, -2735, "mango"],
+  [2475, -2800, "neem"],
+  [2400, -2870, "palm"],
+  [2470, -2940, "almond"],
+  [2405, -2985, "bougainvillea"],
+];
+const LANDMARK_TREES = LANDMARK_TREE_AT.flatMap(([a, b, kind], i) => {
+  const c = iso(a, b);
+  return treeClear(c.x, c.y, kind) && claim(c.x, c.y, kind === "bougainvillea" ? 28 : 16, 4) ? [{ ...c, kind, key: `liberty-${i}` }] : [];
+});
+
+/** Gadget Village builds phone shops, laptop shops and kiosks, close together (no buildings that are branches). */
+const GADGET_PRESET: AreaPreset = {
+  commercial: 0.92,
+  forSale: 0.15,
+  plotHalf: 42,
+  shops: [["phone-shop", 5], ["laptop-shop", 4], ["gadget-kiosk", 4], ["cyber-cafe", 1], ["mixed-use-block", 1], ["commercial-block", 1]],
+  homes: [["mixed-use-block", 2], ["commercial-block", 1], ["phone-shop", 1]],
+};
+/** Gadget Village's own venue (the plaza where you buy, haggle and repair), on the corner by the forest road. */
+landmark("gadget_village", 1330, 3500, 1.2);
+const GADGET_LINES: GrowLine[] = [
+  // The forest road: from Ikodu Town's top street (beside its b = 3200 street) west through the Lagoon Forest
+  link("gvr", "b", 3180, 3760, 1480, "collector"),
+  // Gadget Village's streets: the east street up from the forest road, the main street and the back street west
+  // from it, and short lanes between them
+  st("gvc", "a", 1480, 3180, 3900, "collector"),
+  st("gvm", "b", 3360, 1480, -300, "collector"),
+  st("gvb", "b", 3720, 1480, 0, "local"),
+  ...[1000, 550, 100].map((a, i) => link(`gvl${i}`, "a", a, 3360, 3720)),
+];
+const GADGET_GRID = GADGET_LINES.flatMap((l) => {
+  const g = growLine(l);
+  if (!g) LANDMARK_ISSUES.push(`Gadget Village street ${l.id} has no room`);
+  return g ?? [];
+});
+STREETS.push(...GADGET_GRID.map(streetOf));
+/** Gadget Village's quarter of Airport Ridge (where its name is drawn on the ground). */
+export const GADGET_VILLAGE = { name: "Gadget Village", ...iso(650, 3560) };
+const GADGET_FILL = fillArea(
+  "Airport Ridge",
+  GADGET_GRID.filter((l) => l.id !== "gvr"),
+  { context: GADGET_GRID, growing: true, preset: GADGET_PRESET },
+);
+/** Its shops: each one kept only if its art keeps clear of everything drawn already. */
+const GADGET_HOUSES = GADGET_FILL.houses.filter((h) => {
+  const ok = lateShape(`${h.key} ${artName(h.art)}`, h.art, h.x, h.y, h.scale, false);
+  if (!ok) removePlot(h.key);
+  return ok;
+});
+/** Phone traders' stalls and kiosks on Gadget Village's pavements (kept off the corners and clear of the shops' art). */
+const GADGET_STALLS: Prop[] = (() => {
+  const out: Prop[] = [];
+  const lines = GADGET_GRID.filter((l) => l.id !== "gvr" && l.cls !== "arterial");
+  for (const l of lines) {
+    const { half, pav } = STREET_CLASS[l.cls as StreetClass];
+    const crossings = GADGET_GRID.filter((o) => o.fixed !== l.fixed).map((o) => o.at);
+    const [lo, hi] = [Math.min(l.from, l.to), Math.max(l.from, l.to)];
+    let k = 0;
+    for (let t = lo + 70; t < hi - 50; t += 75)
+      for (const side of [1, -1] as const) {
+        if (crossings.some((c) => Math.abs(c - t) < 90) || seeded(`${l.id}:stall:${t}:${side}`) < 0.4) continue;
+        const kiosk = seeded(`${l.id}:kiosk:${t}:${side}`) < 0.25;
+        const [kind, w, aspect] = kiosk ? ["kiosk-container", 80, 0.98] : ["trader-phones", 66, 1.21];
+        const off = l.at + side * (half + pav - 3);
+        const c = l.fixed === "b" ? iso(t, off) : iso(off, t);
+        const poly = boxShape(c.x, c.y, w, w * aspect);
+        const clear = BUILDING_SHAPES.near(poly).every((b) => !inPoly([c.x, c.y], b.foot!) && (b.fy > c.y || coverShare(b.poly, poly) <= MAX_COVER));
+        if (!clear || !onLand(c.x, c.y)) continue;
+        const kerb = l.fixed === "b" ? iso(t, l.at) : iso(l.at, t);
+        out.push({ art: `/art/props/${kind}.webp`, x: c.x, y: c.y, key: `gv-stall-${l.id}-${k++}`, w, behind: c.y < kerb.y });
+      }
+  }
+  return out;
+})();
+PROPS.push(...GADGET_STALLS);
+
 /** Palms along the Island road (Lekki feel) and trees around the districts. */
 const EXTRA_TREES = [
   ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
@@ -2214,9 +2345,9 @@ const OGUN_TREES = [
   }),
 ];
 
-export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS, ...OGUN_TREES].sort((a, b) => a.y - b.y);
+export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS, ...OGUN_TREES, ...LANDMARK_TREES].sort((a, b) => a.y - b.y);
 
-export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES].sort((a, b) => a.y - b.y);
+export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES, ...GADGET_HOUSES].sort((a, b) => a.y - b.y);
 /** The buildings that stood before the city grew, back to front as they were then. */
 const ORIGINAL_SCENERY = ALL_SCENERY.filter((b) => ORIGINAL_ORDER.has(b.key)).sort((a, b) => ORIGINAL_ORDER.get(a.key)! - ORIGINAL_ORDER.get(b.key)!);
 

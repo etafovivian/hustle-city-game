@@ -207,4 +207,10 @@ export const PLOTS_FOR_SALE: readonly (readonly [string, string, "arterial" | "c
   ["abeokuta-abc3s+1", "Abeokuta", "collector", 50],
   ["abeokuta-abc3s-2", "Abeokuta", "collector", 50],
   ["abeokuta-abl2-1", "Abeokuta", "local", 54],
+  ["airport-ridge-gvm+3", "Airport Ridge", "collector", 38],
+  ["airport-ridge-gvm+9", "Airport Ridge", "collector", 38],
+  ["airport-ridge-gvb+0", "Airport Ridge", "local", 42],
+  ["airport-ridge-gvb+4", "Airport Ridge", "local", 38],
+  ["airport-ridge-gvb-3", "Airport Ridge", "local", 38],
+  ["airport-ridge-gvl2-0", "Airport Ridge", "local", 38],
 ];

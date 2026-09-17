@@ -124,5 +124,8 @@ export const ART_SIZE: Record<string, [number, number]> = {
   "/art/transit/sign-ogun.svg": [240, 240],
   "/art/transit/train.svg": [420, 268],
   "/art/transit/water-bus.svg": [278, 182],
+  "/art/landmarks/crown-arts-theatre.svg": [600, 432],
+  "/art/landmarks/independence-square.svg": [800, 496],
+  "/art/landmarks/liberty-arts-park.svg": [600, 420],
   "/art/landmarks/olumo-rock.svg": [480, 408],
 };

@@ -304,6 +304,16 @@ export const ROOMS: Record<string, Room> = {
     ],
     spots: { door: { at: [0.5, 0.88], dir: "se" }, stand: { at: [0.47, 0.72], dir: "sw" } },
   },
+  // Gadget Village's shop: the repair bench on the left, the phone counter on the right.
+  "gadget-market": {
+    walkway: [[0.5, 0.92], [0.44, 0.84], [0.5, 0.76], [0.38, 0.7]],
+    walkers: 1,
+    stations: [
+      { action: "sit_talk", at: [0.3, 0.8], dir: "se", variant: "man_casual" },
+      { action: "stand_idle", at: [0.66, 0.8], dir: "sw", variant: "man-tee_blue" },
+    ],
+    spots: { door: { at: [0.5, 0.92], dir: "se" }, stand: { at: [0.56, 0.82], dir: "sw" } },
+  },
   "hotel-lobby": {
     walkway: [[0.25, 0.72], [0.35, 0.8], [0.5, 0.86], [0.62, 0.8], [0.66, 0.73]],
     walkers: 2,

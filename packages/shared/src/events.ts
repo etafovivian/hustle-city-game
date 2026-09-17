@@ -34,6 +34,12 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "fight_night", name: "Fight Night", icon: "🥊", blurb: "Amateur bouts under the lights at Ring Kings. Cheer, spar a round yourself, or just watch the fists fly.", venues: ["ring_kings_boxing"], days: [5], hours: [19, 23], gives: ["fun", "social"] },
   { key: "beach_rave", name: "Sunday Beach Rave", icon: "🏝️", blurb: "DJ on the sand, bonfire at sunset, everybody dancing barefoot. Take the water bus from Marina.", venues: ["sandbar_beach"], days: [0], hours: [16, 23], gives: ["fun", "social"] },
   { key: "detty_december", name: "Detty December", icon: "🎆", blurb: "Everyone is back home for Christmas: beach raves every night, owambes everywhere, the Island is packed and prices are up.", venues: ["sandbar_beach", "skyline_lounge", "royal_event_centre", "lagoon_boat_cruise"], days: [0, 1, 2, 3, 4, 5, 6], hours: [18, 4], gives: ["fun", "social"], season: ["12-15", "01-02"] },
+  { key: "premiere_night", name: "Premiere night", icon: "🎭", blurb: "A new play opens at Crown Arts Theatre: red carpet, flashes, and the cast takes a bow at the end.", venues: ["crown_arts_theatre"], days: [5], hours: [19, 23], gives: ["fun", "style"] },
+  { key: "independence_parade", name: "Independence Day parade", icon: "🇳🇬", blurb: "1 October: the march-past on Independence Square, bands, flags and everybody in green and white.", venues: ["independence_square"], days: [0, 1, 2, 3, 4, 5, 6], hours: [8, 14], gives: ["fun", "social"], season: ["10-01", "10-01"] },
+  { key: "square_concert", name: "Concert on the square", icon: "🎤", blurb: "A big stage at Independence Square, a headline act and a crowd that sings every word.", venues: ["independence_square"], days: [6], hours: [18, 23], gives: ["fun", "social"] },
+  { key: "weekend_crusade", name: "Weekend crusade", icon: "🙏🏾", blurb: "Praise, prayer and testimonies on Independence Square: thousands under the lights, buses from every corner.", venues: ["independence_square"], days: [6, 0], hours: [7, 13], gives: ["faith", "social"] },
+  { key: "open_mic_night", name: "Open mic and poetry night", icon: "🎙️", blurb: "Anybody with a song or a poem takes the stage at Liberty Arts Park. Snap your fingers, not your phone.", venues: ["liberty_arts_park"], days: [4], hours: [19, 23], gives: ["fun", "social"] },
+  { key: "art_market_sunday", name: "Sunday art market", icon: "🖼️", blurb: "Painters, carvers and bead-makers line the paths of Liberty Arts Park. Haggle for something for your wall.", venues: ["liberty_arts_park"], days: [0], hours: [11, 18], gives: ["fun", "rest"] },
   { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
@@ -58,7 +64,9 @@ function inSeason(e: CityEvent, at: Date) {
 }
 
 export function isEventOn(e: CityEvent, at: Date) {
-  if (!inSeason(e, at) && !inSeason(e, new Date(at.getTime() - 12 * 3_600_000))) return false;
+  // An evening that runs past midnight may finish the morning after its season's last day; a daytime event may not.
+  const wraps = e.hours[0] > e.hours[1];
+  if (!inSeason(e, at) && !(wraps && inSeason(e, new Date(at.getTime() - 12 * 3_600_000)))) return false;
   const { day, hour } = lagosClock(at);
   const [s, end] = e.hours;
   if (s < end) return e.days.includes(day) && hour >= s && hour < end;
