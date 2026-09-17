@@ -251,30 +251,34 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.18, 0.6], [0.28, 0.55], [0.38, 0.5]],
     walkers: 0,
     stations: [
-      { action: "sit_talk", at: [0.2, 0.68], dir: "se" },
-      { action: "sit_talk", at: [0.36, 0.6], dir: "se", variant: "man_kaftan" },
-      { action: "sit_talk", at: [0.54, 0.6], dir: "se", variant: "man_casual" },
-      { action: "sit_talk", at: [0.46, 0.82], dir: "se" },
+      { action: "sit_talk", at: [0.2, 0.68], dir: "nw" },
+      { action: "sit_talk", at: [0.36, 0.6], dir: "nw", variant: "man_kaftan" },
+      { action: "sit_talk", at: [0.54, 0.6], dir: "nw", variant: "man_casual" },
+      { action: "sit_talk", at: [0.46, 0.82], dir: "nw" },
       { action: "stand_idle", at: [0.7, 0.55], dir: "sw", variant: "man_casual" },
     ],
-    spots: { door: { at: [0.18, 0.6], dir: "se" }, sit: { at: [0.3, 0.72], dir: "se" }, stand: { at: [0.28, 0.55], dir: "se" } },
+    spots: { door: { at: [0.18, 0.6], dir: "se" }, sit: { at: [0.3, 0.72], dir: "nw" }, stand: { at: [0.28, 0.55], dir: "se" } },
   },
   barbershop: {
     walkway: [[0.36, 0.86], [0.48, 0.88], [0.6, 0.8], [0.7, 0.72]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.62, 0.65], dir: "sw", variant: "man_casual" },
-      { action: "sit_talk", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.42, 0.78], dir: "se" },
+      // a client in the front chair (chairs face sw) with the barber at his side working the clippers; the second
+      // barber waits at the back chair for the player; a customer on the bench
+      { action: "sit_talk", at: [0.27, 0.67], dir: "sw", variant: "man-tee_blue" },
+      { action: "cut_hair", at: [0.37, 0.72], dir: "nw", variant: "man_casual" },
+      { action: "cut_hair", at: [0.62, 0.66], dir: "nw", variant: "woman_buba", phase: 3 },
+      { action: "sit_talk", at: [0.67, 0.62], dir: "sw", variant: "man_kaftan" },
     ],
-    spots: { door: { at: [0.48, 0.88], dir: "se" }, chair: { at: [0.54, 0.63], dir: "se" }, sit: { at: [0.78, 0.6], dir: "sw" }, stand: { at: [0.6, 0.8], dir: "sw" } },
+    spots: { door: { at: [0.48, 0.88], dir: "se" }, chair: { at: [0.52, 0.605], dir: "sw" }, sit: { at: [0.77, 0.66], dir: "sw" }, stand: { at: [0.6, 0.8], dir: "sw" } },
   },
   "tailor-shop": {
     walkway: [[0.28, 0.78], [0.4, 0.85], [0.52, 0.89], [0.62, 0.81], [0.73, 0.74]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.22, 0.66], dir: "se", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.57, 0.76], dir: "sw", variant: "woman_gele" },
+      // Baba at the sewing machine; his wife cutting cloth at the table
+      { action: "sew", at: [0.2, 0.67], dir: "nw", variant: "man_kaftan" },
+      { action: "wipe_counter", at: [0.55, 0.77], dir: "ne", variant: "woman_buba" },
     ],
     // Stand by the dress form to be measured.
     spots: { door: { at: [0.52, 0.89], dir: "se" }, chair: { at: [0.45, 0.8], dir: "se", pose: "stand_idle" }, stand: { at: [0.45, 0.8], dir: "se" } },
@@ -283,8 +287,9 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.25, 0.75], [0.4, 0.82], [0.55, 0.85], [0.7, 0.76], [0.78, 0.67]],
     walkers: 2,
     stations: [
-      { action: "stand_idle", at: [0.57, 0.67], dir: "se" },
-      { action: "stand_idle", at: [0.73, 0.63], dir: "sw" },
+      // one waiting in the queue, one at the teller's window, one on the bench
+      { action: "stand_idle", at: [0.6, 0.71], dir: "se" },
+      { action: "stand_talk", at: [0.73, 0.6], dir: "ne", variant: "man-agbada_white" },
       { action: "sit_talk", at: [0.32, 0.64], dir: "se" },
     ],
     spots: { door: { at: [0.55, 0.85], dir: "se" }, sit: { at: [0.25, 0.6], dir: "se" }, stand: { at: [0.66, 0.68], dir: "sw" } },
@@ -316,7 +321,7 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "dance", at: [0.48, 0.52], dir: "se" },
       { action: "dance", at: [0.56, 0.47], dir: "sw" },
-      { action: "serve", at: [0.62, 0.38], dir: "sw", variant: "man_casual" },
+      { action: "pour_drink", at: [0.62, 0.38], dir: "sw", variant: "man_casual" },
       { action: "sit_talk", at: [0.36, 0.46], dir: "se", variant: "woman_gele" },
     ],
     spots: { door: { at: [0.36, 0.56], dir: "se" }, dance: { at: [0.52, 0.6], dir: "se" }, stand: { at: [0.64, 0.5], dir: "sw" } },
@@ -326,7 +331,7 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.32, 0.74], [0.42, 0.7], [0.52, 0.66], [0.6, 0.6]],
     walkers: 0,
     stations: [
-      { action: "stand_idle", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.49, 0.55], dir: "se", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.16, 0.69], dir: "se", variant: "woman-hoodie_black" },
       { action: "kneel_pray", at: [0.71, 0.7], dir: "sw", variant: "woman-ankara_green" },
       { action: "kneel_pray", at: [0.5, 0.62], dir: "se", variant: "woman_gele", phase: 4 },
@@ -338,8 +343,10 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.4, 0.82], [0.5, 0.76], [0.58, 0.68], [0.66, 0.62]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.52, 0.6], dir: "sw", variant: "woman_buba" },
-      { action: "serve", at: [0.41, 0.7], dir: "se", variant: "man_casual" },
+      // a client in the back chair with her stylist; the second stylist waits at the front chair for the player
+      { action: "sit_talk", at: [0.45, 0.56], dir: "se", variant: "woman-ankara_green" },
+      { action: "cut_hair", at: [0.53, 0.56], dir: "sw", variant: "woman_buba" },
+      { action: "cut_hair", at: [0.41, 0.7], dir: "nw", variant: "woman_gele", phase: 3 },
       { action: "sit_talk", at: [0.87, 0.67], dir: "sw", variant: "woman_gele" },
       { action: "stand_idle", at: [0.74, 0.8], dir: "sw", variant: "schoolgirl" },
     ],
@@ -403,8 +410,8 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.6, 0.83], [0.7, 0.76], [0.8, 0.68]],
     walkers: 1,
     stations: [
-      { action: "stand_idle", at: [0.38, 0.56], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.47, 0.6], dir: "sw", variant: "woman_gele" },
+      { action: "stand_talk", at: [0.38, 0.56], dir: "se", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.47, 0.6], dir: "nw", variant: "woman_gele" },
       { action: "stand_idle", at: [0.82, 0.64], dir: "sw", variant: "man_casual" },
     ],
     spots: { door: { at: [0.6, 0.83], dir: "se" }, stand: { at: [0.7, 0.76], dir: "sw" } },
@@ -413,10 +420,10 @@ export const ROOMS: Record<string, Room> = {
     walkway: [],
     walkers: 0,
     stations: [
-      { action: "stand_idle", at: [0.62, 0.46], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.52, 0.7], dir: "se", variant: "schoolgirl" },
-      { action: "sit_talk", at: [0.68, 0.78], dir: "sw", variant: "schoolboy" },
-      { action: "sit_talk", at: [0.8, 0.66], dir: "sw", variant: "schoolgirl" },
+      { action: "stand_talk", at: [0.62, 0.46], dir: "sw", variant: "woman_buba" },
+      { action: "sit_talk", at: [0.52, 0.7], dir: "ne", variant: "schoolgirl" },
+      { action: "sit_talk", at: [0.68, 0.78], dir: "ne", variant: "schoolboy" },
+      { action: "sit_talk", at: [0.8, 0.66], dir: "ne", variant: "schoolgirl" },
     ],
   },
   // Lagoon City University's lecture theatre: the lecturer behind the desk under the screens, students on the
@@ -425,7 +432,7 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.22, 0.72], [0.34, 0.66], [0.46, 0.6], [0.52, 0.56]],
     walkers: 0,
     stations: [
-      { action: "stand_idle", at: [0.74, 0.47], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.74, 0.47], dir: "sw", variant: "man_kaftan" },
       { action: "sit_talk", at: [0.16, 0.6], dir: "se", variant: "woman-tee_blue" },
       { action: "sit_talk", at: [0.42, 0.57], dir: "se", variant: "man-hoodie_black" },
       { action: "sit_talk", at: [0.48, 0.8], dir: "se", variant: "woman-ankara_green" },
@@ -439,8 +446,8 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.5, 0.88], [0.48, 0.76], [0.5, 0.64], [0.52, 0.52]],
     walkers: 2,
     stations: [
-      { action: "stand_idle", at: [0.36, 0.64], dir: "se", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.6, 0.56], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.36, 0.64], dir: "se", variant: "woman_gele" },
+      { action: "stand_talk", at: [0.6, 0.56], dir: "sw", variant: "man_kaftan" },
       { action: "stand_idle", at: [0.44, 0.5], dir: "se", variant: "woman-buba_wrapper" },
     ],
     spots: { door: { at: [0.5, 0.88], dir: "se" }, stand: { at: [0.47, 0.72], dir: "sw" } },
@@ -528,7 +535,7 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "sit_talk", at: [0.2, 0.62], dir: "se", variant: "man_casual" },
       { action: "sit_talk", at: [0.35, 0.56], dir: "se", variant: "man_casual" },
-      { action: "stand_idle", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.7, 0.62], dir: "sw", variant: "man_kaftan" },
     ],
     spots: { door: { at: [0.72, 0.8], dir: "sw" }, sit: { at: [0.27, 0.59], dir: "se" }, stand: { at: [0.6, 0.7], dir: "sw" } },
   },
@@ -556,9 +563,10 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.4, 0.62], [0.5, 0.72], [0.62, 0.8], [0.5, 0.88], [0.35, 0.78]],
     walkers: 1,
     stations: [
-      { action: "stand_idle", at: [0.47, 0.57], dir: "sw", variant: "man_casual" },
+      // the desk sergeant behind the counter writing in the book, a man reporting a case at it, someone waiting
+      { action: "sit_desk", at: [0.72, 0.5], dir: "sw", variant: "man_casual", behind: 0.48 },
       { action: "sit_talk", at: [0.18, 0.62], dir: "se" },
-      { action: "stand_idle", at: [0.56, 0.66], dir: "sw", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.55, 0.65], dir: "ne", variant: "man_kaftan" },
     ],
     spots: { door: { at: [0.5, 0.88], dir: "se" }, sit: { at: [0.26, 0.66], dir: "se" }, stand: { at: [0.5, 0.72], dir: "sw" } },
   },
@@ -566,8 +574,9 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.8, 0.65], [0.85, 0.72], [0.74, 0.78]],
     walkers: 1,
     stations: [
-      { action: "sit_talk", at: [0.35, 0.5], dir: "se", variant: "woman_buba" },
-      { action: "sit_talk", at: [0.56, 0.6], dir: "sw", variant: "man_casual" },
+      // the presenter at the desk on the mic, a guest talking with him across it
+      { action: "sit_desk", at: [0.55, 0.575], dir: "sw", variant: "man_casual" },
+      { action: "stand_talk", at: [0.74, 0.64], dir: "nw", variant: "woman_buba" },
     ],
     spots: { door: { at: [0.74, 0.78], dir: "sw" }, stand: { at: [0.8, 0.65], dir: "sw" } },
   },
@@ -634,7 +643,7 @@ export const ROOMS: Record<string, Room> = {
     stations: [
       { action: "sit_talk", at: [0.18, 0.58], dir: "se", variant: "schoolgirl" },
       { action: "sit_talk", at: [0.38, 0.72], dir: "se", variant: "schoolboy" },
-      { action: "stand_idle", at: [0.64, 0.58], dir: "sw", variant: "woman_buba" },
+      { action: "wipe_counter", at: [0.64, 0.58], dir: "se", variant: "woman_buba" },
     ],
     spots: { door: { at: [0.64, 0.83], dir: "se" }, sit: { at: [0.28, 0.64], dir: "se" }, stand: { at: [0.7, 0.72], dir: "sw" } },
   },
@@ -643,7 +652,7 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sit_talk", at: [0.35, 0.41], dir: "se", variant: "man_kaftan" },
-      { action: "stand_idle", at: [0.62, 0.62], dir: "sw", variant: "man_casual" },
+      { action: "stand_talk", at: [0.62, 0.62], dir: "nw", variant: "man_casual" },
       { action: "sit_talk", at: [0.6, 0.83], dir: "se" },
     ],
     spots: { door: { at: [0.55, 0.73], dir: "se" }, sit: { at: [0.68, 0.8], dir: "se" }, stand: { at: [0.56, 0.66], dir: "se" } },
@@ -652,8 +661,8 @@ export const ROOMS: Record<string, Room> = {
     walkway: [[0.47, 0.5], [0.57, 0.5], [0.64, 0.61], [0.84, 0.66]],
     walkers: 1,
     stations: [
-      { action: "serve", at: [0.5, 0.49], dir: "sw", variant: "man_casual" },
-      { action: "stand_idle", at: [0.66, 0.53], dir: "sw", variant: "woman_gele" },
+      { action: "pour_drink", at: [0.5, 0.49], dir: "sw", variant: "man_casual" },
+      { action: "stand_talk", at: [0.66, 0.53], dir: "sw", variant: "woman_gele" },
       { action: "sit_talk", at: [0.3, 0.7], dir: "se" },
       { action: "sit_eat", at: [0.4, 0.7], dir: "sw" },
     ],
@@ -811,7 +820,7 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sit_talk", at: [0.24, 0.7], dir: "sw", variant: "woman_gele" },
-      { action: "stand_idle", at: [0.7, 0.58], dir: "sw", variant: "man_casual" },
+      { action: "stand_talk", at: [0.7, 0.58], dir: "sw", variant: "man_casual" },
     ],
     spots: {
       door: { at: [0.5, 0.85], dir: "se" },
@@ -846,7 +855,7 @@ export const ROOMS: Record<string, Room> = {
     walkers: 1,
     stations: [
       { action: "sit_talk", at: [0.84, 0.7], dir: "sw", variant: "woman_buba" },
-      { action: "stand_idle", at: [0.3, 0.68], dir: "se", variant: "man_kaftan" },
+      { action: "stand_talk", at: [0.3, 0.68], dir: "se", variant: "man_kaftan" },
     ],
     spots: {
       door: { at: [0.52, 0.84], dir: "se" },
