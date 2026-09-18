@@ -1,5 +1,5 @@
 import { gameLedgerEntries, profiles, shopDecor, simShops, users } from "@hc/db";
-import { AREA_BOYS_OPTIONS, COACH_EVENTS, HAGGLE_TRIES, askPrice, dayKey, haggleFloor, isOpenAt, lagosHourOf, VENUES_BY_KEY, type HaggleResult, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
+import { AREA_BOYS_OPTIONS, JOURNEY_EVENTS, HAGGLE_TRIES, askPrice, dayKey, haggleFloor, isOpenAt, lagosHourOf, VENUES_BY_KEY, type HaggleResult, DECOR_BY_KEY, LOCATION_KEYS, RIDE_MODES, type LeaderboardRow, type NeighbourShop } from "@hc/shared";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -30,10 +30,10 @@ const rideBody = z.object({
   mode: z.enum(["own", "transit", ...RIDE_MODES.map((m) => m.mode)] as [string, ...string[]]),
   units: z.number().int(),
   vehicle: z.enum(["bike", "keke", "saloon", "suv"]).optional(),
-  transit: z.enum(["brt", "rail", "ferry", "coach"]).optional(),
+  transit: z.enum(["brt", "rail", "ferry", "coach", "flight"]).optional(),
   line: z.string().max(40).optional(),
 });
-const coachBody = z.object({ event: z.enum(COACH_EVENTS.map((e) => e.key) as [string, ...string[]]), choice: z.string().max(40) });
+const coachBody = z.object({ event: z.enum(JOURNEY_EVENTS.map((e) => e.key) as [string, ...string[]]), choice: z.string().max(40) });
 const stopBody = z.object({ choice: z.enum(AREA_BOYS_OPTIONS.map((o) => o.choice) as [string, ...string[]]) });
 const dreamClaimBody = z.object({ at: z.number().int().positive() });
 const decorMoveBody = z.object({ x: z.number().int(), y: z.number().int(), rotation: z.number().int() });

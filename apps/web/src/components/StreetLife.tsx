@@ -141,6 +141,36 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
 
   useEffect(() => {
     const facing: (WalkDir | "")[] = vehicles.map(() => "");
+    // Where each vehicle was last frame, which way it was heading (unit vector) and its length, so vehicles can
+    // queue behind whatever is in front of them in their lane (routes share lanes round the roundabout).
+    const n = vehicles.length;
+    const px = new Float64Array(n).fill(NaN);
+    const py = new Float64Array(n).fill(NaN);
+    const hx = new Float64Array(n);
+    const hy = new Float64Array(n);
+    const len = vehicles.map((v) => (KINDS[v.kind]?.se ?? KINDS[v.kind]?.sw ?? { w: 100 }).w);
+    const waited = new Float64Array(n);
+    /** Someone close in front, going the same way in the same lane: wait (unless waiting long; never gridlock). */
+    const blocked = (i: number) => {
+      if (Number.isNaN(px[i]!)) return false;
+      for (let j = 0; j < n; j++) {
+        if (j === i || Number.isNaN(px[j]!)) continue;
+        const dx = px[j]! - px[i]!;
+        const dy = py[j]! - py[i]!;
+        const ahead = dx * hx[i]! + dy * hy[i]!;
+        if (ahead <= 0) continue;
+        const gap = (len[i]! + len[j]!) / 2 + 14;
+        if (ahead > gap) continue;
+        const side = Math.abs(dx * -hy[i]! + dy * hx[i]!);
+        if (side > 22) continue;
+        // Same direction (not oncoming), and at a merge where both see the other ahead, the lower one goes first.
+        if (hx[i]! * hx[j]! + hy[i]! * hy[j]! < 0.3) continue;
+        const mutual = -dx * hx[j]! + -dy * hy[j]! > 0;
+        if (mutual && i < j) continue;
+        return true;
+      }
+      return false;
+    };
     let last = performance.now();
     let raf = 0;
     const step = (now: number) => {
@@ -149,7 +179,11 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
       for (const [i, v] of vehicles.entries()) {
         const r = routes[v.route]!;
         const crawl = slowRef.current ? 0.08 + 0.3 * Math.max(0, Math.sin(now / 1400 + i * 1.7)) : 1;
-        v.at = (v.at + r.speed * crawl * dt) % v.len;
+        if (blocked(i) && waited[i]! < 4) waited[i] = waited[i]! + dt;
+        else {
+          waited[i] = 0;
+          v.at = (v.at + r.speed * crawl * dt) % v.len;
+        }
         // Find the point at distance v.at along the route
         let d = v.at;
         let k = 0;
@@ -164,6 +198,13 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
         const t = seg ? d / seg : 0;
         const x = a.x + (b.x - a.x) * t;
         const y = a.y + (b.y - a.y) * t;
+        // Faded out at a route's ends: not in anyone's way.
+        const ends = Math.min(v.at, v.len - v.at) < 60;
+        px[i] = ends ? NaN : x;
+        py[i] = y;
+        const hl = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        hx[i] = (b.x - a.x) / hl;
+        hy[i] = (b.y - a.y) / hl;
         const g = outer.current[i];
         if (!g) continue;
         g.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);

@@ -31,9 +31,9 @@ import {
 import { TRANSIT_LINES, TRANSIT_STOPS, type TransitMode } from "./transitData.js";
 
 type Pt = { x: number; y: number };
-const ICON: Record<TransitMode, string> = { rail: "🚆", ferry: "⛴️", brt: "🚌", coach: "🚍" };
+const ICON: Record<TransitMode, string> = { rail: "🚆", ferry: "⛴️", brt: "🚌", coach: "🚍", flight: "✈️" };
 /** Marker ring colour per mode (the line colours are close to these). */
-const RING: Record<TransitMode, string> = { rail: "#d9482b", ferry: "#14a3a3", brt: "#1f6fd1", coach: "#e07b1f" };
+const RING: Record<TransitMode, string> = { rail: "#d9482b", ferry: "#14a3a3", brt: "#1f6fd1", coach: "#e07b1f", flight: "#7a4fd6" };
 
 const d = (pts: Pt[]) => pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
 

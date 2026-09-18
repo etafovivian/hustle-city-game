@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, coachEventsFor, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, coachEventsFor, FLIGHT_EVENTS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Eye, EyeOff, Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Maximize, Megaphone, Minimize, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -271,7 +271,7 @@ export function CityMap({
   const [ridePick, setRidePick] = useState<{ x: number; y: number; units: number; to: string; venue?: string; plans?: TransitPlan[]; walkable?: boolean } | null>(null);
   const [stopFor, setStopFor] = useState<{ rideId: string; done: () => void } | null>(null);
   /** On the coach: something on the road to deal with before the trip goes on. */
-  const [coachFor, setCoachFor] = useState<{ rideId: string; event: string; step: string; done: () => void } | null>(null);
+  const [coachFor, setCoachFor] = useState<{ rideId: string; event: string; kind: "coach" | "flight"; step: string; done: () => void } | null>(null);
   /** A place to open on arrival (trips started from its card). */
   const arriveAt = useRef<string | null>(null);
 
@@ -347,8 +347,10 @@ export function CityMap({
     setRidePick(null);
     onVisited();
     notify(`${plan.title} to ${pick.to}: ${formatCoins(fare)} coins`);
-    // The coach has things happen on the road (the same two the server expects for this ride).
-    const legs = plan.legs.map((l, i) => (l.kind === "coach" && rideIds[i] ? { kind: l.kind, path: l.path, rideId: rideIds[i], events: coachEventsFor(rideIds[i]!) } : { kind: l.kind, path: l.path }));
+    // The coach and the plane have things happen on the way (the same two the server expects for this ride).
+    const legs = plan.legs.map((l, i) =>
+      (l.kind === "coach" || l.kind === "flight") && rideIds[i] ? { kind: l.kind, path: l.path, rideId: rideIds[i], events: coachEventsFor(rideIds[i]!, l.kind) } : { kind: l.kind, path: l.path },
+    );
     setWalkTo({ x: pick.x, y: pick.y, seq: Date.now(), mode: "transit", legs });
   };
   const ride = async (mode: RideMode | "own", vehicle?: VehicleKind) => {
@@ -1239,8 +1241,9 @@ export function CityMap({
                               onStop={(rideId) => new Promise<void>((done) => setStopFor({ rideId, done }))}
                               onCoach={(rideId, event) =>
                                 new Promise<void>((done) => {
-                                  const events = coachEventsFor(rideId);
-                                  setCoachFor({ rideId, event, step: `${events.indexOf(event as never) + 1} of ${events.length}`, done });
+                                  const kind = FLIGHT_EVENTS.some((e) => e.key === event) ? "flight" : "coach";
+                                  const events = coachEventsFor(rideId, kind);
+                                  setCoachFor({ rideId, event, kind, step: `${events.indexOf(event as never) + 1} of ${events.length}`, done });
                                 })
                               }
                               onArrive={(trip) => {
@@ -1634,6 +1637,7 @@ export function CityMap({
               rideId={coachFor.rideId}
               event={coachFor.event}
               step={coachFor.step}
+              kind={coachFor.kind}
               onDone={() => {
                 coachFor.done();
                 setCoachFor(null);

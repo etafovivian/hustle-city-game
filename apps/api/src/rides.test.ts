@@ -1,8 +1,9 @@
 // Rides: fares charged at the start, area-boys stops decided by the server and settled once.
-import { COACH_EVENT_BY_KEY, coachEventsFor, transitFare } from "@hc/shared";
+import { COACH_EVENT_BY_KEY, FLIGHT_EVENTS, TRANSIT, coachEventsFor, transitFare } from "@hc/shared";
+import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { dice } from "./modules/game/rides.js";
-import { prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
+import { TEST_DATABASE_URL, prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
 
 let app: Awaited<ReturnType<typeof testServer>>;
 beforeAll(async () => {
@@ -83,5 +84,27 @@ describe("rides", () => {
     expect((await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: first, choice: "fly" })).statusCode).toBe(400);
     const brt = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "brt", units: 3000 })).json();
     expect((await p.call("POST", `/api/game/rides/${brt.rideId}/coach`, { event: first, choice: c1.key })).statusCode).toBe(404);
+  });
+
+  it("flies to Abuja for a flat fare, with flight events (not coach ones) settled once", async () => {
+    const p = await registerPlayer(app);
+    const sql = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });
+    await sql`update profiles set coin_balance = 50000 where user_id = ${p.id}`;
+    await sql.end();
+    const short = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "flight", units: 500 })).json();
+    const long = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "flight", units: 15000 })).json();
+    expect(short.fare).toBe(TRANSIT.flight.base);
+    expect(long.fare).toBe(TRANSIT.flight.base);
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(50000 - 2 * TRANSIT.flight.base);
+    const [first] = coachEventsFor(long.rideId, "flight");
+    expect(FLIGHT_EVENTS.some((e) => e.key === first)).toBe(true);
+    const choice = COACH_EVENT_BY_KEY.get(first!)!.choices.find((c) => c.odds === undefined)!;
+    expect((await p.call("POST", `/api/game/rides/${long.rideId}/coach`, { event: first, choice: choice.key })).statusCode).toBe(200);
+    expect((await p.call("POST", `/api/game/rides/${long.rideId}/coach`, { event: first, choice: choice.key })).statusCode).toBe(409);
+    // A coach event on a flight is not part of this trip.
+    expect((await p.call("POST", `/api/game/rides/${long.rideId}/coach`, { event: "checkpoint", choice: "show" })).statusCode).toBe(404);
+    // Not enough coins: refused.
+    const poor = await registerPlayer(app);
+    expect((await poor.call("POST", "/api/game/rides", { mode: "transit", transit: "flight", units: 500 })).statusCode).toBe(422);
   });
 });

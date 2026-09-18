@@ -1,6 +1,6 @@
 # Stitch queue: paste one batch at a time (4 images each)
 
-## ▶ Start here (2026-10-13): batches 1–33 are done; this is the order for the rest
+## ▶ Start here (2026-10-13): batches 1–33 are done, and so are 35, 38, 39, 42 and 52–57 (zip 18); still to do: 59, then 58
 Everything below is already in the game on drawn stand-ins, so each zip shows up straight away. Batch 39's
 landmarks are being built right now.
 
@@ -16,6 +16,8 @@ landmarks are being built right now.
 10. **Batch 50**: Balogun market
 11. **Batch 51**: car back views
 12. **Batch 42**: interiors for new places, copied below
+13. **Batch 59**: flying to Abuja (window view, cabin, gate, landing view)
+14. **Batch 58**: Abuja (the map agent adds it when it builds Abuja)
 
 Batches 34, 36, 37, 40, 41 and 43 (docs/gap-review.md) and 44–49 (docs/regions-plan.md) are for features not built
 yet. Leave them for later.
@@ -320,3 +322,9 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. Cutaway interior of a theatre auditorium: a stage with red curtains and tiered seats.
 3. Cutaway interior of a beach cabana: loungers, a low table with coconuts, a sea view.
 4. Cutaway interior of a BRT bus: seats on both sides, standing rails, windows, a driver's cab.
+
+## Batch 59: flying to Abuja (the flight scene uses drawn stand-ins for now)
+1. A view out of an aeroplane window, wide (1536×864): the oval window frame and the wing, white clouds below, blue sky, the edge of a plastic window blind at the top. Daytime. Flat colours; no magenta background for this one.
+2. Cutaway interior of a passenger plane cabin: rows of blue seats three-and-three, a centre aisle with a drinks trolley, overhead bins, small windows. No airline names or logos.
+3. An airport departure gate: a row of black seats, a gate desk with a screen showing only "BOARDING", big windows with a plane outside. No airline names.
+4. Abuja seen from the plane as it lands: a big granite rock rising behind a green, planned city with wide roads and hills around it. Wide (1536×864), flat colours; no magenta background.

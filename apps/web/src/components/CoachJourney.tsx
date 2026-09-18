@@ -57,6 +57,33 @@ function WindowView({ moving }: { moving: boolean }) {
   );
 }
 
+/** Out of the plane window: sky, the wing, and clouds drifting past (a drawn stand-in until the Stitch art). */
+function PlaneWindow({ moving }: { moving: boolean }) {
+  return (
+    <svg className={`coach-window plane ${moving ? "moving" : ""}`} viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="plane-sky" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#2f7fd8" />
+          <stop offset="1" stopColor="#bfe3ff" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="225" fill="#d8dde6" />
+      <rect x="70" y="20" width="260" height="185" rx="80" fill="url(#plane-sky)" />
+      <g className="coach-far">
+        {[0, 400].map((o) => (
+          <g key={o} transform={`translate(${o} 0)`} fill="#fff" opacity=".95">
+            <ellipse cx="60" cy="150" rx="70" ry="22" />
+            <ellipse cx="200" cy="170" rx="90" ry="26" />
+            <ellipse cx="330" cy="140" rx="60" ry="18" />
+          </g>
+        ))}
+      </g>
+      <path d="M150 128 L330 112 L330 122 L170 140Z" fill="#e9edf3" stroke="#8a93a6" strokeWidth="2" />
+      <rect x="70" y="20" width="260" height="185" rx="80" fill="none" stroke="#9aa3b5" strokeWidth="10" />
+    </svg>
+  );
+}
+
 const outcomeBits = (r: CoachResult) => {
   const o = r.outcome;
   const bits: string[] = [];
@@ -67,7 +94,7 @@ const outcomeBits = (r: CoachResult) => {
   return bits;
 };
 
-export function CoachJourney({ rideId, event, step, onDone }: { rideId: string; event: string; step: string; onDone: () => void }) {
+export function CoachJourney({ rideId, event, step, kind = "coach", onDone }: { rideId: string; event: string; step: string; kind?: "coach" | "flight"; onDone: () => void }) {
   const ev = COACH_EVENT_BY_KEY.get(event as CoachEventKey);
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<CoachResult | null>(null);
@@ -90,9 +117,9 @@ export function CoachJourney({ rideId, event, step, onDone }: { rideId: string; 
   };
   return (
     <div className="phone-backdrop">
-      <div className="visit-sheet coach-sheet" role="alertdialog" aria-modal="true" aria-label={`On the coach: ${ev.title}`}>
+      <div className="visit-sheet coach-sheet" role="alertdialog" aria-modal="true" aria-label={`${kind === "flight" ? "On the plane" : "On the coach"}: ${ev.title}`}>
         <div className="coach-view">
-          <WindowView moving={!!result} />
+          {kind === "flight" ? <PlaneWindow moving={!!result} /> : <WindowView moving={!!result} />}
           {result ? null : ART[ev.key] ? (
             <img className="coach-event-art" src={ART[ev.key]} alt={ev.title} />
           ) : (
@@ -100,7 +127,7 @@ export function CoachJourney({ rideId, event, step, onDone }: { rideId: string; 
               {ev.icon}
             </span>
           )}
-          <span className="coach-step tiny">🚍 Interstate coach · {step}</span>
+          <span className="coach-step tiny">{kind === "flight" ? "✈️ Flight to Abuja" : "🚍 Interstate coach"} · {step}</span>
         </div>
         <h2>{ev.title}</h2>
         <p className="small">{ev.scene}</p>
