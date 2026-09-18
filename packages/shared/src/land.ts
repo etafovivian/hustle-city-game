@@ -22,6 +22,14 @@ export const LAND_RATE: Record<string, number> = {
   Mowe: 18,
   Sagamu: 22,
   Abeokuta: 28,
+  // Abuja: Maitama and Asokoro are the dearest land in the country; Kubwa, the satellite town, is cheap
+  Maitama: 340,
+  Asokoro: 320,
+  "Central Area": 240,
+  Jabi: 180,
+  Wuse: 160,
+  Garki: 140,
+  Kubwa: 30,
 };
 const ROAD_FACTOR: Record<LandRoad, number> = { arterial: 1.5, collector: 1.25, local: 1, alley: 0.8 };
 

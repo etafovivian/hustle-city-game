@@ -35,6 +35,14 @@ export const RENT_AREA: Readonly<Record<string, number>> = {
   Mowe: 0.5,
   Sagamu: 0.6,
   Abeokuta: 0.7,
+  // Abuja
+  Maitama: 2.8,
+  Asokoro: 2.6,
+  "Central Area": 2.2,
+  Jabi: 1.8,
+  Wuse: 1.6,
+  Garki: 1.4,
+  Kubwa: 0.6,
 };
 export const RENT_TERMS = { weeksUpFront: 4, agentFee: 0.1, cautionWeeks: 1, graceWeeks: 2 };
 export const WEEK_MS = 7 * 86_400_000;

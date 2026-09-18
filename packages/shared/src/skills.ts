@@ -53,6 +53,12 @@ export const VENUE_SKILL: Readonly<Record<string, SkillKey>> = {
   independence_square: "charisma",
   liberty_arts_park: "charisma",
   gadget_village: "tech",
+  abuja_secretariat: "business",
+  zone5_market: "business",
+  capital_lights_lounge: "charisma",
+  capital_polo_club: "fitness",
+  lakeview_mall: "business",
+  jabi_lakeside_park: "fitness",
 };
 /** University programmes train their own skill. */
 export const PROGRAMME_SKILL: Readonly<Record<string, SkillKey>> = { computer_science: "tech", business_admin: "business", mass_comm: "charisma", law: "business" };

@@ -24,10 +24,10 @@ export interface CityEvent {
 
 export const EVENTS: readonly CityEvent[] = [
   { key: "owambe_saturday", name: "Owambe Saturday", icon: "🎉", blurb: "Aso-ebi, jollof and a live band. Spray the celebrants and dance till evening.", venues: ["royal_event_centre"], days: [6], hours: [13, 22], gives: ["fun", "social"] },
-  { key: "sunday_service", name: "Sunday service", icon: "⛪", blurb: "Praise and worship, a long sermon, and gist with everyone after.", venues: ["grace_chapel"], days: [0], hours: [8, 13], gives: ["faith", "social"] },
-  { key: "jumuah", name: "Jumu'ah prayers", icon: "🕌", blurb: "Friday prayers: the courtyard fills, then food and greetings outside.", venues: ["central_mosque"], days: [5], hours: [12, 15], gives: ["faith", "social"] },
+  { key: "sunday_service", name: "Sunday service", icon: "⛪", blurb: "Praise and worship, a long sermon, and gist with everyone after.", venues: ["grace_chapel", "unity_cathedral"], days: [0], hours: [8, 13], gives: ["faith", "social"] },
+  { key: "jumuah", name: "Jumu'ah prayers", icon: "🕌", blurb: "Friday prayers: the courtyard fills, then food and greetings outside.", venues: ["central_mosque", "unity_mosque"], days: [5], hours: [12, 15], gives: ["faith", "social"] },
   { key: "match_night", name: "Match night", icon: "⚽", blurb: "The big game on the big screen. Every goal shakes the street.", venues: ["viewing_centre", "city_stadium", "oga_snooker"], days: [2, 3, 6], hours: [18, 23], gives: ["fun", "social"] },
-  { key: "friday_groove", name: "Friday Groove", icon: "🪩", blurb: "The DJ's best set of the week. Dress sharp.", venues: ["skyline_lounge"], days: [5], hours: [22, 4], gives: ["fun", "style"] },
+  { key: "friday_groove", name: "Friday Groove", icon: "🪩", blurb: "The DJ's best set of the week. Dress sharp.", venues: ["skyline_lounge", "capital_lights_lounge"], days: [5], hours: [22, 4], gives: ["fun", "style"] },
   { key: "sunset_cruise", name: "Sunday sunset cruise", icon: "🌅", blurb: "Cocktails and Afrobeats on the lagoon as the sun goes down.", venues: ["lagoon_boat_cruise"], days: [0], hours: [16, 20], gives: ["fun", "rest"] },
   { key: "games_night", name: "Games Night", icon: "🎲", blurb: "Everybody at Oga's: chess, Ayo and snooker against real people. Win a game here on the night for a prize.", venues: ["oga_snooker"], days: [3], hours: [20, 22], gives: ["fun", "social"], playNight: true },
   { key: "buka_night", name: "Buka Night", icon: "🍲", blurb: "Saturday night at Mama Nkechi's: food, gist and Ayo with whoever turns up. Win at the Ayo board for a prize.", venues: ["mama_nkechi_buka"], days: [6], hours: [20, 22], gives: ["food", "social"], playNight: true },
@@ -40,6 +40,7 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "weekend_crusade", name: "Weekend crusade", icon: "🙏🏾", blurb: "Praise, prayer and testimonies on Independence Square: thousands under the lights, buses from every corner.", venues: ["independence_square"], days: [6, 0], hours: [7, 13], gives: ["faith", "social"] },
   { key: "open_mic_night", name: "Open mic and poetry night", icon: "🎙️", blurb: "Anybody with a song or a poem takes the stage at Liberty Arts Park. Snap your fingers, not your phone.", venues: ["liberty_arts_park"], days: [4], hours: [19, 23], gives: ["fun", "social"] },
   { key: "art_market_sunday", name: "Sunday art market", icon: "🖼️", blurb: "Painters, carvers and bead-makers line the paths of Liberty Arts Park. Haggle for something for your wall.", venues: ["liberty_arts_park"], days: [0], hours: [11, 18], gives: ["fun", "rest"] },
+  { key: "polo_saturday", name: "Polo Saturday", icon: "🏇", blurb: "The season's big match at the Capital Polo & Golf Club: hats, horses and handshakes.", venues: ["capital_polo_club"], days: [6], hours: [15, 19], gives: ["fun", "rep"] },
   { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
