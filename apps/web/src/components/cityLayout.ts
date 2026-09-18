@@ -600,7 +600,8 @@ const VENUE_AT: { key: string; a?: number; b?: number; district?: string; scale?
   // its south-east corner, Olumo Rock on the high ground north of Abeokuta, and Itoku's adire market on the main road.
   { key: "mowe_estate_office", a: -4475, b: 2725, scale: 1.1 },
   { key: "sagamu_junction", a: -4135, b: 5035 },
-  { key: "olumo_rock", a: -5300, b: 7720, scale: 2.4 },
+  // (The rock's art is a tall tile: drawn at 1.6 so it doesn't hide Abeokuta's houses; the hill is claimed separately.)
+  { key: "olumo_rock", a: -5300, b: 7720, scale: 1.6 },
   { key: "itoku_adire_market", a: -4480, b: 8625, scale: 1.25 },
 ];
 
@@ -675,6 +676,9 @@ const BIG: Record<string, number> = {
   "high-court": 1.2,
   library: 1.15,
   university: 1.3,
+  // New art for venues placed by district keeps the size its stand-in had (so no plot moves)
+  senate: 1.3,
+  "boxing-club": 1.1,
   // Small things
   atm: 0.75,
   "kiosk-container": 0.7,
@@ -833,8 +837,8 @@ export const VENUE_ART: Record<string, string> = {
   high_court: "high-court",
   balogun_market: "market-hall",
   city_library: "library",
-  lagoon_city_university: "university",
-  ring_kings_boxing: "gym",
+  lagoon_city_university: "senate",
+  ring_kings_boxing: "boxing-club",
   city_fm: "radio-station",
   general_hospital: "hospital",
   lampnet_academy: "school",
@@ -844,18 +848,16 @@ export const VENUE_ART: Record<string, string> = {
   tailors_row: "tailor-shop",
   viewing_centre: "viewing-centre",
   mallam_suya: "suya-stand",
-  // Stand-in until the beach art (cabanas, beach bar shack) arrives
-  sandbar_beach: "restaurant-terrace",
-  mowe_estate_office: "estate-gate",
+  sandbar_beach: "beach-bar",
+  mowe_estate_office: "peace-estate",
   sagamu_junction: "motor-park",
-  // A drawn stand-in (public/art/landmarks/olumo-rock.svg) until the rock's art arrives
   olumo_rock: "olumo-rock",
-  itoku_adire_market: "market-hall",
-  // Landmarks, placed late (see "Landmarks and Gadget Village" below). Drawn stand-ins until Stitch batch 39; keep
-  // each name in step with the venue's art in packages/shared venues.ts (check-clearance.ts checks it).
-  crown_arts_theatre: "crown-arts-theatre",
-  independence_square: "independence-square",
-  liberty_arts_park: "liberty-arts-park",
+  itoku_adire_market: "adire-pits",
+  // Landmarks, placed late (see "Landmarks and Gadget Village" below). Keep each name in step with the venue's art in
+  // packages/shared venues.ts (check-clearance.ts checks it).
+  crown_arts_theatre: "arts-theatre",
+  independence_square: "parade-square",
+  liberty_arts_park: "arts-park",
   gadget_village: "commercial-block",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
@@ -1505,14 +1507,14 @@ claimRect("city-rail-yard", -2920, -2560, 1570, 1700);
 for (const s of RAIL_STATIONS) if (s.platform.b1 > 0) claimRect(`${s.id} platform`, s.platform.a0, s.platform.a1, s.platform.b0, s.platform.b1);
 // Station buildings: the terminus hall, and a canopy at each stop
 transitBuilding("city-rail-hall", "/art/transit/rail-terminus.svg", -2860, -2690, 1415, 1540, 270);
-transitBuilding("danfo-north-canopy", "/art/transit/rail-station.svg", -1975, -1825, 1660, 1716, 170);
-transitBuilding("j101-north-canopy", "/art/transit/rail-station.svg", -925, -775, 1400, 1456, 170);
-transitBuilding("airport-ridge-canopy", "/art/transit/rail-station.svg", 645, 795, 1412, 1468, 170);
-transitBuilding("tech-mile-canopy", "/art/transit/rail-station.svg", 1712, 1852, 1412, 1468, 160);
+transitBuilding("danfo-north-canopy", "/art/buildings/rail-station.webp", -1975, -1825, 1660, 1716, 170);
+transitBuilding("j101-north-canopy", "/art/buildings/rail-station.webp", -925, -775, 1400, 1456, 170);
+transitBuilding("airport-ridge-canopy", "/art/buildings/rail-station.webp", 645, 795, 1412, 1468, 170);
+transitBuilding("tech-mile-canopy", "/art/buildings/rail-station.webp", 1712, 1852, 1412, 1468, 160);
 {
   // Marina Wharf's station stands over the water at the bridge end
   const c = iso(2508, -1880);
-  TRANSIT_ART_PROPS.push({ art: "/art/transit/rail-station.svg", x: c.x, y: c.y + 40, key: "marina-station-canopy", w: 150, behind: false });
+  TRANSIT_ART_PROPS.push({ art: "/art/buildings/rail-station.webp", x: c.x, y: c.y + 40, key: "marina-station-canopy", w: 150, behind: false });
 }
 // A train waiting at the terminus
 {
@@ -1706,8 +1708,9 @@ export const ART_ASPECT: Record<string, number> = {
   "residential-block": 0.88, "residential-tower": 1.06, "restaurant-terrace": 0.88, salon: 1.11, school: 0.79, "shop-house": 0.99, "skyline-lounge": 0.83,
   snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82, university: 0.87, "campus-quad": 0.86, "market-stalls": 0.74,
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
-  // Drawn stand-ins (public/art/landmarks)
-  "olumo-rock": 0.85, "crown-arts-theatre": 0.72, "independence-square": 0.62, "liberty-arts-park": 0.7,
+  "adire-pits": 0.8, "beach-bar": 0.97, "beach-cabanas": 0.71, "boxing-club": 0.92, "brt-station": 0.79, "peace-estate": 0.79, "rail-station": 1.01, senate: 0.87,
+  // Landmarks (public/art/landmarks)
+  "olumo-rock": 1.5, "arts-theatre": 0.69, "parade-square": 0.72, "arts-park": 0.75, palace: 0.68,
 };
 export type Pt = [number, number];
 const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
@@ -2092,7 +2095,7 @@ function landmark(key: string, a: number, b: number, scale: number) {
 }
 landmark("crown_arts_theatre", 700, -1447, 1.4);
 landmark("liberty_arts_park", 2438, -2640, 1.07);
-landmark("independence_square", 2510, -3170, 2.25);
+landmark("independence_square", 2510, -3215, 2.25);
 
 /** Flat ground drawn under a landmark (Liberty Arts Park's lawn): people walk on it; nothing is built on it. */
 export const LANDMARK_GROUNDS: { key: string; kind: "lawn" | "paving"; path: string }[] = [
@@ -2179,6 +2182,47 @@ const GADGET_STALLS: Prop[] = (() => {
   return out;
 })();
 PROPS.push(...GADGET_STALLS);
+
+// ── The beaches: cabanas, the lifeguard tower and the horse men ──
+// Sandbar Bay's open sand either side of the beach bar, and the Atlantic Beach strip along Lekki's shore (between the
+// beach drive and the sea). Each stands only where its ground is free and on the sand.
+const BEACH_W: Record<string, number> = { "beach-cabanas": 190, "lifeguard-tower": 90, "beach-horse": 100 };
+function beachProp(kind: string, x: number, y: number, key: string, on: (x: number, y: number) => boolean): Prop | null {
+  const w = BEACH_W[kind]!;
+  const hh = w / 5;
+  if (!on(x, y - hh) || !on(x, y + 2 * hh) || !landmassAt(x, y + hh) || !on(x - 2 * hh, y) || !on(x + 2 * hh, y) || !claim(x, y, hh, 8)) return null;
+  const art = kind === "beach-cabanas" ? `/art/buildings/${kind}.webp` : `/art/props/${kind}.webp`;
+  const poly = boxShape(x, y + hh, w, w * (kind === "beach-cabanas" ? 0.71 : kind === "lifeguard-tower" ? 1.12 : 0.86));
+  if (!BUILDING_SHAPES.near(poly).every((b) => !inPoly([x, y + hh], b.foot!) && (b.fy > y + hh || coverShare(b.poly, poly) <= MAX_COVER))) return null;
+  return { art, x, y: y + hh, key, w, behind: false };
+}
+/** The first spot near the one asked for (iso offsets tried in order) where the prop fits. */
+function beachNear(kind: string, at: (da: number, db: number) => { x: number; y: number }, key: string, on: (x: number, y: number) => boolean) {
+  for (const da of [0, 40, -40, 80, -80, 120, -120])
+    for (const db of [0, 30, -30, 60, -60]) {
+      const c = at(da, db);
+      const p = beachProp(kind, c.x, c.y, key, on);
+      if (p) return p;
+    }
+  return null;
+}
+const BEACH_PROPS: Prop[] = [
+  // Sandbar Bay (iso a, b), either side of the beach bar at a 1880
+  ...(
+    [
+      ["beach-cabanas", 1660, -4060],
+      ["beach-cabanas", 2110, -4060],
+      ["lifeguard-tower", 2330, -4040],
+      ["beach-horse", 1460, -4030],
+    ] as const
+  ).map(([kind, a, b], i) => beachNear(kind, (da, db) => iso(a + da, b + db), `sandbar-${kind}-${i}`, (x, y) => inSandbar(x, y, 20))),
+  // Atlantic Beach: along Lekki's shore, every 520 or so, between the beach drive and the sea
+  ...range(7300, 12500, 520).map((x, i) => {
+    const kind = (["beach-cabanas", "lifeguard-tower", "beach-cabanas", "beach-horse"] as const)[i % 4]!;
+    return beachNear(kind, (da, db) => ({ x: x + da * 2, y: island(x + da * 2) + ISLAND_S - 120 - db / 3 }), `atlantic-${kind}-${i}`, (px, py) => landmassAt(px, py) === "island");
+  }),
+].filter((p): p is Prop => !!p);
+PROPS.push(...BEACH_PROPS);
 
 /** Palms along the Island road (Lekki feel) and trees around the districts. */
 const EXTRA_TREES = [

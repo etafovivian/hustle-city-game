@@ -91,7 +91,7 @@ const rand = (k: number) => {
 /** Where a landmark's crowd stands on event days: a diamond on its art (centre and half-size, as shares of the image). */
 export const CROWD_AT: Record<string, { cx: number; cy: number; rx: number; ry: number; people: number }> = {
   // Independence Square's parade ground
-  independence_square: { cx: 0.5, cy: 0.6, rx: 0.3, ry: 0.23, people: 42 },
+  independence_square: { cx: 0.42, cy: 0.56, rx: 0.17, ry: 0.12, people: 36 },
 };
 const PERSON = walkerSize(64);
 /** The crowd on a landmark while its event is on: people standing about (and swaying) on its open ground. */

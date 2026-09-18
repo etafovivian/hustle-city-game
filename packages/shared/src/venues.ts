@@ -370,8 +370,8 @@ export const VENUES: readonly Venue[] = [
     name: "Olumo Rock",
     area: "Abeokuta",
     icon: "🪨",
-    // A drawn stand-in for the rock (the map draws it on its high ground) until its art arrives
-    art: "/art/landmarks/olumo-rock.svg",
+    // Drawn on its high ground (the map draws the hill under it)
+    art: "/art/landmarks/olumo-rock.webp",
     blurb: "The great rock Abeokuta was founded under. Climb the steps past the shrines and see the whole town and the Ogun River from the top.",
     regulars: ["Guide Baba Sola"],
     activities: [
@@ -385,7 +385,7 @@ export const VENUES: readonly Venue[] = [
     name: "Itoku Adire Market",
     area: "Abeokuta",
     icon: "🧵",
-    art: "/art/buildings/market-hall.webp",
+    art: "/art/buildings/adire-pits.webp",
     interior: "/art/interiors/market-aisle.webp",
     blurb: "Rows of hand-dyed adire in every blue you can think of. Watch the women dye cloth in the pits, then haggle for a bundle.",
     regulars: ["Mama Adire"],
@@ -413,7 +413,7 @@ export const VENUES: readonly Venue[] = [
     name: "Mowe Estates Office",
     area: "Mowe",
     icon: "🏡",
-    art: "/art/buildings/estate-gate.webp",
+    art: "/art/buildings/peace-estate.webp",
     blurb: "Everybody's 'buy land in Ogun' dream starts here: cheaper plots, new estates, and an agent who promises the road will be tarred soon.",
     regulars: ["Agent Femi"],
     activities: [
@@ -426,7 +426,7 @@ export const VENUES: readonly Venue[] = [
     name: "Ring Kings Boxing Club",
     area: "Danfo Terminal",
     icon: "🥊",
-    art: "/art/buildings/gym.webp",
+    art: "/art/buildings/boxing-club.webp",
     interior: "/art/interiors/gym.webp",
     blurb: "Sweat, sawdust and a ring with old ropes. Coach Dele has trained champions; he'll train you too if you show up at 6am.",
     regulars: ["Coach Dele", "Kid Lightning"],
@@ -442,7 +442,7 @@ export const VENUES: readonly Venue[] = [
     name: "Sandbar Bay Beach",
     area: "Sandbar Bay",
     icon: "🏖️",
-    art: "/art/buildings/restaurant-terrace.webp",
+    art: "/art/buildings/beach-bar.webp",
     interior: "/art/interiors/home-villa-pool.webp",
     blurb: "A strip of white sand you only reach by water bus. Cabanas, coconut, horses on the shore, and on Sundays the beach rave goes till late.",
     regulars: ["Lifeguard Kunle", "Mama Coconut", "Horse man Sule"],
@@ -459,7 +459,7 @@ export const VENUES: readonly Venue[] = [
     name: "Lagoon City University",
     area: "Tech Mile",
     icon: "🏛️",
-    art: "/art/buildings/university.webp",
+    art: "/art/buildings/senate.webp",
     interior: "/art/interiors/lecture-hall.webp",
     blurb: "Big campus, bigger dreams. Enrol in a degree, go to lectures, write your exams and graduate in front of the whole family.",
     regulars: ["Prof. Adebayo-Okafor", "Course rep Tolu"],
@@ -510,14 +510,14 @@ export const VENUES: readonly Venue[] = [
       { key: "pharmacy", label: "Pick up malaria drugs", cost: 200, xp: 6 },
     ],
   },
-  // ── Landmarks (drawn stand-ins in public/art/landmarks until the Stitch batch 39 art arrives) ──
+  // ── Landmarks (Stitch batch 39 art in public/art/landmarks) ──
   {
     key: "crown_arts_theatre",
     name: "Crown Arts Theatre",
     area: "Owambe Gardens",
     icon: "🎭",
-    art: "/art/landmarks/crown-arts-theatre.svg",
-    interior: "/art/interiors/event-centre.webp",
+    art: "/art/landmarks/arts-theatre.webp",
+    interior: "/art/interiors/theatre.webp",
     blurb: "The big round theatre with the roof like a general's cap. Plays, stand-up nights, and on Fridays the premiere everybody dresses up for.",
     regulars: ["Director Funmilayo", "Comedian Gbenga Laffs"],
     activities: [
@@ -532,7 +532,7 @@ export const VENUES: readonly Venue[] = [
     name: "Independence Square",
     area: "Marina Wharf",
     icon: "🎖️",
-    art: "/art/landmarks/independence-square.svg",
+    art: "/art/landmarks/parade-square.webp",
     blurb: "A huge parade ground with grandstands and four horses on tall pillars. Parades on 1 October, concerts on Saturday nights, crusades at the weekend, and people gisting on the steps every day.",
     regulars: ["Parade marshal Okon", "Mama Flags"],
     activities: [
@@ -547,7 +547,7 @@ export const VENUES: readonly Venue[] = [
     name: "Liberty Arts Park",
     area: "Marina Wharf",
     icon: "🎨",
-    art: "/art/landmarks/liberty-arts-park.svg",
+    art: "/art/landmarks/arts-park.webp",
     blurb: "An old colonial prison turned into a park: arches in the old wall, an open-air stage, painters under the trees and poetry when the sun goes down.",
     regulars: ["Poet Adaeze", "Painter Kunle"],
     activities: [

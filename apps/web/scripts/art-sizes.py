@@ -4,7 +4,7 @@ import glob, json, pathlib
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
 sizes = {}
-for d in ("buildings", "props", "life", "nature"):
+for d in ("buildings", "props", "life", "nature", "landmarks", "transit"):
     for f in sorted((root / "public/art" / d).glob("*.webp")):
         sizes[f"/art/{d}/{f.name}"] = list(Image.open(f).size)
 # Vector stand-ins (transit and landmarks, until their art arrives): the size is on the <svg> element.
