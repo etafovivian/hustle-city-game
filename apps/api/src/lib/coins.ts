@@ -33,6 +33,7 @@ export type CoinKind =
   | "university_fees"
   | "rent"
   | "gadget"
+  | "coach"
   | "admin_adjustment";
 
 export interface PostingResult {

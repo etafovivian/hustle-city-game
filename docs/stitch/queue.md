@@ -1,5 +1,25 @@
 # Stitch queue: paste one batch at a time (4 images each)
 
+## ▶ Start here (2026-10-13): batches 1–33 are done; this is the order for the rest
+Everything below is already in the game on drawn stand-ins, so each zip shows up straight away. Batch 39's
+landmarks are being built right now.
+
+1. **Batch 57**: rooms where people work (hospital ward, consulting room, restaurant, cocktail bar)
+2. **Batch 55**: the coach trip (coach sheet, window view, checkpoint, hawkers)
+3. **Batch 56**: more coach moments and the better train
+4. **Batch 39**: landmarks (arts theatre, Independence Square, arts park, palace), copied below
+5. **Batch 35**: BRT station, rail station, train, water bus, copied below
+6. **Batch 38**: the beach, copied below
+7. **Batch 53**: boxing and working out
+8. **Batch 54**: Ogun State
+9. **Batch 52**: Lagoon City University
+10. **Batch 50**: Balogun market
+11. **Batch 51**: car back views
+12. **Batch 42**: interiors for new places, copied below
+
+Batches 34, 36, 37, 40, 41 and 43 (docs/gap-review.md) and 44–49 (docs/regions-plan.md) are for features not built
+yet. Leave them for later.
+
 **Each time:**
 1. Attach `apps/web/public/art/market-square.webp` as the style reference.
 2. Paste the **style block** below.
@@ -258,3 +278,45 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. A state border arch over a dual carriageway: a wide concrete arch with the words "WELCOME TO OGUN STATE · GATEWAY STATE", flower beds either side.
 3. A new housing estate gate in Mowe: a pillared gate with a guard post, the sign "PEACE ESTATE", a row of identical bungalows behind it, unpaved red-earth road.
 4. Adire dye pits: a row of clay dye pots and indigo-blue cloth hanging on lines to dry, a market stall beside it.
+
+## Batch 55: the coach trip and a better train (the coach scene and the train use drawn stand-ins for now)
+1. A long-distance Nigerian luxury coach (big white and green bus with tinted windows, luggage hatches, no logos or words), 2×2 sheet of four directions like the BRT sheet: driving down-left, down-right, up-left, up-right.
+2. A view out of a coach window, wide (1536×640): the Lagos–Ogun expressway, palm trees and bush, a few roadside kiosks, the window frame and a red curtain on the left edge. Daytime. Flat colours, no magenta background for this one.
+3. A roadside police checkpoint: a few drums and a plank across one lane, two officers in black uniform (no badges or words), one with a torch, a small canopy.
+4. Junction hawkers: three hawkers with trays on their heads (plantain chips, bread, roasted corn, sachet water) running alongside, single group.
+
+## Batch 56: more coach moments and the train in detail
+1. A coach on the road shoulder with a burst tyre, the driver and two passengers changing the wheel, a jack and spare tyre, a mango tree.
+2. A broken-down fuel tanker across two lanes with a queue of cars and a danfo behind it.
+3. Cutaway interior of a luxury coach: two rows of reclining seats, a centre aisle, a small TV at the front, curtains, passengers' bags on the rack. No words.
+4. A three-car light-rail train in blue, white and a yellow stripe, as one long object seen from the side at 2:1 isometric, travelling down-right, with the 4 directions on a 2×2 sheet (replaces batch 35 #3 if you haven't made it yet).
+
+## Batch 57: rooms where people work (staff move about in these)
+1. Cutaway interior of a hospital ward: four beds in a row with drips and curtains, a nurses' station desk with a computer and files, a door on the right, clear floor down the middle.
+2. Cutaway interior of a doctor's consulting room: a desk, an examination couch, a scale, a cabinet with a red cross, a sink.
+3. Cutaway interior of a restaurant dining room: six tables with chairs, a kitchen pass with a hatch at the back, a bar counter on the side, clear aisles between the tables.
+4. Cutaway interior of a cocktail bar: a long bar counter with stools, shelves of unlabelled bottles behind it, a few high tables, clear floor behind and in front of the counter.
+
+## Batch 35: public transport
+1. A BRT bus station: a raised platform with a steel and glass shelter, turnstiles, a ramp, and the sign "BRT".
+2. An elevated light-rail station: concrete pillars, a platform with a canopy, stairs down to the street, the sign "CITY RAIL".
+3. A three-car light-rail train in blue and white, 2×2 sheet of four directions (no logos).
+4. A small commuter ferry (water bus) with a covered passenger deck and orange life jackets on the rails.
+
+## Batch 38: the beach
+1. A row of three thatched beach cabanas with loungers in front, on sand.
+2. A beach bar shack: a palm-roof hut, a counter, coconuts and a grill.
+3. A horse with a decorated saddle and a handler, standing on sand.
+4. A lifeguard tower with a red flag, and two jet skis pulled up on the sand.
+
+## Batch 39: culture and civic landmarks (tall: 1024×1536 where needed)
+1. A grand round arts theatre shaped like a military cap, on a plinth with steps, the sign "ARTS THEATRE".
+2. A parade square with stepped grandstands and four horse statues on tall pillars, flags on poles.
+3. An arts park: an old colonial prison wall with arches, a small open-air stage, trees and benches.
+4. A traditional palace: a long walled compound with a carved gate, a red and white facade and a courtyard.
+
+## Batch 42: interiors for new places
+1. Cutaway interior of the crusade tent: a stage with a keyboard and drums, rows of chairs, speakers.
+2. Cutaway interior of a theatre auditorium: a stage with red curtains and tiered seats.
+3. Cutaway interior of a beach cabana: loungers, a low table with coconuts, a sea view.
+4. Cutaway interior of a BRT bus: seats on both sides, standing rails, windows, a driver's cab.

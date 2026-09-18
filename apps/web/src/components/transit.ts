@@ -129,12 +129,16 @@ export function transitPlans(from: P, to: P): TransitPlan[] {
     const cur = best.get(k);
     if (!cur || p.seconds < cur.seconds) best.set(k, p);
   }
-  // Drop plans another beats on both time and fare (a change that saves nothing).
+  // Drop plans another beats on both time and fare (a change that saves nothing), except the coach: the trip out
+  // of Lagos by road is its own experience (things happen on the way), so it stays on offer next to the train.
   const plans = [...best.values()];
-  return plans
-    .filter((p) => !plans.some((q) => q !== p && q.seconds <= p.seconds && q.fare <= p.fare && (q.seconds < p.seconds || q.fare < p.fare)))
+  const coach = (p: TransitPlan) => p.kinds.length === 1 && p.kinds[0] === "coach";
+  const kept = plans
+    .filter((p) => !coach(p) && !plans.some((q) => q !== p && q.seconds <= p.seconds && q.fare <= p.fare && (q.seconds < p.seconds || q.fare < p.fare)))
     .sort((a, b) => a.seconds - b.seconds)
     .slice(0, 3);
+  const road = plans.filter(coach).sort((a, b) => a.seconds - b.seconds)[0];
+  return road ? [...kept, { ...road, detail: `${road.detail} · things happen on the road` }] : kept;
 }
 
 /** Should the picker offer this plan? Yes if it's quicker than walking, or walking can't get there. */

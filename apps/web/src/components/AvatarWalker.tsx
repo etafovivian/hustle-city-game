@@ -16,10 +16,34 @@ export type Trip = Point & {
   rideId?: string;
   stop?: boolean;
   /** Public transport: walk to the stop, wait, ride the line, walk on (paths already planned). */
-  legs?: { kind: "walk" | TransitKind; path: Point[] }[];
+  legs?: { kind: "walk" | TransitKind; path: Point[]; rideId?: string; events?: string[] }[];
 };
-/** A point on the way, with how fast to go to it, what you're riding, and a wait when you get there. */
-type Waypoint = Point & { speed: number; art: string; wait?: number };
+/** A point on the way, with how fast to go to it, what you're riding, a wait when you get there, and something
+ * that happens there on a coach trip (the ride pauses until it's dealt with). */
+type Waypoint = Point & { speed: number; art: string; wait?: number; halt?: { rideId: string; event: string } };
+
+/** A ride leg's points, with each road event put in at an even share of the way along. */
+function withHalts(path: Point[], rideId: string | undefined, events: string[] | undefined): (Point & { halt?: { rideId: string; event: string } })[] {
+  if (!rideId || !events?.length || path.length < 2) return path;
+  const out: (Point & { halt?: { rideId: string; event: string } })[] = [path[0]!];
+  const lens = path.slice(1).map((p, i) => Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y));
+  const total = lens.reduce((a, b) => a + b, 0);
+  const marks = events.map((event, k) => ({ at: (total * (k + 1)) / (events.length + 1), event }));
+  let run = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!;
+    const b = path[i]!;
+    const l = lens[i - 1]!;
+    while (marks.length && marks[0]!.at <= run + l) {
+      const m = marks.shift()!;
+      const t = l ? (m.at - run) / l : 0;
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, halt: { rideId, event: m.event } });
+    }
+    out.push(b);
+    run += l;
+  }
+  return out;
+}
 
 const SPEED = 300; // world units per second (walking)
 // The player's walker is a bit bigger than street walkers so you can spot yourself.
@@ -60,6 +84,7 @@ export function AvatarWalker({
   plateScale,
   onBlocked,
   onStop,
+  onCoach,
   onArrive,
   posOut,
 }: {
@@ -73,6 +98,8 @@ export function AvatarWalker({
   onBlocked: () => void;
   /** The area boys stopped the ride: resolves when the player has dealt with them. */
   onStop?: (rideId: string) => Promise<void>;
+  /** Something on the road during a coach trip; the trip goes on when this resolves. */
+  onCoach?: (rideId: string, event: string) => Promise<void>;
   /** Reached the end of a trip. */
   onArrive?: (trip: Trip) => void;
   /** Kept up to date with where the player is (for pricing rides from here). */
@@ -98,7 +125,7 @@ export function AvatarWalker({
       // Transit: each leg at its own speed; a wait at the stop before each ride.
       path = target.legs.flatMap((leg) => {
         const ride = leg.kind !== "walk" ? TRANSIT[leg.kind] : null;
-        return leg.path.map((p, i) => ({ x: p.x, y: p.y, speed: ride?.speed ?? SPEED, art: ride ? leg.kind : "walk", wait: ride && i === 0 ? ride.wait : undefined }));
+        return withHalts(leg.path, leg.rideId, leg.events).map((p, i) => ({ ...p, speed: ride?.speed ?? SPEED, art: ride ? leg.kind : "walk", wait: ride && i === 0 ? ride.wait : undefined }));
       });
     } else {
       // Rides keep to the roads; walkers to the pavements and zebras.
@@ -156,6 +183,19 @@ export function AvatarWalker({
         const dx = next.x - p.x;
         const dy = next.y - p.y;
         const dist = Math.hypot(dx, dy);
+        if (next.halt && dist <= budget && onCoach) {
+          // Something on the road: the coach stops until the player has dealt with it.
+          const halt = next.halt;
+          posRef.current = { x: next.x, y: next.y };
+          setPos(posRef.current);
+          path[0] = { ...next, halt: undefined };
+          onCoach(halt.rideId, halt.event).then(() => {
+            if (cancelled) return;
+            last = performance.now();
+            raf = requestAnimationFrame(step);
+          });
+          return;
+        }
         if (next.wait && dist <= budget) {
           // At the stop: board after the wait.
           p = { x: next.x, y: next.y };
@@ -211,23 +251,23 @@ export function AvatarWalker({
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />
         {walking && riding === "rail" ? (
-          // The Coast Line train (a drawn stand-in until the Stitch art): two carriages along the track.
-          <g transform={`rotate(${(heading * 180) / Math.PI})`}>
-            {[-62, 2].map((x) => (
-              <g key={x}>
-                <rect x={x} y={-17} width={60} height={30} rx={9} fill="#f4f6fb" stroke="#0a0f24" strokeWidth={3} />
-                <rect x={x + 6} y={-11} width={48} height={9} rx={3} fill="#5b8def" />
-                <rect x={x} y={5} width={60} height={5} fill="#1e5bd8" />
+          // The train (Stitch three-car sheet), turned to the way it's going along the track.
+          (() => {
+            const v = vehicleView("train", walkDir(Math.cos(heading), Math.sin(heading)));
+            return (
+              <g transform={v.mirror ? "scale(-1 1)" : undefined}>
+                <image href={v.href} x={-v.w / 2} y={-v.h + 20} width={v.w} height={v.h} />
               </g>
-            ))}
-          </g>
+            );
+          })()
         ) : walking && riding === "ferry" ? (
-          <g transform={Math.cos(heading) < 0 ? "scale(-1 1)" : undefined}>
-            <image href="/art/props/tugboat.webp" x={-60} y={-70} width={120} height={80} />
+          // The water bus (drawn bow to the left): flipped when it heads right.
+          <g transform={Math.cos(heading) > 0 ? "scale(-1 1)" : undefined}>
+            <image href="/art/life/water-bus.webp" x={-110} y={-140} width={220} height={156} />
           </g>
         ) : walking && riding !== "walk" ? (
           (() => {
-            const v = vehicleView(riding === "coach" ? "brt" : riding, facing);
+            const v = vehicleView(riding, facing);
             const w = v.w * 1.25;
             const h = v.h * 1.25;
             return (

@@ -1,5 +1,5 @@
 // Rides: fares charged at the start, area-boys stops decided by the server and settled once.
-import { transitFare } from "@hc/shared";
+import { COACH_EVENT_BY_KEY, coachEventsFor, transitFare } from "@hc/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { dice } from "./modules/game/rides.js";
 import { prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
@@ -59,5 +59,29 @@ describe("rides", () => {
     expect((await p.call("GET", "/api/me")).json().coins).toBe(before - r.fare);
     expect((await p.call("POST", "/api/game/rides", { mode: "transit", transit: "coach", units: 3000 })).json()).toMatchObject({ fare: transitFare("coach", 3000), stop: false });
     expect((await p.call("POST", "/api/game/rides", { mode: "transit", transit: "rocket", units: 3000 })).statusCode).toBe(400);
+  });
+
+  it("settles each road event on a coach trip once, and only on a coach", async () => {
+    const p = await registerPlayer(app);
+    const coach = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "coach", units: 3000 })).json();
+    const [first, second] = coachEventsFor(coach.rideId);
+    expect(first).not.toBe(second);
+    const before = (await p.call("GET", "/api/me")).json().coins;
+    // A paid choice where there is one, else the first.
+    const pick = (key: typeof first) => COACH_EVENT_BY_KEY.get(key!)!.choices.find((c) => c.win.coins && c.odds === undefined) ?? COACH_EVENT_BY_KEY.get(key!)!.choices[0]!;
+    const c1 = pick(first);
+    dice.roll = () => 0;
+    const r1 = (await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: first, choice: c1.key })).json();
+    expect(r1.ok).toBe(true);
+    expect(r1.outcome.message).toBe(c1.win.message);
+    expect((await p.call("GET", "/api/me")).json().coins).toBe(before + (c1.win.coins ?? 0));
+    expect((await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: first, choice: c1.key })).statusCode).toBe(409);
+    expect((await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: second, choice: pick(second).key })).statusCode).toBe(200);
+    // An event that isn't on this trip, a made-up choice, and a ride that isn't a coach.
+    const other = ["checkpoint", "hawkers", "preacher", "tyre", "goslow", "medicine"].find((k) => k !== first && k !== second)!;
+    expect((await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: other, choice: COACH_EVENT_BY_KEY.get(other as never)!.choices[0]!.key })).statusCode).toBe(404);
+    expect((await p.call("POST", `/api/game/rides/${coach.rideId}/coach`, { event: first, choice: "fly" })).statusCode).toBe(400);
+    const brt = (await p.call("POST", "/api/game/rides", { mode: "transit", transit: "brt", units: 3000 })).json();
+    expect((await p.call("POST", `/api/game/rides/${brt.rideId}/coach`, { event: first, choice: c1.key })).statusCode).toBe(404);
   });
 });

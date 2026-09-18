@@ -398,6 +398,8 @@ export function AdminAds({ notify }: { notify: (m: string) => void }) {
       await api("POST", path, body);
       notify(ok);
       void load();
+      // The map's boards pick up an ad that has just gone on air (or come off).
+      window.dispatchEvent(new Event("hc:ads-changed"));
     } catch (e) {
       setError((e as Error).message);
     }
