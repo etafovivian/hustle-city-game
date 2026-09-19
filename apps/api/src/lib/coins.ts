@@ -32,6 +32,7 @@ export type CoinKind =
   | "game_reward"
   | "university_fees"
   | "rent"
+  | "gadget"
   | "coach"
   | "hustle_escrow"
   | "hustle_pay"

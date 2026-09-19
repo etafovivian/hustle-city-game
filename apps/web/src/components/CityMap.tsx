@@ -23,7 +23,7 @@ import { clockLabel, useLagosLight } from "./lagosTime.js";
 import { AvatarWalker, YouPlate } from "./AvatarWalker.js";
 import { BillboardOnMap, BillboardSheet } from "./Billboards.js";
 import { ShopVisit } from "./ShopVisit.js";
-import { VenueBadge, VenueBuilding, VenueCard } from "./Venues.js";
+import { VenueBadge, VenueCard, crowdDepthItems, venueDepthItems } from "./Venues.js";
 import { DepthSorted, type DepthItem } from "./People.js";
 import { StreetLife } from "./StreetLife.js";
 import { TransitLayer } from "./TransitLayer.js";
@@ -49,6 +49,15 @@ import {
   BRANCH_BY_KEY,
   starterRoom,
   FORESTS,
+  GADGET_VILLAGE,
+  LANDMARK_GROUNDS,
+  ABUJA_GROUND,
+  ABUJA_HILLS,
+  ABUJA_LAKE,
+  ABUJA_ROUNDABOUTS,
+  ABUJA_RUNWAY_PATHS,
+  MAP_BOUNDS,
+  landmassAt,
   GRASS,
   RUNWAY,
   iso,
@@ -317,7 +326,8 @@ export function CityMap({
     // Public transport that beats walking (or the only way, by boat).
     const walkUnits = route ? Math.round(route.reduce((s, b, i, all) => s + Math.hypot(b.x - (i ? all[i - 1]!.x : meAt.current.x), b.y - (i ? all[i - 1]!.y : meAt.current.y)), 0)) : null;
     const plans = transitPlans(meAt.current, to).filter((p) => worthIt(p, walkUnits));
-    if (!route && !plans.length) return notify("You can't walk on water. Take the bridge to the Island.");
+    if (!route && !plans.length)
+      return notify(to.x > WORLD.w && !landmassAt(to.x, to.y) ? "That's open bush. Abuja is a flight away, from the Airport Ridge terminal." : "You can't walk on water. Take the bridge to the Island.");
     let units = 0;
     // Fares go by the distance along the roads (the way the ride will actually go).
     if (route) (roadRoute(meAt.current, to) ?? route).reduce((a, b) => ((units += Math.hypot(b.x - a.x, b.y - a.y)), b), meAt.current);
@@ -576,7 +586,7 @@ export function CityMap({
   })();
   const centre = spot ?? lastSpot ?? { x: CX, y: CY + 60 };
   const HOME = narrow ? { x: centre.x - 430, y: centre.y - 580, w: 860, h: 1100 } : { x: centre.x - 680, y: centre.y - 680, w: 1360, h: 1420 };
-  const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: WORLD });
+  const pz = usePanZoom(ref, { minK: 0.05, maxK: 4, home: HOME, bounds: MAP_BOUNDS });
   pzRef.current = pz;
 
   // Banners take turns every 15 s. Each turn counts a view for boards actually on screen (close enough to
@@ -756,7 +766,11 @@ export function CityMap({
     for (const spot of VENUE_SPOTS) {
       const v = VENUES_BY_KEY.get(spot.key);
       if (v && inView(spot.x, spot.y))
-        depthItems.push({ key: `venue-${spot.key}`, y: spot.y, node: <VenueBuilding venue={v} x={spot.x} y={spot.y} scale={spot.scale} onOpen={() => !pz.wasDragged() && setVenueOpen(v.key)} /> });
+        depthItems.push(
+          ...venueDepthItems(v, spot.x, spot.y, spot.scale, () => !pz.wasDragged() && setVenueOpen(v.key)),
+          // On event days the landmark's open ground fills with people
+          ...(liveAt(spot.key) ? crowdDepthItems(v, spot.x, spot.y, spot.scale) : []),
+        );
     }
     for (const l of FOR_SALE) {
       if (!inView(l.x, l.y)) continue;
@@ -1011,6 +1025,22 @@ export function CityMap({
               {FORESTS.map((f) => (
                 <path key={f.name} d={f.path} fill="#3f6e33" stroke="#3f6e33" strokeWidth="90" strokeLinejoin="round" opacity=".9" />
               ))}
+              {/* Abuja, a flight away: open bush between, its own green ground, hills to the north, Jabi Lake and the
+                  airport's runway */}
+              <rect x={WORLD.w} y={WORLD.y0} width={MAP_BOUNDS.w - WORLD.w} height={WORLD.h - WORLD.y0} fill="#7d8a55" />
+              <rect x={WORLD.w} y={WORLD.y0} width={MAP_BOUNDS.w - WORLD.w} height={WORLD.h - WORLD.y0} fill="url(#sand)" opacity=".35" />
+              {ABUJA_HILLS.map((h, i) => (
+                <ellipse key={`hill-${i}`} cx={h.x} cy={h.y} rx={h.r * 1.6} ry={h.r * 0.75} fill={i % 2 ? "#6c7d47" : "#76874f"} stroke="#5d6b3c" strokeWidth="6" />
+              ))}
+              <path d={ABUJA_GROUND} fill="#c9b07a" stroke="#a3925e" strokeWidth="24" strokeLinejoin="round" />
+              <path d={ABUJA_GROUND} fill="url(#sand)" opacity=".5" />
+              <ellipse cx={ABUJA_LAKE.x} cy={ABUJA_LAKE.y} rx={ABUJA_LAKE.ra * 1.05} ry={ABUJA_LAKE.rb * 0.75} fill="#2f7ea6" stroke="#e9f4f6" strokeOpacity=".6" strokeWidth="10" />
+              <path d={ABUJA_RUNWAY_PATHS.apron} fill="#8f949b" stroke="#6d7279" strokeWidth="4" />
+              <path d={ABUJA_RUNWAY_PATHS.runway} fill="#3d3a37" stroke="#e8e2d0" strokeWidth="4" />
+              {/* Landmarks' open ground (Liberty Arts Park's lawn): flat, people walk on it */}
+              {LANDMARK_GROUNDS.map((g) => (
+                <path key={g.key} d={g.path} fill={g.kind === "lawn" ? "#7fae4f" : "#d9d2c3"} stroke={g.kind === "lawn" ? "#6d9a43" : "#bdb4a2"} strokeWidth="6" strokeLinejoin="round" />
+              ))}
               {/* Airport: apron, taxiway and runway (centre line dashes, threshold bars at both ends) */}
               <path d={isoRect(RUNWAY.apron.a0, RUNWAY.apron.a1, RUNWAY.apron.b0, RUNWAY.apron.b1)} fill="#8f949b" stroke="#6d7279" strokeWidth="4" />
               <path d={isoRect(RUNWAY.a0, RUNWAY.a1, RUNWAY.taxiB - RUNWAY.taxiHalf, RUNWAY.taxiB + RUNWAY.taxiHalf)} fill="#4a4743" />
@@ -1084,6 +1114,13 @@ export function CityMap({
                     <ellipse cx={CX} cy={CY} rx={ROUNDABOUT.rx} ry={ROUNDABOUT.ry} fill="var(--map-road)" />
                     <ellipse cx={CX} cy={CY} rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
                     {!far && <image href="/art/props/fountain.webp" x={CX - 78} y={CY - 58} width="156" height="118" />}
+                    {/* Abuja's roundabouts where the boulevards cross */}
+                    {ABUJA_ROUNDABOUTS.map((c, i) => (
+                      <g key={`abuja-rb-${i}`}>
+                        <ellipse cx={c.x} cy={c.y} rx={ROUNDABOUT.rx} ry={ROUNDABOUT.ry} fill="var(--map-road)" />
+                        <ellipse cx={c.x} cy={c.y} rx={ROUNDABOUT.island.rx} ry={ROUNDABOUT.island.ry} fill="#5d9b45" stroke="#e6d6b4" strokeWidth="6" />
+                      </g>
+                    ))}
                   </g>
                 );
               })()}
@@ -1390,6 +1427,10 @@ export function CityMap({
                       </g>
                     );
                   })}
+                {/* Gadget Village: a quarter of Airport Ridge, named on the ground like the beaches */}
+                <text x={GADGET_VILLAGE.x} y={GADGET_VILLAGE.y} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#3a2a6b" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
+                  {GADGET_VILLAGE.name}
+                </text>
                 {DISTRICTS.filter((d) => d.landmark).map((d) => (
                   <text key={d.name} x={d.x} y={d.y + 330} textAnchor="middle" fontSize={districtNear ? 14 / k : 60} fontWeight="800" fontStyle="italic" fill="#fff5dc" stroke="#1f5a80" strokeWidth={districtNear ? 3 / k : 8} paintOrder="stroke">
                     {d.name}

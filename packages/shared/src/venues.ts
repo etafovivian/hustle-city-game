@@ -25,8 +25,10 @@ export interface Venue {
   activities: VenueActivity[];
   /** Real-world artisans or shops to suggest from this venue (artisan category key). */
   realCategory?: string;
-  /** A phone app this place opens (the Academy at the school). */
-  opens?: "academy";
+  /** A phone app this place opens (the Academy at the school, the gadget counter at Gadget Village). */
+  opens?: "academy" | "gadgets";
+  /** Extra words the city map's search matches (what people call this kind of place). */
+  keywords?: readonly string[];
 }
 
 export const VENUES: readonly Venue[] = [
@@ -368,8 +370,8 @@ export const VENUES: readonly Venue[] = [
     name: "Olumo Rock",
     area: "Abeokuta",
     icon: "🪨",
-    // A drawn stand-in for the rock (the map draws it on its high ground) until its art arrives
-    art: "/art/landmarks/olumo-rock.svg",
+    // Drawn on its high ground (the map draws the hill under it)
+    art: "/art/landmarks/olumo-rock.webp",
     blurb: "The great rock Abeokuta was founded under. Climb the steps past the shrines and see the whole town and the Ogun River from the top.",
     regulars: ["Guide Baba Sola"],
     activities: [
@@ -383,7 +385,7 @@ export const VENUES: readonly Venue[] = [
     name: "Itoku Adire Market",
     area: "Abeokuta",
     icon: "🧵",
-    art: "/art/buildings/market-hall.webp",
+    art: "/art/buildings/adire-pits.webp",
     interior: "/art/interiors/market-aisle.webp",
     blurb: "Rows of hand-dyed adire in every blue you can think of. Watch the women dye cloth in the pits, then haggle for a bundle.",
     regulars: ["Mama Adire"],
@@ -411,7 +413,7 @@ export const VENUES: readonly Venue[] = [
     name: "Mowe Estates Office",
     area: "Mowe",
     icon: "🏡",
-    art: "/art/buildings/estate-gate.webp",
+    art: "/art/buildings/peace-estate.webp",
     blurb: "Everybody's 'buy land in Ogun' dream starts here: cheaper plots, new estates, and an agent who promises the road will be tarred soon.",
     regulars: ["Agent Femi"],
     activities: [
@@ -424,7 +426,7 @@ export const VENUES: readonly Venue[] = [
     name: "Ring Kings Boxing Club",
     area: "Danfo Terminal",
     icon: "🥊",
-    art: "/art/buildings/gym.webp",
+    art: "/art/buildings/boxing-club.webp",
     interior: "/art/interiors/boxing-gym.webp",
     blurb: "Sweat, sawdust and a ring with old ropes. Coach Dele has trained champions; he'll train you too if you show up at 6am.",
     regulars: ["Coach Dele", "Kid Lightning"],
@@ -440,7 +442,7 @@ export const VENUES: readonly Venue[] = [
     name: "Sandbar Bay Beach",
     area: "Sandbar Bay",
     icon: "🏖️",
-    art: "/art/buildings/restaurant-terrace.webp",
+    art: "/art/buildings/beach-bar.webp",
     interior: "/art/interiors/beach-cabana.webp",
     blurb: "A strip of white sand you only reach by water bus. Cabanas, coconut, horses on the shore, and on Sundays the beach rave goes till late.",
     regulars: ["Lifeguard Kunle", "Mama Coconut", "Horse man Sule"],
@@ -457,7 +459,7 @@ export const VENUES: readonly Venue[] = [
     name: "Lagoon City University",
     area: "Tech Mile",
     icon: "🏛️",
-    art: "/art/buildings/university.webp",
+    art: "/art/buildings/senate.webp",
     interior: "/art/interiors/lecture-theatre.webp",
     blurb: "Big campus, bigger dreams. Enrol in a degree, go to lectures, write your exams and graduate in front of the whole family.",
     regulars: ["Prof. Adebayo-Okafor", "Course rep Tolu"],
@@ -507,6 +509,197 @@ export const VENUES: readonly Venue[] = [
       { key: "checkup", label: "Get a check-up", cost: 500, xp: 10 },
       { key: "pharmacy", label: "Pick up malaria drugs", cost: 200, xp: 6 },
     ],
+  },
+  // ── Landmarks (Stitch batch 39 art in public/art/landmarks) ──
+  {
+    key: "crown_arts_theatre",
+    name: "Crown Arts Theatre",
+    area: "Owambe Gardens",
+    icon: "🎭",
+    art: "/art/landmarks/arts-theatre.webp",
+    interior: "/art/interiors/theatre.webp",
+    blurb: "The big round theatre with the roof like a general's cap. Plays, stand-up nights, and on Fridays the premiere everybody dresses up for.",
+    regulars: ["Director Funmilayo", "Comedian Gbenga Laffs"],
+    activities: [
+      { key: "play", label: "Ticket for tonight's play", cost: 1_200, xp: 20 },
+      { key: "standup", label: "Stand-up comedy night", cost: 800, xp: 16 },
+      { key: "interval", label: "Puff-puff and zobo at the interval", cost: 200, xp: 6 },
+    ],
+    keywords: ["theatre", "theater", "play", "drama", "stand-up", "comedy", "national theatre", "iganmu", "surulere"],
+  },
+  {
+    key: "independence_square",
+    name: "Independence Square",
+    area: "Marina Wharf",
+    icon: "🎖️",
+    art: "/art/landmarks/parade-square.webp",
+    blurb: "A huge parade ground with grandstands and four horses on tall pillars. Parades on 1 October, concerts on Saturday nights, crusades at the weekend, and people gisting on the steps every day.",
+    regulars: ["Parade marshal Okon", "Mama Flags"],
+    activities: [
+      { key: "parade", label: "Watch the march-past from the stands", cost: 100, xp: 8 },
+      { key: "flag", label: "Buy a flag and a pack of small chops", cost: 300, xp: 8 },
+      { key: "concert", label: "Concert ticket in the grandstand", cost: 1_500, xp: 20 },
+    ],
+    keywords: ["square", "parade", "concert", "crusade", "independence", "tafawa balewa", "tbs", "race course"],
+  },
+  {
+    key: "liberty_arts_park",
+    name: "Liberty Arts Park",
+    area: "Marina Wharf",
+    icon: "🎨",
+    art: "/art/landmarks/arts-park.webp",
+    blurb: "An old colonial prison turned into a park: arches in the old wall, an open-air stage, painters under the trees and poetry when the sun goes down.",
+    regulars: ["Poet Adaeze", "Painter Kunle"],
+    activities: [
+      { key: "open_mic", label: "Open mic: perform a song", cost: 300, xp: 12 },
+      { key: "poetry", label: "Poetry night under the arches", cost: 200, xp: 10 },
+      { key: "art_market", label: "Buy a painting at the art market", cost: 1_500, xp: 15 },
+      { key: "chill", label: "Chapman and chilling by the stage", cost: 500, xp: 10 },
+    ],
+    keywords: ["park", "arts", "art market", "open mic", "poetry", "stage", "freedom park"],
+  },
+  {
+    key: "gadget_village",
+    name: "Gadget Village",
+    area: "Airport Ridge",
+    icon: "📱",
+    // Stand-in until the gadget plaza block (Stitch batch 34) arrives
+    art: "/art/buildings/commercial-block.webp",
+    interior: "/art/interiors/gadget-market.webp",
+    blurb: "Street after street of phone shops, laptop stalls and repair benches. Buy a new phone, fix your screen, and never pay the first price.",
+    regulars: ["Chinedu the phone dealer", "Engineer Bayo (screens while you wait)"],
+    activities: [
+      { key: "browse", label: "Window-shop the newest phones", cost: 50, xp: 5 },
+      { key: "data", label: "New SIM and a data bundle", cost: 300, xp: 8 },
+      { key: "flash", label: "Get your phone flashed and cleaned", cost: 500, xp: 10 },
+    ],
+    opens: "gadgets",
+    keywords: ["gadget", "gadgets", "phone", "phones", "laptop", "laptops", "computer", "computer village", "repair", "screen", "accessories", "ikeja"],
+  },
+  // ── Abuja (a flight from Airport Ridge). Real district names; every place here is invented. ──
+  {
+    key: "abuja_secretariat",
+    name: "Federal Secretariat",
+    area: "Central Area",
+    icon: "🏛️",
+    art: "/art/landmarks/federal-secretariat.svg",
+    interior: "/art/interiors/bank-hall.webp",
+    blurb: "Long corridors, longer queues and files that move when they feel like it. Everybody's uncle works here, or knows someone who does.",
+    regulars: ["Director Abubakar", "Clerk Mrs Eze"],
+    activities: [
+      { key: "file", label: "Chase your file from desk to desk", cost: 200, xp: 10 },
+      { key: "contract", label: "Submit a bid for a government contract", cost: 2_500, xp: 25 },
+      { key: "canteen", label: "Lunch at the staff canteen", cost: 400, xp: 8 },
+    ],
+    keywords: ["government", "ministry", "secretariat", "office", "federal"],
+  },
+  {
+    key: "unity_mosque",
+    name: "Federal Unity Mosque",
+    area: "Central Area",
+    icon: "🕌",
+    art: "/art/buildings/mosque.webp",
+    interior: "/art/interiors/mosque.webp",
+    blurb: "Golden domes and tall minarets on the boulevard, facing the cathedral across the Central Area. Friday prayers fill the whole courtyard.",
+    regulars: ["Imam Bello", "Alhaji Musa"],
+    activities: [
+      { key: "jumat", label: "Jumat prayers and sadaqah", cost: 100, xp: 10 },
+      { key: "class", label: "Evening tafsir class", cost: 50, xp: 8 },
+    ],
+    keywords: ["mosque", "national mosque", "prayer", "jumat"],
+  },
+  {
+    key: "unity_cathedral",
+    name: "Unity Cathedral",
+    area: "Central Area",
+    icon: "⛪",
+    art: "/art/buildings/church.webp",
+    interior: "/art/interiors/church.webp",
+    blurb: "A great white cathedral with a choir that has sung for presidents. Sunday service, then everyone in their best for photos on the steps.",
+    regulars: ["Bishop Okonkwo", "Choir Master Daniel"],
+    activities: [
+      { key: "service", label: "Sunday service and offering", cost: 100, xp: 10 },
+      { key: "choir", label: "Sing with the cathedral choir", cost: 50, xp: 8 },
+    ],
+    keywords: ["church", "cathedral", "national church", "service"],
+  },
+  {
+    key: "zone5_market",
+    name: "Zone 5 Traders' Market",
+    area: "Wuse",
+    icon: "🛒",
+    art: "/art/buildings/market-hall.webp",
+    interior: "/art/interiors/market-aisle.webp",
+    blurb: "Abuja's busiest market: tomatoes from the north, fabric from the south, phones from everywhere. Prices go up when they hear your Lagos accent.",
+    regulars: ["Mama Hadiza", "Emeka the phone guy"],
+    activities: [
+      { key: "browse", label: "Walk the aisles and price everything", cost: 100, xp: 8 },
+      { key: "foodstuff", label: "Buy foodstuff in bulk", cost: 1_200, xp: 12 },
+      { key: "kilishi", label: "Kilishi and fura from the hawkers", cost: 300, xp: 8 },
+    ],
+    keywords: ["market", "wuse market", "shopping", "traders"],
+  },
+  {
+    key: "capital_lights_lounge",
+    name: "Capital Lights Lounge",
+    area: "Wuse",
+    icon: "🍸",
+    art: "/art/buildings/skyline-lounge.webp",
+    interior: "/art/interiors/lounge.webp",
+    blurb: "Where Abuja's money comes out at night: senators' sons, consultants and big girls. The DJ plays till the generator gives up.",
+    regulars: ["DJ Capital", "Hostess Amina"],
+    activities: [
+      { key: "dance", label: "Dance till late", cost: 1_000, xp: 18 },
+      { key: "suya_platter", label: "Suya platter and chapman", cost: 800, xp: 12 },
+      { key: "table", label: "Book a VIP table", cost: 4_000, xp: 30 },
+    ],
+    keywords: ["lounge", "club", "nightclub", "nightlife", "party"],
+  },
+  {
+    key: "capital_polo_club",
+    name: "Capital Polo & Golf Club",
+    area: "Maitama",
+    icon: "🏇",
+    art: "/art/buildings/golf-club.webp",
+    interior: "/art/interiors/golf-lounge.webp",
+    blurb: "Polo on Saturdays, golf every morning, and more deals closed in the clubhouse than in any ministry.",
+    regulars: ["Captain Danjuma", "Groom Sule"],
+    activities: [
+      { key: "polo", label: "Watch the polo from the stands", cost: 800, xp: 15 },
+      { key: "ride", label: "A riding lesson on a polo pony", cost: 3_000, xp: 25 },
+      { key: "golf", label: "Nine holes with the big men", cost: 3_500, xp: 30 },
+    ],
+    keywords: ["polo", "golf", "club", "horse"],
+  },
+  {
+    key: "lakeview_mall",
+    name: "Lakeview Mall",
+    area: "Jabi",
+    icon: "🛍️",
+    art: "/art/buildings/mall.webp",
+    blurb: "Air-conditioned shops, a cinema and a food court by the lake. Everybody comes on Saturday just to be seen.",
+    regulars: ["Security man Garba"],
+    activities: [
+      { key: "window", label: "Window-shop and enjoy the AC", cost: 50, xp: 5 },
+      { key: "cinema", label: "Catch a film at the cinema", cost: 1_200, xp: 15 },
+      { key: "food_court", label: "Shawarma and ice cream at the food court", cost: 900, xp: 10 },
+    ],
+    keywords: ["mall", "shopping", "cinema", "jabi"],
+  },
+  {
+    key: "jabi_lakeside_park",
+    name: "Lakeside Park",
+    area: "Jabi",
+    icon: "🌳",
+    art: "/art/buildings/restaurant-terrace.webp",
+    blurb: "Grass, paddle boats and grilled fish by the water. Families on Sundays, couples at sunset.",
+    regulars: ["Boatman Ishaku", "Mama Fish"],
+    activities: [
+      { key: "boat", label: "Paddle boat on the lake", cost: 600, xp: 12 },
+      { key: "fish", label: "Grilled fish and chips by the water", cost: 900, xp: 10 },
+      { key: "picnic", label: "Picnic on the grass", cost: 300, xp: 8 },
+    ],
+    keywords: ["lake", "park", "jabi lake", "boat"],
   },
 ];
 
@@ -583,6 +776,18 @@ const LIFE: Record<string, VenueLife> = {
   city_library: { hours: [8, 21], gives: ["brain"], free: "Read the day's newspapers" },
   city_fm: { gives: ["fun", "rep"], free: "Listen to the show in reception", flex: { label: "Sponsor the morning show for a week", cost: 100_000 } },
   general_hospital: { gives: ["health"], free: "Free blood-pressure check at the stand" },
+  crown_arts_theatre: { hours: [12, 24], gives: ["fun", "social"], free: "Look at the posters in the foyer", flex: { label: "Book a box for the premiere for all your friends", cost: 80_000 } },
+  independence_square: { gives: ["fun", "social", "rep"], free: "Hang out on the square and watch the crowd", flex: { label: "Sponsor the fireworks over the square", cost: 120_000 } },
+  liberty_arts_park: { hours: [10, 24], gives: ["fun", "rest", "social"], free: "Sit under the arches and people-watch", flex: { label: "Commission a mural on the old prison wall", cost: 50_000 } },
+  gadget_village: { hours: [8, 19], gives: ["hustle", "style"], free: "Watch the engineers change a screen" },
+  abuja_secretariat: { hours: [8, 17], gives: ["hustle"], free: "Read the notices in the lobby" },
+  unity_mosque: { hours: [5, 23], gives: ["faith"], free: "Pray with the congregation (salah)" },
+  unity_cathedral: { hours: [6, 22], gives: ["faith", "social"], free: "Kneel and pray" },
+  zone5_market: { hours: [7, 19], gives: ["hustle", "social"], free: "Watch the traders haggle", flex: { label: "Buy a whole stall's stock for your people back home", cost: 80_000 } },
+  capital_lights_lounge: { hours: [22, 5], gives: ["fun", "social", "rep"], free: "Lean on the rail and watch the city lights", flex: { label: "Champagne tower for the whole VIP section", cost: 300_000 } },
+  capital_polo_club: { hours: [6, 19], gives: ["rep", "health"], free: "Watch the ponies being exercised", flex: { label: "Sponsor the club's polo cup", cost: 500_000 } },
+  lakeview_mall: { hours: [9, 22], gives: ["fun", "style"], free: "Walk the mall in the AC", flex: { label: "Shopping spree for your whole crew", cost: 150_000 } },
+  jabi_lakeside_park: { hours: [7, 22], gives: ["fun", "rest"], free: "Sit by the water and watch the boats", flex: { label: "Hire the whole lakeside for your birthday", cost: 120_000 } },
 };
 
 export interface VenueAction extends VenueActivity {

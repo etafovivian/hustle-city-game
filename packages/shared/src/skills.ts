@@ -16,7 +16,7 @@ export const SKILLS: readonly Skill[] = [
   { key: "charisma", label: "Charisma", icon: "🗣️", perk: "Talk your way past the area boys; more pay at lounges, barbers and events", grow: "Lounges, owambes, barbers and salons, snooker, Mass Communication" },
   { key: "fitness", label: "Fitness", icon: "💪", perk: "Outrun the area boys; more pay at the gym, stadium and beach", grow: "The gym, the stadium, swimming, golf" },
   { key: "cooking", label: "Cooking", icon: "🍳", perk: "More pay at the buka and the suya spot", grow: "Eat and work at the buka and suya spots" },
-  { key: "tech", label: "Tech", icon: "💻", perk: "More pay at the academy, the radio station and the library", grow: "The Academy, Computer Science, the library" },
+  { key: "tech", label: "Tech", icon: "💻", perk: "More pay at the academy, the radio station, the library and Gadget Village; fix your own cracked screen from level 3", grow: "The Academy, Computer Science, the library, phone repairs at Gadget Village" },
   { key: "business", label: "Business", icon: "📈", perk: "More pay at the bank, market, showroom and hotel", grow: "Balogun Market, the bank, Business Administration and Law" },
 ];
 export const SKILL_BY_KEY: ReadonlyMap<SkillKey, Skill> = new Map(SKILLS.map((s) => [s.key, s]));
@@ -49,6 +49,16 @@ export const VENUE_SKILL: Readonly<Record<string, SkillKey>> = {
   tailors_row: "business",
   junction_motor_park: "business",
   lagoon_boat_cruise: "charisma",
+  crown_arts_theatre: "charisma",
+  independence_square: "charisma",
+  liberty_arts_park: "charisma",
+  gadget_village: "tech",
+  abuja_secretariat: "business",
+  zone5_market: "business",
+  capital_lights_lounge: "charisma",
+  capital_polo_club: "fitness",
+  lakeview_mall: "business",
+  jabi_lakeside_park: "fitness",
 };
 /** University programmes train their own skill. */
 export const PROGRAMME_SKILL: Readonly<Record<string, SkillKey>> = { computer_science: "tech", business_admin: "business", mass_comm: "charisma", law: "business" };

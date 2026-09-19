@@ -2,6 +2,7 @@
 // Run: node scripts/check-clearance.ts (Node 24 runs TypeScript directly). Exits 1 on any problem.
 import * as L from "../src/components/cityLayout.ts";
 import { audit, STRICT } from "./audit-layout.ts";
+import { VENUES } from "../../../packages/shared/src/venues.ts";
 
 type Box = { name: string; cx: number; cy: number; hh: number };
 const boxes: Box[] = [];
@@ -41,12 +42,16 @@ for (const f of audit().found) if (STRICT.includes(f.kind)) bad.push(`${f.kind}:
 for (const i of L.TRANSIT_ISSUES) bad.push(`transit: ${i}`);
 const ids = new Set<string>();
 const start = { x: L.CX - 120, y: L.CY + 150 };
+const abujaAirport = L.TRANSIT_STOPS_L.find((s) => s.id === "abuja-airport")!;
+// Nothing walks between Lagos and Abuja
+if (L.walkRoute(start, abujaAirport)) bad.push("abuja: you can walk there from Lagos");
 for (const s of L.TRANSIT_STOPS_L) {
   if (ids.has(s.id)) bad.push(`transit: stop id ${s.id} is used twice`);
   ids.add(s.id);
   const land = L.landmassAt(s.x, s.y);
   if (!land || land === "bridge") bad.push(`transit: stop ${s.id} is not on land`);
-  else if (land !== "sandbar" && !L.walkRoute(start, s)) bad.push(`transit: stop ${s.id} can't be walked to`);
+  // Abuja's stops: walkable from its airport (Lagos is a flight away)
+  else if (land === "abuja" ? !L.walkRoute(abujaAirport, s) : land !== "sandbar" && !L.walkRoute(start, s)) bad.push(`transit: stop ${s.id} can't be walked to`);
 }
 const roadDist = (p: { x: number; y: number }) =>
   Math.min(
@@ -76,6 +81,16 @@ for (const l of L.TRANSIT_LINES_L) {
       }
     }
   }
+}
+
+// Landmarks and Gadget Village: each found its room (cityLayout LANDMARK_ISSUES), and every venue on the map is drawn
+// with the art its card shows (the map's shapes use VENUE_ART; swapping a stand-in means changing both, in step).
+for (const i of L.LANDMARK_ISSUES) bad.push(`landmark: ${i}`);
+for (const v of L.VENUE_SPOTS) {
+  const name = L.VENUE_ART[v.key];
+  const art = VENUES.find((vv) => vv.key === v.key)?.art;
+  if (!art) bad.push(`venue ${v.key} is on the map but not in venues.ts`);
+  else if (name && art.split("/").pop()!.replace(/\.(webp|svg)$/, "") !== name) bad.push(`venue ${v.key}: the map draws "${name}", its card shows ${art}`);
 }
 
 console.log(bad.length ? bad.join("\n") : "all clear");

@@ -54,10 +54,11 @@ const rideLeg = (line: TransitLine, board: string, alight: string): TripLeg | nu
   const path = lineSegment(line, board, alight);
   return path ? { kind: line.mode, path, units: Math.max(1, Math.round(len(path))), line: line.key, board, alight } : null;
 };
+// A flight is worth any walk to the airport (it is the only way to Abuja).
 const near = (line: TransitLine, p: P) =>
   line.stops
     .map((id) => TRANSIT_STOP_BY_ID.get(id)!)
-    .filter((s) => s && dist(s, p) < MAX_WALK)
+    .filter((s) => s && (line.mode === "flight" || dist(s, p) < MAX_WALK))
     .sort((a, b) => dist(a, p) - dist(b, p))
     .slice(0, 2);
 

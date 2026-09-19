@@ -11,10 +11,13 @@ import { UniversityPanel } from "./University.js";
 import { playAdhan, stopAdhan } from "./Ambience.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
+import { GadgetCounter } from "./Gadgets.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
 import { buildingBox } from "./sprites.js";
+import type { DepthItem } from "./People.js";
+import { WALKER_VARIANTS, walkerSheet, walkerSize } from "./walkers.js";
 
 /** The building: tap to open its card. */
 export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue; x: number; y: number; scale?: number; onOpen: () => void }) {
@@ -40,6 +43,88 @@ export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue
       </g>
     </g>
   );
+}
+
+/** Venues drawn at least this big are cut into upright slices for depth order (see venueDepthItems). */
+const SLICE_FROM = 1.4;
+/** Front edge of a building's footprint at x: the foot point, rising half as fast as it goes sideways (2:1 iso). */
+const frontY = (x: number, y: number, at: number) => y - Math.abs(at - x) / 2;
+/** Depth of the slice [x0, x1]: the front edge's nearest point (the middle slice carries the foot point itself). */
+const sliceDepth = (x: number, y: number, x0: number, x1: number) => frontY(x, y, x0 < x && x < x1 ? x : Math.abs(x0 - x) < Math.abs(x1 - x) ? x0 : x1);
+const sliceCount = (scale: number) => Math.ceil(scale * 4);
+
+/**
+ * A venue on the buildings layer. A big landmark has one foot point but a long front edge, so as one sprite it would hide
+ * people standing just in front of its sides. Big ones are cut into upright slices, each sorted by the front edge's
+ * depth at its middle, so whoever stands in front of any part of it is drawn over that part.
+ */
+export function venueDepthItems(venue: Venue, x: number, y: number, scale: number, onOpen: () => void): DepthItem[] {
+  if (scale < SLICE_FROM) return [{ key: `venue-${venue.key}`, y, node: <VenueBuilding venue={venue} x={x} y={y} scale={scale} onOpen={onOpen} /> }];
+  const box = buildingBox(venue.art, x, y, scale);
+  const n = sliceCount(scale);
+  return Array.from({ length: n }, (_, i) => {
+    const [x0, x1] = [box.x + (box.w * i) / n, box.x + (box.w * (i + 1)) / n];
+    const id = `slice-${venue.key}-${i}`;
+    return {
+      key: `venue-${venue.key}-${i}`,
+      y: sliceDepth(x, y, x0, x1),
+      node: (
+        <g clipPath={`url(#${id})`}>
+          <defs>
+            <clipPath id={id} clipPathUnits="userSpaceOnUse">
+              {/* a hair wider than the slice, so no seam shows between neighbours */}
+              <rect x={x0 - 0.5} y={box.y - 10} width={x1 - x0 + 1} height={box.h + box.w * 0.2} />
+            </clipPath>
+          </defs>
+          <VenueBuilding venue={venue} x={x} y={y} scale={scale} onOpen={onOpen} />
+        </g>
+      ),
+    };
+  });
+}
+
+/** Deterministic random in [0, 1). */
+const rand = (k: number) => {
+  const t = Math.sin(k * 12.9898) * 43758.5453;
+  return t - Math.floor(t);
+};
+/** Where a landmark's crowd stands on event days: a diamond on its art (centre and half-size, as shares of the image). */
+export const CROWD_AT: Record<string, { cx: number; cy: number; rx: number; ry: number; people: number }> = {
+  // Independence Square's parade ground
+  independence_square: { cx: 0.42, cy: 0.56, rx: 0.17, ry: 0.12, people: 36 },
+};
+const PERSON = walkerSize(64);
+/** The crowd on a landmark while its event is on: people standing about (and swaying) on its open ground. */
+export function crowdDepthItems(venue: Venue, x: number, y: number, scale: number): DepthItem[] {
+  const at = CROWD_AT[venue.key];
+  if (!at) return [];
+  const box = buildingBox(venue.art, x, y, scale);
+  const n = scale < SLICE_FROM ? 1 : sliceCount(scale);
+  const out: DepthItem[] = [];
+  for (let i = 0; i < at.people; i++) {
+    // A point in the diamond: two uniform coordinates along its axes
+    const [u, v] = [rand(i + 1) * 2 - 1, rand(i + 101) * 2 - 1];
+    const px = box.x + box.w * (at.cx + (at.rx * (u + v)) / 2);
+    const py = box.y + box.h * (at.cy + (at.ry * (v - u)) / 2);
+    const slice = Math.min(n - 1, Math.max(0, Math.floor(((px - box.x) / box.w) * n)));
+    const variant = WALKER_VARIANTS[i % WALKER_VARIANTS.length]!;
+    const dir = rand(i + 201) < 0.5 ? "ne" : "nw";
+    out.push({
+      key: `crowd-${venue.key}-${i}`,
+      // Just after the slice it stands in (people further forward after people further back)
+      y: sliceDepth(x, y, box.x + (box.w * slice) / n, box.x + (box.w * (slice + 1)) / n) + 0.01 + py / 1e6,
+      node: (
+        <g transform={`translate(${px.toFixed(1)} ${py.toFixed(1)})`} aria-hidden="true">
+          <animateTransform attributeName="transform" type="translate" additive="sum" values="0 0;0 -3;0 0" dur={`${(0.8 + rand(i + 301) * 0.8).toFixed(2)}s`} repeatCount="indefinite" />
+          <ellipse cx="0" cy="-1" rx="11" ry="4" fill="rgb(0 0 0 / 22%)" />
+          <svg x={-PERSON.w / 2} y={-PERSON.h + PERSON.ground} width={PERSON.w} height={PERSON.h} overflow="hidden">
+            <image href={walkerSheet(variant, dir)} width={PERSON.w * PERSON.frames} height={PERSON.h} />
+          </svg>
+        </g>
+      ),
+    });
+  }
+  return out;
 }
 
 /** Icon badge floating above the roof (`y` is the roof top), with the name beside it (drawn above the night tint). */
@@ -383,6 +468,8 @@ export function VenueCard({
         {!present && GAME_TABLES[base.key] && <p className="small muted">🎲 Tables here: {GAME_TABLES[base.key]!.map((g) => TABLE_GAMES[g].label).join(", ")}. Go there to sit down and play with whoever's around.</p>}
         {base.key === "balogun_market" && open && present && <Haggle notify={notify} onChanged={onChanged} />}
         {base.key === "balogun_market" && <Stalls notify={notify} />}
+        {venue.opens === "gadgets" && present && <GadgetCounter notify={notify} onChanged={onChanged} open={open} />}
+        {venue.opens === "gadgets" && !present && <p className="small muted">📱 Phones, accessories and screen repairs. Go there to buy, haggle or fix your phone.</p>}
         {error && <p className="alert small">{error}</p>}
         {present && <RoomChat place={branch?.key ?? venue.key} />}
 

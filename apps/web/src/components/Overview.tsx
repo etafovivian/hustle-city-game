@@ -18,6 +18,8 @@ import {
   VENUE_SPOTS,
   WATER_PATH,
   WORLD,
+  ABUJA_GROUND,
+  MAP_BOUNDS,
 } from "./cityLayout.js";
 import { TRANSIT_LINES, TRANSIT_STOPS } from "./transitData.js";
 
@@ -31,6 +33,8 @@ export interface Spot {
   kind: "area" | "place" | "station" | "branch" | "business";
   /** Opens this place's card on arrival. */
   venue?: string;
+  /** More words the search matches (what people call this kind of place). */
+  keywords?: readonly string[];
 }
 
 function useSpots(mapBiz: MapBusiness[]): Spot[] {
@@ -39,7 +43,7 @@ function useSpots(mapBiz: MapBusiness[]): Spot[] {
     for (const d of DISTRICTS) out.push({ key: `area-${d.name}`, label: d.name, sub: "Area", icon: "📍", x: d.x, y: d.y, kind: "area" });
     for (const s of VENUE_SPOTS) {
       const v = VENUES_BY_KEY.get(s.key);
-      if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key });
+      if (v) out.push({ key: s.key, label: v.name, sub: v.area, icon: v.icon, x: s.x, y: s.y, kind: "place", venue: s.key, keywords: v.keywords });
     }
     // Train stations, BRT stops, water-bus piers and coach parks.
     const ICON = { rail: "🚆", brt: "🚌", ferry: "⛴️", coach: "🚍", flight: "✈️" } as const;
@@ -93,7 +97,7 @@ export function CityOverview({
   }, [onClose]);
 
   const term = q.trim().toLowerCase();
-  const found = term ? spots.filter((s) => s.label.toLowerCase().includes(term) || s.sub.toLowerCase().includes(term)).slice(0, 30) : [];
+  const found = term ? spots.filter((s) => s.label.toLowerCase().includes(term) || s.sub.toLowerCase().includes(term) || s.keywords?.some((w) => w.includes(term))).slice(0, 30) : [];
   const roads = ROAD_PATHS.filter((r) => r.kind === "road" || r.kind === "bridge");
   // Frame the city (everything with a name on it), not the open sea around it.
   const box = useMemo(() => {
@@ -102,7 +106,7 @@ export function CityOverview({
     const pad = 600;
     const x0 = Math.max(WORLD.x0, Math.min(...xs) - pad);
     const y0 = Math.max(WORLD.y0, Math.min(...ys) - pad - 300);
-    const x1 = Math.min(WORLD.w, Math.max(...xs) + pad);
+    const x1 = Math.min(MAP_BOUNDS.w, Math.max(...xs) + pad);
     const y1 = Math.min(WORLD.h, Math.max(...ys) + pad);
     return `${x0} ${y0} ${x1 - x0} ${y1 - y0}`;
   }, [spots]);
@@ -120,7 +124,9 @@ export function CityOverview({
         <div className="overview-layout">
           <div className="overview-map">
             <svg viewBox={box} role="img" aria-label="Map of the city">
-              <rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w - WORLD.x0} height={WORLD.h - WORLD.y0} fill="#d9b981" />
+<rect x={WORLD.w} y={WORLD.y0} width={MAP_BOUNDS.w - WORLD.w} height={WORLD.h - WORLD.y0} fill="#7d8a55" />
+                            <rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w - WORLD.x0} height={WORLD.h - WORLD.y0} fill="#d9b981" />
+              <path d={ABUJA_GROUND} fill="#c9b07a" />
               <path d={WATER_PATH} fill="#2f8fb0" />
               <path d={OCEAN_PATH} fill="#1f6f9a" />
               <path d={ISLAND_PATH} fill="#e3c48f" />

@@ -108,7 +108,8 @@ export function audit() {
   for (const s of S) {
     if (WET_OK.test(s.name)) continue;
     const pts = s.foot ?? [[s.fx, s.fy] as Pt];
-    if (pts.some(([x, y]) => x < L.WORLD.x0 || y < L.WORLD.y0 || x > L.WORLD.w || y > L.WORLD.h)) {
+    // Lagos and Ogun fill WORLD; Abuja lies beyond it to the east (inside MAP_BOUNDS, on its own ground)
+    if (pts.some(([x, y]) => x < L.WORLD.x0 || y < L.WORLD.y0 || x > L.MAP_BOUNDS.w || y > L.WORLD.h || (x > L.WORLD.w && !L.inAbuja(x, y, 0)))) {
       found.push({ kind: "off-map", msg: `${s.name} at ${s.fx.toFixed(0)},${s.fy.toFixed(0)} is off the map` });
       continue;
     }

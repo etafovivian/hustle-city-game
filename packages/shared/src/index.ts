@@ -34,5 +34,6 @@ export * from "./crew.js";
 export * from "./skills.js";
 export * from "./rent.js";
 export * from "./hunt.js";
+export * from "./gadgets.js";
 export * from "./coach.js";
 export * from "./hustle.js";

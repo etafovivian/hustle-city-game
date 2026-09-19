@@ -323,6 +323,16 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 3. Cutaway interior of a beach cabana: loungers, a low table with coconuts, a sea view.
 4. Cutaway interior of a BRT bus: seats on both sides, standing rails, windows, a driver's cab.
 
+## Batch 58: Abuja (the rock and the secretariat use drawn stand-ins; everything else reuses Lagos art for now)
+1. A huge smooth granite monolith rising over a green plain, bare grey rock with dark streaks and a few trees at its foot, on a square tile of grass. Tall (1024×1536), no buildings on it.
+2. A long modernist government secretariat: several linked white blocks with deep window grids and a colonnade, a flag pole with a plain green-white-green flag, steps and lawns. No words on it.
+3. A national mosque with a large golden dome, four tall minarets and a walled courtyard with fountains. No words.
+4. A national cathedral: a tall white church with a pointed modern spire, stained glass, wide steps and a forecourt. No words.
+5. An Abuja polo ground and clubhouse: a green pitch with white goal posts, a low clubhouse with a veranda, two ponies tied at a rail.
+6. A lakeside park: a small lake with paddle boats at a jetty, grass, a grill hut with smoke, benches under trees.
+7. An Abuja airport terminal: a long, low terminal with a curved roof and a glass front, a short control tower, a palm-lined drop-off. No airline names.
+8. A big-man estate house with an embassy feel: a white villa behind a high wall and a heavy gate with a guard post, a flag pole with no flag, palms. No words or flags.
+
 ## Batch 59: flying to Abuja (the flight scene uses drawn stand-ins for now)
 1. A view out of an aeroplane window, wide (1536×864): the oval window frame and the wing, white clouds below, blue sky, the edge of a plastic window blind at the top. Daytime. Flat colours; no magenta background for this one.
 2. Cutaway interior of a passenger plane cabin: rows of blue seats three-and-three, a centre aisle with a drinks trolley, overhead bins, small windows. No airline names or logos.
