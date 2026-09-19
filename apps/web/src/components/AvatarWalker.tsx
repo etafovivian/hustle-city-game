@@ -1,6 +1,6 @@
 // The player's avatar on the map: tap the ground to walk there (like a street walk).
 // Animates on its own, so the big map doesn't re-render while you walk.
-import { RIDE_BY_MODE, TRANSIT, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type TransitKind, type VehicleKind } from "@hc/shared";
+import { JOURNEY_EVENT_AT, RIDE_BY_MODE, TRANSIT, type CoachEventKey, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type TransitKind, type VehicleKind } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { CX, CY, HALF, ROUNDABOUT, roadRoute, walkRoute } from "./cityLayout.js";
@@ -28,7 +28,8 @@ function withHalts(path: Point[], rideId: string | undefined, events: string[] |
   const out: (Point & { halt?: { rideId: string; event: string } })[] = [path[0]!];
   const lens = path.slice(1).map((p, i) => Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y));
   const total = lens.reduce((a, b) => a + b, 0);
-  const marks = events.map((event, k) => ({ at: (total * (k + 1)) / (events.length + 1), event }));
+  // Spread evenly, except the ones tied to a moment (the gate before take-off, the landing at the end).
+  const marks = events.map((event, k) => ({ at: total * (JOURNEY_EVENT_AT[event as CoachEventKey] ?? (k + 1) / (events.length + 1)), event })).sort((a, b) => a.at - b.at);
   let run = 0;
   for (let i = 1; i < path.length; i++) {
     const a = path[i - 1]!;

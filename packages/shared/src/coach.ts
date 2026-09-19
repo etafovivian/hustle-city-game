@@ -167,6 +167,26 @@ export const FLIGHT_EVENTS: readonly CoachEvent[] = [
     ],
   },
   {
+    key: "overhead",
+    title: "No space in the overhead bin",
+    icon: "🧳",
+    scene: "Someone has put three bags and a cooler of jollof in the bin above your seat.",
+    line: "The owner, not moving: \"Abeg, push am small, e go enter.\"",
+    choices: [
+      { key: "help", label: "Rearrange the bin for everyone", note: "−Energy · +Fitness", win: { needs: { energy: -6, social: 6 }, skill: ["fitness", 6], xp: 4, message: "Ten minutes of bag Tetris and everything fits. The crew thanks you." } },
+      { key: "under", label: "Put your bag under the seat", note: "Free", win: { needs: { fun: -3 }, message: "Your legs are cramped all the way to Abuja." } },
+      {
+        key: "insist",
+        label: "Insist they move the cooler",
+        note: "Charisma helps",
+        odds: 0.55,
+        oddsSkill: "charisma",
+        win: { xp: 6, needs: { fun: 4 }, message: "The cooler goes under their seat. Justice." },
+        fail: { needs: { social: -6 }, message: "An argument starts. The crew moves YOUR bag to the back of the plane." },
+      },
+    ],
+  },
+  {
     key: "turbulence",
     title: "Turbulence",
     icon: "🌩️",
@@ -211,26 +231,6 @@ export const FLIGHT_EVENTS: readonly CoachEvent[] = [
     ],
   },
   {
-    key: "overhead",
-    title: "No space in the overhead bin",
-    icon: "🧳",
-    scene: "Someone has put three bags and a cooler of jollof in the bin above your seat.",
-    line: "The owner, not moving: \"Abeg, push am small, e go enter.\"",
-    choices: [
-      { key: "help", label: "Rearrange the bin for everyone", note: "−Energy · +Fitness", win: { needs: { energy: -6, social: 6 }, skill: ["fitness", 6], xp: 4, message: "Ten minutes of bag Tetris and everything fits. The crew thanks you." } },
-      { key: "under", label: "Put your bag under the seat", note: "Free", win: { needs: { fun: -3 }, message: "Your legs are cramped all the way to Abuja." } },
-      {
-        key: "insist",
-        label: "Insist they move the cooler",
-        note: "Charisma helps",
-        odds: 0.55,
-        oddsSkill: "charisma",
-        win: { xp: 6, needs: { fun: 4 }, message: "The cooler goes under their seat. Justice." },
-        fail: { needs: { social: -6 }, message: "An argument starts. The crew moves YOUR bag to the back of the plane." },
-      },
-    ],
-  },
-  {
     key: "landing",
     title: "Touchdown in Abuja",
     icon: "🛬",
@@ -259,8 +259,13 @@ export function coachEventsFor(rideId: string, kind: JourneyKind = "coach"): Coa
   for (let i = 0; i < rideId.length; i++) h = Math.imul(h ^ rideId.charCodeAt(i), 16777619) >>> 0;
   const first = h % list.length;
   const second = (first + 1 + ((h >>> 8) % (list.length - 1))) % list.length;
-  return [list[first]!.key, list[second]!.key].slice(0, COACH_EVENTS_PER_TRIP);
+  // In the order they'd happen (the gate before take-off, the landing last).
+  return [list[first]!.key, list[second]!.key]
+    .slice(0, COACH_EVENTS_PER_TRIP)
+    .sort((a, b) => list.findIndex((e) => e.key === a) - list.findIndex((e) => e.key === b));
 }
+/** Where on the way an event happens (a share of the trip): the gate at the start, the landing at the end. */
+export const JOURNEY_EVENT_AT: Partial<Record<CoachEventKey, number>> = { gate: 0.03, overhead: 0.08, landing: 0.97 };
 
 export interface CoachResult {
   ok: boolean;
