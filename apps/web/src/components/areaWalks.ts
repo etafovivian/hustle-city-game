@@ -34,6 +34,8 @@ const AREA_OF_PREFIX: Record<string, string> = {
   ab: "Abeokuta",
   // Gadget Village's streets (a quarter of Airport Ridge) and the forest road to it
   gv: "Gadget Village",
+  // Abuja's district streets
+  aj: "Abuja",
 };
 /** The main road's stretch through each area: fixed iso axis and value, and the range along it. */
 const MAIN_ROADS: { area: string; fixed: "a" | "b"; at: number; from: number; to: number }[] = [
@@ -70,6 +72,7 @@ export const AREA_WALKERS: Record<string, number> = {
   Abeokuta: 7,
   // Gadget Village is always busy (appended, so nobody else's walk changes)
   "Gadget Village": 8,
+  Abuja: 14,
 };
 
 const kerbOf = (s: { half: number; pav: number }) => s.half + s.pav / 2;

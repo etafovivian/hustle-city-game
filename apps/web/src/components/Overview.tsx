@@ -18,6 +18,8 @@ import {
   VENUE_SPOTS,
   WATER_PATH,
   WORLD,
+  ABUJA_GROUND,
+  MAP_BOUNDS,
 } from "./cityLayout.js";
 import { TRANSIT_LINES, TRANSIT_STOPS } from "./transitData.js";
 
@@ -104,7 +106,7 @@ export function CityOverview({
     const pad = 600;
     const x0 = Math.max(WORLD.x0, Math.min(...xs) - pad);
     const y0 = Math.max(WORLD.y0, Math.min(...ys) - pad - 300);
-    const x1 = Math.min(WORLD.w, Math.max(...xs) + pad);
+    const x1 = Math.min(MAP_BOUNDS.w, Math.max(...xs) + pad);
     const y1 = Math.min(WORLD.h, Math.max(...ys) + pad);
     return `${x0} ${y0} ${x1 - x0} ${y1 - y0}`;
   }, [spots]);
@@ -122,7 +124,9 @@ export function CityOverview({
         <div className="overview-layout">
           <div className="overview-map">
             <svg viewBox={box} role="img" aria-label="Map of the city">
-              <rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w - WORLD.x0} height={WORLD.h - WORLD.y0} fill="#d9b981" />
+<rect x={WORLD.w} y={WORLD.y0} width={MAP_BOUNDS.w - WORLD.w} height={WORLD.h - WORLD.y0} fill="#7d8a55" />
+                            <rect x={WORLD.x0} y={WORLD.y0} width={WORLD.w - WORLD.x0} height={WORLD.h - WORLD.y0} fill="#d9b981" />
+              <path d={ABUJA_GROUND} fill="#c9b07a" />
               <path d={WATER_PATH} fill="#2f8fb0" />
               <path d={OCEAN_PATH} fill="#1f6f9a" />
               <path d={ISLAND_PATH} fill="#e3c48f" />

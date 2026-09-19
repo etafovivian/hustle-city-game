@@ -94,12 +94,12 @@ export function RidePicker({
           <h2>How are you going?</h2>
           <span className="small muted">
             To {to}
-            {walkable ? ` · ${km} km` : " · by boat"}
+            {walkable ? ` · ${km} km` : plans?.some((p) => p.kinds.includes("flight")) ? " · by air" : " · by boat"}
             {rush && walkable && <span className="rush-tag">Rush hour: go-slow and surge</span>}
             {rain.fare > 1 && <span className="rush-tag">Rain surge</span>}
           </span>
         </div>
-        {!walkable && <p className="small notice">Only the water bus goes there.</p>}
+        {!walkable && <p className="small notice">{plans?.some((p) => p.kinds.includes("flight")) ? "Only a flight goes there: from the Airport Ridge terminal." : "Only the water bus goes there."}</p>}
         <ul className="ride-list">
           {plans.map((pl) => {
             const key = `transit:${pl.kinds.join("+")}`;

@@ -42,12 +42,16 @@ for (const f of audit().found) if (STRICT.includes(f.kind)) bad.push(`${f.kind}:
 for (const i of L.TRANSIT_ISSUES) bad.push(`transit: ${i}`);
 const ids = new Set<string>();
 const start = { x: L.CX - 120, y: L.CY + 150 };
+const abujaAirport = L.TRANSIT_STOPS_L.find((s) => s.id === "abuja-airport")!;
+// Nothing walks between Lagos and Abuja
+if (L.walkRoute(start, abujaAirport)) bad.push("abuja: you can walk there from Lagos");
 for (const s of L.TRANSIT_STOPS_L) {
   if (ids.has(s.id)) bad.push(`transit: stop id ${s.id} is used twice`);
   ids.add(s.id);
   const land = L.landmassAt(s.x, s.y);
   if (!land || land === "bridge") bad.push(`transit: stop ${s.id} is not on land`);
-  else if (land !== "sandbar" && !L.walkRoute(start, s)) bad.push(`transit: stop ${s.id} can't be walked to`);
+  // Abuja's stops: walkable from its airport (Lagos is a flight away)
+  else if (land === "abuja" ? !L.walkRoute(abujaAirport, s) : land !== "sandbar" && !L.walkRoute(start, s)) bad.push(`transit: stop ${s.id} can't be walked to`);
 }
 const roadDist = (p: { x: number; y: number }) =>
   Math.min(

@@ -205,14 +205,30 @@ export function riverDistance(x: number, y: number) {
   return best;
 }
 
+// ── Abuja ──
+// Far to the east of Lagos, past open bush (nothing stands or walks there): the Federal Capital, reached only by
+// flight from the Airport Ridge terminal. Its ground is an iso square of half-side ABUJA.r around iso (ABUJA.a,
+// ABUJA.b); places in it use local coordinates u, v from that centre (u along Road A's direction, v along Road B's).
+export const ABUJA = { a: 4150, b: 12550, r: 2500 } as const;
+/** Inside Abuja's ground (with a margin from its edge). */
+export const inAbuja = (x: number, y: number, margin = 40) => {
+  const a = (x - CX) / 2 + (y - CY) - ABUJA.a;
+  const b = (x - CX) / 2 - (y - CY) - ABUJA.b;
+  return Math.abs(a) <= ABUJA.r - margin && Math.abs(b) <= ABUJA.r - margin;
+};
+/** The whole world's bounds for the camera and the city map: Lagos and Ogun, the bush, and Abuja. */
+export const MAP_BOUNDS = { x0: WORLD.x0, y0: WORLD.y0, w: CX + ABUJA.a + ABUJA.b + ABUJA.r * 2 + 400, h: WORLD.h };
+
 /** Dry land with room for a building (art is drawn up to ~210 units above its foot). */
-export const onLand = (x: number, y: number) => (y < shoreY(x) - 60 && riverDistance(x, y) > RIVER_HALF + 60) || onIsland(x, y) || inSandbar(x, y, 50);
+export const onLand = (x: number, y: number) =>
+  x < WORLD.w + 450 ? (y < shoreY(x) - 60 && riverDistance(x, y) > RIVER_HALF + 60) || onIsland(x, y) || inSandbar(x, y, 50) : inAbuja(x, y, 60);
 
 // ── Walking ──
-export type Landmass = "mainland" | "island" | "bridge" | "sandbar";
+export type Landmass = "mainland" | "island" | "bridge" | "sandbar" | "abuja";
 const BRIDGES = ROADS.filter((r) => r.bridge);
 /** Where a person can stand: mainland, the Island, or the bridge deck. Null means water or off the map. */
 export function landmassAt(x: number, y: number): Landmass | null {
+  if (x > WORLD.w) return inAbuja(x, y, 0) ? "abuja" : null;
   if (x < WORLD.x0 || y < WORLD.y0 || x > WORLD.w || y > WORLD.h) return null;
   if (BRIDGES.some((b) => x >= b.x0 && x <= b.x1 && Math.abs(y - yOn(b, x)) < HALF + 14)) return "bridge";
   if (y < shoreY(x) - 12) return riverDistance(x, y) < RIVER_HALF + 10 ? null : "mainland";
@@ -247,6 +263,8 @@ export function walkRoute(from: { x: number; y: number }, to: { x: number; y: nu
   const start = landmassAt(from.x, from.y) ?? "mainland";
   // Sandbar Bay has no bridge: walk about on it, or take the water bus.
   if (start === "sandbar" || end === "sandbar") return start === end ? [to] : null;
+  // Abuja is a flight away: walk about inside it (by its pavements), never out of it.
+  if (start === "abuja" || end === "abuja") return start === end ? (roadRoute(from, to, true) ?? [to]) : null;
   // Around Junction 101, walk the pavements and cross at the zebras, like everyone else.
   if (start === "mainland" && end === "mainland") {
     const onFoot = footpathRoute(from, to);
@@ -771,9 +789,22 @@ export const DISTRICTS: District[] = [
   { name: "Mowe", ...iso(-4800, 3000), phase: 4, buildings: [] },
   { name: "Sagamu", ...iso(-4700, 5450), phase: 4, buildings: [] },
   { name: "Abeokuta", ...iso(-4650, 8250), phase: 4, buildings: [] },
+  // Abuja, a flight away (see ABUJA): the city's plate, and each district named on the ground.
+  { name: "Abuja", ...iso(ABUJA.a - 2300, ABUJA.b + 2900), phase: 4, buildings: [] },
+  ...(
+    [
+      ["Central Area", 650, 650],
+      ["Maitama", 0, 1850],
+      ["Asokoro", 1800, -500],
+      ["Wuse", -650, 650],
+      ["Garki", 650, -1150],
+      ["Jabi", -650, -1150],
+      ["Kubwa", -1850, 1150],
+    ] as const
+  ).map(([name, u, v]): District => ({ name, ...iso(ABUJA.a + u, ABUJA.b + v - 330), phase: 4, buildings: [], landmark: true })),
 ];
 /** Areas added after the first city: older buildings keep the area (and branch names) they had before these. */
-const NEWER_AREAS = new Set(["Ikodu Town", "Sandbar Bay", "Mowe", "Sagamu", "Abeokuta"]);
+const NEWER_AREAS = new Set(["Ikodu Town", "Sandbar Bay", "Mowe", "Sagamu", "Abeokuta", "Abuja", "Central Area", "Maitama", "Asokoro", "Wuse", "Garki", "Jabi", "Kubwa"]);
 
 const onSite = (cx: number, cy: number, hh: number) => onLand(cx, cy + hh) && onLand(cx, cy - hh) && onLand(cx - 2 * hh, cy) && onLand(cx + 2 * hh, cy);
 
@@ -859,6 +890,15 @@ export const VENUE_ART: Record<string, string> = {
   independence_square: "parade-square",
   liberty_arts_park: "arts-park",
   gadget_village: "commercial-block",
+  // Abuja (placed with the city's other late places)
+  abuja_secretariat: "federal-secretariat",
+  unity_mosque: "mosque",
+  unity_cathedral: "church",
+  zone5_market: "market-hall",
+  capital_lights_lounge: "skyline-lounge",
+  capital_polo_club: "golf-club",
+  lakeview_mall: "mall",
+  jabi_lakeside_park: "restaurant-terrace",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
   if (v.a !== undefined && v.b !== undefined) {
@@ -1114,6 +1154,61 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     homes: [["bungalow", 4], ["family-compound", 4], ["unfinished-building", 3], ["storey-house", 2]],
     civic: [["mosque", 2], ["church", 2]],
     mainRoad: [["motor-park", 1], ["filling-station", 2]],
+  },
+  // Abuja: planned and green. Maitama and Asokoro are big-man estates (and embassies), the Central Area offices and
+  // towers, Wuse markets and nightlife, Garki offices, Jabi by the lake, Kubwa the satellite town with cheap rent.
+  "Central Area": {
+    commercial: 0.65,
+    forSale: 0.15,
+    plotHalf: 70,
+    shops: [["office-tower", 3], ["commercial-block", 2], ["bank-crown-savings", 1], ["bank-eko-trust", 1], ["hotel", 1]],
+    homes: [["residential-tower", 2], ["residential-block", 1]],
+  },
+  Maitama: {
+    commercial: 0.12,
+    forSale: 0.25,
+    plotHalf: 76,
+    shops: [["restaurant-terrace", 2], ["colonial-block", 2], ["car-showroom", 1]],
+    homes: [["villa", 5], ["crazy-house", 1], ["terrace-duplex", 2], ["estate-gate", 1]],
+  },
+  Asokoro: {
+    commercial: 0.2,
+    forSale: 0.22,
+    plotHalf: 76,
+    // Embassies: big walled colonial-style blocks with no flags
+    shops: [["colonial-block", 3], ["office-tower", 1], ["restaurant-terrace", 1]],
+    homes: [["villa", 4], ["terrace-duplex", 2], ["estate-gate", 1]],
+  },
+  Wuse: {
+    commercial: 0.6,
+    forSale: 0.12,
+    plotHalf: 56,
+    shops: [["shop-house", 3], ["market-stalls", 2], ["mixed-use-block", 2], ["phone-shop", 1], ["buka", 1], ["chemist", 1], ["suya-stand", 1]],
+    homes: [["residential-block", 3], ["storey-house", 2], ["mixed-use-block", 1]],
+    civic: [["mosque", 1], ["church", 1]],
+  },
+  Garki: {
+    commercial: 0.55,
+    forSale: 0.14,
+    plotHalf: 60,
+    shops: [["office-tower", 2], ["commercial-block", 3], ["bank-lagoon-capital", 1], ["chemist", 1], ["shop-house", 1]],
+    homes: [["residential-block", 3], ["storey-house", 2]],
+    civic: [["school", 1], ["clinic", 1]],
+  },
+  Jabi: {
+    commercial: 0.3,
+    forSale: 0.18,
+    plotHalf: 64,
+    shops: [["restaurant-terrace", 2], ["commercial-block", 1], ["chemist", 1]],
+    homes: [["terrace-duplex", 3], ["residential-block", 2], ["residential-tower", 1]],
+  },
+  Kubwa: {
+    commercial: 0.3,
+    forSale: 0.3,
+    plotHalf: 52,
+    shops: [["shop-house", 3], ["buka", 2], ["chemist", 1], ["gadget-kiosk", 1], ["mechanic", 1], ["suya-stand", 1]],
+    homes: [["bungalow", 4], ["face-me-block", 3], ["unfinished-building", 2], ["family-compound", 2]],
+    civic: [["church", 2], ["mosque", 2], ["school", 1]],
   },
   Abeokuta: {
     commercial: 0.2,
@@ -1710,7 +1805,7 @@ export const ART_ASPECT: Record<string, number> = {
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
   "adire-pits": 0.8, "beach-bar": 0.97, "beach-cabanas": 0.71, "boxing-club": 0.92, "brt-station": 0.79, "peace-estate": 0.79, "rail-station": 1.01, senate: 0.87,
   // Landmarks (public/art/landmarks)
-  "olumo-rock": 1.5, "arts-theatre": 0.69, "parade-square": 0.72, "arts-park": 0.75, palace: 0.68,
+  "olumo-rock": 1.5, "unity-rock": 0.8, "federal-secretariat": 0.8, "arts-theatre": 0.69, "parade-square": 0.72, "arts-park": 0.75, palace: 0.68,
 };
 export type Pt = [number, number];
 const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
@@ -2224,6 +2319,160 @@ const BEACH_PROPS: Prop[] = [
 ].filter((p): p is Prop => !!p);
 PROPS.push(...BEACH_PROPS);
 
+// ── Abuja: boulevards, landmarks and districts ──
+// Laid after everything in Lagos and Ogun (nothing there moves): a grid of wide boulevards three by three, each crossing
+// a roundabout; the Central Area between them with the secretariat, the mosque and the cathedral; the granite rock on
+// the east corner; Maitama across the north, Asokoro down the east side, Wuse and Jabi to the west, Garki to the south,
+// Kubwa off on its own in the north-west, the airport out west. Each district gets its own inner streets and plots.
+/** World point of Abuja's local coordinates. */
+export const abujaPt = (u: number, v: number) => iso(ABUJA.a + u, ABUJA.b + v);
+/** The boulevards: three along u (v fixed) and three along v (u fixed), each running nearly edge to edge. */
+export const ABUJA_BOULEVARDS = [-1300, 0, 1300];
+const ABUJA_REACH = 2300;
+for (const v of ABUJA_BOULEVARDS) {
+  const [p, q] = [abujaPt(-ABUJA_REACH, v), abujaPt(ABUJA_REACH, v)];
+  ROADS.push({ id: `abuja-v${v}`, x0: p.x, y0: p.y, x1: q.x, y1: q.y, traffic: 0.35 });
+}
+for (const u of ABUJA_BOULEVARDS) {
+  const [p, q] = [abujaPt(u, -ABUJA_REACH), abujaPt(u, ABUJA_REACH)];
+  ROADS.push({ id: `abuja-u${u}`, x0: p.x, y0: p.y, x1: q.x, y1: q.y, traffic: 0.35 });
+}
+/** Roundabouts where the boulevards cross (drawn over the junction: a green island with a ring road). */
+export const ABUJA_ROUNDABOUTS = ABUJA_BOULEVARDS.flatMap((u) => ABUJA_BOULEVARDS.map((v) => abujaPt(u, v)));
+/** Abuja's ground, and the hills beyond its north edges. */
+export const ABUJA_GROUND = isoRect(ABUJA.a - ABUJA.r, ABUJA.a + ABUJA.r, ABUJA.b - ABUJA.r, ABUJA.b + ABUJA.r);
+export const ABUJA_HILLS = [
+  ...[-2100, -1300, -500, 300, 1100, 1900].map((v, i) => ({ ...abujaPt(-ABUJA.r - 170, v), r: 260 + (i % 3) * 70 })),
+  ...[-1700, -900, -100, 700, 1500].map((u, i) => ({ ...abujaPt(u, ABUJA.r + 170), r: 240 + ((i + 1) % 3) * 80 })),
+];
+/** Jabi Lake (ground, claimed so nothing is built in it). */
+export const ABUJA_LAKE = { ...abujaPt(-650, -1880), ra: 400, rb: 280 };
+for (let du = -ABUJA_LAKE.ra + 40; du <= ABUJA_LAKE.ra - 40; du += 60)
+  for (let dv = -ABUJA_LAKE.rb + 40; dv <= ABUJA_LAKE.rb - 40; dv += 60) {
+    const c = abujaPt(-650 + du, -1880 + dv);
+    TAKEN.push(patchAt(c.x, c.y, 34));
+  }
+/** The airport's runway and apron (ground), out west. */
+export const ABUJA_RUNWAY = { u0: -2220, u1: -2100, v0: -2250, v1: -250, apron: { u0: -2040, u1: -1860, v0: -1500, v1: -500 } };
+for (let v = ABUJA_RUNWAY.v0; v <= ABUJA_RUNWAY.v1; v += 80) {
+  const c = abujaPt((ABUJA_RUNWAY.u0 + ABUJA_RUNWAY.u1) / 2, v);
+  TAKEN.push(patchAt(c.x, c.y, 80));
+}
+for (let v = ABUJA_RUNWAY.apron.v0; v <= ABUJA_RUNWAY.apron.v1; v += 80) {
+  const c = abujaPt((ABUJA_RUNWAY.apron.u0 + ABUJA_RUNWAY.apron.u1) / 2, v);
+  TAKEN.push(patchAt(c.x, c.y, 100));
+}
+export const ABUJA_RUNWAY_PATHS = {
+  runway: isoRect(ABUJA.a + ABUJA_RUNWAY.u0, ABUJA.a + ABUJA_RUNWAY.u1, ABUJA.b + ABUJA_RUNWAY.v0, ABUJA.b + ABUJA_RUNWAY.v1),
+  apron: isoRect(ABUJA.a + ABUJA_RUNWAY.apron.u0, ABUJA.a + ABUJA_RUNWAY.apron.u1, ABUJA.b + ABUJA_RUNWAY.apron.v0, ABUJA.b + ABUJA_RUNWAY.apron.v1),
+};
+const abujaVenue = (key: string, u: number, v: number, scale: number) => landmark(key, ABUJA.a + u, ABUJA.b + v, scale);
+abujaVenue("abuja_secretariat", 650, 300, 1.6);
+abujaVenue("unity_mosque", 300, 960, 1.4);
+abujaVenue("unity_cathedral", 1000, 960, 1.4);
+abujaVenue("zone5_market", -650, 960, 1.4);
+abujaVenue("capital_lights_lounge", -320, 300, 1.15);
+abujaVenue("capital_polo_club", -650, 1850, 1.6);
+abujaVenue("lakeview_mall", -1000, -500, 1.45);
+abujaVenue("jabi_lakeside_park", -650, -1480, 1.1);
+/** Abuja's own buildings that aren't plots: the rock, the airport terminal, Garki's bus park. */
+const ABUJA_FIXED: Building[] = [];
+function abujaFixed(key: string, art: string, u: number, v: number, scale: number) {
+  const c = abujaPt(u, v);
+  const hh = siteOf(scale).hh;
+  if (!onSite(c.x, c.y, hh) || !claim(c.x, c.y, hh)) return void LANDMARK_ISSUES.push(`${key} has no room in Abuja at ${u},${v}`);
+  const foot = footAt(ABUJA.a + u, ABUJA.b + v, scale);
+  lateShape(key, art, foot.x, foot.y, scale, true);
+  ABUJA_FIXED.push({ art, ...foot, key, scale, landmark: true });
+}
+// The granite rock over the city (a drawn stand-in until its Stitch art), the terminal and the bus park
+abujaFixed("abuja-unity-rock", "/art/landmarks/unity-rock.svg", 1850, 1850, 3);
+abujaFixed("abuja-airport-terminal", "/art/buildings/airport-terminal.webp", -1700, -900, 1.5);
+abujaFixed("abuja-garki-bus-park", "/art/buildings/motor-park.webp", 650, -650, 1.3);
+abujaFixed("abuja-house-of-federation", "/art/landmarks/federal-secretariat.svg", 1000, 300, 1.25);
+
+/** A street in Abuja's local coordinates (u fixed: "a"; v fixed: "b"). */
+const aj = (id: string, fixed: "a" | "b", at: number, from: number, to: number, cls: StreetClass, offRoad = true): GrowLine =>
+  st(`aj${id}`, fixed, (fixed === "a" ? ABUJA.a : ABUJA.b) + at, (fixed === "a" ? ABUJA.b : ABUJA.a) + from, (fixed === "a" ? ABUJA.b : ABUJA.a) + to, cls, offRoad);
+const ABUJA_DISTRICT_LINES: { area: string; lines: GrowLine[] }[] = [
+  { area: "Central Area", lines: [aj("ca1", "b", 650, 0, 1300, "collector")] },
+  {
+    area: "Maitama",
+    lines: [aj("ma1", "b", 1850, 1300, -1300, "collector"), aj("ma2", "a", 0, 1300, 2300, "local"), aj("ma3", "a", 650, 1300, 2300, "local"), aj("ma4", "a", -1100, 1300, 2300, "local")],
+  },
+  {
+    area: "Asokoro",
+    lines: [
+      aj("as1", "a", 1800, 1300, 0, "collector"),
+      aj("as2", "a", 1800, 0, -1300, "collector"),
+      aj("as3", "a", 1800, -1300, -2300, "collector"),
+      aj("as4", "b", 650, 1300, 2300, "local"),
+      aj("as5", "b", -650, 1300, 2300, "local"),
+      aj("as6", "b", -1800, 1300, 2300, "local"),
+    ],
+  },
+  { area: "Wuse", lines: [aj("wu1", "a", -650, 0, 1300, "collector"), aj("wu2", "b", 620, -1300, 0, "local"), aj("wu3", "a", -1000, 0, 1300, "local")] },
+  { area: "Jabi", lines: [aj("ja1", "a", -650, 0, -1300, "collector"), aj("ja2", "b", -700, 0, -1300, "local")] },
+  {
+    area: "Garki",
+    lines: [aj("ga1", "b", -300, 0, 1300, "local"), aj("ga2", "b", -1000, 0, 1300, "local"), aj("ga3", "a", 650, -1300, -2300, "collector"), aj("ga4", "b", -1800, 0, 1300, "local")],
+  },
+  {
+    area: "Kubwa",
+    lines: [
+      aj("ku1", "a", -1800, 0, 2300, "collector"),
+      ...[450, 950, 1450, 1950].map((v, i) => aj(`ku${i + 2}`, "b", v, -1300, -2300, "local")),
+    ],
+  },
+];
+const inAbujaGrow = (x: number, y: number, hh = 0) => inAbuja(x, y, 2 * hh + 70);
+const ABUJA_GRIDS = ABUJA_DISTRICT_LINES.map((g) => ({ ...g, lines: g.lines.flatMap((l) => growLine(l, (x, y) => inAbuja(x, y, 90)) ?? []) }));
+STREETS.push(...ABUJA_GRIDS.flatMap((g) => g.lines.map(streetOf)));
+const ABUJA_FILL = ABUJA_GRIDS.map((g) => fillArea(g.area, g.lines, { growing: true, within: inAbujaGrow }));
+/** Abuja's plot buildings, each kept only if its art keeps clear of what's drawn already. */
+const ABUJA_HOUSES = [...ABUJA_FIXED, ...ABUJA_FILL.flatMap((f) => f.houses).filter((h) => {
+  const ok = lateShape(`${h.key} ${artName(h.art)}`, h.art, h.x, h.y, h.scale, false);
+  if (!ok) removePlot(h.key);
+  return ok;
+})];
+export const ABUJA_DRIVEWAYS = ABUJA_FILL.flatMap((f) => f.driveways.filter((d) => ABUJA_HOUSES.some((h) => h.key === d.key)));
+/** Abuja is green: shade trees along every boulevard's verges, in the gaps between the plots. */
+const ABUJA_TREES = ABUJA_BOULEVARDS.flatMap((fixed) =>
+  [1, -1].flatMap((side) =>
+    range(-ABUJA_REACH + 120, ABUJA_REACH - 120, 110).flatMap((t) =>
+      (["u", "v"] as const).flatMap((axis) => {
+        const off = fixed + side * 140;
+        const c = axis === "u" ? abujaPt(t, off) : abujaPt(off, t);
+        const kind: TreeKind = (["neem", "mango", "almond", "palm"] as const)[Math.floor(seeded(`abuja:${axis}:${fixed}:${side}:${t}`) * 4)]!;
+        const key = `abuja-${axis}${fixed}${side > 0 ? "+" : "-"}${t}`;
+        return inAbuja(c.x, c.y, 80) && treeClear(c.x, c.y, kind) && claim(c.x, c.y, 16, 4) ? [{ ...c, kind, key }] : [];
+      }),
+    ),
+  ),
+);
+/** Planes on the apron. */
+PROPS.push(
+  ...[-1300, -800].map((v, i) => {
+    const c = abujaPt((ABUJA_RUNWAY.apron.u0 + ABUJA_RUNWAY.apron.u1) / 2, v);
+    return { art: `/art/props/${i ? "jet-ne" : "jet-sw"}.webp`, x: c.x, y: c.y + 60, key: `abuja-jet-${i}`, w: 270, behind: false };
+  }),
+);
+/** Street lamps along the boulevards (every 300, alternating sides, none at the roundabouts). */
+LAMPS.push(
+  ...ROADS.filter((r) => r.id.startsWith("abuja-")).flatMap((s) => {
+    const out: { x: number; y: number; key: string; behind: boolean }[] = [];
+    let i = 0;
+    for (let x = s.x0 + 150; x < s.x1 - 100; x += 300) {
+      const y = yOn(s, x);
+      if (ABUJA_ROUNDABOUTS.some((c) => Math.hypot(c.x - x, c.y - y) < 260)) continue;
+      const north = i++ % 2 === 1;
+      out.push({ x, y: y + (north ? -BACK : BACK), key: `${s.id}-${Math.round(x)}`, behind: north });
+    }
+    return out;
+  }),
+);
+DRIVEWAYS.push(...ABUJA_DRIVEWAYS);
+
 /** Palms along the Island road (Lekki feel) and trees around the districts. */
 const EXTRA_TREES = [
   ...Array.from({ length: 22 }, (_, i) => 3900 + i * 260).flatMap((x, i) => {
@@ -2389,9 +2638,9 @@ const OGUN_TREES = [
   }),
 ];
 
-export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS, ...OGUN_TREES, ...LANDMARK_TREES].sort((a, b) => a.y - b.y);
+export const TREES = [...EXTRA_TREES, ...SCATTER, ...FOREST_TREES, ...SANDBAR_PALMS, ...OGUN_TREES, ...LANDMARK_TREES, ...ABUJA_TREES].sort((a, b) => a.y - b.y);
 
-export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES, ...GADGET_HOUSES].sort((a, b) => a.y - b.y);
+export const ALL_SCENERY: Building[] = [...DISTRICT_SCENERY.map((b) => ({ ...b, landmark: true })), ...AREA_HOUSES, ...GADGET_HOUSES, ...ABUJA_HOUSES].sort((a, b) => a.y - b.y);
 /** The buildings that stood before the city grew, back to front as they were then. */
 const ORIGINAL_SCENERY = ALL_SCENERY.filter((b) => ORIGINAL_ORDER.has(b.key)).sort((a, b) => ORIGINAL_ORDER.get(a.key)! - ORIGINAL_ORDER.get(b.key)!);
 
@@ -2670,6 +2919,8 @@ export const ROAD_PATHS: RoadPath[] = (() => {
         { id: "sagamu-road", kind: "road", d: `M${P(sg.x0, sg.y0)} L${P(sg.x1, sg.y1)}` },
       ] satisfies RoadPath[];
     })(),
+    // Abuja's boulevards
+    ...ROADS.filter((r) => r.id.startsWith("abuja-")).map((r): RoadPath => ({ id: r.id, kind: "road", d: `M${P(r.x0, r.y0)} L${P(r.x1, r.y1)}` })),
   ];
 })();
 
@@ -3129,7 +3380,49 @@ const COACH = lineOf(
   byRoad,
 );
 
-export const TRANSIT_LINES_L: TransitLine[] = [BRT_A, BRT_B, RAIL_LINE, FERRY_EAST, FERRY_SANDBAR, COACH, OGUN_RAIL];
+// ── Abuja: the flight from Airport Ridge, and the city's BRT round its boulevards ──
+/** Abuja's airport stop: on the boulevard pavement in front of the terminal (BRT and flights both call). */
+const ABUJA_AIRPORT_STAND = abujaPt(-1377, -900);
+/** The flight: straight across the bush between the two terminals' stops. */
+const FLIGHT = lineOf(
+  "flight-abuja",
+  "Flight: Airport Ridge – Abuja",
+  "flight",
+  "#7a4fd6",
+  [
+    { id: stop("airport-terminal", "Airport Terminal", iso(77.5, 2549.5), "flight"), at: STOPS.get("airport-terminal")! },
+    { id: stop("abuja-airport", "Unity Gateway Airport, Abuja", ABUJA_AIRPORT_STAND, "flight"), at: ABUJA_AIRPORT_STAND },
+  ],
+  (_from, to) => [to],
+);
+/** Abuja's BRT keeps to the boulevards: along the one it's on to the corner, then along the next. */
+const onBoulevardU = (p: P) => ABUJA_BOULEVARDS.some((u) => Math.abs(toIso(p.x, p.y).a - (ABUJA.a + u)) < 2);
+const byBoulevard = (from: P, to: P) => {
+  const f = toIso(from.x, from.y);
+  const t = toIso(to.x, to.y);
+  const corner = onBoulevardU(from) ? iso(f.a, t.b) : iso(t.a, f.b);
+  return Math.hypot(corner.x - to.x, corner.y - to.y) < 1 ? [to] : [corner, to];
+};
+const ABUJA_BRT = lineOf(
+  "brt-abuja",
+  "Abuja BRT: Kubwa – Airport",
+  "brt",
+  "#1f6fd1",
+  (
+    [
+      ["abuja-kubwa", "Kubwa", [-1300, 1700], [-1377, 1700]],
+      ["abuja-wuse", "Wuse", [-650, 0], [-650, -77]],
+      ["abuja-central", "Central Area", [650, 0], [650, -77]],
+      ["abuja-asokoro", "Asokoro", [1300, -650], [1377, -650]],
+      ["abuja-garki", "Garki Bus Park", [650, -1300], [650, -1223]],
+      ["abuja-jabi", "Jabi Lake", [-650, -1300], [-650, -1377]],
+      ["abuja-airport", "Unity Gateway Airport, Abuja", [-1300, -900], [-1377, -900]],
+    ] as const
+  ).map(([id, name, halt, stand]) => ({ id: stop(id, name, abujaPt(stand[0], stand[1]), "brt"), at: abujaPt(halt[0], halt[1]) })),
+  byBoulevard,
+);
+
+export const TRANSIT_LINES_L: TransitLine[] = [BRT_A, BRT_B, RAIL_LINE, FERRY_EAST, FERRY_SANDBAR, COACH, OGUN_RAIL, FLIGHT, ABUJA_BRT];
 export const TRANSIT_STOPS_L: TransitStop[] = [...STOPS.values()];
 
 // ── Transit on the street: BRT shelters, the coach bay sign, the road out to Ogun ──
