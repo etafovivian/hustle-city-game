@@ -220,6 +220,9 @@ function Diamond({ x, y, w, h, ...rest }: { x: number; y: number; w: number; h: 
   return <path d={`M${x} ${y - h / 2} L${x + w / 2} ${y} L${x} ${y + h / 2} L${x - w / 2} ${y}Z`} {...rest} />;
 }
 
+/** How far (px) the map layers reach past the viewport, so a drag has picture to slide into. Matches .map-layer. */
+const PAN_MARGIN = 200;
+
 export function CityMap({
   onOpen,
   visited,
@@ -628,9 +631,12 @@ export function CityMap({
     };
   }, []);
   const k = pz.view?.k ?? 1;
-  const world = pz.view ? `translate(${pz.view.x} ${pz.view.y}) scale(${k})` : undefined;
+  // The layers reach PAN_MARGIN px past the viewport on every side (see .map-layer), so while a drag slides the
+  // picture (usePanZoom) there's already map drawn at the edges.
+  const world = pz.view ? `translate(${pz.view.x + PAN_MARGIN} ${pz.view.y + PAN_MARGIN}) scale(${k})` : undefined;
   // Only draw what is on screen (with a margin; tall art stands above its foot, so more below).
-  const box = pz.view && ref.current ? { x0: -pz.view.x / k - 350, y0: -pz.view.y / k - 250, x1: (ref.current.clientWidth - pz.view.x) / k + 350, y1: (ref.current.clientHeight - pz.view.y) / k + 650 } : null;
+  const edge = PAN_MARGIN / k;
+  const box = pz.view && ref.current ? { x0: -pz.view.x / k - 350 - edge, y0: -pz.view.y / k - 250 - edge, x1: (ref.current.clientWidth - pz.view.x) / k + 350 + edge, y1: (ref.current.clientHeight - pz.view.y) / k + 650 + edge } : null;
   const inView = (x: number, y: number) => !box || (x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1);
   // Name plates keep about the same size on screen at every zoom (zoomed in they shrink in the world, not grow).
   const plateScale = Math.min(8, Math.max(0.3, 14 / (20 * k)));

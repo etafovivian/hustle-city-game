@@ -190,7 +190,8 @@ a { color: inherit; text-underline-offset: 3px; }
 /* The map's stacked layers (ground, traffic, buildings): each its own compositing layer, so moving traffic
    doesn't repaint the buildings. Only the top layer takes taps. */
 .map-viewport { position: relative; }
-.map-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* 200px past the viewport on each side (PAN_MARGIN in CityMap); the transform origin is the viewport's corner. */
+.map-layer { position: absolute; left: -200px; top: -200px; width: calc(100% + 400px); height: calc(100% + 400px); transform-origin: 200px 200px; will-change: transform; }
 /* Only the moving layer gets its own compositing layer (a huge promoted ground layer can paint blank on some phones). */
 .map-layer.traffic-layer { will-change: transform; }
 .map-layer:not(.map-top):not(.map-overlay) { pointer-events: none; }

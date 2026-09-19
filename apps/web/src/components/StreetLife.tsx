@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ART_SIZE } from "./artSizes.js";
 import { CX, CY, HALF, ROUNDABOUT, flyHeight, yOn, type Segment } from "./cityLayout.js";
+import { frameGate } from "./frameGate.js";
 import { walkDir, type WalkDir } from "./walkers.js";
 
 type View = { href: string; w: number; h: number; mirror: boolean };
@@ -171,9 +172,29 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
       }
       return false;
     };
+    // The visible part of the map in world units (from the layer's screen transform, a few times a second), so
+    // vehicles off screen are moved along but not redrawn.
+    let onScreen: { x0: number; y0: number; x1: number; y1: number } | null = null;
+    const shown = vehicles.map(() => true);
+    const measure = () => {
+      const g = outer.current.find(Boolean);
+      const m = (g?.parentNode as SVGGraphicsElement | null)?.getScreenCTM();
+      if (!m) return (onScreen = null);
+      const inv = m.inverse();
+      const p = new DOMPoint(0, 0).matrixTransform(inv);
+      const q = new DOMPoint(window.innerWidth, window.innerHeight).matrixTransform(inv);
+      onScreen = { x0: Math.min(p.x, q.x) - 250, y0: Math.min(p.y, q.y) - 250, x1: Math.max(p.x, q.x) + 250, y1: Math.max(p.y, q.y) + 250 };
+    };
+    measure();
+    const remeasure = window.setInterval(measure, 300);
+    const gate = frameGate();
     let last = performance.now();
     let raf = 0;
     const step = (now: number) => {
+      if (!gate(now)) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       for (const [i, v] of vehicles.entries()) {
@@ -207,6 +228,12 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
         hy[i] = (b.y - a.y) / hl;
         const g = outer.current[i];
         if (!g) continue;
+        const visible = !onScreen || (x > onScreen.x0 && x < onScreen.x1 && y > onScreen.y0 && y < onScreen.y1);
+        if (visible !== shown[i]) {
+          shown[i] = visible;
+          g.setAttribute("display", visible ? "inline" : "none");
+        }
+        if (!visible) continue;
         g.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
         // Fade at the ends of a route instead of popping
         const edge = Math.min(v.at, v.len - v.at);
@@ -233,7 +260,10 @@ function Traffic({ roads, goSlow }: { roads: Segment[]; goSlow: boolean }) {
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearInterval(remeasure);
+    };
   }, [routes, vehicles]);
 
   return (

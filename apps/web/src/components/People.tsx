@@ -5,6 +5,7 @@
 // directly; React only re-renders a few times a second when a walker passes another object's depth.
 // Beyond Junction 101 every area has its own walkers on its street pavements (areaWalks.ts). Only walkers in view
 // (or near it) are moved on screen; the rest are hidden and just keep their place in the walk, so phones stay smooth.
+import { frameGate } from "./frameGate.js";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AREA_WALKERS, areaCrowd, pointOn, type WalkPath } from "./areaWalks.js";
 import { FOOTPATHS, PRESETS } from "./cityLayout.js";
@@ -161,9 +162,14 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
       [p.dx, p.dy] = [b.x - a.x, b.y - a.y];
     };
 
+    const gate = frameGate();
     let last = performance.now();
     let raf = 0;
     const step = (now: number) => {
+      if (!gate(now)) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       for (const [i, p] of crowd.entries()) {
