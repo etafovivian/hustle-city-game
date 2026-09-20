@@ -8,6 +8,8 @@ export interface PresencePlayer {
   y: number;
   /** A place key (venue, branch "base@building", or "home:<plotId>") when they're inside one. */
   place: string | null;
+  /** A chieftaincy title from the palace, to show off on their card. */
+  title?: string;
 }
 
 export interface PresencePing {

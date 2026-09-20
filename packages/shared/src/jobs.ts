@@ -41,6 +41,7 @@ export const JOBS: readonly Job[] = [
   // The phone-repair apprentice side hustle: changes screens and flashes phones, trains Tech
   { venue: "gadget_village", titles: ["Phone repair apprentice", "Repair engineer", "Shop manager", "Plaza boss"], task: "Change screens, flash phones and price accessories", tier: 1.1 },
   { venue: "crown_arts_theatre", titles: ["Usher", "Stagehand", "Stage manager", "Artistic director"], task: "Seat the audience and move the set between scenes", tier: 1 },
+  { venue: "oba_palace", titles: ["Palace guard", "Drummer", "Chief's aide", "Palace secretary"], task: "Keep the gate, beat the talking drum and carry the chiefs' messages", tier: 1.1 },
   // Abuja
   { venue: "abuja_secretariat", titles: ["Messenger", "Clerical officer", "Assistant director", "Permanent secretary"], task: "Move files, stamp letters and sit in meetings", tier: 1.4 },
   { venue: "capital_lights_lounge", titles: ["Glass collector", "Waiter", "Bartender", "Floor manager"], task: "Keep the bottles moving for the VIP tables", tier: 1.3 },

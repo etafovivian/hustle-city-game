@@ -576,6 +576,23 @@ export const VENUES: readonly Venue[] = [
     opens: "gadgets",
     keywords: ["gadget", "gadgets", "phone", "phones", "laptop", "laptops", "computer", "computer village", "repair", "screen", "accessories", "ikeja"],
   },
+  {
+    key: "oba_palace",
+    name: "Iga Oba Palace",
+    area: "Marina Wharf",
+    icon: "👑",
+    art: "/art/landmarks/palace.webp",
+    // The courtroom stands in for the palace's audience hall until its interior arrives (Stitch batch 60)
+    interior: "/art/interiors/courtroom.webp",
+    blurb: "The old palace at the Island's west tip: carved doors, red and white walls, talking drums at the gate. Greet the chiefs, see the regalia, and once a year the white-robed masquerades fill the streets.",
+    regulars: ["Chief Ashipa the Oba's spokesman", "Drummer Ayan"],
+    activities: [
+      { key: "homage", label: "Pay homage and greet the Oba's chiefs", cost: 300, xp: 10 },
+      { key: "museum", label: "See the palace museum and the regalia", cost: 500, xp: 12 },
+      { key: "photo", label: "A photo at the carved gate", cost: 100, xp: 6 },
+    ],
+    keywords: ["palace", "oba", "king", "chief", "chieftaincy", "eyo", "masquerade", "festival", "iga", "idunganran", "royal"],
+  },
   // ── Abuja (a flight from Airport Ridge). Real district names; every place here is invented. ──
   {
     key: "abuja_secretariat",
@@ -780,6 +797,7 @@ const LIFE: Record<string, VenueLife> = {
   independence_square: { gives: ["fun", "social", "rep"], free: "Hang out on the square and watch the crowd", flex: { label: "Sponsor the fireworks over the square", cost: 120_000 } },
   liberty_arts_park: { hours: [10, 24], gives: ["fun", "rest", "social"], free: "Sit under the arches and people-watch", flex: { label: "Commission a mural on the old prison wall", cost: 50_000 } },
   gadget_village: { hours: [8, 19], gives: ["hustle", "style"], free: "Watch the engineers change a screen" },
+  oba_palace: { hours: [8, 20], gives: ["rep", "social", "faith"], free: "Watch the drummers at the gate", flex: { label: "Be given a chieftaincy title by the Oba", cost: 250_000 } },
   abuja_secretariat: { hours: [8, 17], gives: ["hustle"], free: "Read the notices in the lobby" },
   unity_mosque: { hours: [5, 23], gives: ["faith"], free: "Pray with the congregation (salah)" },
   unity_cathedral: { hours: [6, 22], gives: ["faith", "social"], free: "Kneel and pray" },
@@ -810,6 +828,9 @@ export function venueActions(v: Venue): VenueAction[] {
   if (life?.flex) out.push({ key: "flex", label: life.flex.label, cost: life.flex.cost, xp: 100, kind: "flex", seconds: 15, gives: [...gives, ...(gives.includes("rep") ? [] : (["rep"] as const))] });
   return out;
 }
+
+/** The chieftaincy title the Oba gives (the palace's flex): kept in player_items, shown on your player card. */
+export const CHIEF_TITLE = { item: "title:otunba", label: "Otunba of Marina", venue: "oba_palace" } as const;
 
 /** Lagos hour (0–24, with minutes as a fraction). Lagos has no daylight saving: UTC+1 all year. */
 export const lagosHourOf = (at: Date) => (at.getUTCHours() + 1 + at.getUTCMinutes() / 60) % 24;

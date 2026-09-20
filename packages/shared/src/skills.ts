@@ -53,6 +53,7 @@ export const VENUE_SKILL: Readonly<Record<string, SkillKey>> = {
   independence_square: "charisma",
   liberty_arts_park: "charisma",
   gadget_village: "tech",
+  oba_palace: "charisma",
   abuja_secretariat: "business",
   zone5_market: "business",
   capital_lights_lounge: "charisma",
