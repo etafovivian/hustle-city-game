@@ -1,9 +1,11 @@
+// Things you carry (player_items). The chieftaincy title route is here too.
 // Gadget Village: buy a better phone or accessories (at the tag price or by haggling), and fix a cracked screen.
 // What you own is in player_items; a cracked screen is the CRACKED row. Coins move with postCoins, in one transaction
 // with the items (profile locked first).
 
 import { playerItems } from "@hc/db";
 import {
+  CHIEF_TITLE,
   CRACKED,
   GADGET_BY_KEY,
   GADGET_HAGGLE_TRIES,
@@ -78,6 +80,12 @@ const repairBody = z.object({ requestId: z.uuid() });
 export async function gadgetRoutes(app: FastifyInstance) {
   const tz = app.config.GAME_TIMEZONE;
   const inTx = <T>(fn: (tx: Tx, now: Date) => Promise<T>) => app.db.transaction((tx) => fn(tx, new Date()));
+
+  // Your chieftaincy title from the palace, if the Oba has given you one.
+  app.get("/api/game/title", async (request) => {
+    const user = requireUser(request);
+    return inTx(async (tx) => ({ title: (await ownedItems(tx, user.id)).includes(CHIEF_TITLE.item) ? CHIEF_TITLE.label : null }));
+  });
 
   app.get("/api/game/gadgets", async (request) => {
     const user = requireUser(request);

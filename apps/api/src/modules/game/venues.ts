@@ -1,11 +1,11 @@
 // Venue activities: pay City Coins at a place on the map, earn XP once per Lagos day per activity.
 // The ledger reference makes each activity once a day; doing it again is refused before any charge.
 
-import { gameLedgerEntries, profiles } from "@hc/db";
-import { EVENT_NEED_BONUS, EVENT_XP, FREE_COOLDOWN_MS, NEED_GAIN, eventAt, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, SKILL_POINTS, VENUE_SKILL, type VenueDay } from "@hc/shared";
+import { gameLedgerEntries, playerItems, profiles } from "@hc/db";
+import { CHIEF_TITLE, EVENT_NEED_BONUS, EVENT_XP, FREE_COOLDOWN_MS, NEED_GAIN, eventAt, VENUES_BY_KEY, activityRef, clockHour, dayKey, fillNeeds, isOpenAt, lagosHourOf, venueActions, venueHours, SKILL_POINTS, VENUE_SKILL, type VenueDay } from "@hc/shared";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
 import { addSkill } from "./skills.js";
-import { companionsAt, sendPing } from "../presence.js";
+import { companionsAt, sendPing, setTitle } from "../presence.js";
 import { and, eq, like, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
 import { lockProfile } from "../../lib/db.js";
@@ -32,6 +32,10 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
     throw new AppError(409, "closed", `${venue.name} is closed now. It opens at ${clockHour(venueHours(venue)![0])}.`);
   }
   await lockProfile(tx, userId);
+  if (venue.key === CHIEF_TITLE.venue && activity.kind === "flex") {
+    const [has] = await tx.select().from(playerItems).where(and(eq(playerItems.userId, userId), eq(playerItems.item, CHIEF_TITLE.item)));
+    if (has) throw new AppError(409, "titled", `You are already ${CHIEF_TITLE.label}. The Oba gives a title once.`);
+  }
   const posting = await postCoins(tx, userId, -activity.cost, "activity", activityRef(dayKey(now, timeZone), venue.key, activity.key));
   if (!posting.applied) throw new AppError(409, "done_today", "You've done that here today. Come back tomorrow.");
   // Better together: friends at the same place make it count for more (+50% XP, and more Social).
@@ -54,7 +58,13 @@ export async function doActivity(ctx: ShopCtx, venueKey: string, activityKey: st
   if (friends.length) filled = fillNeeds(filled, ["social"], 10);
   if (event) filled = fillNeeds(filled, event.gives, EVENT_NEED_BONUS);
   await saveNeeds(tx, userId, filled, now);
-  return { balance: posting.balance, xp: p!.xp, gained, together: friends.map((f) => f.nickname), event: event?.name ?? null, ...(await venueDay(ctx)), ...needsView(filled) };
+  // The palace's flex: the Oba gives you a chieftaincy title (kept for good, shown on your card).
+  let title: string | undefined;
+  if (venue.key === CHIEF_TITLE.venue && activity.kind === "flex") {
+    await tx.insert(playerItems).values({ userId, item: CHIEF_TITLE.item }).onConflictDoNothing();
+    setTitle(userId, (title = CHIEF_TITLE.label));
+  }
+  return { balance: posting.balance, xp: p!.xp, gained, ...(title ? { title } : {}), together: friends.map((f) => f.nickname), event: event?.name ?? null, ...(await venueDay(ctx)), ...needsView(filled) };
 }
 
 /** The free thing to do at a place: no coins or XP, a small lift to its needs (once an hour per place). */

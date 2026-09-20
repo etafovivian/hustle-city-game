@@ -2,8 +2,8 @@
 // buy each other a drink. Kept in memory (one API process); a player counts as online for a minute after their
 // last report. Nothing here is stored except the coins and needs a drink moves.
 
-import { contacts, directMessages, gameLedgerEntries, profiles } from "@hc/db";
-import { NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type ContactView, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
+import { contacts, directMessages, gameLedgerEntries, playerItems, profiles } from "@hc/db";
+import { CHIEF_TITLE, NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type ContactView, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -28,6 +28,8 @@ interface Seen {
   y: number;
   place: string | null;
   at: number;
+  /** A chieftaincy title from the palace (shown on their card). */
+  title?: string;
 }
 interface Ping {
   id: string;
@@ -69,6 +71,11 @@ export function onlineByNick(nick: string) {
   return [...seen.values()].find((s) => now - s.at < ONLINE_MS && s.nickname.toLowerCase() === nick.toLowerCase());
 }
 export const nicknameOf = (userId: string) => seen.get(userId)?.nickname;
+/** A player was just given a title: show it from their next report on. */
+export function setTitle(userId: string, title: string) {
+  const s = seen.get(userId);
+  if (s) s.title = title;
+}
 
 export async function presenceRoutes(app: FastifyInstance) {
   const tz = app.config.GAME_TIMEZONE;
@@ -76,7 +83,7 @@ export async function presenceRoutes(app: FastifyInstance) {
   const online = (now: number) => [...seen.values()].filter((s) => now - s.at < ONLINE_MS);
   const byNick = (nick: string, now: number) => online(now).find((s) => s.nickname.toLowerCase() === nick.toLowerCase());
   const near = (a: Seen, b: Seen) => (a.place && a.place === b.place) || Math.hypot(a.x - b.x, a.y - b.y) < NEAR;
-  const view = (s: Seen): PresencePlayer => ({ nickname: s.nickname, avatar: s.avatar, x: Math.round(s.x), y: Math.round(s.y), place: s.place });
+  const view = (s: Seen): PresencePlayer => ({ nickname: s.nickname, avatar: s.avatar, x: Math.round(s.x), y: Math.round(s.y), place: s.place, ...(s.title ? { title: s.title } : {}) });
   const push = (userId: string, p: Omit<Ping, "id" | "at">) => {
     const list = inbox.get(userId) ?? [];
     list.push({ ...p, id: randomUUID(), at: Date.now() });
@@ -100,7 +107,8 @@ export async function presenceRoutes(app: FastifyInstance) {
     if (!me) {
       const [p] = await app.db.select({ nickname: profiles.nickname, hidden: profiles.nicknameHidden, avatar: profiles.avatar }).from(profiles).where(eq(profiles.userId, user.id));
       if (!p) throw notFound("Profile");
-      me = { userId: user.id, nickname: p.hidden ? "player" : p.nickname, avatar: p.avatar as AvatarConfig, x: b.x, y: b.y, place: null, at: now };
+      const [chief] = await app.db.select({ item: playerItems.item }).from(playerItems).where(and(eq(playerItems.userId, user.id), eq(playerItems.item, CHIEF_TITLE.item)));
+      me = { userId: user.id, nickname: p.hidden ? "player" : p.nickname, avatar: p.avatar as AvatarConfig, x: b.x, y: b.y, place: null, at: now, ...(chief ? { title: CHIEF_TITLE.label } : {}) };
     }
     Object.assign(me, { x: b.x, y: b.y, place: b.place ?? null, at: now });
     seen.set(user.id, me);

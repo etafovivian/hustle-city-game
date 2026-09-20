@@ -890,6 +890,7 @@ export const VENUE_ART: Record<string, string> = {
   independence_square: "parade-square",
   liberty_arts_park: "arts-park",
   gadget_village: "commercial-block",
+  oba_palace: "palace",
   // Abuja (placed with the city's other late places)
   abuja_secretariat: "federal-secretariat",
   unity_mosque: "mosque",
@@ -2191,6 +2192,9 @@ function landmark(key: string, a: number, b: number, scale: number) {
 landmark("crown_arts_theatre", 700, -1447, 1.4);
 landmark("liberty_arts_park", 2438, -2640, 1.07);
 landmark("independence_square", 2510, -3215, 2.25);
+// The Oba's palace on the Island's west tip by the lagoon (the old town's end of Marina Wharf), the only ground left
+// there; drawn at the size its plot allows.
+landmark("oba_palace", 1340, -2195, 0.92);
 
 /** Flat ground drawn under a landmark (Liberty Arts Park's lawn): people walk on it; nothing is built on it. */
 export const LANDMARK_GROUNDS: { key: string; kind: "lawn" | "paving"; path: string }[] = [

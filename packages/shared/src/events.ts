@@ -41,6 +41,8 @@ export const EVENTS: readonly CityEvent[] = [
   { key: "open_mic_night", name: "Open mic and poetry night", icon: "🎙️", blurb: "Anybody with a song or a poem takes the stage at Liberty Arts Park. Snap your fingers, not your phone.", venues: ["liberty_arts_park"], days: [4], hours: [19, 23], gives: ["fun", "social"] },
   { key: "art_market_sunday", name: "Sunday art market", icon: "🖼️", blurb: "Painters, carvers and bead-makers line the paths of Liberty Arts Park. Haggle for something for your wall.", venues: ["liberty_arts_park"], days: [0], hours: [11, 18], gives: ["fun", "rest"] },
   { key: "polo_saturday", name: "Polo Saturday", icon: "🏇", blurb: "The season's big match at the Capital Polo & Golf Club: hats, horses and handshakes.", venues: ["capital_polo_club"], days: [6], hours: [15, 19], gives: ["fun", "rep"] },
+  { key: "white_robes_festival", name: "Festival of White Robes", icon: "🤍", blurb: "Once a year the white-robed masquerades come out from the palace: wide hats, staffs, drums, and the whole Island in white.", venues: ["oba_palace"], days: [0, 1, 2, 3, 4, 5, 6], hours: [8, 18], gives: ["fun", "faith", "social"], season: ["11-20", "11-20"] },
+  { key: "palace_court", name: "Palace court", icon: "👑", blurb: "The Oba sits with his chiefs to hear the people: land quarrels, blessings and gist.", venues: ["oba_palace"], days: [3], hours: [10, 14], gives: ["social", "rep"] },
   { key: "market_day", name: "Big market day", icon: "🛍️", blurb: "Traders from every corner; prices drop, crowds swell.", venues: ["balogun_market", "tailors_row", "mama_nkechi_buka", "mallam_suya"], days: [4], hours: [8, 18], gives: ["food", "social"] },
 ];
 export const EVENT_BY_KEY: ReadonlyMap<string, CityEvent> = new Map(EVENTS.map((e) => [e.key, e]));
