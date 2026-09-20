@@ -44,6 +44,15 @@ function Lockup({ onClick }: { onClick?: () => void }) {
   );
 }
 
+/** The beta badge next to the logo: tap it to report a problem. */
+function BetaBadge() {
+  return (
+    <button type="button" className="beta-badge" onClick={() => window.dispatchEvent(new Event("hc:report"))} aria-label="Beta: report a problem" title="Beta: tap to report a problem">
+      BETA
+    </button>
+  );
+}
+
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [view, setView] = useState<View>({ kind: "map" });
@@ -61,9 +70,12 @@ export function App() {
       setPhone("games");
     };
     const close = () => setPhone(null);
+    const report = () => setPhone("report");
     window.addEventListener("hc:open-game", open);
     window.addEventListener("hc:close-phone", close);
+    window.addEventListener("hc:report", report);
     return () => {
+      window.removeEventListener("hc:report", report);
       window.removeEventListener("hc:open-game", open);
       window.removeEventListener("hc:close-phone", close);
     };
@@ -225,6 +237,7 @@ export function App() {
       <header className="shellbar">
         <div className="shellbar-inner">
           <Lockup onClick={goMap} />
+          {me && <BetaBadge />}
           <span className="balance" title="City Coins are game money with no cash value">
             <Coins size={16} aria-hidden="true" />
             <span className="num">{formatCoins(me.coins)}</span>

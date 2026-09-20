@@ -1,6 +1,6 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { AvatarConfig, DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, Briefcase, Handshake, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, Bug, Handshake, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { AcademyApp, AdminAcademy } from "./Academy.js";
@@ -20,9 +20,10 @@ import { Hangout, WorkHub } from "./Locations.js";
 import { AdminSponsors } from "./Sponsors.js";
 import { JobsBoard } from "./JobsBoard.js";
 import { AdminHustle, HustleBoard } from "./HustleBoard.js";
+import { AdminFeedback, ReportProblem } from "./ReportProblem.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games" | "hustle";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games" | "hustle" | "report";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
@@ -42,10 +43,11 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "workshop", label: "Business", Icon: Hammer, tint: "#8a3fa0" },
   { key: "ads", label: "Ads", Icon: Megaphone, tint: "#c2410c" },
   { key: "account", label: "Account", Icon: Settings, tint: "#4b5563" },
+  { key: "report", label: "Report", Icon: Bug, tint: "#b91c1c" },
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", hustle: "Hustle board", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", hustle: "Hustle board", report: "Report a problem", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -177,6 +179,7 @@ export function Phone({
             </div>
           )}
           {app === "hustle" && <HustleBoard notify={notify} onChanged={onChanged} />}
+          {app === "report" && <ReportProblem notify={notify} onDone={() => setApp("home")} />}
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}
@@ -218,6 +221,7 @@ export function Phone({
               <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
               <AdminSponsors notify={notify} />
+              <AdminFeedback notify={notify} />
               <AdminHustle notify={notify} />
               <AdminReview notify={notify} />
               <h2 style={{ fontSize: 20 }}>Deal review</h2>

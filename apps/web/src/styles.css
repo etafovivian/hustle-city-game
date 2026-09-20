@@ -1023,3 +1023,7 @@ body.hud-hidden .map-hint { display: none !important; }
 .hustle-status { font-weight: 700; }
 .hustle-status.paid { color: #15803d; }
 .hustle-status.disputed, .hustle-status.removed { color: #b91c1c; }
+
+/* Beta badge by the logo (tap to report a problem) */
+.beta-badge { align-self: center; padding: 2px 8px; border-radius: 999px; border: 1px solid #f59e0b; background: #78350f; color: #fde68a; font: 800 10px/1.4 system-ui, sans-serif; letter-spacing: .08em; cursor: pointer; }
+.beta-badge:hover { background: #92400e; }

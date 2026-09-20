@@ -1108,3 +1108,25 @@ export const hustleReports = pgTable(
   },
   (t) => [uniqueIndex("hustle_reports_job_reporter_uq").on(t.jobId, t.reporterId)],
 );
+
+/** Beta feedback from inside the game ("Report a problem"), and errors caught in players' browsers (kind "error",
+ * sent automatically). Context: where they were, the device, the build and recent errors. */
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // bug | idea | other | error
+    kind: text("kind").notNull(),
+    message: text("message").notNull(),
+    context: jsonb("context").notNull().default({}),
+    // For errors: the same error from the same player is counted, not stored again.
+    fingerprint: text("fingerprint"),
+    count: integer("count").notNull().default(1),
+    // new | seen | fixed
+    status: text("status").notNull().default("new"),
+    createdAt: createdAt(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("feedback_status_idx").on(t.status, t.createdAt), uniqueIndex("feedback_error_uq").on(t.userId, t.fingerprint)],
+);
