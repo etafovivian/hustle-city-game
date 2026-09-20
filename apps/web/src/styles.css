@@ -870,6 +870,7 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .other-player { transition: transform 4.8s linear; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .other-player { transition: none; } }
 .online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 2px rgb(74 222 128 / 30%); margin-right: 4px; vertical-align: middle; }
+.chief-title { display: block; color: #a8730f; font-weight: 800; }
 .here-now { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .away-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--sheet-2); border: 1.5px solid var(--accent); }
 .player-card { width: min(520px, 100%); }

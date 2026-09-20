@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { CHIEF_TITLE, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -43,6 +43,17 @@ export function VenueBuilding({ venue, x, y, scale = 1, onOpen }: { venue: Venue
       </g>
     </g>
   );
+}
+
+/** Your chieftaincy title, if the Oba has given you one (the palace's flex). */
+function ChiefTitle() {
+  const [title, setTitle] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ title: string | null }>("GET", "/api/game/title")
+      .then((r) => setTitle(r.title))
+      .catch(() => undefined);
+  }, []);
+  return title ? <p className="small notice">👑 You are Chief, {title}. Everyone sees it on your player card.</p> : <p className="small muted">👑 Flex here and the Oba makes you a chief: the title shows on your player card for good.</p>;
 }
 
 /** Venues drawn at least this big are cut into upright slices for depth order (see venueDepthItems). */
@@ -92,6 +103,8 @@ const rand = (k: number) => {
 export const CROWD_AT: Record<string, { cx: number; cy: number; rx: number; ry: number; people: number }> = {
   // Independence Square's parade ground
   independence_square: { cx: 0.42, cy: 0.56, rx: 0.17, ry: 0.12, people: 36 },
+  // The street in front of the palace's carved gate (the image's front-left edge and just past it)
+  oba_palace: { cx: 0.24, cy: 0.95, rx: 0.16, ry: 0.07, people: 12 },
 };
 const PERSON = walkerSize(64);
 /** The crowd on a landmark while its event is on: people standing about (and swaying) on its open ground. */
@@ -468,6 +481,7 @@ export function VenueCard({
         {!present && GAME_TABLES[base.key] && <p className="small muted">🎲 Tables here: {GAME_TABLES[base.key]!.map((g) => TABLE_GAMES[g].label).join(", ")}. Go there to sit down and play with whoever's around.</p>}
         {base.key === "balogun_market" && open && present && <Haggle notify={notify} onChanged={onChanged} />}
         {base.key === "balogun_market" && <Stalls notify={notify} />}
+        {base.key === CHIEF_TITLE.venue && <ChiefTitle />}
         {venue.opens === "gadgets" && present && <GadgetCounter notify={notify} onChanged={onChanged} open={open} />}
         {venue.opens === "gadgets" && !present && <p className="small muted">📱 Phones, accessories and screen repairs. Go there to buy, haggle or fix your phone.</p>}
         {error && <p className="alert small">{error}</p>}

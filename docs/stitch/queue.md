@@ -338,3 +338,8 @@ Attach `apps/web/public/art/life/car-saloon.webp` and `car-suv-black.webp` as re
 2. Cutaway interior of a passenger plane cabin: rows of blue seats three-and-three, a centre aisle with a drinks trolley, overhead bins, small windows. No airline names or logos.
 3. An airport departure gate: a row of black seats, a gate desk with a screen showing only "BOARDING", big windows with a plane outside. No airline names.
 4. Abuja seen from the plane as it lands: a big granite rock rising behind a green, planned city with wide roads and hills around it. Wide (1536×864), flat colours; no magenta background.
+
+## Batch 60: palace interior and the festival masquerade figure (the palace uses the courtroom picture inside for now)
+1. Cutaway interior of an Oba's audience hall: a raised carved throne under a beaded canopy, red and white walls, carved wooden pillars, mats for the chiefs along the sides, talking drums by the door. No people.
+2. A white-robed festival masquerade figure, standing: flowing white cloth to the ground, a wide flat hat with a coloured band, a long staff, the face covered by white lace. Single figure, full length.
+3. A group of three of the same white-robed masquerades walking in a line with staffs raised, for a festival crowd. Single image, no background.

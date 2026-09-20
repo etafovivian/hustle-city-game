@@ -128,6 +128,7 @@ export function PlayerCard({
           <Avatar avatar={player.avatar} size={56} />
           <div>
             <h2>@{player.nickname}</h2>
+            {player.title && <span className="small chief-title">👑 Chief, {player.title}</span>}
             <span className="small muted">
               <span className="online-dot" aria-hidden="true" /> Online · {placeName(player.place)}
             </span>
