@@ -12,7 +12,15 @@ const ART: { window?: string } & Partial<Record<CoachEventKey, string>> = {
   hawkers: "/art/coach/hawkers.webp",
   tyre: "/art/coach/tyre.webp",
   goslow: "/art/coach/tanker.webp",
+  // On the plane (Stitch batch 59)
+  gate: "/art/flight/gate.webp",
+  trolley: "/art/interiors/plane-cabin.webp",
+  landing: "/art/flight/landing.webp",
 };
+/** Out of the plane window (Stitch batch 59). */
+const PLANE_WINDOW = "/art/flight/window.webp";
+/** Pictures that are whole scenes (no cut-out background): shown edge to edge. */
+const FULL_BLEED = new Set<string>(["/art/flight/landing.webp"]);
 
 /** The expressway sliding past: sky, distant bush, palms and the verge, each at its own speed. Stops for an event. */
 function WindowView({ moving }: { moving: boolean }) {
@@ -57,8 +65,9 @@ function WindowView({ moving }: { moving: boolean }) {
   );
 }
 
-/** Out of the plane window: sky, the wing, and clouds drifting past (a drawn stand-in until the Stitch art). */
+/** Out of the plane window: the painted view, or a drawn one (sky, the wing, clouds drifting past) without it. */
 function PlaneWindow({ moving }: { moving: boolean }) {
+  if (PLANE_WINDOW) return <div className={`coach-window-art ${moving ? "moving" : ""}`} style={{ backgroundImage: `url(${PLANE_WINDOW})` }} aria-hidden="true" />;
   return (
     <svg className={`coach-window plane ${moving ? "moving" : ""}`} viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
@@ -121,7 +130,7 @@ export function CoachJourney({ rideId, event, step, kind = "coach", onDone }: { 
         <div className="coach-view">
           {kind === "flight" ? <PlaneWindow moving={!!result} /> : <WindowView moving={!!result} />}
           {result ? null : ART[ev.key] ? (
-            <img className="coach-event-art" src={ART[ev.key]} alt={ev.title} />
+            <img className={`coach-event-art ${FULL_BLEED.has(ART[ev.key]!) ? "full" : ""}`} src={ART[ev.key]} alt={ev.title} />
           ) : (
             <span className="coach-event-icon" aria-hidden="true">
               {ev.icon}
