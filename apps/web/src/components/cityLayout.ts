@@ -892,14 +892,14 @@ export const VENUE_ART: Record<string, string> = {
   gadget_village: "commercial-block",
   oba_palace: "palace",
   // Abuja (placed with the city's other late places)
-  abuja_secretariat: "federal-secretariat",
-  unity_mosque: "mosque",
-  unity_cathedral: "church",
+  abuja_secretariat: "abuja-secretariat",
+  unity_mosque: "abuja-mosque",
+  unity_cathedral: "abuja-cathedral",
   zone5_market: "market-hall",
   capital_lights_lounge: "skyline-lounge",
-  capital_polo_club: "golf-club",
+  capital_polo_club: "polo-club",
   lakeview_mall: "mall",
-  jabi_lakeside_park: "restaurant-terrace",
+  jabi_lakeside_park: "jabi-lake-park",
 };
 export const VENUE_SPOTS = VENUE_AT.map((v) => {
   if (v.a !== undefined && v.b !== undefined) {
@@ -1170,7 +1170,7 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     forSale: 0.25,
     plotHalf: 76,
     shops: [["restaurant-terrace", 2], ["colonial-block", 2], ["car-showroom", 1]],
-    homes: [["villa", 5], ["crazy-house", 1], ["terrace-duplex", 2], ["estate-gate", 1]],
+    homes: [["maitama-villa", 5], ["crazy-house", 1], ["terrace-duplex", 2], ["estate-gate", 1]],
   },
   Asokoro: {
     commercial: 0.2,
@@ -1178,7 +1178,7 @@ const AREA_PRESETS: Record<string, AreaPreset> = {
     plotHalf: 76,
     // Embassies: big walled colonial-style blocks with no flags
     shops: [["colonial-block", 3], ["office-tower", 1], ["restaurant-terrace", 1]],
-    homes: [["villa", 4], ["terrace-duplex", 2], ["estate-gate", 1]],
+    homes: [["maitama-villa", 4], ["terrace-duplex", 2], ["estate-gate", 1]],
   },
   Wuse: {
     commercial: 0.6,
@@ -1804,9 +1804,10 @@ export const ART_ASPECT: Record<string, number> = {
   "residential-block": 0.88, "residential-tower": 1.06, "restaurant-terrace": 0.88, salon: 1.11, school: 0.79, "shop-house": 0.99, "skyline-lounge": 0.83,
   snooker: 0.89, stadium: 0.75, "storey-house": 1.21, "suya-stand": 1.02, "tailor-shop": 0.98, "tech-hub": 1, "terrace-duplex": 0.82, university: 0.87, "campus-quad": 0.86, "market-stalls": 0.74,
   "unfinished-building": 0.99, "viewing-centre": 0.94, villa: 0.78, warehouse: 0.77,
+  "abuja-airport": 0.68, "abuja-cathedral": 0.925, "abuja-mosque": 0.83, "abuja-secretariat": 0.71, "jabi-lake-park": 0.85, "maitama-villa": 0.78, "polo-club": 0.73,
   "adire-pits": 0.8, "beach-bar": 0.97, "beach-cabanas": 0.71, "boxing-club": 0.92, "brt-station": 0.79, "peace-estate": 0.79, "rail-station": 1.01, senate: 0.87,
   // Landmarks (public/art/landmarks)
-  "olumo-rock": 1.5, "unity-rock": 0.8, "federal-secretariat": 0.8, "arts-theatre": 0.69, "parade-square": 0.72, "arts-park": 0.75, palace: 0.68,
+  "olumo-rock": 1.5, "granite-rock": 1.2, "arts-theatre": 0.69, "parade-square": 0.72, "arts-park": 0.75, palace: 0.68,
 };
 export type Pt = [number, number];
 const artName = (art: string) => art.split("/").pop()!.replace(/\.(webp|svg)$/, "");
@@ -2389,11 +2390,11 @@ function abujaFixed(key: string, art: string, u: number, v: number, scale: numbe
   lateShape(key, art, foot.x, foot.y, scale, true);
   ABUJA_FIXED.push({ art, ...foot, key, scale, landmark: true });
 }
-// The granite rock over the city (a drawn stand-in until its Stitch art), the terminal and the bus park
-abujaFixed("abuja-unity-rock", "/art/landmarks/unity-rock.svg", 1850, 1850, 3);
-abujaFixed("abuja-airport-terminal", "/art/buildings/airport-terminal.webp", -1700, -900, 1.5);
+// The granite rock over the city, the airport terminal, the bus park and a second government block
+abujaFixed("abuja-unity-rock", "/art/landmarks/granite-rock.webp", 1850, 1850, 3);
+abujaFixed("abuja-airport-terminal", "/art/buildings/abuja-airport.webp", -1700, -900, 1.5);
 abujaFixed("abuja-garki-bus-park", "/art/buildings/motor-park.webp", 650, -650, 1.3);
-abujaFixed("abuja-house-of-federation", "/art/landmarks/federal-secretariat.svg", 1000, 300, 1.25);
+abujaFixed("abuja-house-of-federation", "/art/buildings/abuja-secretariat.webp", 1000, 300, 1.25);
 
 /** A street in Abuja's local coordinates (u fixed: "a"; v fixed: "b"). */
 const aj = (id: string, fixed: "a" | "b", at: number, from: number, to: number, cls: StreetClass, offRoad = true): GrowLine =>
@@ -2434,10 +2435,17 @@ const ABUJA_GRIDS = ABUJA_DISTRICT_LINES.map((g) => ({ ...g, lines: g.lines.flat
 STREETS.push(...ABUJA_GRIDS.flatMap((g) => g.lines.map(streetOf)));
 const ABUJA_FILL = ABUJA_GRIDS.map((g) => fillArea(g.area, g.lines, { growing: true, within: inAbujaGrow }));
 /** Abuja's plot buildings, each kept only if its art keeps clear of what's drawn already. */
+// A building that would hide (or be hidden by) too much of something is first drawn a little smaller on its plot (the
+// plot's centre stays put), and only dropped if even two thirds of its size doesn't fit.
 const ABUJA_HOUSES = [...ABUJA_FIXED, ...ABUJA_FILL.flatMap((f) => f.houses).filter((h) => {
-  const ok = lateShape(`${h.key} ${artName(h.art)}`, h.art, h.x, h.y, h.scale, false);
-  if (!ok) removePlot(h.key);
-  return ok;
+  const centre = h.y - siteOf(h.scale).lift;
+  for (const k of [1, 0.88, 0.77, 0.68]) {
+    const scale = k === 1 ? h.scale : Math.round(h.scale * k * 1000) / 1000;
+    const y = centre + siteOf(scale).lift;
+    if (lateShape(`${h.key} ${artName(h.art)}`, h.art, h.x, y, scale, false)) return Object.assign(h, { scale, y }), true;
+  }
+  removePlot(h.key);
+  return false;
 })];
 export const ABUJA_DRIVEWAYS = ABUJA_FILL.flatMap((f) => f.driveways.filter((d) => ABUJA_HOUSES.some((h) => h.key === d.key)));
 /** Abuja is green: shade trees along every boulevard's verges, in the gaps between the plots. */
