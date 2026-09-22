@@ -200,7 +200,9 @@ export async function gameRoutes(app: FastifyInstance) {
       .select({ userId: gameLedgerEntries.userId, nickname: profiles.nickname, hidden: profiles.nicknameHidden, earned })
       .from(gameLedgerEntries)
       .innerJoin(profiles, eq(profiles.userId, gameLedgerEntries.userId))
-      .where(and(inArray(gameLedgerEntries.kind, ["takings", "order"]), gte(gameLedgerEntries.createdAt, weekStart)))
+      .innerJoin(users, eq(users.id, gameLedgerEntries.userId))
+      // Admins (the team, with test coins) don't compete.
+      .where(and(inArray(gameLedgerEntries.kind, ["takings", "order"]), gte(gameLedgerEntries.createdAt, weekStart), sql`not ('admin' = any(${users.roles}))`))
       .groupBy(gameLedgerEntries.userId, profiles.nickname, profiles.nicknameHidden)
       .orderBy(desc(earned))
       .limit(20);
