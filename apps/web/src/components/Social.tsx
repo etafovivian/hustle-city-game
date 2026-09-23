@@ -11,6 +11,7 @@ import { BRANCH_BY_KEY } from "./cityLayout.js";
 import { DmThreadView, RoomChat } from "./Chat.js";
 import { HomeRooms } from "./Home.js";
 import type { PlayerAction } from "./Interior.js";
+import { useLayerSheet, walkSheetName } from "./spriteComposer.js";
 import { walkerSheet, walkerSize } from "./walkers.js";
 
 const WALK = walkerSize(70);
@@ -24,6 +25,12 @@ export function placeName(place: string | null) {
   return `At ${BRANCH_BY_KEY.get(place)?.name ?? VENUES_BY_KEY.get(place)?.name ?? "a place"}`;
 }
 
+/** Another player's walker: their own look from tinted layers when on, else the nearest baked look. */
+function OtherSprite({ avatar }: { avatar: PresencePlayer["avatar"] }) {
+  const href = useLayerSheet(avatar, walkSheetName("se"), walkerSheet(variantFor(avatar), "se"));
+  return <image href={href} width={WALK.w * WALK.frames} height={WALK.h} />;
+}
+
 /** Other players on the map: their walker (gliding between reports) and a blue name tag. */
 export function OtherPlayers({ players, plateScale, onOpen }: { players: PresencePlayer[]; plateScale: number; onOpen: (p: PresencePlayer) => void }) {
   return (
@@ -33,7 +40,7 @@ export function OtherPlayers({ players, plateScale, onOpen }: { players: Presenc
           <ellipse rx="16" ry="5" fill="rgb(0 0 0 / 30%)" />
           <ellipse rx="22" ry="9" fill="none" stroke="#5aa9ff" strokeWidth="3" />
           <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
-            <image href={walkerSheet(variantFor(p.avatar), "se")} width={WALK.w * WALK.frames} height={WALK.h} />
+            <OtherSprite avatar={p.avatar} />
           </svg>
           <g transform={`translate(0 ${-WALK.h + WALK.ground - 4}) scale(${plateScale * 0.8})`}>
             <rect x={-(p.nickname.length * 4.6 + 16)} y="-26" width={p.nickname.length * 9.2 + 32} height="24" rx="12" fill="#1e4fd6" stroke="#fff" strokeWidth="1.5" />

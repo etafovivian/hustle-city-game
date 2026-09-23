@@ -15,14 +15,17 @@ SKIN = (0.25, 0.14, 0.08)
 
 
 class Part:
-    def __init__(self):
-        self.v, self.f, self.w = [], [], []
+    """Vertices, faces, per-vertex bone weights and a material slot per face (0 unless a builder says otherwise)."""
 
-    def add(self, verts, faces, weights):
+    def __init__(self):
+        self.v, self.f, self.w, self.m = [], [], [], []
+
+    def add(self, verts, faces, weights, mat=0):
         o = len(self.v)
         self.v += verts
         self.w += weights
         self.f += [tuple(i + o for i in f) for f in faces]
+        self.m += [mat(f, verts) if callable(mat) else mat for f in faces]
 
 
 def grid(rings, closed=True, drop=None):
@@ -150,7 +153,7 @@ class Fit:
             rings.append(ring)
         return rings
 
-    def sleeve(self, part, s, t0, t1, nrings, n, margin, flat=1.0):
+    def sleeve(self, part, s, t0, t1, nrings, n, margin, flat=1.0, mat=0):
         """Tube along the arm chain from parameter t0 to t1 (0 = above shoulder, 1 = wrist).
         margin(t) -> extra radius. Each ring gets the weights of the arm right under its centre."""
         B, ch = self.B, self.chain[s]
@@ -192,14 +195,16 @@ class Fit:
             w = B.weights_near(c, mask | {f"clavicle_{s}"}, k=10)
             weights += [w] * n
         v, f = grid(rings)
-        part.add(v, f, weights)
+        part.add(v, f, weights, mat)
 
     def finish(self, part, name, mat):
+        """mat: one material, or a list indexed by the part's per-face material slots."""
         me = bpy.data.meshes.new(name)
         # drop unused verts
         used = sorted({i for f in part.f for i in f})
         remap = {o: i for i, o in enumerate(used)}
         me.from_pydata([part.v[i] for i in used], [], [tuple(remap[i] for i in f) for f in part.f])
+        mats = mat if isinstance(mat, (list, tuple)) else [mat]
         w = [part.w[i] for i in used]
         bm = bmesh.new()
         bm.from_mesh(me)
@@ -208,9 +213,11 @@ class Fit:
         bm.free()
         o = bpy.data.objects.new(name, me)
         bpy.context.scene.collection.objects.link(o)
-        me.materials.append(mat)
-        for p in me.polygons:
+        for m in mats:
+            me.materials.append(m)
+        for p, k in zip(me.polygons, part.m):
             p.use_smooth = True
+            p.material_index = min(k, len(mats) - 1)
         skin_object(self.arm, o, w)
         tris = sum(len(p.vertices) - 2 for p in me.polygons)
         print("GARMENT", name, "verts", len(me.vertices), "tris", tris)
@@ -218,7 +225,8 @@ class Fit:
 
 
 # ---------------------------------------------------------------- garments
-def kaftan_like(F, part, hem_z, n=24, m_top=0.035, m_hem=0.06, sleeve_m=(0.025, 0.035), sleeve_n=10, step=0.045):
+def kaftan_like(F, part, hem_z, n=24, m_top=0.035, m_hem=0.06, sleeve_m=(0.025, 0.035), sleeve_n=10, step=0.045,
+                sleeve_end=1.0, drop=None, mat=0, sleeves="lr"):
     zt = F.z_neck + 0.03
     zs = top_levels(F, zt, hem_z, step)
     nk = F.neck_ell(zt, 0.028)
@@ -235,10 +243,10 @@ def kaftan_like(F, part, hem_z, n=24, m_top=0.035, m_hem=0.06, sleeve_m=(0.025, 
     hips = F.B.pts(TORSO | UPPERLEGS, F.z_hip - 0.03, F.z_hip + 0.03)
     hipe = (max(abs(p.x) for p in hips) + m_top, (max(p.y for p in hips) - min(p.y for p in hips)) / 2 + m_top)
     rings = F.body_loft(zs, TORSO | UPPERLEGS | LEGS, n, margin, minell, exact=lambda z: nk if z == zt else None)
-    v, f = grid(rings)
-    part.add(v, f, [F.body_w(p) for p in v])
-    for s in "lr":
-        F.sleeve(part, s, 0.06, 1.0, sleeve_n, 12, lambda t: lerp(sleeve_m[0], sleeve_m[1], t) - 0.012 * (1 - smoothstep(0.06, 0.3, t)))
+    v, f = grid(rings, drop=drop)
+    part.add(v, f, [F.body_w(p) for p in v], mat)
+    for s in sleeves:
+        F.sleeve(part, s, 0.06, sleeve_end, sleeve_n, 12, lambda t: lerp(sleeve_m[0], sleeve_m[1], t / max(sleeve_end, 0.1)) - 0.012 * (1 - smoothstep(0.06, 0.3, t)))
 
 
 def build_kaftan(F, mat):
@@ -346,12 +354,217 @@ def build_peplum(F, mat):
     return F.finish(p, "peplum_gown", mat)
 
 
+# ---------------------------------------------------------------- outfits added with the layered sprites (2026-10)
+# Material slots: 0 = the outfit fabric (tinted to the player's colour), 1 = the same fabric a shade deeper,
+# 2 = a fixed trim colour (embroidery, kente accents), 3 = a second fixed colour.
+def front_open(F, zt, z_close, w_top=0.09, w_bottom=0.02):
+    """drop() for a garment open down the front from the neck to z_close (narrowing V), closed below."""
+    def drop(i, j, c):
+        if c.y > -0.02 or c.z > zt + 0.005 or c.z < z_close:
+            return False
+        return abs(c.x) < lerp(w_bottom, w_top, smoothstep(z_close, zt, c.z))
+    return drop
+
+
+def build_jacket(F, mats, hem=None, z_close=None, name="jacket"):
+    """A tailored jacket: to the hip (or `hem`), long sleeves, a V opening showing the shirt, closed below it."""
+    p = Part()
+    hem = F.z_hip - 0.1 if hem is None else hem
+    zt = F.z_neck + 0.03
+    zc = F.z_waist + 0.04 if z_close is None else z_close
+    kaftan_like(F, p, hem, n=24, m_top=0.022, m_hem=0.04, sleeve_m=(0.02, 0.024), sleeve_n=10, step=0.04, drop=front_open(F, zt, zc, 0.085, 0.02))
+    return F.finish(p, name, mats)
+
+
+def build_denim_jacket(F, mats):
+    """A short jacket to the waist, open all the way down the front."""
+    return build_jacket(F, mats, hem=F.z_waist - 0.03, z_close=F.z_waist - 0.2, name="denim_jacket")
+
+
+def build_summer_dress(F, mats):
+    """A light dress: a flared skirt from the waist to the knee (the sleeveless bodice is painted on the body)."""
+    p = Part()
+    zs = levels(F.z_waist + 0.02, F.z_knee - 0.04, 0.045)
+
+    def m(z, a):
+        return lerp(0.02, 0.11, smoothstep(F.z_waist, F.z_knee - 0.04, z) ** 1.2)
+    rings = F.body_loft(zs, TORSO | LEGS, 26, m)
+    v, f = grid(rings)
+    p.add(v, f, [F.body_w(q) for q in v])
+    return F.finish(p, "summer_dress", mats)
+
+
+def build_abaya(F, mats):
+    """A loose full-length robe with long, wide sleeves."""
+    p = Part()
+    kaftan_like(F, p, F.z_ankle + 0.03, n=26, m_top=0.03, m_hem=0.085, sleeve_m=(0.028, 0.06), sleeve_n=11)
+    return F.finish(p, "abaya", mats)
+
+
+def kente_mat(f, verts):
+    """Kente weave: blocks of the main colour with bands of the two fixed accent colours (gold-green and black)."""
+    c = sum((verts[k] for k in f), Vector()) / len(f)
+    band = int(math.floor((c.z + 3.0) / 0.055))
+    col = int(math.floor((math.atan2(c.y, c.x) + math.pi) / (2 * math.pi) * 12))
+    if band % 4 == 1:
+        return 3 if col % 2 else 2
+    if (band // 4 + col) % 3 == 0:
+        return 2
+    return 0
+
+
+def build_kente(F, mats):
+    """Kente cloth: for the man a full robe to mid-calf with short sleeves; woven blocks and bands."""
+    p = Part()
+    kaftan_like(F, p, (F.z_knee + F.z_ankle) / 2, n=24, m_top=0.03, m_hem=0.08, sleeve_m=(0.026, 0.05), sleeve_n=6, sleeve_end=0.42, mat=kente_mat)
+    return F.finish(p, "kente", mats)
+
+
+def build_kente_woman(F, mats):
+    """Kente for the woman: a blouse with wide short sleeves and a long wrapper, both in the weave."""
+    p = Part()
+    zt = F.z_neck + 0.025
+    hem = F.z_hip - 0.1
+    zs = top_levels(F, zt, hem, 0.045)
+    nk = F.neck_ell(zt, 0.035)
+    rings = F.body_loft(zs, TORSO | UPPERLEGS, 24, lambda z, a: lerp(0.035, 0.06, smoothstep(F.z_neck, hem, z)), exact=lambda z: nk if z == zt else None)
+    v, f = grid(rings)
+    p.add(v, f, [F.body_w(q) for q in v], kente_mat)
+    for s_ in "lr":
+        F.sleeve(p, s_, 0.06, 0.45, 6, 14, lambda t: 0.026 + 0.05 * smoothstep(0.15, 0.45, t), mat=kente_mat)
+    zs = levels(F.z_waist, F.z_ankle + 0.02, 0.055)
+
+    def m(z, a):
+        if z > F.z_hip:
+            return 0.03
+        if z > F.z_knee:
+            return lerp(0.04, 0.075, smoothstep(F.z_hip, F.z_knee, z))
+        return lerp(0.075, 0.06, smoothstep(F.z_knee, F.z_ankle, z))
+    rings = F.body_loft(zs, TORSO | LEGS, 24, m)
+    v, f = grid(rings)
+    p.add(v, f, [F.body_w(q) for q in v], kente_mat)
+    return F.finish(p, "kente", mats)
+
+
+def build_boubou(F, mats):
+    """The grand boubou: the agbada's wide flowing robe, with gold embroidery round the neck and down the chest."""
+    o = build_agbada(F, mats)
+    me = o.data
+    zs = F.z_shoulder
+    for poly in me.polygons:
+        if poly.material_index:
+            continue
+        # vertices are back in rest-pose coordinates here (finish un-skins them): the rest pose is upright
+        c = sum((me.vertices[k].co for k in poly.vertices), Vector()) / len(poly.vertices)
+        if c.y < 0 and zs - 0.3 < c.z < F.z_neck + 0.05 and abs(c.x) < 0.07 + 0.05 * smoothstep(zs - 0.3, zs, c.z):
+            poly.material_index = 2
+    o.name = "boubou"
+    return o
+
+
+def build_kurta(F, mats):
+    """A kurta: a straight tunic to just above the knee with long sleeves and a placket at the neck."""
+    p = Part()
+    kaftan_like(F, p, F.z_knee + 0.07, n=24, m_top=0.026, m_hem=0.05, sleeve_m=(0.02, 0.026), sleeve_n=10)
+
+    # the placket: a short strip down the front from the neck in the fixed colour
+    zt = F.z_neck + 0.03
+
+    def mat(f, verts):
+        c = sum((verts[k] for k in f), Vector()) / len(f)
+        return 2 if (c.y < 0 and abs(c.x) < 0.018 and F.z_shoulder - 0.17 < c.z < zt) else 0
+    p.m = [mat(f, p.v) if k == 0 else k for f, k in zip(p.f, p.m)]
+    return F.finish(p, "kurta", mats)
+
+
+def band_drape(F, part, z_lo, z_hi, centre, width, margin=0.05, mat=0, n=40, step=0.022):
+    """A cloth band round the upper body: keeps the faces of a loose tube (z_lo..z_hi) that lie within `width` of
+    centre(x, y) (a height for each point of the tube). Draped scarves, a dupatta, the pallu of a saree."""
+    zs = levels(z_hi, z_lo, step)
+    rings = F.body_loft(zs, TORSO | UPPERLEGS, n, lambda z, a: margin)
+
+    def drop(i, j, c):
+        return abs(c.z - centre(c.x, c.y)) > width / 2
+    v, f = grid(rings, drop=drop)
+    part.add(v, f, [F.body_w(q) for q in v], mat)
+
+
+def build_kameez(F, mats):
+    """Kameez (a tunic to the knee, sleeves to below the elbow, side slits) and the dupatta over the shoulders."""
+    p = Part()
+    hem = F.z_knee - 0.02
+
+    def slit(i, j, c):
+        return c.z < F.z_hip - 0.06 and abs(c.y - 0.0) < 0.035 and abs(c.x) > 0.1
+    kaftan_like(F, p, hem, n=24, m_top=0.025, m_hem=0.07, sleeve_m=(0.02, 0.03), sleeve_n=8, sleeve_end=0.78, drop=slit)
+    zsh = F.z_shoulder
+
+    def centre(x, y):
+        # low in a U over the chest at the front, high across the back of the shoulders
+        return zsh - 0.25 + 3.2 * x * x if y < 0 else zsh - 0.04
+    band_drape(F, p, zsh - 0.32, zsh + 0.05, centre, 0.075, margin=0.045, mat=3)
+    return F.finish(p, "kameez", mats)
+
+
+def build_saree(F, mats):
+    """A saree: the pleated skirt wrapped from the waist to the floor, and the pallu from the right hip up across
+    the chest and over the left shoulder, hanging down the back (the short blouse is painted on the body)."""
+    p = Part()
+    zs = levels(F.z_waist - 0.02, F.z_ankle - 0.01, 0.05)
+
+    def m(z, a):
+        if z > F.z_hip:
+            return 0.03
+        return lerp(0.045, 0.085, smoothstep(F.z_hip, F.z_ankle, z))
+    rings = F.body_loft(zs, TORSO | LEGS, 26, m)
+    v, f = grid(rings)
+    p.add(v, f, [F.body_w(q) for q in v])
+    zsh, zw = F.z_shoulder, F.z_waist - 0.04
+    xs = 0.17
+
+    def centre(x, y):
+        if y < 0:  # front: a diagonal from the left shoulder (x > 0) down to the right hip
+            return lerp(zw, zsh + 0.02, (x + xs) / (2 * xs))
+        # back: falls from the left shoulder straight down, across the back
+        return lerp(zsh - 0.32, zsh + 0.02, smoothstep(-0.05, xs, x))
+    band_drape(F, p, F.z_hip - 0.08, zsh + 0.06, centre, 0.13, margin=0.04)
+    return F.finish(p, "saree", mats)
+
+
 GARMENTS = [
     ("man", "Male", "agbada", (0.93, 0.9, 0.84), build_agbada),
     ("man", "Male", "kaftan", (0.12, 0.16, 0.37), build_kaftan),
     ("woman", "Female", "buba_wrapper", (0.06, 0.48, 0.42), build_buba_wrapper),
     ("woman", "Female", "peplum_gown", (0.89, 0.34, 0.18), build_peplum),
+    ("man", "Male", "suit_jacket", (0.12, 0.16, 0.42), build_jacket),
+    ("woman", "Female", "suit_jacket", (0.12, 0.16, 0.42), build_jacket),
+    ("man", "Male", "denim_jacket", (0.29, 0.35, 0.16), build_denim_jacket),
+    ("woman", "Female", "denim_jacket", (0.29, 0.35, 0.16), build_denim_jacket),
+    ("woman", "Female", "summer_dress", (0.91, 0.52, 0.71), build_summer_dress),
+    ("woman", "Female", "abaya", (0.15, 0.16, 0.17), build_abaya),
+    ("man", "Male", "kente", (0.95, 0.72, 0.02), build_kente),
+    ("woman", "Female", "kente", (0.95, 0.72, 0.02), build_kente_woman),
+    ("man", "Male", "boubou", (0.18, 0.37, 0.7), build_boubou),
+    ("woman", "Female", "boubou", (0.18, 0.37, 0.7), build_boubou),
+    ("man", "Male", "kurta", (0.96, 0.96, 0.95), build_kurta),
+    ("woman", "Female", "kameez", (0.06, 0.48, 0.42), build_kameez),
+    ("woman", "Female", "saree", (0.78, 0.2, 0.12), build_saree),
 ]
+# Fixed colours for material slots 2 and 3 of each garment (trim, accents); slot 1 is slot 0 a shade deeper.
+GARMENT_FIXED = {
+    "kente": ((0.12, 0.42, 0.18), (0.05, 0.04, 0.03)),
+    "boubou": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
+    "kurta": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
+    "kameez": ((0.93, 0.9, 0.84), (0.93, 0.9, 0.84)),
+}
+
+
+def garment_mats(key, rgb):
+    """The four material slots: fabric, fabric a shade deeper, and the two fixed colours (names carry the role, so
+    the layered sprites know what to tint: T_fab, T_deep, FIX_*)."""
+    fx = GARMENT_FIXED.get(key, ((0.85, 0.62, 0.12), (0.05, 0.04, 0.03)))
+    return [make_mat(f"T_fab_{key}", rgb), make_mat(f"T_deep_{key}", tuple(c * 0.86 for c in rgb)),
+            make_mat(f"FIX_a_{key}", fx[0]), make_mat(f"FIX_b_{key}", fx[1])]
 
 
 def preview(arm, path_prefix):
@@ -389,12 +602,15 @@ def main():
         build_one(srcs[sex], who, key, rgb, fn, out)
 
 
+NEW_KEYS = {"suit_jacket", "denim_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "kameez", "saree"}
+
+
 def build_one(src, who, key, rgb, fn, OUT):
     if True:
         arm, body, others = load_body(src)
         paint_body(body, SKIN)
         F = Fit(arm, body)
-        g = fn(F, make_mat(key, rgb))
+        g = fn(F, garment_mats(key, rgb) if key in NEW_KEYS else make_mat(key, rgb))
         preview(arm, os.path.join(OUT, f"preview-garment-{who}-{key}"))
         # export: armature (rest) + garment only
         arm.animation_data.action = None

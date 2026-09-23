@@ -421,10 +421,66 @@ def toon_palette(rgb, name):
     return tuple(srgb_to_lin(min(1.0, c)) for c in out)
 
 
+# ------------------------------------------------------------------ layered sprites (LAYERS=base|hair, MASK=1)
+# The player's look is drawn from layers tinted at runtime (apps/web/src/components/spriteComposer.ts):
+#   base  the body in an outfit, no hair: skin and the outfit fabric in neutral grey (0.8, a deeper fabric 0.69),
+#         everything else (shoes, jeans, shirts, trims, eyes, props, ink) in its own colour. With MASK=1 the same
+#         frames come out as a mask instead: red = skin, green = fabric (no ink lines).
+#   hair  one hair style in neutral grey, with the body, its clothes and props as holdouts (they hide the hair
+#         behind them) and no ink lines but the hair's own.
+LAYERS = os.environ.get("LAYERS", "")
+MASKPASS = bool(os.environ.get("MASK"))
+NEUTRAL, NEUTRAL_DEEP = 0.8, 0.69
+
+
+def mat_role(name):
+    n = name.lower()
+    if n.startswith("toon_"):
+        n = n[5:]
+    if n.startswith("mi_superhero"):
+        return "skin"
+    if n.startswith("t_fab"):
+        return "fab"
+    if n.startswith("t_deep"):
+        return "deep"
+    if n.startswith(("hair", "gele", "cap", "hijab")) and "brow" not in n:
+        return "hair"
+    return None
+
+
+def flat_material(name, rgb=None, holdout=False):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    if holdout:
+        sh = nt.nodes.new("ShaderNodeHoldout")
+    else:
+        sh = nt.nodes.new("ShaderNodeEmission")
+        sh.inputs["Color"].default_value = (*rgb, 1)
+        sh.inputs["Strength"].default_value = 1.0
+    nt.links.new(sh.outputs[0], out.inputs["Surface"])
+    return m
+
+
 def toon_material(src, cache):
     if src.name in cache:
         return cache[src.name]
-    base = toon_palette(tuple(src.diffuse_color), src.name)
+    role = mat_role(src.name) if LAYERS else None
+    if LAYERS == "base" and MASKPASS:
+        m = flat_material("mask_" + src.name, (1, 0, 0) if role == "skin" else (0, 1, 0) if role in ("fab", "deep") else (0, 0, 0))
+        cache[src.name] = m
+        return m
+    if LAYERS == "hair" and role != "hair":
+        m = flat_material("hold_" + src.name, holdout=True)
+        cache[src.name] = m
+        return m
+    if role in ("skin", "fab", "deep", "hair"):
+        g = srgb_to_lin(NEUTRAL_DEEP if role == "deep" else NEUTRAL)
+        base = (g, g, g)
+    else:
+        base = toon_palette(tuple(src.diffuse_color), src.name)
     m = bpy.data.materials.new("toon_" + src.name)
     m.use_nodes = True
     nt = m.node_tree
@@ -514,6 +570,13 @@ def setup_toon(scene):
     st.alpha = 1.0
     st.use_length_min = True             # drop short muscle/fold squiggles
     st.length_min = 7.0 * SS
+    if LAYERS == "base" and MASKPASS:
+        scene.render.use_freestyle = False
+        scene.cycles.samples = 4
+    if LAYERS == "hair":
+        for o in bpy.data.objects:
+            if o.type in ("MESH", "CURVE") and not any(mat_role(sl.material.name) == "hair" for sl in o.material_slots if sl.material):
+                NOLINE().objects.link(o)
 
 
 def downsample(a):
@@ -558,6 +621,7 @@ def import_library_actions(names):
 
 def prepare_variant(name, sex, fn, extra_actions=()):
     arm, body, others = load_body(os.path.join(HUSTLE, f"body-{sex}.glb"))
+    BODY_OBJ[0] = body
     if extra_actions:
         import_library_actions(extra_actions)
     skin = body.material_slots[0].material
@@ -758,6 +822,31 @@ def lie_down(arm, base, sx, sy):
     bpy.context.view_layer.update()
 
 
+BODY_REF = [None]
+BODY_OBJ = [None]
+
+
+def body_alpha(scene, shape):
+    """Where the body mesh lands in the (downsampled) frame, as an alpha-like array: the same for every layer of a
+    look, so centred sheets (sleep, push-ups) are cropped identically for the base and the hair layers."""
+    from bpy_extras.object_utils import world_to_camera_view
+    h, w = shape[:2]
+    out = np.zeros((h, w), dtype=np.float32)
+    body = BODY_OBJ[0]
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    mw = ev.matrix_world
+    verts = me.vertices
+    for k in range(0, len(verts), 3):
+        c = world_to_camera_view(scene, scene.camera, mw @ verts[k].co)
+        x, y = int(c.x * w), int(c.y * h)
+        if 0 <= x < w and 0 <= y < h:
+            out[y, x] = 1.0
+    ev.to_mesh_clear()
+    return out
+
+
 def body_bounds():
     dg = bpy.context.evaluated_depsgraph_get()
     lo, hi = Vector((1e9, 1e9, 1e9)), Vector((-1e9, -1e9, -1e9))
@@ -819,10 +908,13 @@ def render_sleep(arm, scene, look, name, tmp, first):
             a = read_png(p)
             if look == "toon":
                 a = downsample(a)
+            if i == 0 and LAYERS:
+                BODY_REF[0] = body_alpha(scene, a.shape)
             frames.append(a)
         # Crop every frame the same way: the body's visible middle (frame 0) becomes the frame centre, which is
         # where the sprite is anchored (the middle of the mattress).
-        rows = np.where(frames[0][..., 3].max(axis=1) > 0.05)[0]
+        ref = BODY_REF[0] if LAYERS else frames[0][..., 3]
+        rows = np.where(ref.max(axis=1) > 0.05)[0]
         mid = (rows.min() + rows.max()) // 2 if len(rows) else SLEEP_H
         y0 = int(min(max(mid - SLEEP_H // 2, 0), SLEEP_H))
         sheet = np.zeros((SLEEP_H, SLEEP_W * NF, 4), dtype=np.float32)
@@ -1008,6 +1100,8 @@ def toon_obj(o, rgb, name):
         pass
     o.data.materials.clear()
     o.data.materials.append(mat)
+    if LAYERS == "hair":  # a holdout in the hair layer: no ink lines of its own
+        NOLINE().objects.link(o)
     return o
 
 
@@ -1069,7 +1163,10 @@ def rope_obj(arm, angle):
         sp.points[i].co = (*p, 1)
     o = bpy.data.objects.new("rope", cu)
     bpy.context.scene.collection.objects.link(o)
-    cu.materials.append(make_mat("rope", (0.05, 0.05, 0.06)))
+    rm = make_mat("rope", (0.05, 0.05, 0.06))
+    cu.materials.append(toon_material(rm, {}) if TOON_LIGHT is not None else rm)
+    if LAYERS == "hair":
+        NOLINE().objects.link(o)
     return o
 
 
@@ -1092,7 +1189,7 @@ def render_exercise(arm, scene, look, name, action, tmp, first):
     dirs = os.environ["PRAYDIRS"].split(",") if os.environ.get("PRAYDIRS") else EX_DIRS[action]
     for d in dirs:
         sx, sy = DIRS.get(d, (1, 0))
-        frames = []
+        frames, refs = [], []
         for i, (q, ex) in enumerate(exercise_frames(action, n)):
             arm.rotation_euler = (0, 0, 0)
             apply_pose(arm, q)
@@ -1112,8 +1209,10 @@ def render_exercise(arm, scene, look, name, action, tmp, first):
             if look == "toon":
                 a = downsample(a)
             frames.append(a)
+            if LAYERS and centred:
+                refs.append(body_alpha(scene, a.shape))
         if centred:
-            al = np.maximum.reduce([f[..., 3] for f in frames])
+            al = np.maximum.reduce(refs) if LAYERS else np.maximum.reduce([f[..., 3] for f in frames])
             rows = np.where(al.max(axis=1) > 0.05)[0]
             cols = np.where(al.max(axis=0) > 0.05)[0]
             cy = (rows.min() + rows.max()) // 2 if len(rows) else FH
@@ -1407,6 +1506,126 @@ STAFF_NAMES = [n for n, _, _ in STAFF_VARIANTS]
 VARIANTS += STAFF_VARIANTS
 
 
+# ------------------------------------------------------------------ layer looks (LAYERS=base / LAYERS=hair)
+# Base looks "L-<body>-<outfit>": the outfit with its tinted parts named T_fab (the fabric) / T_deep (the fabric a
+# shade deeper, e.g. trousers in the same cloth) and the rest in fixed colours. No hair.
+#   top, sleeve (0..1), bottom, length ("ankle" | "knee"), feet, garment, extras
+# Colours: "fab" / "deep" (tinted) or a hex. Garments: GLBs from garments.py (GDIR); the woman's kaftan is built here.
+LAYER_LOOK = {
+    "man": {
+        "ankara_green": ("fab", 0.28, "#1b2238", "ankle", "#6b3b1f", None, {}),
+        "agbada_white": (None, 0, "deep", "ankle", "#5a3a22", "agbada", {}),
+        "kaftan_gold": (None, 0, "deep", "ankle", "#5a3a22", "kaftan", {}),
+        "jersey_red": ("fab", 0.28, "#151515", "knee", "#f2f2f2", None, {}),
+        "tee_blue": ("fab", 0.28, "#3b5b8a", "ankle", "#f2f2f2", None, {}),
+        "hoodie_black": ("fab", 0.97, "#4a4f55", "ankle", "#f2f2f2", None, {}),
+        "suit": ("#f4f4f2", 0.97, "deep", "ankle", "#151515", "suit_jacket", {"tie": "#7a1f3d"}),
+        "jeans_jacket": ("#f4f4f2", 0.28, "#3b5b8a", "ankle", "#f2f2f2", "denim_jacket", {}),
+        "kente": (None, 0, None, "ankle", "#6b3b1f", "kente", {}),
+        "boubou": (None, 0, "deep", "ankle", "#5a3a22", "boubou", {}),
+        "kurta": (None, 0, "#ece6d6", "ankle", "#6b3b1f", "kurta", {}),
+    },
+    "woman": {
+        "buba_wrapper": (None, 0, None, "ankle", "#c9921a", "buba_wrapper", {}),
+        "peplum_coral": (None, 0, None, "ankle", "#c9921a", "peplum_gown", {}),
+        "ankara_green": ("fab", 0.28, "#1b2238", "ankle", "#6b3b1f", None, {}),
+        "kaftan_gold": (None, 0, "deep", "ankle", "#5a3a22", "kaftan@body", {}),
+        "tee_blue": ("fab", 0.28, "#3b5b8a", "ankle", "#f2f2f2", None, {}),
+        "jersey_red": ("fab", 0.28, "#151515", "knee", "#f2f2f2", None, {}),
+        "hoodie_black": ("fab", 0.97, "#4a4f55", "ankle", "#f2f2f2", None, {}),
+        "suit": ("#f4f4f2", 0.97, "deep", "ankle", "#151515", "suit_jacket", {}),
+        "jeans_jacket": ("#f4f4f2", 0.28, "#3b5b8a", "ankle", "#f2f2f2", "denim_jacket", {}),
+        "summer_dress": ("fab", 0.0, None, "ankle", "#c9921a", "summer_dress", {}),
+        "abaya": (None, 0, "deep", "ankle", "#25211d", "abaya", {}),
+        "kente": (None, 0, None, "ankle", "#6b3b1f", "kente", {}),
+        "boubou": (None, 0, "deep", "ankle", "#5a3a22", "boubou", {}),
+        "salwar_kameez": (None, 0, "deep", "ankle", "#c9921a", "kameez", {}),
+        "saree": ("#c9921a", 0.28, None, "ankle", "#c9921a", "saree", {"top_min": "waist"}),
+    },
+}
+OLD_GARMENT_KEYS = {"agbada", "kaftan", "buba_wrapper", "peplum_gown"}
+
+
+def role_mat(name, spec):
+    """A material for a colour spec: "fab" / "deep" (tinted at runtime) or a fixed hex."""
+    if spec == "fab":
+        return make_mat("T_fab_" + name, (0.5, 0.5, 0.5))
+    if spec == "deep":
+        return make_mat("T_deep_" + name, (0.43, 0.43, 0.43))
+    return make_mat("FIX_" + name, hexrgb(spec))
+
+
+def layer_base(body_key, outfit):
+    top, sleeve, bottom, length, feet, garment, ex = LAYER_LOOK[body_key][outfit]
+
+    def fn(arm, body):
+        paint_body(body, MEDIUM)
+        if garment == "kaftan@body":
+            F = G.Fit(arm, body)
+            G.build_kaftan(F, make_mat("T_fab_kaftan", (0.5, 0.5, 0.5)))
+            arm.animation_data.action = None
+            for pb in arm.pose.bones:
+                pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
+        elif garment:
+            before = set(bpy.data.objects)
+            bind_garment(arm, os.path.join(GDIR, f"garment-{body_key}-{garment}.glb"))
+            for o in bpy.data.objects:
+                if o in before or o.type != "MESH":
+                    continue
+                if garment in OLD_GARMENT_KEYS:  # one plain material: the fabric
+                    o.data.materials.clear()
+                    o.data.materials.append(make_mat("T_fab_" + garment, (0.5, 0.5, 0.5)))
+                # new garments carry their roles in the material names (garments.py garment_mats)
+        top_min = ex.get("top_min")
+
+        def rule(c, ds, L):
+            if shoes(c, ds, L, 0.04 if feet == "#f2f2f2" else 0.02):
+                return "feet"
+            if bottom and not is_arm(ds) and c.z < L["hip"] + 0.06:
+                if length == "knee" and c.z < L["knee"] - 0.02:
+                    return None
+                return "bottom"
+            if top and top_rule(c, ds, L, sleeve):
+                if top_min == "waist" and not is_arm(ds) and c.z < L["waist"] + 0.1 and not (ds & {"clavicle_l", "clavicle_r"}):
+                    return None  # a short blouse: the midriff shows
+                if "tie" in ex and not is_arm(ds) and c.y < -0.02 and abs(c.x) < 0.022 and L["waist"] < c.z < L["neck"] - 0.02:
+                    return "tie"
+                return "top"
+            return None
+        mats = {"feet": role_mat("feet", feet)}
+        if bottom:
+            mats["bottom"] = role_mat("bottom", bottom)
+        if top:
+            mats["top"] = role_mat("top", top)
+        if "tie" in ex:
+            mats["tie"] = role_mat("tie", ex["tie"])
+        region_paint(body, arm, rule, mats)
+    return fn
+
+
+def layer_hair(body_key, style):
+    def fn(arm, body):
+        paint_body(body, MEDIUM)
+        path = os.path.join(HAIRDIR, f"hair-{'Male' if body_key == 'man' else 'Female'}", f"hair-{style}.glb")
+        if style == "hijab":  # the drape follows the neck and shoulders, not the head
+            before = set(bpy.data.objects)
+            bpy.ops.import_scene.gltf(filepath=path)
+            for o in [o for o in bpy.data.objects if o not in before and o.type == "MESH"]:
+                attach_rest(arm, o, "neck_01")
+        else:
+            attach_hair(arm, path)
+    return fn
+
+
+HAIRDIR = os.environ.get("HAIRDIR", HUSTLE)
+LAYER_HAIRS = ["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap",
+               "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]
+if LAYERS == "base":
+    VARIANTS = [(f"L-{b}-{o}", "Male" if b == "man" else "Female", layer_base(b, o)) for b in LAYER_LOOK for o in LAYER_LOOK[b]]
+elif LAYERS == "hair":
+    VARIANTS = [(f"H-{b}-{h}", "Male" if b == "man" else "Female", layer_hair(b, h)) for b in ("man", "woman") for h in LAYER_HAIRS]
+
+
 # ------------------------------------------------------------------ work poses (posed bone by bone, IK hands, props)
 # Each frame: joint angles (apply_pose), hand targets for the arm IK (armature space: x = the character's left,
 # -y = forward, z = up, feet at the origin), and props built at the posed hands. carry_tray is a walk sheet instead
@@ -1442,6 +1661,14 @@ POSES.update({
     "sew": ("Idle_Loop", ["woman_buba", "man_kaftan"]),
     "sit_desk": ("Idle_Loop", ["man_casual", "woman_buba", "man_kaftan", "woman_gele"]),
 })
+
+
+# The poses a player can be in (rooms.ts POSE_OF and spots): every layer look renders all of them.
+PLAYER_POSES = ["sit_eat", "sit_talk", "sleep", "dance", "stand_idle", "pray_church", "pray_salah", "kneel_pray",
+                "lift_weights", "boxing", "run", "pushups", "skip_rope", "eat_table", "sit_table"]
+if LAYERS:
+    for _a in PLAYER_POSES:
+        POSES[_a] = (POSES[_a][0], POSES[_a][1] + [n for n, _, _ in VARIANTS])
 
 
 def bp(bone, off):

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { avatarUri } from "./Avatar.js";
 import { CX, CY, HALF, ROUNDABOUT, roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
+import { useLayerSheet, walkSheetName } from "./spriteComposer.js";
 import { outfitVariant, walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 type Point = { x: number; y: number };
@@ -264,6 +265,8 @@ export function AvatarWalker({
     // A new tap replaces the walk in progress.
   }, [target?.seq]);
 
+  // The player's own look from tinted layers (spriteComposer) when on; the baked walker until it is ready.
+  const walkHref = useLayerSheet(avatar, walkSheetName(facing), walkerSheet(variantFor(avatar), facing));
   return (
     <g aria-label={`${nickname} (you)`} className="me-walker" pointerEvents="none">
       {walking && target && (
@@ -317,7 +320,7 @@ export function AvatarWalker({
           })()
         ) : (
         <svg x={-WALK.w / 2} y={-WALK.h + WALK.ground} width={WALK.w} height={WALK.h} overflow="hidden">
-          <image href={walkerSheet(variantFor(avatar), facing)} width={WALK.w * WALK.frames} height={WALK.h} x={walking ? undefined : 0}>
+          <image href={walkHref} width={WALK.w * WALK.frames} height={WALK.h} x={walking ? undefined : 0}>
             {walking && (
               <animate attributeName="x" dur="0.8s" repeatCount="indefinite" calcMode="discrete" values={Array.from({ length: WALK.frames }, (_, f) => -WALK.w * f).join(";")} />
             )}

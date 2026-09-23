@@ -178,6 +178,111 @@ def _():
     bmesh.ops.translate(bm, vec=Vector((cx, cy - ry * 0.95, cz + rz * 0.12)), verts=res["verts"])
     return obj_from_bm(bm, "cap", RED)
 
+# ---- styles added for the layered sprites (2026-10): straight and wavy hair, ponytail, bun, side part, long
+# straight and the hijab. Long hair hangs as soft volumes behind the head and over the shoulders (the head shell
+# itself stops at the neck).
+WRAP = mat("hijab", (0.48, 0.12, 0.24), 0.7)
+
+
+def fringe(bm, depth=0.03, drop=0.05, side=0.0):
+    """A soft fringe across the forehead (side > 0 sweeps it to the character's left)."""
+    add_ellipsoid(bm, Vector((cx + side * rx * 0.3, cy - ry * 0.84, hairline(cy - ry) + 0.004)), (rx * (0.7 - abs(side) * 0.15), depth, drop), 14)
+
+
+@style("straight")
+def _():
+    bm = cap(0.014)
+    fringe(bm, 0.018, 0.026)
+    return obj_from_bm(bm, "straight", HAIR)
+
+
+@style("side_part")
+def _():
+    bm = cap(0.01)
+    # the swept side: thicker over the character's left from a parting on the right
+    bm.normal_update()
+    for v in bm.verts:
+        k = max(0.0, min(1.0, (v.co.x - cx + rx * 0.25) / (rx * 0.8)))
+        v.co += v.normal * 0.016 * k * k * (3 - 2 * k)
+    fringe(bm, 0.016, 0.024, side=0.8)
+    return obj_from_bm(bm, "side_part", HAIR)
+
+
+@style("wavy")
+def _():
+    face = lambda c: c.y < cy - ry * 0.2 and c.z < cz + rz * 0.35
+    bm = shell(0.026, lambda c: c.z > cz - rz * 0.95 and not face(c), lump=0.012)
+    # waves down to the shoulders at the back and sides
+    for i in range(7):
+        a = math.radians(-62 + 124 * i / 6)
+        p = Vector((cx + math.sin(a) * rx * 0.95, cy + math.cos(a) * ry * 0.75, cz - rz * 1.15))
+        add_ellipsoid(bm, p, (0.045, 0.04, 0.11), 10)
+    return obj_from_bm(bm, "wavy", HAIR)
+
+
+@style("long_straight")
+def _():
+    face = lambda c: c.y < cy - ry * 0.2 and c.z < cz + rz * 0.35
+    bm = shell(0.016, lambda c: c.z > cz - rz * 0.9 and not face(c))
+    # a long straight curtain down the back to below the shoulder blades, and a lock over each shoulder
+    add_ellipsoid(bm, Vector((cx, cy + ry * 0.75, cz - rz * 1.9)), (rx * 0.95, 0.04, 0.3), 16)
+    for sx in (-1, 1):
+        add_ellipsoid(bm, Vector((cx + sx * rx * 0.98, cy + ry * 0.1, cz - rz * 1.45)), (0.03, 0.045, 0.2), 10)
+    return obj_from_bm(bm, "long_straight", HAIR)
+
+
+@style("ponytail")
+def _():
+    bm = cap(0.011)
+    top = Vector((cx, cy + ry * 0.92, cz + rz * 0.25))
+    add_ellipsoid(bm, top, (0.03, 0.03, 0.03), 10)  # the band
+    add_tube(bm, top + Vector((0, 0.02, -0.01)), top + Vector((0, 0.07, -0.26)), 0.034, 10)
+    return obj_from_bm(bm, "ponytail", HAIR)
+
+
+@style("bun")
+def _():
+    bm = cap(0.011)
+    add_ellipsoid(bm, Vector((cx, cy + ry * 0.72, cz + rz * 0.78)), (0.055, 0.05, 0.05), 14)
+    return obj_from_bm(bm, "bun", HAIR)
+
+
+@style("hijab")
+def _():
+    # A close wrap round the head with the face open, falling over the neck and the tops of the shoulders.
+    # A smooth dome over the head that runs on down into a drape over the neck and the tops of the shoulders, in
+    # one surface (rings from the crown down), with an oval opening for the face from the brows to under the chin.
+    fz = cz - rz * 0.36
+    face = lambda c: c.y < cy - ry * 0.25 and ((c.x - cx) / (rx * 0.8)) ** 2 + ((c.z - fz) / (rz * 0.86)) ** 2 < 1
+    n = 72
+    rings = []
+    ztop = cz + rz * 1.02 + 0.012
+    zeq = cz - rz * 0.1
+    zbot = NECK - 0.12
+    for i in range(1, 25):  # the dome: ellipse sections down to the widest point
+        t = i / 24
+        ang = t * math.pi / 2
+        rings.append((zeq + (ztop - zeq) * math.cos(ang), rx * 1.16 * math.sin(ang), ry * 1.13 * math.sin(ang), cy))
+    for i in range(1, 19):  # the drape: narrowing round the jaw, then out over the shoulders
+        t = i / 18
+        z = zeq + (zbot - zeq) * t
+        w = 1.0 - 0.18 * math.sin(t * math.pi * 0.9) + 0.75 * t ** 2.2
+        rings.append((z, rx * 1.16 * w, ry * 1.13 * (1 - 0.12 * math.sin(t * math.pi)) + 0.03 * t, cy + 0.012 * t))
+    bm = bmesh.new()
+    top = bm.verts.new(Vector((cx, cy, ztop)))
+    vs = [[bm.verts.new(Vector((cx + ax * math.cos(2 * math.pi * j / n), yc + ay * math.sin(2 * math.pi * j / n), z))) for j in range(n)] for z, ax, ay, yc in rings]
+    for j in range(n):
+        bm.faces.new((top, vs[0][(j + 1) % n], vs[0][j]))
+    for r in range(len(vs) - 1):
+        for j in range(n):
+            q = (vs[r][j], vs[r][(j + 1) % n], vs[r + 1][(j + 1) % n], vs[r + 1][j])
+            c = sum((v.co for v in q), Vector()) / 4
+            if not face(c):
+                bm.faces.new(q)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    return obj_from_bm(bm, "hijab", WRAP)
+
+
 # Preview: camera at three-quarter front, simple light, workbench render.
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_WORKBENCH"
@@ -192,7 +297,10 @@ cam.rotation_euler = (math.radians(84), 0, math.radians(36))
 cam.data.lens = 85
 scene.camera = cam
 
+ONLY = set(os.environ.get("ONLY", "").split(",")) - {""}
 for name, build in STYLES.items():
+    if ONLY and name not in ONLY:
+        continue
     o = build()
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)

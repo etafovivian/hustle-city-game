@@ -8,6 +8,7 @@
 import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
+import { layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
 import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey, type Worker } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
@@ -15,11 +16,11 @@ import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant
 export { ROOMS, type PlayerAction, type Room };
 
 // Only some poses have nw/ne sheets (POSE_SHEETS nw, ne); the others facing nw use their sw sheet, ne their se one.
-const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing | WalkDir) => {
+const sheetDir = (action: PoseAction, d: Facing | WalkDir) => {
   const s = POSE_SHEETS[action];
-  const dir = d === "nw" && !s.nw ? "sw" : d === "ne" && !s.ne ? "se" : d;
-  return `/art/life/poses/${action}-${v}-${dir}.webp`;
+  return d === "nw" && !s.nw ? "sw" : d === "ne" && !s.ne ? "se" : d;
 };
+const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing | WalkDir) => `/art/life/poses/${action}-${v}-${sheetDir(action, d)}.webp`;
 
 /** Box for a person `ph` tall showing a pose sheet (null: a walk sheet). Frames are sized in px of a 160 px tall
  * person; most are anchored at the feet (16 px up), lying ones on the middle of the body. */
@@ -300,6 +301,9 @@ function PlayerInRoom({
 }) {
   const el = useRef<HTMLDivElement>(null);
   const variant = variantFor(avatar);
+  // (a ref, so a new colour shows without restarting the walk loop)
+  const avatarRef = useRef(avatar);
+  avatarRef.current = avatar;
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
@@ -361,12 +365,13 @@ function PlayerInRoom({
       }
       if (!pose) {
         const frame = Math.floor(m.walked / 0.024) % 8;
-        node.style.backgroundImage = `url(${walkerSheet(variant, m.dir)})`;
+        node.style.backgroundImage = `url(${layerSheet(avatarRef.current, walkSheetName(m.dir)) ?? walkerSheet(variant, m.dir)})`;
         node.style.backgroundPosition = framePos(frame, 8);
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
         const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        node.style.backgroundImage = `url(${poseSheet(pose, variant, m.face)})`;
+        // the player's own look (tinted layers) when on and ready, else the nearest baked look
+        node.style.backgroundImage = `url(${layerSheet(avatarRef.current, poseSheetName(pose, sheetDir(pose, m.face))) ?? poseSheet(pose, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.
