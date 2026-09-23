@@ -1,7 +1,7 @@
 // Player avatars drawn with DiceBear "Personas" by Draftbit (CC BY 4.0, credited in the picker and README).
 import { createAvatar } from "@dicebear/core";
 import * as personas from "@dicebear/personas";
-import { AVATAR_OPTIONS, FABRIC_HAIR, HAIR_COLORS, LEGACY_HAIR, LOOK_ORDER, OUTFIT_COLORS, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
+import { AVATAR_OPTIONS, FABRIC_HAIR, FABRIC_HAIR_DEFAULT, HAIR_COLORS, LEGACY_HAIR, LOOK_ORDER, OUTFIT_COLORS, OUTFIT_INFO, SKIN_ORDER, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
 import { useMemo } from "react";
 
 type PersonasHair = NonNullable<personas.Options["hair"]>[number];
@@ -18,6 +18,13 @@ const HAIR: Record<string, PersonasHair> = {
   braids: "extraLong",
   bob: "bobCut",
   gele: "beanie",
+  straight: "shortCombover",
+  wavy: "bobBangs",
+  ponytail: "pigtails",
+  bun: "straightBun",
+  side_part: "shortComboverChops",
+  long_straight: "long",
+  hijab: "beanie",
 };
 
 const HAIR_LABEL: Record<string, string> = {
@@ -32,22 +39,22 @@ const HAIR_LABEL: Record<string, string> = {
   braids: "Braids",
   bob: "Bob",
   gele: "Gele",
+  straight: "Straight",
+  wavy: "Wavy",
+  ponytail: "Ponytail",
+  bun: "Bun",
+  side_part: "Side part",
+  long_straight: "Long straight",
+  hijab: "Hijab",
 };
 
-// Outfit colours drawn from the wax-print dyes.
-const OUTFIT: Record<string, { color: string; label: string }> = {
-  ankara_green: { color: "1e7a46", label: "Ankara green" },
-  agbada_white: { color: "ece6d6", label: "Agbada white" },
-  jersey_red: { color: "c8321e", label: "Jersey red" },
-  tee_blue: { color: "1f2a6b", label: "Indigo tee" },
-  kaftan_gold: { color: "f2b705", label: "Kaftan gold" },
-  hoodie_black: { color: "25282b", label: "Black hoodie" },
-  buba_wrapper: { color: "0f7b6c", label: "Buba & wrapper" },
-  peplum_coral: { color: "e4572e", label: "Coral peplum" },
-};
+// Outfit colours drawn from the wax-print dyes (shared OUTFIT_INFO, without the "#").
+const OUTFIT: Record<string, { color: string; label: string }> = Object.fromEntries(
+  Object.entries(OUTFIT_INFO).map(([k, v]) => [k, { color: v.color.slice(1), label: v.label }]),
+);
 
-/** Gele and caps take a fabric colour; hair is near-black. */
-const HAIR_COLOR: Record<string, string> = { gele: "f2b705", cap: "c8321e" };
+/** Gele, caps and the hijab take a fabric colour; hair is near-black. */
+const HAIR_COLOR: Record<string, string> = Object.fromEntries(Object.entries(FABRIC_HAIR_DEFAULT).map(([k, v]) => [k, v.slice(1)]));
 
 export function avatarUri(a: AvatarConfig): string {
   const hairKey = HAIR[a.hairStyle] ? a.hairStyle : (LEGACY_HAIR[a.hairStyle] ?? "low_cut");
@@ -126,13 +133,13 @@ export function AvatarPicker({
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Skin tone</span>
         <div className="swatches">
-          {AVATAR_OPTIONS.skinTone.map((c, i) => (
+          {SKIN_ORDER.map((c, i) => (
             <button
               key={c}
               type="button"
               className="swatch"
               style={{ background: c }}
-              aria-label={`Skin tone ${i + 1} of ${AVATAR_OPTIONS.skinTone.length}`}
+              aria-label={`Skin tone ${i + 1} of ${SKIN_ORDER.length}`}
               aria-pressed={value.skinTone === c}
               onClick={() => onChange({ ...value, skinTone: c })}
             />
@@ -171,7 +178,7 @@ export function AvatarPicker({
       </div>
       {value.hairStyle !== "bald" && (
         <div className="stack" style={{ gap: 6 }}>
-          <span className="small muted">{FABRIC_HAIR.has(value.hairStyle) ? (value.hairStyle === "gele" ? "Gele colour" : "Cap colour") : "Hair colour"}</span>
+          <span className="small muted">{FABRIC_HAIR.has(value.hairStyle) ? (value.hairStyle === "gele" ? "Gele colour" : value.hairStyle === "hijab" ? "Hijab colour" : "Cap colour") : "Hair colour"}</span>
           <div className="swatches">
             {(FABRIC_HAIR.has(value.hairStyle) ? OUTFIT_COLORS : HAIR_COLORS).map((c) => (
               <button
