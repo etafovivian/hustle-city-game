@@ -1027,3 +1027,18 @@ body.hud-hidden .map-hint { display: none !important; }
 /* Beta badge by the logo (tap to report a problem) */
 .beta-badge { align-self: center; padding: 2px 8px; border-radius: 999px; border: 1px solid #f59e0b; background: #78350f; color: #fde68a; font: 800 10px/1.4 system-ui, sans-serif; letter-spacing: .08em; cursor: pointer; }
 .beta-badge:hover { background: #92400e; }
+
+/* Mama Nkechi's first-day tour, on the map */
+.map-frame { position: relative; }
+.firstday { position: absolute; z-index: 6; left: 10px; bottom: 54px; width: min(300px, calc(100% - 80px)); display: grid; gap: 6px; padding: 10px 12px; border-radius: 16px; background: rgb(10 15 36 / 92%); color: #fff; border: 1px solid #f59e0b; box-shadow: 0 8px 24px rgb(0 0 0 / 35%); }
+.firstday-head { display: flex; align-items: center; gap: 6px; }
+.firstday-face { font-size: 22px; }
+.firstday-x { margin-left: auto; background: none; border: 0; color: #cbd5e1; cursor: pointer; padding: 4px; }
+.firstday-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: #94a3b8; }
+.firstday-steps li.done { color: #4ade80; }
+.firstday-steps li.now { color: #fde68a; font-weight: 700; }
+.firstday-say { margin: 0; color: #f1f5f9; }
+.firstday-pill { position: absolute; z-index: 6; left: 10px; bottom: 54px; padding: 6px 12px; border-radius: 999px; border: 1px solid #f59e0b; background: rgb(10 15 36 / 92%); color: #fde68a; font: 700 12px/1 system-ui, sans-serif; cursor: pointer; }
+body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
+/* On phones the bottom menu bar sits over the map: keep the tour above it. */
+@media (max-width: 899px) { .firstday, .firstday-pill { bottom: 100px; } .firstday { max-height: 46vh; overflow: auto; } }

@@ -16,6 +16,7 @@ import { HomeCard, PlotCard } from "./Home.js";
 import { OtherPlayers, PlayerCard, VisitHome } from "./Social.js";
 import { AreaBoys, RidePicker } from "./Rides.js";
 import { CoachJourney } from "./CoachJourney.js";
+import { FirstDayGuide } from "./FirstDay.js";
 import type { Trip } from "./AvatarWalker.js";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
@@ -887,6 +888,7 @@ export function CityMap({
 
   return (
     <div className="map map-frame">
+      <FirstDayGuide notify={notify} onChanged={onVisited} />
       <div
         ref={ref}
         className="map-viewport"
@@ -1281,6 +1283,9 @@ export function CityMap({
                               }
                               onArrive={(trip) => {
                                 setTravelling(false);
+                                // Mama Nkechi's first-day tour: you've had a walk.
+                                if (!trip.mode || trip.mode === "walk") window.dispatchEvent(new Event("hc:walked"));
+                                else window.dispatchEvent(new Event("hc:first-day"));
                                 // Walked in the rain without an umbrella: soaked.
                                 if ((weather === "rain" || weather === "storm") && !umbrella && (!trip.mode || trip.mode === "walk" || trip.mode === "transit"))
                                   void api<{ soaked: boolean }>("POST", "/api/game/soaked")

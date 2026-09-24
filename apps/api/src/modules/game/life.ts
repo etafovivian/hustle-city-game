@@ -1,6 +1,7 @@
 // Life in the city: jobs at places (shifts, pay, promotions), your home (starter room or a house on a plot you
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
+import { firstDayStep } from "./firstday.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
   GENERATORS,
@@ -101,6 +102,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       await addSkill(tx, user.id, skill, SKILL_POINTS.shift);
       const view0 = jobView(job, before, done);
       const posting = await postCoins(tx, user.id, pay, "shift_pay", `shift:${day}:${randomUUID()}`);
+      await firstDayStep(tx, user.id, "shift");
       await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${view0.xp}` }).where(eq(profiles.userId, user.id));
       await tx
         .insert(playerJobs)

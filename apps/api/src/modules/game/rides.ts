@@ -9,6 +9,7 @@ import { lockProfile } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import type { ShopCtx } from "./shop.js";
 import { loadNeeds, saveNeeds } from "./needs.js";
+import { firstDayStep } from "./firstday.js";
 import { addSkill, skillLevelOf } from "./skills.js";
 import { crackScreen } from "./gadgets.js";
 
@@ -28,6 +29,7 @@ export async function startDrive({ tx, userId }: ShopCtx, kind: VehicleKind, uni
   const stop = dice.roll() < v.stopChance;
   const [ride] = await tx.insert(rides).values({ userId, mode: `own:${kind}`, units, fare: fuel, stop }).returning({ id: rides.id });
   const posting = await postCoins(tx, userId, -fuel, "fuel", `fuel:${ride!.id}`);
+  await firstDayStep(tx, userId, "ride");
   return { rideId: ride!.id, fare: fuel, stop, balance: posting.balance };
 }
 
@@ -41,6 +43,7 @@ export async function startRide({ tx, userId, now }: ShopCtx, mode: RideMode, un
   const stop = dice.roll() < info.stopChance;
   const [ride] = await tx.insert(rides).values({ userId, mode, units, fare, stop }).returning({ id: rides.id });
   const posting = await postCoins(tx, userId, -fare, "ride", `ride:${ride!.id}`);
+  await firstDayStep(tx, userId, "ride");
   return { rideId: ride!.id, fare, stop, balance: posting.balance };
 }
 
@@ -54,6 +57,7 @@ export async function startTransit({ tx, userId }: ShopCtx, kind: TransitKind, u
   if (profile.coinBalance < fare) throw new AppError(422, "insufficient_coins", `The ${info.label} costs ${fare} coins.`);
   const [ride] = await tx.insert(rides).values({ userId, mode: line ? `transit:${kind}:${line}` : `transit:${kind}`, units, fare, stop: false }).returning({ id: rides.id });
   const posting = await postCoins(tx, userId, -fare, "ride", `ride:${ride!.id}`);
+  await firstDayStep(tx, userId, "ride");
   return { rideId: ride!.id, fare, stop: false, balance: posting.balance };
 }
 

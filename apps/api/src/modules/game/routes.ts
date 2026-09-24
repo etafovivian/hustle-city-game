@@ -7,6 +7,7 @@ import { lockProfile } from "../../lib/db.js";
 import { AppError } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { claimQuest, questBoard, recordEvents } from "./quests.js";
+import { claimFirstDay, firstDayView } from "./firstday.js";
 import { buyDecor, getDecor, moveDecor, sellDecor } from "./decor.js";
 import { claimDreamStep, getDream } from "./dream.js";
 import { visitShop } from "./visit.js";
@@ -58,6 +59,16 @@ export async function gameRoutes(app: FastifyInstance) {
   app.get("/api/game/quests", async (request) => {
     const user = requireUser(request);
     return inTx(user.id, ({ tx, now }) => questBoard(tx, user.id, now, tz));
+  });
+
+  // "First day in Lagos": the guided tour's progress, and its one-time gift.
+  app.get("/api/game/first-day", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, ({ tx }) => firstDayView(tx, user.id));
+  });
+  app.post("/api/game/first-day/claim", async (request) => {
+    const user = requireUser(request);
+    return inTx(user.id, ({ tx }) => claimFirstDay(tx, user.id));
   });
 
   app.post<{ Params: { key: string } }>("/api/game/quests/:key/claim", async (request) => {
