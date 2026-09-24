@@ -1,7 +1,7 @@
 // New Lagos — a pan-and-zoom isometric world laid out like Lagos (docs/city-plan.md), starting at Junction 101.
 // Art is the Stitch raster set (public/art, provenance in *.json sidecars).
 // Places are real buttons for keyboard and screen-reader access; drag never triggers a tap.
-import { AD_ROTATE_SECONDS, coachEventsFor, FLIGHT_EVENTS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
+import { AD_ROTATE_SECONDS, coachEventsFor, FLIGHT_EVENTS, FLOOD_PRONE, UMBRELLA, eventAt, floodedAreas, isRushHour, HUSTLES_BY_KEY, MAX_RIDE_UNITS, RIDE_BY_MODE, RIDE_PICK_FROM, VENUES_BY_KEY, HOUSE_BY_KEY, WEATHER_ICON, WEATHER_LABEL, areasWithoutLight, businessArt, eventsOn, weatherAt, type Weather, type AvatarConfig, type HomeView, type MapHome, type PresencePlayer, type PresenceReply, type VehicleKind, type MapBusiness, type RideMode, type RideStart, type BillboardView, type Me, type MyAd, type LocationKey, type NeighbourShop } from "@hc/shared";
 import { Eye, EyeOff, Home as HomeIcon, LandPlot, LocateFixed, Map as MapIcon, Maximize, Megaphone, Minimize, Minus, Plus, Sparkles, Store, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type SVGProps } from "react";
 import { createPortal } from "react-dom";
@@ -231,6 +231,7 @@ export function CityMap({
   notify,
   onDistrict,
   avatar,
+  lastPos,
   nickname,
   onApp,
 }: {
@@ -243,6 +244,8 @@ export function CityMap({
   notify: (msg: string) => void;
   /** An open district was tapped. */
   onDistrict: (name: string) => void;
+  /** Where the account last stopped on the map (any device). */
+  lastPos?: Me["lastPos"];
   avatar: AvatarConfig;
   nickname: string;
 }) {
@@ -802,7 +805,20 @@ export function CityMap({
         const scale = l.hh / 60;
         const foot = l.y + siteOf(scale).lift;
         const art = `/art/buildings/${HOUSE_BY_KEY.get(owned.design ?? "")?.art ?? "bungalow"}.webp`;
-        const openMine = () => (owned.isHome ? setHomeOpen(true) : setPlotOpen(l.id));
+        // Your home opens straight away. Another house of yours becomes home first (as when you pick it from the
+        // home button), so a house you've just built opens on the first tap.
+        const openMine = () => {
+          if (owned.isHome) return setHomeOpen(true);
+          // Land, or a house let out to tenants (making it home would end the tenancy): its card, not the house.
+          if (!owned.design || home?.plots.find((p) => p.plotId === l.id)?.let) return setPlotOpen(l.id);
+          void api<HomeView>("POST", `/api/plots/${l.id}/home`)
+            .then((h) => {
+              setHome(h);
+              loadHomes();
+              setHomeOpen(true);
+            })
+            .catch(() => setPlotOpen(l.id));
+        };
         const box = buildingBox(art, l.x, foot, scale);
         depthItems.push({
           key: `home-${l.id}`,
@@ -1266,6 +1282,7 @@ export function CityMap({
                               avatar={avatar}
                               nickname={nickname}
                               start={{ x: CX - 120, y: CY + 150 }}
+                              lastPos={lastPos}
                               target={walkTo}
                               plateScale={plateScale}
                               onBlocked={() => {

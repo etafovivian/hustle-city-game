@@ -81,6 +81,8 @@ export const profiles = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     nickname: text("nickname").notNull(),
     nicknameHidden: boolean("nickname_hidden").notNull().default(false),
+    /** Where the player last stopped on the map ({x, y, at}), so every device starts them in the same place. */
+    lastPos: jsonb("last_pos"),
     avatar: jsonb("avatar").notNull(),
     xp: integer("xp").notNull().default(0),
     // Onboarding choices (see @hc/shared onboarding.ts).

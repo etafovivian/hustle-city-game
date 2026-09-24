@@ -20,12 +20,13 @@ export async function loadMe(db: Db, userId: string): Promise<Me> {
       xp: profiles.xp,
       hustle: profiles.hustle,
       dream: profiles.dream,
+      lastPos: profiles.lastPos,
     })
     .from(users)
     .innerJoin(profiles, eq(profiles.userId, users.id))
     .where(eq(users.id, userId));
   if (!row) throw notFound("Profile");
-  return { ...row, roles: row.roles as Role[], avatar: row.avatar as AvatarConfig };
+  return { ...row, roles: row.roles as Role[], avatar: row.avatar as AvatarConfig, lastPos: (row.lastPos as Me["lastPos"]) ?? null };
 }
 
 const profileBody = z.object({ nickname: z.string().optional(), avatar: z.unknown().optional() });
@@ -35,6 +36,15 @@ export async function meRoutes(app: FastifyInstance) {
     const id = requireUser(request).id;
     await settleCrew(app.db, id).catch((e) => request.log.warn(e, "crew reward"));
     return loadMe(app.db, id);
+  });
+
+  // Where the player stopped on the map, so their phone and their laptop agree (the newest wins).
+  app.put("/api/me/position", { config: { rateLimit: { max: 60 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } }, async (request) => {
+    const user = requireUser(request);
+    const { x, y } = z.object({ x: z.number().finite().min(-1000).max(30_000), y: z.number().finite().min(-6000).max(20_000) }).parse(request.body);
+    const lastPos = { x: Math.round(x), y: Math.round(y), at: new Date().toISOString() };
+    await app.db.update(profiles).set({ lastPos }).where(eq(profiles.userId, user.id));
+    return lastPos;
   });
 
   app.patch("/api/me/profile", async (request) => {
