@@ -1,5 +1,10 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
+  HOME_ACTIONS,
+  NEED_ICON,
+  NEED_LABEL,
+  type HomeAction,
+  type NeedKey,
   GENERATORS,
   HOME_ITEMS,
   HOME_ROOMS,
@@ -108,6 +113,31 @@ export function HomeCard({
   const [busy, setBusy] = useState(false);
   const [rebuild, setRebuild] = useState(false);
   const [me, setMe] = useState<PlayerAction>("walk");
+  /** The room on show (life-at-home actions depend on it: the pool, the cinema, the yard). */
+  const [roomKey, setRoomKey] = useState<string | null>(null);
+  /** When each action can be done again (from the server's answers this visit). */
+  const [again, setAgain] = useState<Record<string, number>>({});
+  const doAct = async (a: HomeAction) => {
+    setBusy(true);
+    setError(null);
+    setMe(a.pose);
+    try {
+      const r = await api<NeedsView & { again: string }>("POST", `/api/game/home/act/${a.key}`, { room: roomKey });
+      setAgain((x) => ({ ...x, [a.key]: new Date(r.again).getTime() }));
+      const bits = (Object.entries(a.gives) as [NeedKey, number][]).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : "−"}${NEED_ICON[k]} ${NEED_LABEL[k]}`);
+      notify(`${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}`);
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+      setMe("stand");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const canDo = (a: HomeAction) => (!a.needs || a.needs.some((k) => home.items.includes(k))) && (!a.rooms || (roomKey !== null && a.rooms.includes(roomKey)));
+  const homeActs = HOME_ACTIONS.filter(canDo);
+  /** Things you could buy to do more at home. */
+  const unlocks = [...new Set(HOME_ACTIONS.filter((a) => a.needs && !a.needs.some((k) => home.items.includes(k))).map((a) => HOME_ITEMS.find((i) => i.key === a.needs![0])?.name.split(" (")[0]).filter(Boolean))];
   const [placed, setPlaced] = useState(home.placements ?? {});
   const [error, setError] = useState<string | null>(null);
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
@@ -183,6 +213,7 @@ export function HomeCard({
           avatar={avatar}
           action={me}
           onAction={setMe}
+          onRoom={setRoomKey}
           guests={guests}
           placements={placed}
           onPlace={(key, room, x, y) => {
@@ -191,12 +222,15 @@ export function HomeCard({
           }}
         />
         <div className="row home-acts">
-          <button type="button" className="btn sm" onClick={() => setMe("sit")}>
-            🛋️ Sit down
-          </button>
-          <button type="button" className="btn sm" onClick={() => setMe("eat")}>
-            🍲 Eat
-          </button>
+          {homeActs.map((a) => {
+            const left = again[a.key] ? Math.max(0, Math.ceil((again[a.key]! - Date.now()) / 60_000)) : 0;
+            return (
+              <button key={a.key} type="button" className="btn sm home-act" disabled={busy || left > 0} onClick={() => void doAct(a)} title={a.note}>
+                {a.icon} {a.label}
+                <span className="tiny muted">{left > 0 ? ` · again in ${left} min` : ` · ${a.note}`}</span>
+              </button>
+            );
+          })}
           <button type="button" className="btn sm" onClick={() => setMe("dance")}>
             💃 Dance
           </button>
@@ -207,6 +241,7 @@ export function HomeCard({
           )}
           <span className="tiny muted">Tap the floor to walk around.</span>
         </div>
+        {unlocks.length > 0 && <p className="tiny muted">More to do at home with: {unlocks.join(", ")} (in "Things for your house" below).</p>}
         <p className={`small power-line ${hasLight ? "on" : "off"}`}>
           {hasLight
             ? "💡 There's light."
@@ -368,6 +403,7 @@ export function HomeRooms({
   avatar,
   action = "walk",
   onAction,
+  onRoom,
   guests = [],
   placements = {},
   onPlace,
@@ -384,6 +420,8 @@ export function HomeRooms({
   avatar?: AvatarConfig;
   action?: PlayerAction;
   onAction?: (a: PlayerAction) => void;
+  /** The room now on show. */
+  onRoom?: (key: string) => void;
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
@@ -398,6 +436,7 @@ export function HomeRooms({
     if (i >= 0) setAt(i);
   }, [action]);
   const room = rooms[Math.min(at, rooms.length - 1)]!;
+  useEffect(() => onRoom?.(room.key), [room.key]);
   return (
     <div className="home-rooms">
       {rooms.length > 1 && (
