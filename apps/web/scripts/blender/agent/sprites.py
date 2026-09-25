@@ -1049,9 +1049,10 @@ def prayer_frames(action, n):
 
 # ------------------------------------------------------------------ workouts (posed like the prayers, with props)
 # frame size, frames, directions, and whether the sheet is centred on the body (horizontal poses, like sleep)
-EX_FRAME = {"lift_weights": (96, 8), "boxing": (112, 8), "pushups": (192, 8), "skip_rope": (112, 8)}
-EX_DIRS = {"lift_weights": ["se", "sw"], "boxing": ["se", "sw", "nw"], "pushups": ["se", "sw"], "skip_rope": ["se", "sw"]}
-EX_CENTRED = {"pushups"}
+EX_FRAME = {"lift_weights": (96, 8), "boxing": (112, 8), "pushups": (192, 8), "skip_rope": (112, 8), "swim": (192, 8)}
+EX_DIRS = {"lift_weights": ["se", "sw"], "boxing": ["se", "sw", "nw"], "pushups": ["se", "sw"], "skip_rope": ["se", "sw"], "swim": ["se", "sw"]}
+EX_CENTRED = {"pushups", "swim"}
+WATERLINE = 0.13  # swim: everything below this height (m above the lowest point) is under water (held out)
 GUARD = dict(arm_down=72, arm_fwd=62, elbow=128, fore_in=14, head=6, hip_l=14, hip_r=-12, knee=14, knee_l=18, twist=-14)
 
 
@@ -1085,6 +1086,11 @@ def exercise_frames(action, n):
             tilt = math.degrees(math.acos(min(1.0, reach / 1.42)))
             q = P(arm_down=84, arm_fwd=tilt - back, elbow=back, head=-34, ankle=-12)
             out.append((q, {"tilt": tilt}))
+        elif action == "swim":
+            # floating on the back in a rubber ring, arms out over the ring, feet paddling lazily
+            q = P(arm_down=38 + 4 * math.sin(ph), arm_fwd=-10, elbow=25, head=14, neck=6,
+                  hip_l=6 + 6 * math.sin(2 * ph), hip_r=6 - 6 * math.sin(2 * ph), knee=10, ankle=10)
+            out.append((q, {"tilt": -90, "bob": 0.012 * math.sin(ph)}))
         else:  # skip_rope: small jumps, hands at the hips turning the rope
             up = max(0.0, math.sin(ph))
             q = P(arm_down=80, arm_fwd=10, elbow=34, fore_in=-28, head=4, knee=10 + 14 * (1 - up), ankle=-6 * up)
@@ -1196,8 +1202,37 @@ def render_exercise(arm, scene, look, name, action, tmp, first):
             arm.rotation_euler = (math.radians(ex.get("tilt", 0)), 0, math.radians(facing_angle(sx, sy)))
             ground(arm)
             arm.location.z += ex.get("lift", 0.0)
+            if action == "swim":  # floating: the hips at a fixed height, whatever the arms do
+                bpy.context.view_layer.update()
+                arm.location.z += 0.5 + ex.get("bob", 0.0) - (arm.matrix_world @ arm.pose.bones["pelvis"].head).z
             rope = rope_obj(arm, ex["rope"]) if "rope" in ex else None
             props = hand_props(arm, action) if action in ("lift_weights", "boxing") else []
+            if action == "swim":  # the water: a holdout block up to the waterline (the room art draws the pool)
+                wb = bmesh.new()
+                bmesh.ops.create_cube(wb, size=1.0)
+                bpy.context.view_layer.update()
+                wl = 0.5  # the hips float at 0.5: the chest, head, arms and feet are out of the water
+                bmesh.ops.scale(wb, vec=(6, 6, wl + 1), verts=wb.verts)
+                bmesh.ops.translate(wb, vec=(0, 0, (wl - 1) / 2), verts=wb.verts)
+                wo = obj_from_bm(wb, "water", flat_material("water_hold", holdout=True))
+                wo.data.materials.clear()
+                wo.data.materials.append(flat_material("water_hold", holdout=True))
+                NOLINE().objects.link(wo)
+                props.append(wo)
+                # the rubber ring round the waist, floating at the waterline
+                pv = arm.matrix_world @ arm.pose.bones["spine_01"].head
+                tb = bmesh.new()
+                R_, r_, nu, nv = 0.3, 0.085, 28, 10
+                vs = [[tb.verts.new(Vector((pv.x + (R_ + r_ * math.cos(2 * math.pi * j / nv)) * math.cos(2 * math.pi * k / nu),
+                                            pv.y + (R_ + r_ * math.cos(2 * math.pi * j / nv)) * math.sin(2 * math.pi * k / nu),
+                                            wl + 0.02 + r_ * math.sin(2 * math.pi * j / nv)))) for j in range(nv)] for k in range(nu)]
+                for k in range(nu):
+                    for j in range(nv):
+                        tb.faces.new((vs[k][j], vs[(k + 1) % nu][j], vs[(k + 1) % nu][(j + 1) % nv], vs[k][(j + 1) % nv]))
+                props.append(toon_obj(obj_from_bm(tb, "ring", make_mat("ring", (0.95, 0.45, 0.2))), (0.95, 0.45, 0.2), "ring"))
+                if os.environ.get("SWIMDEBUG"):
+                    Z = lambda b: round((arm.matrix_world @ arm.pose.bones[b].head).z, 2)
+                    print("SWIMDBG", round(wl, 3), {b: Z(b) for b in ("Head", "spine_03", "pelvis", "calf_l", "foot_l", "hand_l", "hand_r")})
             pth = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
             scene.render.filepath = pth
             bpy.ops.render.render(write_still=True)
@@ -1635,9 +1670,11 @@ GENERIC_DIRS = {"run": ["se", "sw", "nw"], "sit_eat": ALL_DIRS, "sit_talk": ALL_
 # props on the library-clip poses: a plate of food on the lap and a spoon when eating
 GENERIC_PROPS = {"sit_eat": [("plate_lap", "l"), ("spoon", "r")]}
 REACH = 0.43  # m from the shoulder
-WORK_DIRS = {"sick_sit": ["se", "sw"]}
+WORK_DIRS = {"sick_sit": ["se", "sw"], "wedding_l": ["se", "sw"], "wedding_r": ["se", "sw"]}
 WORK_FPS = {}
-WORK_ACTIONS = ["sit_table", "eat_table", "cook_hob", "cut_hair", "sew", "sit_desk", "check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
+HOME_POSES = ["bucket_bath", "wash_clothes", "sweep", "water_plants", "phone_call", "play_games", "dress_mirror"]
+PAIR_POSES = ["walk_hand_l", "walk_hand_r", "dance_pair", "wedding_l", "wedding_r", "hug_m", "hug_w"]
+WORK_ACTIONS = HOME_POSES + PAIR_POSES + ["sit_table", "eat_table", "cook_hob", "cut_hair", "sew", "sit_desk", "check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
 LEGACY_ADULTS = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"]
 POSES.update({
     "stand_idle": (POSES["stand_idle"][0], POSES["stand_idle"][1] + STAFF_NAMES),
@@ -1655,6 +1692,10 @@ POSES.update({
     "cook_hob": ("Idle_Loop", ["woman_buba", "woman_gele", "chef", "man_casual"]),
     # seated at a table with the plate on the table in front: spoon from the plate to the mouth (every everyday look,
     # so the player can eat at a table in whatever they wear)
+    **{a: ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES) for a in HOME_POSES},
+    "cook_hob": ("Idle_Loop", ["woman_buba", "woman_gele", "chef", "man_casual", "man_kaftan"] + OUTFIT_NAMES),
+    "swim": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual"] + OUTFIT_NAMES),
+    **{a: ("Walk_Loop" if a.startswith("walk") else "Idle_Loop", []) for a in PAIR_POSES},
     "sit_table": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
     "eat_table": ("Idle_Loop", ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy"] + OUTFIT_NAMES),
     "cut_hair": ("Idle_Loop", ["man_casual", "woman_buba", "woman_gele"]),
@@ -1665,7 +1706,8 @@ POSES.update({
 
 # The poses a player can be in (rooms.ts POSE_OF and spots): every layer look renders all of them.
 PLAYER_POSES = ["sit_eat", "sit_talk", "sleep", "dance", "stand_idle", "pray_church", "pray_salah", "kneel_pray",
-                "lift_weights", "boxing", "run", "pushups", "skip_rope", "eat_table", "sit_table"]
+                "lift_weights", "boxing", "run", "pushups", "skip_rope", "eat_table", "sit_table",
+                "cook_hob", "swim"] + HOME_POSES + PAIR_POSES
 if LAYERS:
     for _a in PLAYER_POSES:
         POSES[_a] = (POSES[_a][0], POSES[_a][1] + [n for n, _, _ in VARIANTS])
@@ -1732,6 +1774,71 @@ def work_frame(action, i, n):
         # sitting on the edge of the bed, bent over: one hand on the stomach, the other on the forehead, rocking
         q = P(hip=88, knee=88, ankle=0, sp1=14 + 6 * k, sp2=6, sp3=4, head=16 + 6 * k, neck=6)
         return dict(q=q, l=bp("spine_01", (0.03, -0.16, 0.04)), r=bp("Head", (-0.03, -0.12, 0.1)), props=[], sit=True)
+    # ---------------- life at home (player poses)
+    if action == "bucket_bath":
+        # a bucket on the floor by the right foot: scoop with the cup, lift it over the head and pour; the left hand
+        # rubs the arm (dressed as they are: the sprite stays modest)
+        seq = [0.0, 0.0, 0.4, 0.8, 1.0, 1.0, 1.0, 0.5]
+        k = smoothstep(0.0, 1.0, seq[i])
+        low = Vector((-0.24, -0.3, 0.3))
+        high = Vector((-0.06, -0.08, 1.95))
+        q = P(sp1=28 * (1 - k), head=10 * (1 - k) - 8 * k, knee=10 * (1 - k))
+        return dict(q=q, r=ab(*low.lerp(high, k)), l=bp("spine_03", (-0.02, -0.16, 0.02 - 0.06 * math.sin(ph))),
+                    props=[("bucket", (-0.26, -0.3)), ("cup", "r", i in (4, 5, 6))])
+    if action == "wash_clothes":
+        # on a low stool over a basin, scrubbing a shirt between the hands
+        q = P(hip=104, knee=128, ankle=10, sp1=32, sp2=8, head=22, neck=6)
+        dy = 0.07 * math.sin(ph)
+        return dict(q=q, r=ab(-0.07, -0.5 + dy, 0.2), l=ab(0.07, -0.5 - dy, 0.2), props=[("basin", (0.0, -0.5)), ("stool",), ("cloth_wet", "r", "l")], sit=True)
+    if action == "sweep":
+        # bent over with a short broom (the Nigerian broom has no handle), sweeping side to side
+        q = P(sp1=55, sp2=12, head=-12, neck=-6, knee=14, hip=6)
+        sw = math.sin(ph)
+        return dict(q=q, r=ab(-0.1 + 0.18 * sw, -0.52, 0.32), l=ab(-0.02 + 0.12 * sw, -0.44, 0.52), props=[("broom", "l", "r")])
+    if action == "water_plants":
+        # a watering can held forward and tipped over the plants; the other arm loose
+        tip = 25 + 10 * math.sin(ph)
+        return dict(q=P(head=14, sp1=6), r=ab(-0.12, -0.4, 0.95), props=[("watering_can", "r", tip)])
+    if action == "phone_call":
+        # the phone at the right ear, the left hand talking
+        q = P(head=6 + 4 * math.sin(ph), neck=4, side=3 * math.sin(ph))
+        return dict(q=q, r=bp("Head", (-0.085, -0.03, 0.0)), l=ab(0.15, -0.22, 0.98 + 0.05 * math.sin(2 * ph)), props=[("phone", "r")])
+    if action == "play_games":
+        # seated, a controller in both hands, thumbs busy, leaning in (the sofa is in the room art)
+        q = P(hip=88, knee=88, ankle=0, sp1=16 + 3 * math.sin(2 * ph), head=16, neck=6, side=2 * math.sin(ph))
+        jig = 0.01 * math.sin(4 * ph)
+        return dict(q=q, r=bp("spine_01", (-0.06, -0.3, 0.16 + jig)), l=bp("spine_01", (0.06, -0.3, 0.16 - jig)), props=[("controller", "r", "l")], sit=True)
+    if action == "dress_mirror":
+        # at the mirror: straightening the collar, then smoothing the hair and the front of the outfit
+        q = P(head=4, twist=6 * math.sin(ph))
+        if i < 4:
+            w = 0.02 * math.sin(2 * ph)
+            return dict(q=q, r=bp("neck_01", (-0.06 + w, -0.1, -0.06)), l=bp("neck_01", (0.06 + w, -0.1, -0.06)), props=[])
+        return dict(q=q, r=bp("Head", (-0.07, 0.0, 0.11)), l=bp("spine_01", (0.07, -0.16, 0.18 - 0.08 * (i - 4) / 3)), props=[])
+    # ---------------- together (a player and a partner, each drawn from their own layers, placed side by side)
+    if action in ("walk_hand_l", "walk_hand_r"):
+        sx_ = 1 if action.endswith("l") else -1  # the partner on the character's left (+x) or right
+        return dict(walk=True, **{"l" if sx_ > 0 else "r": bp("pelvis", (0.3 * sx_, -0.06, -0.06))}, props=[])
+    if action == "dance_pair":
+        # facing the partner (0.6 m away), both hands joined at chest height, swaying and bouncing together
+        b = 0.5 - 0.5 * math.cos(2 * ph)
+        q = P(knee=6 + 10 * b, side=6 * math.sin(ph), head=4)
+        z = 1.12 + 0.05 * math.sin(ph)
+        return dict(q=q, r=ab(-0.16, -0.3, z), l=ab(0.16, -0.3, z), props=[])
+    if action in ("wedding_l", "wedding_r"):
+        # side by side for the photos: the inner hand holding the partner's, the outer hand waving a white
+        # handkerchief to the guests
+        sx_ = 1 if action.endswith("l") else -1
+        inner = ("l", "r")[sx_ < 0]
+        outer = ("r", "l")[sx_ < 0]
+        wave = ab(-0.3 * sx_, -0.12, 1.55 + 0.08 * math.sin(2 * ph))
+        return dict(q=P(head=2, side=3 * math.sin(ph)), **{inner: bp("pelvis", (0.3 * sx_, -0.08, -0.04)), outer: wave}, props=[("hanky", outer)])
+    if action in ("hug_m", "hug_w"):
+        # a warm hug: arms round the partner's back (0.3 m away), swaying; the partner's body is a holdout, so each of
+        # the two sprites already hides what the other covers
+        q = P(sp1=6, head=10, neck=4, side=3 * math.sin(ph))
+        return dict(q=q, r=ab(-0.13, -0.47, 1.24), l=ab(0.13, -0.47, 1.3),
+                    partner=("Male" if action == "hug_m" else "Female", P(sp1=6, head=10, arm_down=55, arm_fwd=75, elbow=95, fore_in=70)), props=[])
     if action == "sit_table":
         # seated at a table, chatting: forearms on the table, one hand moving as they talk, the head nodding
         q = P(hip=88, knee=88, ankle=0, sp1=6, head=4 + 6 * math.sin(ph), neck=2, side=2 * math.sin(ph))
@@ -1935,6 +2042,56 @@ def build_props(arm, specs):
             gl = g + left * 0.2 - fwd * 0.02
             made.append(_prop("glass", (0.72, 0.9, 0.95), lambda bm: _cyl(bm, gl, gl + up * 0.11, 0.03, 0.036, seg=10)))
             made.append(_prop("drink", (0.85, 0.45, 0.08), lambda bm: _cyl(bm, gl + up * 0.005, gl + up * 0.07, 0.028, 0.032, seg=10)))
+        elif kind == "bucket":
+            base = mw @ Vector((sp[1][0], sp[1][1], 0.0))
+            base.z = 0.0
+            made.append(_prop("bucket", (0.15, 0.4, 0.75), lambda bm: _cyl(bm, base, base + up * 0.3, 0.13, 0.16, seg=16)))
+            made.append(_prop("bucket_water", (0.55, 0.8, 0.95), lambda bm: _cyl(bm, base + up * 0.27, base + up * 0.285, 0.15, seg=16)))
+        elif kind == "cup":
+            g = H[sp[1]]
+            made.append(_prop("cup", (0.85, 0.3, 0.2), lambda bm: _cyl(bm, g - up * 0.04, g + up * 0.05, 0.05, 0.06, seg=12)))
+            if sp[2]:
+                head = mw @ arm.pose.bones["Head"].tail
+                made.append(_prop("water", (0.6, 0.85, 0.98), lambda bm: _cyl(bm, g, head + fwd * 0.02, 0.03, 0.06, seg=10)))
+        elif kind == "basin":
+            base = mw @ Vector((sp[1][0], sp[1][1], 0.0))
+            base.z = 0.0
+            made.append(_prop("basin", (0.75, 0.2, 0.2), lambda bm: _cyl(bm, base, base + up * 0.16, 0.22, 0.3, seg=20)))
+            made.append(_prop("suds", (0.92, 0.95, 0.98), lambda bm: _cyl(bm, base + up * 0.13, base + up * 0.145, 0.27, seg=20)))
+        elif kind == "stool":
+            pv = mw @ arm.pose.bones["pelvis"].head
+            top = Vector((pv.x, pv.y, max(0.12, pv.z - 0.1)))
+            made.append(_prop("stool", (0.45, 0.28, 0.14), lambda bm: _box(bm, Vector((top.x, top.y, top.z / 2)), (left, fwd, up), (0.3, 0.26, top.z))))
+        elif kind == "cloth_wet":
+            a, b = H[sp[1]], H[sp[2]]
+            made.append(_prop("shirt", (0.95, 0.95, 0.9), lambda bm: _box(bm, (a + b) / 2 - up * 0.02, (left, fwd, up), (0.24, 0.16, 0.03))))
+        elif kind == "broom":
+            a, b = H[sp[1]], H[sp[2]]
+            d = (b - a).normalized()
+            end = b + d * 0.35
+            if end.z < 0.02:
+                end = b + d * ((b.z - 0.02) / max(0.05, -d.z))
+            made.append(_prop("broom", (0.85, 0.72, 0.35), lambda bm: _cyl(bm, a - d * 0.05, end, 0.022, 0.06, seg=10)))
+            made.append(_prop("broom_tie", (0.75, 0.15, 0.1), lambda bm: _cyl(bm, a + d * 0.05, a + d * 0.09, 0.028, seg=10)))
+        elif kind == "watering_can":
+            g, tip = H[sp[1]], math.radians(sp[2])
+            dn = (fwd * math.sin(tip) - up * math.cos(tip)).normalized()  # the can's "down" leans forward as it tips
+            body_c = g - up * 0.12 + fwd * 0.04
+            made.append(_prop("can", (0.15, 0.55, 0.35), lambda bm: _cyl(bm, body_c - dn * 0.1, body_c + dn * 0.1, 0.09, seg=14)))
+            spout0 = body_c + fwd * 0.08
+            spout1 = spout0 + (fwd * math.cos(tip) - up * math.sin(tip) * 0.5).normalized() * 0.25
+            made.append(_prop("spout", (0.15, 0.55, 0.35), lambda bm: _cyl(bm, spout0, spout1, 0.015, 0.01, seg=8)))
+            ground_pt = spout1 + fwd * 0.1 - up * 0.28
+            made.append(_prop("water", (0.6, 0.85, 0.98), lambda bm: _cyl(bm, spout1, ground_pt, 0.008, 0.025, seg=8)))
+        elif kind == "phone":
+            g = H[sp[1]]
+            made.append(_prop("phone", (0.08, 0.08, 0.1), lambda bm: _box(bm, g, (fwd, left, up), (0.075, 0.012, 0.15))))
+        elif kind == "controller":
+            a, b = H[sp[1]], H[sp[2]]
+            made.append(_prop("controller", (0.12, 0.12, 0.14), lambda bm: _box(bm, (a + b) / 2 + up * 0.01, (left, fwd, up), (0.16, 0.07, 0.035))))
+        elif kind == "hanky":
+            g = H[sp[1]]
+            made.append(_prop("hanky", (0.98, 0.98, 0.98), lambda bm: _box(bm, g + up * 0.09, (left, fwd, up), (0.14, 0.01, 0.14))))
         elif kind == "plate_lap":
             g = H[sp[1]] + up * 0.012 + fwd * 0.02 - left * 0.04
             made.append(_prop("plate", (0.98, 0.98, 0.96), lambda bm: _cyl(bm, g, g + up * 0.014, 0.1, 0.115, seg=20)))
@@ -1963,7 +2120,50 @@ def build_props(arm, specs):
     return made
 
 
+PARTNERS = {}
+
+
+def place_partner(arm, sex, q, dist=0.3):
+    """The hug partner: a second body of `sex`, every material a holdout and no ink lines, posed with `q` and standing
+    `dist` in front of the character, facing them. It hides whatever of this character it would cover."""
+    if sex not in PARTNERS:
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=os.path.join(HUSTLE, f"body-{sex}.glb"))
+        new = [o for o in bpy.data.objects if o not in before]
+        for o in list(new):
+            if o.type == "MESH" and o.name.startswith("Icosphere"):
+                bpy.data.objects.remove(o)
+                new.remove(o)
+        pa = next(o for o in new if o.type == "ARMATURE")
+        if pa.animation_data:
+            for t in pa.animation_data.nla_tracks:
+                t.mute = True
+        hold = flat_material("partner_hold", holdout=True)
+        meshes = [o for o in new if o.type == "MESH"]
+        for o in meshes:
+            o.data.materials.clear()
+            o.data.materials.append(hold)
+            NOLINE().objects.link(o)
+        PARTNERS[sex] = (pa, meshes)
+    for s_, (pa, meshes) in PARTNERS.items():
+        for o in meshes:
+            o.hide_render = s_ != sex
+    pa, meshes = PARTNERS[sex]
+    pa.rotation_euler = (0, 0, 0)
+    pa.location = (0, 0, 0)
+    apply_pose(pa, q)
+    pa.matrix_world = arm.matrix_world @ Matrix.Translation((0, -dist, 0)) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation((0, 0, -arm.location.z))
+    bpy.context.view_layer.update()
+
+
+def hide_partners():
+    for pa, meshes in PARTNERS.values():
+        for o in meshes:
+            o.hide_render = True
+
+
 def render_work(arm, scene, look, name, action, tmp, first):
+    hide_partners()
     n = NF
     clear_ik(arm)
     er, cr = ik_hand(arm, "r")
@@ -1996,6 +2196,7 @@ def render_work(arm, scene, look, name, action, tmp, first):
             bpy.context.view_layer.update()
             arm.rotation_euler = (0, 0, math.radians(facing_angle(sx, sy)))
             if not spec.get("walk"):
+                hide_partners()  # (ground() measures every visible mesh)
                 ground(arm)
             if spec.get("sit"):
                 # the anchor is the feet (the seat is behind them), as in the library's seated sheets
@@ -2005,6 +2206,8 @@ def render_work(arm, scene, look, name, action, tmp, first):
                 arm.location.x -= fm.x
                 arm.location.y -= fm.y
             props = build_props(arm, spec.get("props", []))
+            if "partner" in spec:
+                place_partner(arm, *spec["partner"])
             pth = os.path.join(tmp, f"{action}-{name}-{d}-{i}.png")
             scene.render.filepath = pth
             bpy.ops.render.render(write_still=True)
