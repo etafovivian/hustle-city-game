@@ -37,6 +37,7 @@ export type CoinKind =
   | "hustle_escrow"
   | "hustle_pay"
   | "hustle_refund"
+  | "home_life"
   | "admin_adjustment";
 
 export interface PostingResult {

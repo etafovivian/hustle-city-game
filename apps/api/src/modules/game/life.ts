@@ -1,8 +1,12 @@
 // Life in the city: jobs at places (shifts, pay, promotions), your home (starter room or a house on a plot you
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
+import { firstDayStep } from "./firstday.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
+  HOME_ACTION_BY_KEY,
+  HOME_ROOMS,
+  NEED_KEYS,
   GENERATORS,
   HOME_ITEM_BY_KEY,
   OUTAGE_CHANCE,
@@ -101,6 +105,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       await addSkill(tx, user.id, skill, SKILL_POINTS.shift);
       const view0 = jobView(job, before, done);
       const posting = await postCoins(tx, user.id, pay, "shift_pay", `shift:${day}:${randomUUID()}`);
+      await firstDayStep(tx, user.id, "shift");
       await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${view0.xp}` }).where(eq(profiles.userId, user.id));
       await tx
         .insert(playerJobs)
@@ -180,6 +185,42 @@ export async function lifeRoutes(app: FastifyInstance) {
       await saveNeeds(tx, user.id, after, now, { ...freeAt, __workout: now.toISOString() });
       await addSkill(tx, user.id, "fitness", WORKOUT.fitness);
       return needsView(after);
+    });
+  });
+
+  // Life at home (HOME_ACTIONS): cook, eat, watch TV, swim, pray… each needs what it needs (a thing you own, a room
+  // your house has), has its own cooldown, and changes your needs for real.
+  app.post<{ Params: { key: string } }>("/api/game/home/act/:key", async (request) => {
+    const user = requireUser(request);
+    const act = HOME_ACTION_BY_KEY.get(request.params.key);
+    if (!act) throw notFound("Action");
+    const { room } = z.object({ room: z.string().max(40).optional() }).parse(request.body ?? {});
+    return inTx(async (tx, now) => {
+      await lockProfile(tx, user.id);
+      const home = await homeView(tx, user.id, now);
+      if (act.needs && !act.needs.some((k) => home.items.includes(k))) {
+        const names = act.needs.map((k) => HOME_ITEM_BY_KEY.get(k)?.name.split(" (")[0]?.toLowerCase() ?? k).join(" or ");
+        throw new AppError(409, "missing_item", `You need a ${names} for that. Get one in "Things for your house".`);
+      }
+      if (act.rooms) {
+        const rooms = (HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!).map((r) => r.key);
+        if (!room || !act.rooms.includes(room) || !rooms.includes(room)) throw new AppError(409, "wrong_room", "Your house doesn't have the room for that.");
+      }
+      const { needs, freeAt } = await loadNeeds(tx, user.id, now);
+      const at = (k: string) => (freeAt[`__act_${k}`] ? new Date(freeAt[`__act_${k}`]!).getTime() : 0);
+      const wait = at(act.key) + act.every * 60_000 - now.getTime();
+      if (wait > 0) throw new AppError(409, "too_soon", `You did that not long ago. Again in ${Math.ceil(wait / 60_000)} min.`);
+      if (act.after && now.getTime() - at(act.after.action) > act.after.within * 60_000) throw new AppError(409, "nothing_cooked", "Nothing in the pot. Cook first.");
+      const next = { ...needs };
+      for (const k of NEED_KEYS) next[k] = Math.max(0, Math.min(100, next[k] + (act.gives[k] ?? 0)));
+      if ((act.gives.energy ?? 0) < 0 && needs.energy < -(act.gives.energy ?? 0)) throw new AppError(409, "too_tired", "Too tired for that. Sleep first.");
+      let balance: number | undefined;
+      if (act.cost) balance = (await postCoins(tx, user.id, -act.cost, "home_life", `home:${act.key}:${now.toISOString()}`)).balance;
+      await saveNeeds(tx, user.id, next, now, { ...freeAt, [`__act_${act.key}`]: now.toISOString() });
+      if (act.skill) await addSkill(tx, user.id, act.skill[0], act.skill[1]);
+      if (act.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${act.xp}` }).where(eq(profiles.userId, user.id));
+      if (act.gives.food && act.gives.food > 0) await firstDayStep(tx, user.id, "eat");
+      return { ...needsView(next), balance, again: new Date(now.getTime() + act.every * 60_000).toISOString() };
     });
   });
 

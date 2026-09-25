@@ -2,6 +2,7 @@
 // Animates on its own, so the big map doesn't re-render while you walk.
 import { JOURNEY_EVENT_AT, RIDE_BY_MODE, TRANSIT, type CoachEventKey, VEHICLE_BY_KIND, bodyOf, type AvatarConfig, type RideMode, type TransitKind, type VehicleKind } from "@hc/shared";
 import { useEffect, useRef, useState } from "react";
+import { api } from "../api.js";
 import { avatarUri } from "./Avatar.js";
 import { CX, CY, HALF, ROUNDABOUT, roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
@@ -86,21 +87,27 @@ export function variantFor(a: AvatarConfig): WalkerVariant {
 }
 const STORE = "hc_avatar_pos";
 
-function loadPos(fallback: Point): Point {
+/** Where to start: the newer of this device's last spot and the account's (another device may have moved on). */
+function loadPos(fallback: Point, server: { x: number; y: number; at: string } | null | undefined): Point {
+  let local: (Point & { at?: string }) | null = null;
   try {
-    const v = JSON.parse(localStorage.getItem(STORE) ?? "null") as Point | null;
-    if (v && Number.isFinite(v.x) && Number.isFinite(v.y)) return v;
+    const v = JSON.parse(localStorage.getItem(STORE) ?? "null") as (Point & { at?: string }) | null;
+    if (v && Number.isFinite(v.x) && Number.isFinite(v.y)) local = v;
   } catch {
     /* storage can be blocked; start at the default spot */
   }
-  return fallback;
+  if (server && (!local || !local.at || Date.parse(server.at) > Date.parse(local.at))) return { x: server.x, y: server.y };
+  return local ? { x: local.x, y: local.y } : fallback;
 }
-function savePos(p: Point) {
+/** Remember where the player stopped: on this device, and on their account (only when a trip ends). */
+function savePos(p: Point, sync = false) {
+  const at = new Date().toISOString();
   try {
-    localStorage.setItem(STORE, JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y) }));
+    localStorage.setItem(STORE, JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y), at }));
   } catch {
     /* not essential */
   }
+  if (sync) void api("PUT", "/api/me/position", { x: p.x, y: p.y }).catch(() => undefined);
 }
 
 export function AvatarWalker({
@@ -108,6 +115,7 @@ export function AvatarWalker({
   nickname,
   start,
   target,
+  lastPos,
   plateScale,
   onBlocked,
   onStop,
@@ -119,6 +127,8 @@ export function AvatarWalker({
   nickname: string;
   /** Where the avatar stands the first time (before any saved spot). */
   start: Point;
+  /** Where the account last stopped (from /api/me): wins over this device's spot when it's newer. */
+  lastPos?: { x: number; y: number; at: string } | null;
   /** Latest tap; `seq` changes on every tap so tapping the same spot twice still walks. */
   target: Trip | null;
   plateScale: number;
@@ -132,7 +142,7 @@ export function AvatarWalker({
   /** Kept up to date with where the player is (for pricing rides from here). */
   posOut?: { current: Point };
 }) {
-  const [pos, setPos] = useState(() => loadPos(start));
+  const [pos, setPos] = useState(() => loadPos(start, lastPos));
   const [walking, setWalking] = useState(false);
   const [facing, setFacing] = useState<WalkDir>("se");
   const posRef = useRef(pos);
@@ -252,7 +262,7 @@ export function AvatarWalker({
         setWalking(false);
         setWaiting(null);
         setRiding("walk");
-        savePos(p);
+        savePos(p, true);
         onArrive?.(target);
       }
     };

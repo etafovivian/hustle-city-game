@@ -37,3 +37,4 @@ export * from "./hunt.js";
 export * from "./gadgets.js";
 export * from "./coach.js";
 export * from "./hustle.js";
+export * from "./firstday.js";

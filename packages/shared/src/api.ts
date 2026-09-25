@@ -17,6 +17,8 @@ export interface Me {
   xp: number;
   hustle: string;
   dream: string;
+  /** Where they last stopped on the map (any device); null before their first trip. */
+  lastPos: { x: number; y: number; at: string } | null;
 }
 
 export interface QuestView {

@@ -301,7 +301,7 @@ export function App() {
                     )}
                   </div>
                 </div>
-                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} avatar={me.avatar} nickname={me.nickname} onApp={setPhone} />
+                <CityMap onOpen={(id) => void openLocation(id)} visited={visited} onVisited={onChanged} notify={notify} onDistrict={openMarket} avatar={me.avatar} lastPos={me.lastPos} nickname={me.nickname} onApp={setPhone} />
               </>
             ) : (
               <>
