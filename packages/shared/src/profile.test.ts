@@ -37,6 +37,18 @@ describe("new looks", () => {
   });
 });
 
+describe("lookFromSeed", () => {
+  it("gives varied, valid looks, the same for the same seed", async () => {
+    const { lookFromSeed } = await import("./profile.js");
+    const looks = Array.from({ length: 200 }, (_, i) => lookFromSeed(i * 7919 + 3));
+    for (const l of looks) expect(isValidAvatar(l)).toBe(true);
+    expect(lookFromSeed(42)).toEqual(lookFromSeed(42));
+    expect(new Set(looks.map((l) => l.skinTone)).size).toBeGreaterThan(6);
+    expect(new Set(looks.map((l) => l.outfit)).size).toBeGreaterThan(10);
+    expect(lookFromSeed(5, "woman").body).toBe("woman");
+  });
+});
+
 describe("avatar colours", () => {
   it("accepts palette colours and drops unknown fields", async () => {
     const { cleanAvatar } = await import("./profile.js");

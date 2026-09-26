@@ -133,6 +133,26 @@ export const DEFAULT_AVATAR: AvatarConfig = {
   outfit: AVATAR_OPTIONS.outfit[0],
 };
 
+/**
+ * A varied, valid look from a number (the same seed always gives the same look): for game characters such as a
+ * partner, drawn with the layered sprites. Any skin tone, a hair style and outfit from that body's picker, and often
+ * a fabric or hair colour of their own.
+ */
+export function lookFromSeed(seed: number, body?: BodyType): AvatarConfig {
+  let s = (Math.abs(Math.floor(seed)) % 2147483646) + 1;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)]!;
+  const b: BodyType = body ?? (rnd() < 0.5 ? "man" : "woman");
+  // the first few of each picker are the commonest choices: favour them
+  const favour = (xs: readonly string[]) => (rnd() < 0.6 ? xs[Math.floor(rnd() * Math.min(5, xs.length))]! : pick(xs));
+  const hairStyle = favour(LOOK_ORDER[b].hair.filter((h) => (b === "man" ? !["gele", "hijab", "bob", "ponytail", "bun"].includes(h) : true)));
+  const outfit = favour(LOOK_ORDER[b].outfit);
+  const look: AvatarConfig = { body: b, skinTone: pick(AVATAR_OPTIONS.skinTone), hairStyle, outfit };
+  if (rnd() < 0.6) look.outfitColor = pick(OUTFIT_COLORS).hex;
+  if (hairStyle !== "bald" && rnd() < 0.5) look.hairColor = FABRIC_HAIR.has(hairStyle) ? pick(OUTFIT_COLORS).hex : pick(HAIR_COLORS).hex;
+  return look;
+}
+
 export function isValidAvatar(value: unknown): value is AvatarConfig {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
