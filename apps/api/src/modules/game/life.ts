@@ -2,8 +2,12 @@
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
 import { firstDayStep } from "./firstday.js";
+import { sendPing } from "../presence.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
+  HOME_OBJECTS,
+  ITEM_OBJECT,
+  SELL_BACK,
   HOME_ACTION_BY_KEY,
   HOME_ROOMS,
   NEED_KEYS,
@@ -140,6 +144,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       placements,
       restEnergy: restEnergy(items),
       restAgainAt: again > now.getTime() ? new Date(again).toISOString() : null,
+      actsDoneAt: Object.fromEntries(Object.entries(freeAt).filter(([k]) => k.startsWith("__act_")).map(([k, v]) => [k.slice(6), v])),
     };
   };
 
@@ -194,7 +199,7 @@ export async function lifeRoutes(app: FastifyInstance) {
     const user = requireUser(request);
     const act = HOME_ACTION_BY_KEY.get(request.params.key);
     if (!act) throw notFound("Action");
-    const { room } = z.object({ room: z.string().max(40).optional() }).parse(request.body ?? {});
+    const { room, to } = z.object({ room: z.string().max(40).optional(), to: z.string().max(40).optional() }).parse(request.body ?? {});
     return inTx(async (tx, now) => {
       await lockProfile(tx, user.id);
       const home = await homeView(tx, user.id, now);
@@ -202,10 +207,11 @@ export async function lifeRoutes(app: FastifyInstance) {
         const names = act.needs.map((k) => HOME_ITEM_BY_KEY.get(k)?.name.split(" (")[0]?.toLowerCase() ?? k).join(" or ");
         throw new AppError(409, "missing_item", `You need a ${names} for that. Get one in "Things for your house".`);
       }
-      if (act.rooms) {
-        const rooms = (HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!).map((r) => r.key);
-        if (!room || !act.rooms.includes(room) || !rooms.includes(room)) throw new AppError(409, "wrong_room", "Your house doesn't have the room for that.");
-      }
+      // Done at a thing in the room you're in: the room's own (its picture), or one you bought.
+      const rooms = HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!;
+      const here = rooms.find((r) => r.key === room) ?? rooms[0]!;
+      const has = (o: string) => o === "floor" || o in (HOME_OBJECTS[here.art] ?? {}) || home.items.some((i) => ITEM_OBJECT[i] === o);
+      if (!act.uses.some(has)) throw new AppError(409, "not_here", "You can't do that in this room.");
       const { needs, freeAt } = await loadNeeds(tx, user.id, now);
       const at = (k: string) => (freeAt[`__act_${k}`] ? new Date(freeAt[`__act_${k}`]!).getTime() : 0);
       const wait = at(act.key) + act.every * 60_000 - now.getTime();
@@ -220,7 +226,17 @@ export async function lifeRoutes(app: FastifyInstance) {
       if (act.skill) await addSkill(tx, user.id, act.skill[0], act.skill[1]);
       if (act.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${act.xp}` }).where(eq(profiles.userId, user.id));
       if (act.gives.food && act.gives.food > 0) await firstDayStep(tx, user.id, "eat");
-      return { ...needsView(next), balance, again: new Date(now.getTime() + act.every * 60_000).toISOString() };
+      // A call to a friend reaches them (a note on their screen).
+      let called: string | null = null;
+      if (act.key === "call" && to && to !== "family") {
+        const [friend] = await tx.select({ id: profiles.userId, nickname: profiles.nickname }).from(profiles).where(sql`lower(${profiles.nickname}) = lower(${to})`);
+        const [mine] = await tx.select({ nickname: profiles.nickname }).from(profiles).where(eq(profiles.userId, user.id));
+        if (friend && friend.id !== user.id) {
+          sendPing(friend.id, { from: mine!.nickname, kind: "note", place: null, text: `📞 @${mine!.nickname} called you to gist` });
+          called = friend.nickname;
+        }
+      }
+      return { ...needsView(next), balance, called, again: new Date(now.getTime() + act.every * 60_000).toISOString() };
     });
   });
 
@@ -333,11 +349,31 @@ export async function lifeRoutes(app: FastifyInstance) {
       await lockProfile(tx, user.id);
       const [owned] = await tx.select().from(homeItems).where(and(eq(homeItems.userId, user.id), eq(homeItems.itemKey, key)));
       if (owned) throw new AppError(409, "owned", "You already have that.");
-      await postCoins(tx, user.id, -item.price, "home_item", `home_item:${user.id}:${key}`);
+      // Each purchase has its own ledger reference (bought again after selling it back: :1, :2…).
+      const [{ n }] = (await tx
+        .select({ n: count() })
+        .from(gameLedgerEntries)
+        .where(and(eq(gameLedgerEntries.userId, user.id), like(gameLedgerEntries.reference, `home_item_sold:${user.id}:${key}:%`)))) as [{ n: number }];
+      await postCoins(tx, user.id, -item.price, "home_item", Number(n) ? `home_item:${user.id}:${key}:${n}` : `home_item:${user.id}:${key}`);
       await tx.insert(homeItems).values({ userId: user.id, itemKey: key });
       return homeView(tx, user.id, now);
     });
     return reply.code(201).send(result);
+  });
+
+  // Sell something back for the house (bought by mistake): half its price.
+  app.delete<{ Params: { key: string } }>("/api/game/home/items/:key", async (request) => {
+    const user = requireUser(request);
+    const item = HOME_ITEM_BY_KEY.get(request.params.key);
+    if (!item) throw notFound("Item");
+    return inTx(async (tx, now) => {
+      await lockProfile(tx, user.id);
+      const gone = await tx.delete(homeItems).where(and(eq(homeItems.userId, user.id), eq(homeItems.itemKey, item.key))).returning();
+      if (!gone.length) throw notFound("Item");
+      const refund = Math.floor(item.price * SELL_BACK);
+      const posting = await postCoins(tx, user.id, refund, "home_item", `home_item_sold:${user.id}:${item.key}:${now.getTime()}`);
+      return { refund, balance: posting.balance, home: await homeView(tx, user.id, now) };
+    });
   });
 
   // Arrange furniture: put an item you own in a room of your home, at a spot (fractions of the room image).

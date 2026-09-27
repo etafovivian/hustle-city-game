@@ -1,10 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
-  HOME_ACTIONS,
-  NEED_ICON,
-  NEED_LABEL,
-  type HomeAction,
-  type NeedKey,
+  SELL_BACK,
   GENERATORS,
   HOME_ITEMS,
   HOME_ROOMS,
@@ -19,12 +15,13 @@ import {
   type NeedsView,
   type VehicleKind, fuelPriceOn, type OwnedPlot, WORKOUT } from "@hc/shared";
 import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X, KeyRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LetBox, RentPicker, Tenancy } from "./Rent.js";
 import { api, formatCoins } from "../api.js";
-import { InteriorScene, ROOMS, type PlayerAction, type Room } from "./Interior.js";
-import type { PoseAction } from "./rooms.js";
+import { InteriorScene, ROOMS, type InteriorPlayer, type PlayerAction, type Room } from "./Interior.js";
+import { ITEM_SPOTS, useHomeLife } from "./HomeLife.js";
+import type { PoseAction, Worker } from "./rooms.js";
 import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 
@@ -113,33 +110,11 @@ export function HomeCard({
   const [busy, setBusy] = useState(false);
   const [rebuild, setRebuild] = useState(false);
   const [me, setMe] = useState<PlayerAction>("walk");
-  /** The room on show (life-at-home actions depend on it: the pool, the cinema, the yard). */
+  /** The room on show (what you can do there depends on what it has). */
   const [roomKey, setRoomKey] = useState<string | null>(null);
-  /** When each action can be done again (from the server's answers this visit). */
-  const [again, setAgain] = useState<Record<string, number>>({});
-  const doAct = async (a: HomeAction) => {
-    setBusy(true);
-    setError(null);
-    setMe(a.pose);
-    try {
-      const r = await api<NeedsView & { again: string }>("POST", `/api/game/home/act/${a.key}`, { room: roomKey });
-      setAgain((x) => ({ ...x, [a.key]: new Date(r.again).getTime() }));
-      const bits = (Object.entries(a.gives) as [NeedKey, number][]).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : "−"}${NEED_ICON[k]} ${NEED_LABEL[k]}`);
-      notify(`${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}`);
-      onChanged();
-    } catch (e) {
-      setError((e as Error).message);
-      setMe("stand");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const canDo = (a: HomeAction) => (!a.needs || a.needs.some((k) => home.items.includes(k))) && (!a.rooms || (roomKey !== null && a.rooms.includes(roomKey)));
-  const homeActs = HOME_ACTIONS.filter(canDo);
-  /** Things you could buy to do more at home. */
-  const unlocks = [...new Set(HOME_ACTIONS.filter((a) => a.needs && !a.needs.some((k) => home.items.includes(k))).map((a) => HOME_ITEMS.find((i) => i.key === a.needs![0])?.name.split(" (")[0]).filter(Boolean))];
   const [placed, setPlaced] = useState(home.placements ?? {});
   const [error, setError] = useState<string | null>(null);
+  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe });
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
   const workout = async () => {
@@ -214,6 +189,8 @@ export function HomeCard({
           action={me}
           onAction={setMe}
           onRoom={setRoomKey}
+          goRoom={life.goRoom}
+          scene={life.scene}
           guests={guests}
           placements={placed}
           onPlace={(key, room, x, y) => {
@@ -222,15 +199,6 @@ export function HomeCard({
           }}
         />
         <div className="row home-acts">
-          {homeActs.map((a) => {
-            const left = again[a.key] ? Math.max(0, Math.ceil((again[a.key]! - Date.now()) / 60_000)) : 0;
-            return (
-              <button key={a.key} type="button" className="btn sm home-act" disabled={busy || left > 0} onClick={() => void doAct(a)} title={a.note}>
-                {a.icon} {a.label}
-                <span className="tiny muted">{left > 0 ? ` · again in ${left} min` : ` · ${a.note}`}</span>
-              </button>
-            );
-          })}
           <button type="button" className="btn sm" onClick={() => setMe("dance")}>
             💃 Dance
           </button>
@@ -241,7 +209,7 @@ export function HomeCard({
           )}
           <span className="tiny muted">Tap the floor to walk around.</span>
         </div>
-        {unlocks.length > 0 && <p className="tiny muted">More to do at home with: {unlocks.join(", ")} (in "Things for your house" below).</p>}
+        {life.panel}
         <p className={`small power-line ${hasLight ? "on" : "off"}`}>
           {hasLight
             ? "💡 There's light."
@@ -359,17 +327,6 @@ export function Garage({ notify, onChanged, showroom = false }: { notify: (m: st
 }
 
 /** The rooms of a home with tabs to move between them (bigger houses have more rooms). */
-/** Where furniture stands in a room (front of the floor, fractions of the image). */
-const ITEM_SPOTS: [number, number][] = [
-  [0.24, 0.8],
-  [0.76, 0.8],
-  [0.38, 0.9],
-  [0.62, 0.9],
-  [0.14, 0.68],
-  [0.86, 0.68],
-  [0.5, 0.95],
-  [0.3, 0.7],
-];
 
 /**
  * A private home: no strangers. A house help works in the kitchen, and guests (players visiting now) sit in the
@@ -404,6 +361,8 @@ export function HomeRooms({
   action = "walk",
   onAction,
   onRoom,
+  goRoom,
+  scene,
   guests = [],
   placements = {},
   onPlace,
@@ -422,6 +381,10 @@ export function HomeRooms({
   onAction?: (a: PlayerAction) => void;
   /** The room now on show. */
   onRoom?: (key: string) => void;
+  /** Switch to this room (an action happens there). */
+  goRoom?: { key: string; seq: number } | null;
+  /** What the room scene shows while you do something (your spot, a picture on the screen, a delivery). */
+  scene?: (room: string) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null };
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
@@ -437,6 +400,12 @@ export function HomeRooms({
   }, [action]);
   const room = rooms[Math.min(at, rooms.length - 1)]!;
   useEffect(() => onRoom?.(room.key), [room.key]);
+  useEffect(() => {
+    if (!goRoom) return;
+    const i = rooms.findIndex((r) => r.key === goRoom.key);
+    if (i >= 0) setAt(i);
+  }, [goRoom?.seq]);
+  const extra = scene?.(room.key);
   return (
     <div className="home-rooms">
       {rooms.length > 1 && (
@@ -461,8 +430,10 @@ export function HomeRooms({
           alt={`Inside ${who} ${room.label.toLowerCase()}`}
           room={privateRoom(ROOMS[room.art], room.key, guests)}
           seed={3 + at}
-          player={avatar ? { avatar, action } : undefined}
+          player={avatar ? { avatar, action, spot: extra?.spot } : undefined}
           onPlayerWalk={() => onAction?.("walk")}
+          overlay={extra?.overlay}
+          extraWorkers={extra?.extraWorkers}
         />
         {/* Your things: spread through the rooms, a few per room */}
         {items
@@ -476,7 +447,7 @@ export function HomeRooms({
               <img
                 key={k}
                 className="home-item"
-                src={item.art}
+                src={extra?.onItem === k && item.art.endsWith(".svg") ? item.art.replace(/\.svg$/, "-on.svg") : item.art}
                 alt={item.name}
                 title={item.name}
                 draggable={false}
@@ -522,6 +493,19 @@ function HomeShop({ home, notify, onChanged }: { home: HomeView; notify: (m: str
       setBusy(null);
     }
   };
+  const sell = async (key: string, name: string, price: number) => {
+    if (!window.confirm(`Sell back your ${name.split(" (")[0]!.toLowerCase()} for ${formatCoins(Math.floor(price * SELL_BACK))} coins (half what it cost)?`)) return;
+    setBusy(key);
+    try {
+      const r = await api<{ refund: number }>("DELETE", `/api/game/home/items/${key}`);
+      notify(`Sold back for ${formatCoins(r.refund)} coins.`);
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <div className="home-shop">
       <button type="button" className="btn sm" onClick={() => setOpen((x) => !x)}>
@@ -539,8 +523,13 @@ function HomeShop({ home, notify, onChanged }: { home: HomeView; notify: (m: str
                   <span className="tiny muted">+{it.comfort} energy every sleep</span>
                 </span>
                 {owned ? (
-                  <span className="notice small">
-                    <Check size={14} aria-hidden="true" /> Yours
+                  <span className="stack" style={{ gap: 4, justifyItems: "end" }}>
+                    <span className="notice small">
+                      <Check size={14} aria-hidden="true" /> Yours
+                    </span>
+                    <button type="button" className="btn sm quiet" disabled={busy !== null} onClick={() => void sell(it.key, it.name, it.price)}>
+                      {busy === it.key ? "…" : `Sell back (${formatCoins(Math.floor(it.price * SELL_BACK))})`}
+                    </button>
                   </span>
                 ) : (
                   <button type="button" className="btn sm go" disabled={busy !== null} onClick={() => void buy(it.key)}>
