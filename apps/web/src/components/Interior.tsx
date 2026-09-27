@@ -6,7 +6,7 @@
 // the spot for what they're doing (a seat, the bed, the dance floor, the barber's chair) and plays that pose there.
 // Tapping the floor walks them there (snapped to the walkway). The caller changes what they do with `player.action`.
 import type { AvatarConfig } from "@hc/shared";
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
 import { layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
@@ -99,6 +99,9 @@ export interface InteriorPlayer {
   avatar: AvatarConfig;
   /** What they're doing: they walk to the room's spot for it and play its pose ("walk": just come in). */
   action: PlayerAction;
+  /** Go here instead of the room's spot for the action (the cooker, the TV, the mirror), passing `via` first
+   * (sweeping the floor). A new `seq` sends them again. */
+  spot?: { at: Pt; dir: Facing; via?: Pt[]; seq: number };
 }
 
 export function InteriorScene({
@@ -108,6 +111,8 @@ export function InteriorScene({
   seed = 1,
   player,
   onPlayerWalk,
+  overlay,
+  extraWorkers,
 }: {
   src: string;
   alt: string;
@@ -117,6 +122,10 @@ export function InteriorScene({
   player?: InteriorPlayer;
   /** The player tapped the floor and is walking there (so the caller can show them as walking, not sitting). */
   onPlayerWalk?: () => void;
+  /** Drawn over the room picture, under the people (a TV picture playing on the screen). Fractions of the room. */
+  overlay?: ReactNode;
+  /** Extra people passing through (a delivery rider bringing food). */
+  extraWorkers?: Worker[];
 }) {
   const box = useRef<HTMLDivElement>(null);
   const els = useRef<(HTMLDivElement | null)[]>([]);
@@ -237,12 +246,14 @@ export function InteriorScene({
   return (
     <div ref={box} className="interior-scene" onClick={player ? onTap : undefined} style={player && walkway.length > 1 ? { cursor: "pointer" } : undefined}>
       <img src={src} alt={alt} />
+      {overlay && <div className="interior-overlay">{overlay}</div>}
       {h > 0 && player && (
         <PlayerInRoom
           key={src}
           room={room}
           avatar={player.avatar}
           action={player.action}
+          spot={player.spot}
           tap={tap}
           ph={ph}
           box={box}
@@ -250,7 +261,7 @@ export function InteriorScene({
           onSettle={(at) => setTaken((prev) => (prev === at || (prev && at && close(prev, at, 0.001)) ? prev : at))}
         />
       )}
-      {h > 0 && (room?.workers ?? []).map((w, i) => <WorkerInRoom key={`${src}-w${i}`} worker={w} ph={ph} box={box} reduce={reduce} />)}
+      {h > 0 && [...(room?.workers ?? []), ...(extraWorkers ?? [])].map((w, i) => <WorkerInRoom key={`${src}-w${i}-${w.variant}`} worker={w} ph={ph} box={box} reduce={reduce} />)}
       {h > 0 &&
         variants.map((v, i) => <div key={`${v}-${i}`} ref={(el) => void (els.current[i] = el)} className="interior-npc" aria-hidden="true" style={size} />)}
       {h > 0 &&
@@ -284,6 +295,7 @@ function PlayerInRoom({
   room,
   avatar,
   action,
+  spot,
   tap,
   ph,
   box,
@@ -293,6 +305,7 @@ function PlayerInRoom({
   room: Room | undefined;
   avatar: AvatarConfig;
   action: PlayerAction;
+  spot?: InteriorPlayer["spot"];
   tap: { at: Pt; seq: number } | null;
   ph: number;
   box: RefObject<HTMLDivElement | null>;
@@ -319,9 +332,17 @@ function PlayerInRoom({
     m.free = false;
     const box0 = box.current;
     const aspect = box0 && box0.clientHeight ? box0.clientWidth / box0.clientHeight : 1;
-    const target = spotFor(room, action);
+    // A spot from the caller (the thing being used) wins over the room's own spot for the action.
+    const target = spot && action !== "walk" ? { spot: { at: spot.at, dir: spot.dir, behind: undefined as number | undefined }, pose: POSE_OF[action] } : spotFor(room, action);
     const to: Pt = target ? target.spot.at : walkway.length > 1 ? nearestOnPolyline(walkway, m.at, aspect).at : m.at;
-    m.route = close(m.at, to, 0.002) ? [] : routeTo(walkway, m.at, to, aspect).slice(1);
+    // Through the `via` points first (sweeping round the room), then to the spot.
+    let from = m.at;
+    const route: Pt[] = [];
+    for (const p of [...(spot && action !== "walk" ? (spot.via ?? []) : []), to]) {
+      if (!close(from, p, 0.002)) route.push(...routeTo(walkway, from, p, aspect).slice(1));
+      from = p;
+    }
+    m.route = route;
     m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
     m.face = target?.spot.dir ?? m.face;
     m.behind = target?.spot.behind;
@@ -330,7 +351,7 @@ function PlayerInRoom({
     m.settled = false;
     onSettle(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [action, room]);
+  }, [action, room, spot?.seq]);
 
   // A tap: walk there and stand.
   useEffect(() => {

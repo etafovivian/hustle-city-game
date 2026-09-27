@@ -89,6 +89,8 @@ export interface HomeView {
   items: string[];
   /** Where you put each item (room key and spot); missing = its default spot. */
   placements: Record<string, { room: string; x: number; y: number }>;
+  /** When you last did each thing at home (HOME_ACTIONS key → ISO time), for cooldowns and "eat what you cooked". */
+  actsDoneAt?: Record<string, string>;
   /** Energy a rest gives you now. */
   restEnergy: number;
   /** When resting will work again (ISO), or null if now. */
@@ -107,10 +109,121 @@ export interface MapHome {
 }
 
 // ---------------------------------------------------------------- life at home
+/** Things in a room that you do something with. */
+export type HomeObject = "cooker" | "tv" | "screen" | "seat" | "table" | "wardrobe" | "bucket" | "line" | "garden" | "pool" | "shower" | "radio" | "floor";
+/** Where you stand (or sit) to use it, as fractions of the room picture, and which way you face. */
+export interface ObjectSpot {
+  at: [number, number];
+  dir: "se" | "sw" | "ne" | "nw";
+  /** A screen's corners (top-left, top-right, bottom-right, bottom-left), for the moving picture. */
+  screen?: [[number, number], [number, number], [number, number], [number, number]];
+}
 /**
- * Things to do at home, each with a real effect: Food from cooking, Fun from the TV, Style from a bath… Some need
- * something you own (a cooker, a TV) or a room (the villa's pool and cinema, the compound yard); each has its own
- * cooldown, and the server checks all of it. `pose` is what your character does in the room.
+ * What each home room (by its picture) already has: a kitchen has a cooker, the villa cinema a big screen, the
+ * compound yard a clothesline. Actions use these without buying anything; a thing you buy adds what a room lacks.
+ */
+export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>>> = {
+  "home-face-me": {
+    cooker: { at: [0.4, 0.78], dir: "se" },
+    bucket: { at: [0.22, 0.72], dir: "sw" },
+    radio: { at: [0.62, 0.7], dir: "se" },
+    wardrobe: { at: [0.72, 0.55], dir: "ne" },
+    seat: { at: [0.3, 0.72], dir: "se" },
+    floor: { at: [0.55, 0.7], dir: "se" },
+  },
+  "home-self-contain": {
+    cooker: { at: [0.6, 0.47], dir: "ne" },
+    tv: { at: [0.58, 0.66], dir: "se", screen: [[0.691, 0.635], [0.752, 0.605], [0.755, 0.68], [0.695, 0.714]] },
+    wardrobe: { at: [0.76, 0.54], dir: "ne" },
+    seat: { at: [0.5, 0.62], dir: "se" },
+    floor: { at: [0.55, 0.75], dir: "se" },
+  },
+  "home-mini-flat": {
+    tv: { at: [0.42, 0.62], dir: "se", screen: [[0.706, 0.336], [0.868, 0.413], [0.864, 0.511], [0.705, 0.441]] },
+    seat: { at: [0.42, 0.62], dir: "se" },
+    table: { at: [0.45, 0.62], dir: "se" },
+    floor: { at: [0.62, 0.8], dir: "se" },
+  },
+  "home-bedroom": {
+    wardrobe: { at: [0.74, 0.62], dir: "ne" },
+    floor: { at: [0.55, 0.75], dir: "se" },
+  },
+  "home-kitchen": {
+    cooker: { at: [0.3, 0.56], dir: "nw" },
+    table: { at: [0.7, 0.66], dir: "ne" },
+    floor: { at: [0.5, 0.7], dir: "se" },
+  },
+  "home-compound-yard": {
+    bucket: { at: [0.4, 0.45], dir: "nw" },
+    line: { at: [0.8, 0.5], dir: "ne" },
+    garden: { at: [0.55, 0.42], dir: "nw" },
+    seat: { at: [0.68, 0.38], dir: "se" },
+    floor: { at: [0.5, 0.6], dir: "se" },
+  },
+  "home-duplex": {
+    seat: { at: [0.45, 0.68], dir: "se" },
+    table: { at: [0.28, 0.62], dir: "nw" },
+    floor: { at: [0.6, 0.8], dir: "se" },
+  },
+  "home-duplex-bedroom": {
+    tv: { at: [0.5, 0.62], dir: "sw", screen: [[0.055, 0.397], [0.218, 0.323], [0.218, 0.451], [0.059, 0.522]] },
+    wardrobe: { at: [0.84, 0.62], dir: "ne" },
+    seat: { at: [0.5, 0.62], dir: "sw" },
+    floor: { at: [0.45, 0.78], dir: "se" },
+  },
+  "home-mansion": {
+    seat: { at: [0.4, 0.7], dir: "se" },
+    table: { at: [0.45, 0.68], dir: "se" },
+    floor: { at: [0.6, 0.85], dir: "se" },
+  },
+  "home-villa-suite": {
+    wardrobe: { at: [0.22, 0.56], dir: "nw" },
+    seat: { at: [0.82, 0.62], dir: "sw" },
+    floor: { at: [0.5, 0.72], dir: "se" },
+  },
+  "home-villa-kitchen": {
+    cooker: { at: [0.4, 0.46], dir: "nw" },
+    table: { at: [0.48, 0.6], dir: "ne" },
+    floor: { at: [0.55, 0.78], dir: "se" },
+  },
+  "home-villa-cinema": {
+    screen: { at: [0.74, 0.62], dir: "nw", screen: [[0.12, 0.277], [0.416, 0.142], [0.416, 0.382], [0.123, 0.551]] },
+    seat: { at: [0.74, 0.62], dir: "nw" },
+    floor: { at: [0.45, 0.7], dir: "se" },
+  },
+  "home-villa-pool": {
+    pool: { at: [0.5, 0.78], dir: "se" },
+    shower: { at: [0.8, 0.58], dir: "sw" },
+    seat: { at: [0.3, 0.55], dir: "se" },
+    table: { at: [0.62, 0.45], dir: "nw" },
+    floor: { at: [0.4, 0.62], dir: "se" },
+  },
+};
+/** Things you can buy that bring an object into the house (when the room doesn't have it already). */
+export const ITEM_OBJECT: Readonly<Record<string, HomeObject>> = {
+  gas_cooker: "cooker",
+  flat_tv: "tv",
+  radio: "radio",
+  bucket_set: "bucket",
+  water_tank: "bucket",
+  sofa_ankara: "seat",
+  adire_sofa_set: "seat",
+  plastic_chairs: "seat",
+};
+/** What a house can do: objects in its rooms (by picture), plus what the things you own bring. */
+export function houseObjects(roomArts: readonly string[], items: readonly string[]): Set<HomeObject> {
+  const out = new Set<HomeObject>(["floor"]);
+  for (const art of roomArts) for (const k of Object.keys(HOME_OBJECTS[art] ?? {})) out.add(k as HomeObject);
+  for (const i of items) if (ITEM_OBJECT[i]) out.add(ITEM_OBJECT[i]!);
+  return out;
+}
+/** Selling something back for the house returns this share of its price. */
+export const SELL_BACK = 0.5;
+
+/**
+ * Things to do at home, each with a real effect, done at a thing in the house (`uses`: any one of these objects; the
+ * room's own, or one you bought). Some also need a thing you own (`needs`: the console for games). Each has its own
+ * cooldown and the server checks all of it. `pose` is what your character does there.
  */
 export interface HomeAction {
   key: string;
@@ -118,10 +231,8 @@ export interface HomeAction {
   icon: string;
   /** What it does, shown on the button. */
   note: string;
-  /** Needs one of these things in the house. */
+  uses: readonly HomeObject[];
   needs?: readonly string[];
-  /** Only in rooms with these keys (from HOME_ROOMS). */
-  rooms?: readonly string[];
   /** Coins it costs (foodstuff, a delivery). */
   cost?: number;
   gives: Partial<Record<"food" | "energy" | "fun" | "social" | "health" | "style", number>>;
@@ -132,24 +243,26 @@ export interface HomeAction {
   /** Only within this many minutes after another action (eating what you cooked). */
   after?: { action: string; within: number };
   pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair";
+  /** What plays on a screen while you do it. */
+  shows?: "tv" | "film" | "game";
 }
 
 export const HOME_ACTIONS: readonly HomeAction[] = [
-  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", needs: ["gas_cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "stand" },
-  { key: "leftovers", label: "Eat what you cooked", icon: "🍲", note: "Free · +Food", needs: ["gas_cooker"], gives: { food: 20 }, every: 60, after: { action: "cook", within: 240 }, pose: "eat" },
-  { key: "order", label: "Order food (Chop Express)", icon: "🛵", note: "700 coins · ++Food", cost: 700, gives: { food: 30 }, every: 60, pose: "eat" },
-  { key: "tv", label: "Watch TV", icon: "📺", note: "+Fun", needs: ["flat_tv"], gives: { fun: 15 }, every: 60, pose: "sit" },
-  { key: "film", label: "Watch a film", icon: "🎬", note: "++Fun", rooms: ["cinema"], gives: { fun: 25, social: 3 }, every: 120, pose: "sit" },
-  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", rooms: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "stand" },
-  { key: "bath", label: "Bucket bath", icon: "🪣", note: "+Health +Style", needs: ["bucket_set", "water_tank"], gives: { health: 6, style: 10 }, every: 60, pose: "stand" },
-  { key: "dress", label: "Dress up in the mirror", icon: "👔", note: "+Style", gives: { style: 12 }, every: 120, pose: "stand" },
-  { key: "pray", label: "Pray at home", icon: "🙏🏾", note: "+Energy, a calm mind", needs: ["prayer_mat"], gives: { energy: 5, fun: 3 }, every: 60, pose: "pray" },
-  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "sit" },
-  { key: "call", label: "Call your family", icon: "📞", note: "Free · +Social", gives: { social: 12 }, every: 180, pose: "stand" },
-  { key: "clean", label: "Clean the house", icon: "🧹", note: "+Health · XP", gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "stand" },
-  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", needs: ["bucket_set", "water_tank"], gives: { style: 8, energy: -4 }, every: 240, pose: "stand" },
-  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", rooms: ["yard"], gives: { health: 6, fun: 4 }, every: 180, pose: "stand" },
-  { key: "radio_dance", label: "Dance to the radio", icon: "💃🏾", note: "+Fun", needs: ["radio"], gives: { fun: 10, energy: -4 }, every: 60, pose: "dance" },
-  { key: "relax", label: "Sit and relax", icon: "🛋️", note: "+Energy", gives: { energy: 5, fun: 2 }, every: 30, pose: "sit" },
+  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", uses: ["cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "stand" },
+  { key: "leftovers", label: "Eat what you cooked", icon: "🍲", note: "Free · +Food", uses: ["table", "seat"], gives: { food: 20 }, every: 60, after: { action: "cook", within: 240 }, pose: "eat" },
+  { key: "order", label: "Order food (Chop Express)", icon: "🛵", note: "700 coins · a rider brings it · ++Food", uses: ["table", "seat", "floor"], cost: 700, gives: { food: 30 }, every: 60, pose: "eat" },
+  { key: "tv", label: "Watch TV", icon: "📺", note: "+Fun", uses: ["tv"], gives: { fun: 15 }, every: 60, pose: "sit", shows: "tv" },
+  { key: "film", label: "Watch a film", icon: "🎬", note: "++Fun", uses: ["screen"], gives: { fun: 25, social: 3 }, every: 120, pose: "sit", shows: "film" },
+  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", uses: ["screen", "tv"], needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "sit", shows: "game" },
+  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", uses: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "stand" },
+  { key: "bath", label: "Bath", icon: "🚿", note: "+Health +Style", uses: ["shower", "bucket"], gives: { health: 6, style: 10 }, every: 60, pose: "stand" },
+  { key: "dress", label: "Change your clothes", icon: "👗", note: "Opens your wardrobe · +Style", uses: ["wardrobe"], gives: { style: 12 }, every: 120, pose: "stand" },
+  { key: "pray", label: "Pray", icon: "🙏🏾", note: "+Energy, a calm mind", uses: ["floor"], gives: { energy: 5, fun: 3 }, every: 60, pose: "pray" },
+  { key: "call", label: "Call someone", icon: "📞", note: "Pick who · +Social", uses: ["floor"], gives: { social: 12 }, every: 180, pose: "stand" },
+  { key: "clean", label: "Sweep and tidy up", icon: "🧹", note: "+Health · XP", uses: ["floor"], gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "stand" },
+  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", uses: ["line", "bucket"], gives: { style: 8, energy: -4 }, every: 240, pose: "stand" },
+  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", uses: ["garden"], gives: { health: 6, fun: 4 }, every: 180, pose: "stand" },
+  { key: "radio_dance", label: "Dance to the radio", icon: "💃🏾", note: "+Fun", uses: ["radio"], gives: { fun: 10, energy: -4 }, every: 60, pose: "dance" },
+  { key: "relax", label: "Sit and relax", icon: "🛋️", note: "+Energy", uses: ["seat"], gives: { energy: 5, fun: 2 }, every: 30, pose: "sit" },
 ];
 export const HOME_ACTION_BY_KEY: ReadonlyMap<string, HomeAction> = new Map(HOME_ACTIONS.map((a) => [a.key, a]));

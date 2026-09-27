@@ -1042,3 +1042,22 @@ body.hud-hidden .map-hint { display: none !important; }
 body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 /* On phones the bottom menu bar sits over the map: keep the tour above it. */
 @media (max-width: 899px) { .firstday, .firstday-pill { bottom: 100px; } .firstday { max-height: 46vh; overflow: auto; } }
+
+/* Life at home: a moving picture on a TV or the cinema screen, the call picker */
+.interior-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.screen-show { position: absolute; inset: 0; width: 100%; height: 100%; }
+.screen-show .ss-scene { animation: ss-pan 7s ease-in-out infinite alternate; }
+.screen-show .ss-figure { animation: ss-sway 2.6s ease-in-out infinite alternate; }
+.screen-show .ss-flicker { opacity: 0; animation: ss-flicker 4s steps(1) infinite; }
+.screen-show .ss-ticker { animation: ss-ticker 9s linear infinite; }
+.screen-show .ss-scroll { animation: ss-scroll 3s linear infinite; }
+.screen-show .ss-runner { animation: ss-jump 1.2s ease-in-out infinite; }
+@keyframes ss-pan { to { transform: translate(-0.15px, 0.05px); } }
+@keyframes ss-sway { to { transform: translate(0.08px, 0); } }
+@keyframes ss-flicker { 0% { opacity: 0; } 48% { opacity: .12; } 50% { opacity: 0; } 82% { opacity: .08; } 84% { opacity: 0; } }
+@keyframes ss-ticker { from { transform: translateX(1px); } to { transform: translateX(-2.6px); } }
+@keyframes ss-scroll { to { transform: translateX(-0.7px); } }
+@keyframes ss-jump { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-0.25px); } }
+@media (prefers-reduced-motion: reduce) { .screen-show * { animation: none !important; } }
+.home-act { display: inline-flex; flex-wrap: wrap; gap: 2px; text-align: left; }
+.call-picker { display: grid; gap: 6px; padding: 10px; border-radius: 14px; border: 1px solid var(--rule-strong); background: var(--sheet); }

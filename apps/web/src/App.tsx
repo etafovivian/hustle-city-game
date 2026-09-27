@@ -72,11 +72,15 @@ export function App() {
     };
     const close = () => setPhone(null);
     const report = () => setPhone("report");
+    // Another screen opens a phone app (the wardrobe from your house's "Change your clothes").
+    const openApp = (e: Event) => setPhone((e as CustomEvent<PhoneApp>).detail);
     window.addEventListener("hc:open-game", open);
     window.addEventListener("hc:close-phone", close);
     window.addEventListener("hc:report", report);
+    window.addEventListener("hc:open-phone", openApp);
     return () => {
       window.removeEventListener("hc:report", report);
+      window.removeEventListener("hc:open-phone", openApp);
       window.removeEventListener("hc:open-game", open);
       window.removeEventListener("hc:close-phone", close);
     };
