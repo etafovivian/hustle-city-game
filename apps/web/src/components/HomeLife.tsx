@@ -139,7 +139,25 @@ function spotIn(room: HomeRoom, uses: readonly HomeObject[], items: string[], pl
   return null;
 }
 
-const POSE: Record<HomeAction["pose"], PlayerAction> = { sit: "sit", eat: "eat", dance: "dance", stand: "stand", pray: "pray", chair: "chair" };
+const POSE: Record<HomeAction["pose"], PlayerAction> = {
+  sit: "sit",
+  eat: "eat",
+  dance: "dance",
+  stand: "stand",
+  pray: "pray",
+  chair: "chair",
+  // their own poses (Interior POSE_OF): cooking at the hob, a bucket bath, scrubbing in a basin, sweeping, watering,
+  // the phone at the ear, a controller in hand, at the wardrobe or mirror, floating in the pool
+  cook: "cook",
+  bath: "bath",
+  laundry: "laundry",
+  sweep: "sweep",
+  water_plants: "water_plants",
+  phone: "phone",
+  games: "games",
+  swim: "swim",
+  dress: "dress",
+};
 
 /**
  * Life at home for the home card: the actions this house can do (and where), and what the room scene should show

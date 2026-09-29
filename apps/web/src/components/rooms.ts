@@ -3,6 +3,7 @@
 //   walkway  open floor, in order: walkers go back and forth along it, and the player walks on it (taps snap to it);
 //   stations people who stay put and do something (pose sheets in public/art/life/poses);
 //   spots    where the player goes for each thing they can do in the room (door = where they come in).
+import type { AvatarConfig } from "@hc/shared";
 import { OUTFIT_VARIANTS, STAFF_VARIANTS, type WalkerVariant } from "./walkers.js";
 
 /** People who stay put and do something (Blender pose sheets in public/art/life/poses). */
@@ -37,7 +38,26 @@ export type PoseAction =
   | "sew"
   | "sit_desk"
   | "eat_table"
-  | "sit_table";
+  | "sit_table"
+  // Life at home (player poses): see POSE_SHEETS.
+  | "bucket_bath"
+  | "wash_clothes"
+  | "sweep"
+  | "water_plants"
+  | "phone_call"
+  | "play_games"
+  | "dress_mirror"
+  | "swim"
+  // Together (a player and a partner, each from their own layers): see PAIR_POSES.
+  | "walk_hand_l"
+  | "walk_hand_r"
+  | "dance_pair"
+  | "wedding_l"
+  | "wedding_r"
+  | "hug_m"
+  | "hug_w";
+/** Everyday adult looks with the life-at-home poses (baked; any look has them as layers). */
+const HOME_LOOKS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Adult looks that have every pose, prayer included. */
 const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
@@ -67,19 +87,39 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   sick_sit: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
   take_order: ["waiter", "bartender"],
   stand_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS, ...STAFF_VARIANTS],
-  cook_hob: ["woman_buba", "woman_gele", "chef", "man_casual"],
+  cook_hob: ["woman_buba", "woman_gele", "chef", "man_casual", "man_kaftan", ...OUTFIT_VARIANTS],
   cut_hair: ["man_casual", "woman_buba", "woman_gele"],
   sew: ["woman_buba", "man_kaftan"],
   sit_desk: ["man_casual", "woman_buba", "man_kaftan", "woman_gele"],
   eat_table: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
   sit_table: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", "schoolgirl", "schoolboy", ...OUTFIT_VARIANTS],
+  bucket_bath: HOME_LOOKS,
+  wash_clothes: HOME_LOOKS,
+  sweep: HOME_LOOKS,
+  water_plants: HOME_LOOKS,
+  phone_call: HOME_LOOKS,
+  play_games: HOME_LOOKS,
+  dress_mirror: HOME_LOOKS,
+  swim: HOME_LOOKS,
+  // Together poses exist only as layers (spriteComposer): no baked look has them; POSE_SHEETS[...].fallback is shown
+  // instead when layers are off.
+  walk_hand_l: [],
+  walk_hand_r: [],
+  dance_pair: [],
+  wedding_l: [],
+  wedding_r: [],
+  hug_m: [],
+  hug_w: [],
 };
 /**
  * Each pose sheet's frame size, frame count and speed. Standing, seated and praying frames have the feet 16 px above
  * the bottom; lying (sleep) frames are centred on the middle of the body. Salah frames are wider (prostration reaches
  * forward) and only salah has a "nw" sheet (facing the mihrab).
  */
-export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: number; fps: number; centred?: boolean; nw?: boolean; ne?: boolean; walk?: boolean }> = {
+export const POSE_SHEETS: Record<
+  PoseAction,
+  { w: number; h: number; frames: number; fps: number; centred?: boolean; nw?: boolean; ne?: boolean; walk?: boolean; fallback?: PoseAction }
+> = {
   dance: { w: 96, h: 160, frames: 8, fps: 10 },
   serve: { w: 96, h: 160, frames: 8, fps: 7 },
   stand_idle: { w: 96, h: 160, frames: 8, fps: 7 },
@@ -127,7 +167,54 @@ export const POSE_SHEETS: Record<PoseAction, { w: number; h: number; frames: num
   eat_table: { w: 96, h: 160, frames: 8, fps: 5, nw: true, ne: true },
   // sit_table: seated at a table chatting, forearms on it (the legs under the table are cut away like eat_table).
   sit_table: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
+  // Life at home. bucket_bath: scoop from a bucket by the feet and pour over the head (dressed); wash_clothes: on a
+  // low stool scrubbing a shirt in a basin (stool and basin in the sheet); sweep: bent over with a short broom;
+  // water_plants: a watering can; phone_call; play_games: seated with a controller (anchored at the feet like
+  // sit_talk); dress_mirror: straightening the collar and smoothing the hair at a mirror (face the mirror); swim:
+  // floating on the back in a rubber ring, centred on the body like sleep (only the part above the waterline drawn).
+  bucket_bath: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true },
+  wash_clothes: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  sweep: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
+  water_plants: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
+  phone_call: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true },
+  play_games: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
+  dress_mirror: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true },
+  swim: { w: 192, h: 112, frames: 8, fps: 3, centred: true },
+  // Together (layers only; `fallback` when layers are off). See PAIR_POSES for who plays which and where.
+  walk_hand_l: { w: 96, h: 160, frames: 8, fps: 10, nw: true, ne: true, walk: true, fallback: "stand_idle" },
+  walk_hand_r: { w: 96, h: 160, frames: 8, fps: 10, nw: true, ne: true, walk: true, fallback: "stand_idle" },
+  dance_pair: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true, fallback: "dance" },
+  wedding_l: { w: 96, h: 160, frames: 8, fps: 4, fallback: "stand_idle" },
+  wedding_r: { w: 96, h: 160, frames: 8, fps: 4, fallback: "stand_idle" },
+  hug_m: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true, fallback: "stand_idle" },
+  hug_w: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true, fallback: "stand_idle" },
 };
+
+/**
+ * Two people together: which pose each plays and where the partner stands, in metres from the player in the
+ * player's own frame (side: + is the player's left; ahead: + is the way the player faces). The partner faces the
+ * same way (`face: "same"`) or back at the player (`face: "opposite"`). Each sprite comes from its own layers, so any
+ * two looks pair up; the hug sheets already hide what the other body covers (hug_m: hugging a man, hug_w: a woman).
+ *   holdHands  walking side by side holding hands (player walk_hand_l, partner on the left with walk_hand_r)
+ *   sit        side by side on a sofa or bench: sit_talk, 0.55 m apart
+ *   eat        across one table: eat_table facing each other, 0.9 m apart
+ *   dance      dance_pair facing each other, hands joined
+ *   cook       cook_hob side by side at the cooker
+ *   wedding    standing side by side holding hands, waving to the guests (wedding_l / wedding_r)
+ *   hug        hug_m / hug_w by the partner's body, 0.3 m apart, facing each other
+ */
+export type PairKey = "holdHands" | "sit" | "eat" | "dance" | "cook" | "wedding" | "hug";
+export const PAIR_POSES: Record<PairKey, { player: PoseAction; partner: PoseAction; side: number; ahead: number; face: "same" | "opposite" }> = {
+  holdHands: { player: "walk_hand_l", partner: "walk_hand_r", side: 0.55, ahead: 0, face: "same" },
+  sit: { player: "sit_talk", partner: "sit_talk", side: 0.55, ahead: 0, face: "same" },
+  eat: { player: "eat_table", partner: "eat_table", side: 0, ahead: 0.9, face: "opposite" },
+  dance: { player: "dance_pair", partner: "dance_pair", side: 0, ahead: 0.6, face: "opposite" },
+  cook: { player: "cook_hob", partner: "cook_hob", side: 0.6, ahead: 0, face: "same" },
+  wedding: { player: "wedding_l", partner: "wedding_r", side: 0.55, ahead: 0, face: "same" },
+  hug: { player: "hug_m", partner: "hug_w", side: 0, ahead: 0.3, face: "opposite" },
+};
+/** The hug sheet for hugging someone of this body. */
+export const hugPose = (partnerBody: "man" | "woman"): PoseAction => (partnerBody === "man" ? "hug_m" : "hug_w");
 
 export type Pt = [number, number];
 /** Pose sheets face se or sw (towards the viewer); some also face nw or ne (POSE_SHEETS nw/ne): salah towards a mihrab
@@ -147,9 +234,22 @@ export type PlayerAction =
   | "boxing"
   | "run"
   | "pushups"
-  | "skip";
+  | "skip"
+  // life at home
+  | "cook"
+  | "bath"
+  | "laundry"
+  | "sweep"
+  | "water_plants"
+  | "phone"
+  | "games"
+  | "swim"
+  | "dress";
 /** Every action the player can take in a room (for callers mapping activities to actions). */
-export const PLAYER_ACTIONS: PlayerAction[] = ["walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip"];
+export const PLAYER_ACTIONS: PlayerAction[] = [
+  "walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip",
+  "cook", "bath", "laundry", "sweep", "water_plants", "phone", "games", "swim", "dress",
+];
 /** Marked places for the player: door (where they come in) and one per action that fits the room. */
 /** "workout": a free bit of floor at home for push-ups, skipping, dumbbells or shadow boxing. */
 export type SpotKey = "door" | "workout" | Exclude<PlayerAction, "walk">;
@@ -166,11 +266,14 @@ export interface Room {
   walkway: Pt[];
   walkers: number;
   /** `phase`: frames into its loop this person starts (so a row of people praying don't move in step). */
-  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number; behind?: number }[];
+  /** `look`: someone with their own look (a guest, a partner), drawn from tinted layers when on (variant otherwise). */
+  stations: { action: PoseAction; at: Pt; dir: Facing; variant?: WalkerVariant; phase?: number; behind?: number; look?: AvatarConfig }[];
   spots?: Partial<Record<SpotKey, Spot>>;
   /** People at work (or passing through) who move from task to task: the nurse doing her rounds, the barman
    * going from customer to customer, a patient who comes in, lies down for a while and goes home. */
   workers?: Worker[];
+  /** Where two people go together (PAIR_POSES): the player's spot and the partner's. */
+  pairs?: Partial<Record<PairKey, [Spot, Spot]>>;
 }
 
 /** One stop on a worker's round: walk there (straight, they know the room), then hold the pose for `secs`. */
@@ -244,6 +347,12 @@ export const ROOMS: Record<string, Room> = {
       { action: "dance", at: [0.47, 0.65], dir: "sw" },
     ],
     spots: { door: { at: [0.56, 0.75], dir: "se" }, dance: { at: [0.62, 0.68], dir: "sw" }, stand: { at: [0.36, 0.63], dir: "se" } },
+    // The owambe: dancing as a pair, the couple's photo (wedding), a hug.
+    pairs: {
+      dance: [{ at: [0.62, 0.68], dir: "sw" }, { at: [0.58, 0.7], dir: "ne" }],
+      wedding: [{ at: [0.5, 0.74], dir: "se" }, { at: [0.54, 0.72], dir: "se" }],
+      hug: [{ at: [0.45, 0.75], dir: "se" }, { at: [0.47, 0.76], dir: "nw" }],
+    },
   },
   "viewing-centre": {
     // Rows of chairs fill the floor: everyone is seated watching, one person by the cooler. The only open floor is
@@ -385,6 +494,10 @@ export const ROOMS: Record<string, Room> = {
       },
     ],
     spots: { door: { at: [0.52, 0.62], dir: "sw" }, dance: { at: [0.36, 0.66], dir: "se" }, sit: { at: [0.62, 0.62], dir: "sw" }, stand: { at: [0.4, 0.58], dir: "se" } },
+    pairs: {
+      dance: [{ at: [0.36, 0.66], dir: "se" }, { at: [0.4, 0.68], dir: "nw" }],
+      sit: [{ at: [0.62, 0.62], dir: "sw" }, { at: [0.66, 0.6], dir: "sw" }],
+    },
   },
   mosque: {
     // Congregational prayer, all facing the mihrab (nw) and moving through the rak'ah together: the imam alone in
@@ -707,6 +820,7 @@ export const ROOMS: Record<string, Room> = {
       sit: { at: [0.46, 0.72], dir: "se" },
       eat: { at: [0.46, 0.72], dir: "se" },
       stand: { at: [0.62, 0.68], dir: "sw" },
+      cook: { at: [0.5, 0.5], dir: "ne" },
       dance: { at: [0.56, 0.8], dir: "se" },
     },
   },
@@ -747,6 +861,12 @@ export const ROOMS: Record<string, Room> = {
       stand: { at: [0.74, 0.72], dir: "sw" },
       dance: { at: [0.7, 0.8], dir: "se" },
       workout: { at: [0.7, 0.8], dir: "se" },
+    },
+    pairs: {
+      sit: [{ at: [0.4, 0.71], dir: "se" }, { at: [0.5, 0.67], dir: "se" }],
+      eat: [{ at: [0.18, 0.625], dir: "se", pose: "eat_table" }, { at: [0.245, 0.59], dir: "se", pose: "eat_table" }],
+      dance: [{ at: [0.68, 0.79], dir: "se" }, { at: [0.72, 0.81], dir: "nw" }],
+      hug: [{ at: [0.68, 0.79], dir: "se" }, { at: [0.7, 0.8], dir: "nw" }],
     },
   },
   "home-mansion": {
@@ -800,6 +920,10 @@ export const ROOMS: Record<string, Room> = {
       sit: { at: [0.555, 0.44], dir: "sw" },
       eat: { at: [0.625, 0.48], dir: "sw" },
       stand: { at: [0.4, 0.62], dir: "se" },
+      // by the water tank: bucket bath and washing; the plantain and pepper by the mango tree
+      bath: { at: [0.3, 0.56], dir: "se" },
+      laundry: { at: [0.36, 0.6], dir: "se" },
+      water_plants: { at: [0.44, 0.47], dir: "ne" },
       dance: { at: [0.3, 0.7], dir: "se" },
       workout: { at: [0.3, 0.7], dir: "se" },
     },
@@ -822,6 +946,8 @@ export const ROOMS: Record<string, Room> = {
       stand: { at: [0.45, 0.47], dir: "se" },
       dance: { at: [0.5, 0.5], dir: "se" },
       workout: { at: [0.5, 0.5], dir: "se" },
+      // floating in the pool (the sheet is centred on the body)
+      swim: { at: [0.42, 0.76], dir: "se" },
     },
   },
   "home-bedroom": {
@@ -838,6 +964,7 @@ export const ROOMS: Record<string, Room> = {
       sit: { at: [0.24, 0.7], dir: "sw" },
       eat: { at: [0.24, 0.7], dir: "sw" },
       stand: { at: [0.62, 0.66], dir: "sw" },
+      dress: { at: [0.7, 0.6], dir: "ne" },
       dance: { at: [0.55, 0.75], dir: "se" },
       workout: { at: [0.55, 0.75], dir: "se" },
     },
@@ -853,10 +980,17 @@ export const ROOMS: Record<string, Room> = {
     ],
     spots: {
       door: { at: [0.5, 0.85], dir: "se" },
+      cook: { at: [0.3, 0.665], dir: "nw" },
       eat: { at: [0.855, 0.64], dir: "sw", pose: "eat_table" },
       sit: { at: [0.855, 0.64], dir: "sw", pose: "sit_table" },
       stand: { at: [0.45, 0.62], dir: "se" },
       dance: { at: [0.48, 0.75], dir: "se" },
+    },
+    pairs: {
+      eat: [{ at: [0.855, 0.64], dir: "sw", pose: "eat_table" }, { at: [0.73, 0.67], dir: "se", pose: "eat_table" }],
+      cook: [{ at: [0.3, 0.665], dir: "nw" }, { at: [0.24, 0.635], dir: "nw" }],
+      dance: [{ at: [0.46, 0.74], dir: "se" }, { at: [0.5, 0.76], dir: "nw" }],
+      hug: [{ at: [0.46, 0.74], dir: "se" }, { at: [0.48, 0.75], dir: "nw" }],
     },
   },
   "home-duplex-bedroom": {
@@ -873,6 +1007,7 @@ export const ROOMS: Record<string, Room> = {
       sit: { at: [0.57, 0.69], dir: "se" },
       eat: { at: [0.57, 0.69], dir: "se" },
       stand: { at: [0.65, 0.78], dir: "sw" },
+      dress: { at: [0.78, 0.72], dir: "ne" },
       dance: { at: [0.42, 0.75], dir: "se" },
       workout: { at: [0.42, 0.75], dir: "se" },
     },
@@ -917,6 +1052,7 @@ export const ROOMS: Record<string, Room> = {
     ],
     spots: {
       door: { at: [0.52, 0.82], dir: "se" },
+      cook: { at: [0.335, 0.555], dir: "nw" },
       eat: { at: [0.475, 0.553], dir: "ne", pose: "eat_table" },
       sit: { at: [0.475, 0.553], dir: "ne" },
       stand: { at: [0.65, 0.76], dir: "sw" },
@@ -1038,6 +1174,10 @@ export const ROOMS: Record<string, Room> = {
       eat: { at: [0.185, 0.694], dir: "se", pose: "eat_table" },
       sit: { at: [0.26, 0.674], dir: "sw", pose: "sit_table" },
       stand: { at: [0.56, 0.6], dir: "se" },
+    },
+    // a table for two (the left table): eating and talking together
+    pairs: {
+      eat: [{ at: [0.185, 0.694], dir: "se", pose: "eat_table" }, { at: [0.26, 0.674], dir: "sw", pose: "eat_table" }],
     },
     workers: [
       // The waiter takes orders and carries plates from the kitchen pass to the tables.

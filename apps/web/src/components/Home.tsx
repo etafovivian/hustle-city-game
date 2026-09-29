@@ -348,7 +348,7 @@ function privateRoom(room: Room | undefined, kind: string, guests: { avatar: Ava
     walkers: 0,
     stations: [
       ...help,
-      ...guestSeats.map((g, i) => ({ action: (kitchen ? "sit_eat" : "sit_talk") as PoseAction, at: seats[i]!.at, dir: seats[i]!.dir, variant: variantFor(g.avatar) })),
+      ...guestSeats.map((g, i) => ({ action: (kitchen ? "sit_eat" : "sit_talk") as PoseAction, at: seats[i]!.at, dir: seats[i]!.dir, variant: variantFor(g.avatar), look: g.avatar })),
     ],
   };
 }

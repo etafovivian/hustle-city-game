@@ -124,46 +124,46 @@ export interface ObjectSpot {
  */
 export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>>> = {
   "home-face-me": {
-    cooker: { at: [0.4, 0.78], dir: "se" },
-    bucket: { at: [0.22, 0.72], dir: "sw" },
-    radio: { at: [0.62, 0.7], dir: "se" },
+    cooker: { at: [0.39, 0.82], dir: "se" },
+    bucket: { at: [0.18, 0.77], dir: "nw" },
+    radio: { at: [0.66, 0.7], dir: "ne" },
     wardrobe: { at: [0.72, 0.55], dir: "ne" },
-    seat: { at: [0.3, 0.72], dir: "se" },
+    seat: { at: [0.3, 0.75], dir: "se" },
     floor: { at: [0.55, 0.7], dir: "se" },
   },
   "home-self-contain": {
-    cooker: { at: [0.6, 0.47], dir: "ne" },
-    tv: { at: [0.58, 0.66], dir: "se", screen: [[0.691, 0.635], [0.752, 0.605], [0.755, 0.68], [0.695, 0.714]] },
-    wardrobe: { at: [0.76, 0.54], dir: "ne" },
-    seat: { at: [0.5, 0.62], dir: "se" },
+    cooker: { at: [0.5, 0.5], dir: "ne" },
+    tv: { at: [0.48, 0.64], dir: "se", screen: [[0.691, 0.635], [0.752, 0.605], [0.755, 0.68], [0.695, 0.714]] },
+    wardrobe: { at: [0.62, 0.62], dir: "ne" },
+    seat: { at: [0.48, 0.64], dir: "se" },
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-mini-flat": {
     tv: { at: [0.42, 0.62], dir: "se", screen: [[0.706, 0.336], [0.868, 0.413], [0.864, 0.511], [0.705, 0.441]] },
     seat: { at: [0.42, 0.62], dir: "se" },
     table: { at: [0.45, 0.62], dir: "se" },
-    floor: { at: [0.62, 0.8], dir: "se" },
+    floor: { at: [0.5, 0.82], dir: "se" },
   },
   "home-bedroom": {
     wardrobe: { at: [0.74, 0.62], dir: "ne" },
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-kitchen": {
-    cooker: { at: [0.3, 0.56], dir: "nw" },
+    cooker: { at: [0.28, 0.62], dir: "nw" },
     table: { at: [0.7, 0.66], dir: "ne" },
     floor: { at: [0.5, 0.7], dir: "se" },
   },
   "home-compound-yard": {
-    bucket: { at: [0.4, 0.45], dir: "nw" },
+    bucket: { at: [0.42, 0.5], dir: "nw" },
     line: { at: [0.8, 0.5], dir: "ne" },
     garden: { at: [0.55, 0.42], dir: "nw" },
-    seat: { at: [0.68, 0.38], dir: "se" },
+    seat: { at: [0.69, 0.49], dir: "se" },
     floor: { at: [0.5, 0.6], dir: "se" },
   },
   "home-duplex": {
-    seat: { at: [0.45, 0.68], dir: "se" },
+    seat: { at: [0.4, 0.71], dir: "se" },
     table: { at: [0.28, 0.62], dir: "nw" },
-    floor: { at: [0.6, 0.8], dir: "se" },
+    floor: { at: [0.68, 0.78], dir: "se" },
   },
   "home-duplex-bedroom": {
     tv: { at: [0.5, 0.62], dir: "sw", screen: [[0.055, 0.397], [0.218, 0.323], [0.218, 0.451], [0.059, 0.522]] },
@@ -174,15 +174,15 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
   "home-mansion": {
     seat: { at: [0.4, 0.7], dir: "se" },
     table: { at: [0.45, 0.68], dir: "se" },
-    floor: { at: [0.6, 0.85], dir: "se" },
+    floor: { at: [0.7, 0.75], dir: "se" },
   },
   "home-villa-suite": {
     wardrobe: { at: [0.22, 0.56], dir: "nw" },
-    seat: { at: [0.82, 0.62], dir: "sw" },
+    seat: { at: [0.85, 0.71], dir: "sw" },
     floor: { at: [0.5, 0.72], dir: "se" },
   },
   "home-villa-kitchen": {
-    cooker: { at: [0.4, 0.46], dir: "nw" },
+    cooker: { at: [0.335, 0.555], dir: "nw" },
     table: { at: [0.48, 0.6], dir: "ne" },
     floor: { at: [0.55, 0.78], dir: "se" },
   },
@@ -194,9 +194,9 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
   "home-villa-pool": {
     pool: { at: [0.5, 0.78], dir: "se" },
     shower: { at: [0.8, 0.58], dir: "sw" },
-    seat: { at: [0.3, 0.55], dir: "se" },
-    table: { at: [0.62, 0.45], dir: "nw" },
-    floor: { at: [0.4, 0.62], dir: "se" },
+    seat: { at: [0.36, 0.6], dir: "se" },
+    table: { at: [0.62, 0.45], dir: "ne" },
+    floor: { at: [0.5, 0.5], dir: "se" },
   },
 };
 /** Things you can buy that bring an object into the house (when the room doesn't have it already). */
@@ -242,26 +242,27 @@ export interface HomeAction {
   every: number;
   /** Only within this many minutes after another action (eating what you cooked). */
   after?: { action: string; within: number };
-  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair";
+  /** What the player does in the room (Interior PlayerAction): its pose and the spot it goes to. */
+  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair" | "cook" | "bath" | "laundry" | "sweep" | "water_plants" | "phone" | "games" | "swim" | "dress";
   /** What plays on a screen while you do it. */
   shows?: "tv" | "film" | "game";
 }
 
 export const HOME_ACTIONS: readonly HomeAction[] = [
-  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", uses: ["cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "stand" },
+  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", uses: ["cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "cook" },
   { key: "leftovers", label: "Eat what you cooked", icon: "🍲", note: "Free · +Food", uses: ["table", "seat"], gives: { food: 20 }, every: 60, after: { action: "cook", within: 240 }, pose: "eat" },
   { key: "order", label: "Order food (Chop Express)", icon: "🛵", note: "700 coins · a rider brings it · ++Food", uses: ["table", "seat", "floor"], cost: 700, gives: { food: 30 }, every: 60, pose: "eat" },
   { key: "tv", label: "Watch TV", icon: "📺", note: "+Fun", uses: ["tv"], gives: { fun: 15 }, every: 60, pose: "sit", shows: "tv" },
   { key: "film", label: "Watch a film", icon: "🎬", note: "++Fun", uses: ["screen"], gives: { fun: 25, social: 3 }, every: 120, pose: "sit", shows: "film" },
-  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", uses: ["screen", "tv"], needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "sit", shows: "game" },
-  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", uses: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "stand" },
-  { key: "bath", label: "Bath", icon: "🚿", note: "+Health +Style", uses: ["shower", "bucket"], gives: { health: 6, style: 10 }, every: 60, pose: "stand" },
-  { key: "dress", label: "Change your clothes", icon: "👗", note: "Opens your wardrobe · +Style", uses: ["wardrobe"], gives: { style: 12 }, every: 120, pose: "stand" },
+  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", uses: ["screen", "tv"], needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "games", shows: "game" },
+  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", uses: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "swim" },
+  { key: "bath", label: "Bath", icon: "🚿", note: "+Health +Style", uses: ["shower", "bucket"], gives: { health: 6, style: 10 }, every: 60, pose: "bath" },
+  { key: "dress", label: "Change your clothes", icon: "👗", note: "Opens your wardrobe · +Style", uses: ["wardrobe"], gives: { style: 12 }, every: 120, pose: "dress" },
   { key: "pray", label: "Pray", icon: "🙏🏾", note: "+Energy, a calm mind", uses: ["floor"], gives: { energy: 5, fun: 3 }, every: 60, pose: "pray" },
-  { key: "call", label: "Call someone", icon: "📞", note: "Pick who · +Social", uses: ["floor"], gives: { social: 12 }, every: 180, pose: "stand" },
-  { key: "clean", label: "Sweep and tidy up", icon: "🧹", note: "+Health · XP", uses: ["floor"], gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "stand" },
-  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", uses: ["line", "bucket"], gives: { style: 8, energy: -4 }, every: 240, pose: "stand" },
-  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", uses: ["garden"], gives: { health: 6, fun: 4 }, every: 180, pose: "stand" },
+  { key: "call", label: "Call someone", icon: "📞", note: "Pick who · +Social", uses: ["floor"], gives: { social: 12 }, every: 180, pose: "phone" },
+  { key: "clean", label: "Sweep and tidy up", icon: "🧹", note: "+Health · XP", uses: ["floor"], gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "sweep" },
+  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", uses: ["line", "bucket"], gives: { style: 8, energy: -4 }, every: 240, pose: "laundry" },
+  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", uses: ["garden"], gives: { health: 6, fun: 4 }, every: 180, pose: "water_plants" },
   { key: "radio_dance", label: "Dance to the radio", icon: "💃🏾", note: "+Fun", uses: ["radio"], gives: { fun: 10, energy: -4 }, every: 60, pose: "dance" },
   { key: "relax", label: "Sit and relax", icon: "🛋️", note: "+Energy", uses: ["seat"], gives: { energy: 5, fun: 2 }, every: 30, pose: "sit" },
 ];

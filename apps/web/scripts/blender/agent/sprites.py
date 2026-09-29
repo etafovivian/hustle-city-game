@@ -1530,12 +1530,38 @@ def v_bartender(arm, body):
     attach_hair(arm, os.path.join(HUSTLE, "hair-Male", "hair-high_top.glb"))
 
 
+def rider_helmet(arm, body):
+    """An open-face helmet: a shell over the top and back of the head, a short peak at the front."""
+    lo, hi = head_box(body)
+    c, r = (lo + hi) / 2, (hi - lo) / 2
+    bm = bmesh.new()
+    res = bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=14, radius=1.0)
+    for v in res["verts"]:
+        v.co = Vector((c.x + v.co.x * r.x * 1.3, c.y + v.co.y * r.y * 1.22, c.z + 0.03 + v.co.z * r.z * 1.15))
+    cut = [v for v in bm.verts if v.co.z < c.z - r.z * 0.15 or (v.co.y < c.y - r.y * 0.3 and v.co.z < c.z + r.z * 0.35)]
+    bmesh.ops.delete(bm, geom=cut, context="VERTS")
+    o = obj_from_bm(bm, "helmet", make_mat("helmet", (0.92, 0.92, 0.9)))
+    attach_rest(arm, o, "Head")
+    return o
+
+
+def v_rider(arm, body):
+    """A delivery rider: an open-face helmet, a plain dark-green jacket (no brand), jeans, a box bag on the back."""
+    paint_body(body, DARK)
+    paint_uniform(arm, body, uniform_rule(top=True, sleeve=0.97, bottom=True, feet=True, cuff=True),
+                  {"feet": "#1a1410", "bottom": "#2c3e5c", "top": "#1f5a3a", "cuff": "#e6c34a"})
+    attach_hair(arm, os.path.join(HUSTLE, "hair-Male", "hair-low_cut.glb"))
+    rider_helmet(arm, body)
+    backpack(arm, body, (0.9, 0.55, 0.1))
+
+
 STAFF_VARIANTS = [
     ("nurse", "Female", v_nurse),
     ("doctor", "Male", v_doctor),
     ("chef", "Female", v_chef),
     ("waiter", "Female", v_waiter),
     ("bartender", "Male", v_bartender),
+    ("rider", "Male", v_rider),
 ]
 STAFF_NAMES = [n for n, _, _ in STAFF_VARIANTS]
 VARIANTS += STAFF_VARIANTS

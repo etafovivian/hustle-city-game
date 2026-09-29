@@ -53,6 +53,15 @@ const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
   run: "run",
   pushups: "pushups",
   skip: "skip_rope",
+  cook: "cook_hob",
+  bath: "bucket_bath",
+  laundry: "wash_clothes",
+  sweep: "sweep",
+  water_plants: "water_plants",
+  phone: "phone_call",
+  games: "play_games",
+  swim: "swim",
+  dress: "dress_mirror",
 };
 /** Where to go when a room has no spot for an action: eat or rest on a seat, dance where you'd stand. */
 const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
@@ -69,6 +78,16 @@ const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
   run: ["run"],
   pushups: ["pushups", "workout"],
   skip: ["skip", "workout"],
+  // life at home: its own spot (the cooker, the TV, the mirror, the pool), else where you'd stand or sit
+  cook: ["cook", "stand"],
+  bath: ["bath", "workout", "stand"],
+  laundry: ["laundry", "bath", "workout", "stand"],
+  sweep: ["sweep", "dance", "stand"],
+  water_plants: ["water_plants", "stand"],
+  phone: ["phone", "stand"],
+  games: ["games", "sit", "chair"],
+  swim: ["swim"],
+  dress: ["dress", "stand"],
 };
 /** The spot and pose for an action in a room (null: stay where you are). */
 export function spotFor(room: Room | undefined, action: PlayerAction): { spot: Spot; pose: PoseAction } | null {
@@ -221,6 +240,9 @@ export function InteriorScene({
         const { fps, frames } = POSE_SHEETS[p.action];
         const frame = (Math.floor(((now - t0) / 1000) * fps) + (p.phase ?? i * 3)) % frames;
         el.style.backgroundPosition = framePos(frame, frames);
+        // someone with their own look: their tinted layers once ready
+        const own = p.look && layerSheet(p.look, poseSheetName(p.action, sheetDir(p.action, p.dir)));
+        if (own) el.style.backgroundImage = `url(${own})`;
       });
       raf = requestAnimationFrame(step);
     };
@@ -320,7 +342,7 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -346,6 +368,7 @@ function PlayerInRoom({
     m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
     m.face = target?.spot.dir ?? m.face;
     m.behind = target?.spot.behind;
+    m.sweepRoute = !!spot?.via?.length;
     m.atSpot = !!target;
     m.t0 = performance.now();
     m.settled = false;
@@ -379,7 +402,8 @@ function PlayerInRoom({
       node.style.top = `${m.at[1] * 100}%`;
       // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
-      const pose = m.route.length ? null : (m.pose ?? "stand_idle");
+      // sweeping: the broom keeps going while they work their way round the room (the `via` route)
+      const pose = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
       if (pose !== m.shown) {
         m.shown = pose;
         setShown(pose);
@@ -391,8 +415,11 @@ function PlayerInRoom({
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
         const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        // the player's own look (tinted layers) when on and ready, else the nearest baked look
-        node.style.backgroundImage = `url(${layerSheet(avatarRef.current, poseSheetName(pose, sheetDir(pose, m.face))) ?? poseSheet(pose, variant, m.face)})`;
+        // the player's own look (tinted layers) when on and ready, else the nearest baked look (a together pose, which
+        // only exists as layers, shows its fallback pose then)
+        const baked = POSE_VARIANTS[pose].includes(variant) ? pose : (POSE_SHEETS[pose].fallback ?? "stand_idle");
+        const layered = layerSheet(avatarRef.current, poseSheetName(pose, sheetDir(pose, m.face)));
+        node.style.backgroundImage = `url(${layered ?? poseSheet(baked, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.
