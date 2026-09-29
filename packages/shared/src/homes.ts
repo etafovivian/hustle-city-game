@@ -124,7 +124,7 @@ export interface ObjectSpot {
  */
 export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>>> = {
   "home-face-me": {
-    cooker: { at: [0.4, 0.78], dir: "se" },
+    cooker: { at: [0.41, 0.8], dir: "se" },
     bucket: { at: [0.22, 0.72], dir: "sw" },
     radio: { at: [0.62, 0.7], dir: "se" },
     wardrobe: { at: [0.72, 0.55], dir: "ne" },
@@ -132,7 +132,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.55, 0.7], dir: "se" },
   },
   "home-self-contain": {
-    cooker: { at: [0.6, 0.47], dir: "ne" },
+    cooker: { at: [0.5, 0.5], dir: "ne" },
     tv: { at: [0.58, 0.66], dir: "se", screen: [[0.691, 0.635], [0.752, 0.605], [0.755, 0.68], [0.695, 0.714]] },
     wardrobe: { at: [0.76, 0.54], dir: "ne" },
     seat: { at: [0.5, 0.62], dir: "se" },
@@ -149,7 +149,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-kitchen": {
-    cooker: { at: [0.3, 0.56], dir: "nw" },
+    cooker: { at: [0.3, 0.665], dir: "nw" },
     table: { at: [0.7, 0.66], dir: "ne" },
     floor: { at: [0.5, 0.7], dir: "se" },
   },
@@ -182,7 +182,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.5, 0.72], dir: "se" },
   },
   "home-villa-kitchen": {
-    cooker: { at: [0.4, 0.46], dir: "nw" },
+    cooker: { at: [0.41, 0.515], dir: "nw" },
     table: { at: [0.48, 0.6], dir: "ne" },
     floor: { at: [0.55, 0.78], dir: "se" },
   },
@@ -242,13 +242,13 @@ export interface HomeAction {
   every: number;
   /** Only within this many minutes after another action (eating what you cooked). */
   after?: { action: string; within: number };
-  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair";
+  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair" | "cook";
   /** What plays on a screen while you do it. */
   shows?: "tv" | "film" | "game";
 }
 
 export const HOME_ACTIONS: readonly HomeAction[] = [
-  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", uses: ["cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "stand" },
+  { key: "cook", label: "Cook a pot of jollof", icon: "🍳", note: "400 coins of foodstuff · ++Food · Cooking", uses: ["cooker"], cost: 400, gives: { food: 30 }, skill: ["cooking", 8], xp: 4, every: 180, pose: "cook" },
   { key: "leftovers", label: "Eat what you cooked", icon: "🍲", note: "Free · +Food", uses: ["table", "seat"], gives: { food: 20 }, every: 60, after: { action: "cook", within: 240 }, pose: "eat" },
   { key: "order", label: "Order food (Chop Express)", icon: "🛵", note: "700 coins · a rider brings it · ++Food", uses: ["table", "seat", "floor"], cost: 700, gives: { food: 30 }, every: 60, pose: "eat" },
   { key: "tv", label: "Watch TV", icon: "📺", note: "+Fun", uses: ["tv"], gives: { fun: 15 }, every: 60, pose: "sit", shows: "tv" },

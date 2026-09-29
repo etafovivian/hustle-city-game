@@ -293,7 +293,9 @@ export function AvatarWalker({
             const v = vehicleView("train", walkDir(Math.cos(heading), Math.sin(heading)));
             return (
               <g transform={v.mirror ? "scale(-1 1)" : undefined}>
-                <image href={v.href} x={-v.w / 2} y={-v.h + 20} width={v.w} height={v.h} />
+                {/* A long train runs corner to corner across its picture: the track goes through the middle of it, not
+                    under its bottom edge (that drew the train above its rails). */}
+                <image href={v.href} x={-v.w / 2} y={-v.h * 0.6} width={v.w} height={v.h} />
               </g>
             );
           })()

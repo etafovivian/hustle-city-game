@@ -888,7 +888,7 @@ body.map-full .map-overview-btn { top: calc(208px + env(safe-area-inset-top)); }
 .unread-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5b4b; color: #fff; font-size: 11px; font-weight: 900; }
 .home-rooms { display: grid; gap: 8px; }
 .home-room-frame { position: relative; }
-.home-item { position: absolute; width: 16%; transform: translate(-50%, -85%); pointer-events: auto; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 45%)); z-index: 900; }
+.home-item { position: absolute; width: 10%; transform: translate(-50%, -85%); pointer-events: auto; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 45%)); z-index: 900; }
 .home-shop { display: grid; gap: 8px; }
 .home-acts { align-items: center; }
 .wardrobe-preview { height: 300px; border-radius: 16px; background: radial-gradient(circle at 50% 60%, #2a3466, var(--sheet-2)); overflow: hidden; }
@@ -1045,6 +1045,7 @@ body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 
 /* Life at home: a moving picture on a TV or the cinema screen, the call picker */
 .interior-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.interior-overlay.top { z-index: 5000; }
 .screen-show { position: absolute; inset: 0; width: 100%; height: 100%; }
 .screen-show .ss-scene { animation: ss-pan 7s ease-in-out infinite alternate; }
 .screen-show .ss-figure { animation: ss-sway 2.6s ease-in-out infinite alternate; }
@@ -1061,3 +1062,51 @@ body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 @media (prefers-reduced-motion: reduce) { .screen-show * { animation: none !important; } }
 .home-act { display: inline-flex; flex-wrap: wrap; gap: 2px; text-align: left; }
 .call-picker { display: grid; gap: 6px; padding: 10px; border-radius: 14px; border: 1px solid var(--rule-strong); background: var(--sheet); }
+.home-item-sell { position: absolute; transform: translate(-50%, -260%); width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; background: #b91c1c; color: #fff; font: 800 13px/1 system-ui, sans-serif; cursor: pointer; box-shadow: 0 2px 6px rgb(0 0 0 / 40%); }
+/* Programmes on screens (HomeLife ProgrammeArt) and water while bathing or swimming */
+.screen-show .pg-ball { animation: pg-ball 3s ease-in-out infinite alternate; }
+.screen-show .pg-teamA { animation: pg-run 2.2s ease-in-out infinite alternate; }
+.screen-show .pg-teamB { animation: pg-run 2.6s ease-in-out infinite alternate-reverse; }
+.screen-show .pg-anchor { animation: pg-nod 2.4s ease-in-out infinite alternate; }
+.screen-show .pg-map { animation: pg-nod 5s ease-in-out infinite alternate; }
+.screen-show .pg-lights { animation: pg-sweep 1.6s ease-in-out infinite alternate; }
+.screen-show .pg-dancer { animation: pg-dance .5s ease-in-out infinite alternate; }
+.screen-show .pg-dancer.d1 { animation-delay: .15s; }
+.screen-show .pg-dancer.d2 { animation-delay: .3s; }
+.screen-show .pg-eq { transform-box: fill-box; transform-origin: bottom; animation: pg-eq .4s ease-in-out infinite alternate; }
+.screen-show .pg-eq.e1 { animation-duration: .55s; }
+.screen-show .pg-eq.e2 { animation-duration: .33s; }
+.screen-show .pg-left { animation: pg-nod 1.8s ease-in-out infinite alternate; }
+.screen-show .pg-right { animation: pg-nod 2.3s ease-in-out infinite alternate-reverse; }
+.screen-show .pg-bounce { animation: pg-bounce .9s ease-in-out infinite alternate; }
+.screen-show .pg-bounce2 { animation: pg-bounce 1.2s ease-in-out infinite alternate-reverse; }
+.screen-show .pg-city { animation: pg-scroll 4s linear infinite; }
+.screen-show .pg-lanes { animation: pg-scroll .8s linear infinite; }
+.screen-show .pg-car { animation: pg-nod .5s ease-in-out infinite alternate; }
+.screen-show .pg-sun { animation: pg-sink 12s ease-in-out infinite alternate; }
+.screen-show .pg-couple { animation: pg-nod 3s ease-in-out infinite alternate; }
+.screen-show .pg-stripes { animation: pg-down .6s linear infinite; }
+.screen-show .pg-player { animation: pg-swerve 1.4s ease-in-out infinite alternate; }
+.screen-show .pg-rival { animation: pg-down-slow 2.5s linear infinite; }
+@keyframes pg-ball { 0% { transform: translate(0, 0); } 50% { transform: translate(0.2px, -0.15px); } 100% { transform: translate(-0.15px, 0.18px); } }
+@keyframes pg-run { to { transform: translate(0.08px, 0.04px); } }
+@keyframes pg-nod { to { transform: translate(0.01px, 0.015px); } }
+@keyframes pg-sweep { to { transform: translate(0.12px, 0); } }
+@keyframes pg-dance { to { transform: translate(0, -0.05px) rotate(0.001turn); } }
+@keyframes pg-eq { from { transform: scaleY(.3); } to { transform: scaleY(1); } }
+@keyframes pg-bounce { to { transform: translate(0, -0.12px); } }
+@keyframes pg-scroll { to { transform: translateX(-0.3px); } }
+@keyframes pg-sink { to { transform: translate(0, 0.08px); } }
+@keyframes pg-down { to { transform: translateY(0.25px); } }
+@keyframes pg-down-slow { from { transform: translateY(-0.3px); } to { transform: translateY(1.1px); } }
+@keyframes pg-swerve { to { transform: translateX(0.18px); } }
+.water-fx { position: absolute; inset: 0; width: 100%; height: 100%; }
+.water-fx .wf-drop { animation: wf-fall .6s linear infinite; }
+.water-fx .wf-drop.d1 { animation-delay: .2s; }
+.water-fx .wf-drop.d2 { animation-delay: .4s; }
+.water-fx .wf-ripple { transform-box: fill-box; transform-origin: center; animation: wf-ripple 2.4s ease-out infinite; opacity: 0; }
+.water-fx .wf-ripple.r1 { animation-delay: .8s; }
+.water-fx .wf-ripple.r2 { animation-delay: 1.6s; }
+@keyframes wf-fall { from { transform: translateY(0); opacity: 1; } to { transform: translateY(0.2px); opacity: 0; } }
+@keyframes wf-ripple { from { transform: scale(.4); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .water-fx * { animation: none !important; } }

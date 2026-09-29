@@ -21,6 +21,33 @@ import { LetBox, RentPicker, Tenancy } from "./Rent.js";
 import { api, formatCoins } from "../api.js";
 import { InteriorScene, ROOMS, type InteriorPlayer, type PlayerAction, type Room } from "./Interior.js";
 import { ITEM_SPOTS, useHomeLife } from "./HomeLife.js";
+
+/** While you cook, the house cook steps out of the kitchen (you're at the hob now). */
+function withoutCook(room: Room | undefined, hide: boolean): Room | undefined {
+  if (!room || !hide) return room;
+  const cooks = (p: string | undefined) => p === "cook_hob" || p === "cook_stir";
+  return { ...room, stations: room.stations.filter((st) => !cooks(st.action)), workers: room.workers?.filter((w) => !w.tasks.some((t) => cooks(t.pose))) };
+}
+
+/** How wide each thing for the house is drawn, as a share of the room (a person is about 12%): a chair is smaller
+ * than a person, a sofa wider. */
+const ITEM_WIDTH: Record<string, number> = {
+  plastic_chairs: 0.07,
+  bucket_set: 0.08,
+  standing_fan: 0.06,
+  sofa_ankara: 0.2,
+  adire_sofa_set: 0.24,
+  generator_small: 0.1,
+  big_generator: 0.14,
+  water_tank: 0.11,
+  dumbbell_set: 0.09,
+  punching_bag: 0.07,
+  radio: 0.06,
+  prayer_mat: 0.12,
+  gas_cooker: 0.09,
+  flat_tv: 0.12,
+  game_console: 0.07,
+};
 import type { PoseAction, Worker } from "./rooms.js";
 import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
@@ -114,6 +141,17 @@ export function HomeCard({
   const [roomKey, setRoomKey] = useState<string | null>(null);
   const [placed, setPlaced] = useState(home.placements ?? {});
   const [error, setError] = useState<string | null>(null);
+  const sellItem = async (key: string) => {
+    const item = HOME_ITEMS.find((i) => i.key === key);
+    if (!item || !window.confirm(`Sell back your ${item.name.split(" (")[0]!.toLowerCase()} for ${formatCoins(Math.floor(item.price * SELL_BACK))} coins (half what it cost)?`)) return;
+    try {
+      const r = await api<{ refund: number }>("DELETE", `/api/game/home/items/${key}`);
+      notify(`Sold back for ${formatCoins(r.refund)} coins.`);
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  };
   const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe });
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
@@ -189,6 +227,7 @@ export function HomeCard({
           action={me}
           onAction={setMe}
           onRoom={setRoomKey}
+          onSell={(k) => void sellItem(k)}
           goRoom={life.goRoom}
           scene={life.scene}
           guests={guests}
@@ -361,6 +400,7 @@ export function HomeRooms({
   action = "walk",
   onAction,
   onRoom,
+  onSell,
   goRoom,
   scene,
   guests = [],
@@ -381,19 +421,22 @@ export function HomeRooms({
   onAction?: (a: PlayerAction) => void;
   /** The room now on show. */
   onRoom?: (key: string) => void;
+  /** Sell a thing back (from the ✕ on it while arranging). */
+  onSell?: (key: string) => void;
   /** Switch to this room (an action happens there). */
   goRoom?: { key: string; seq: number } | null;
   /** What the room scene shows while you do something (your spot, a picture on the screen, a delivery). */
-  scene?: (room: string) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null };
+  scene?: (room: string) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
   const [arranging, setArranging] = useState(false);
   const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
   const frame = useRef<HTMLDivElement>(null);
-  // Going to sleep takes you to the bedroom, eating to the kitchen (when the house has them).
+  // Going to sleep takes you to the bedroom (when the house has one). Other things you do pick their own room
+  // (life at home, goRoom).
   useEffect(() => {
-    const want = action === "sleep" ? /bed|suite|room/ : action === "eat" ? /kitchen/ : action === "sit" ? /parlour|living|lounge|cinema/ : null;
+    const want = action === "sleep" ? /bed|suite|room/ : null;
     if (!want) return;
     const i = rooms.findIndex((r) => want.test(r.key));
     if (i >= 0) setAt(i);
@@ -428,11 +471,12 @@ export function HomeRooms({
           key={room.key}
           src={`/art/interiors/${room.art}.webp`}
           alt={`Inside ${who} ${room.label.toLowerCase()}`}
-          room={privateRoom(ROOMS[room.art], room.key, guests)}
+          room={withoutCook(privateRoom(ROOMS[room.art], room.key, guests), !!extra?.hideCook)}
           seed={3 + at}
           player={avatar ? { avatar, action, spot: extra?.spot } : undefined}
           onPlayerWalk={() => onAction?.("walk")}
           overlay={extra?.overlay}
+          overlayTop={extra?.overlayTop}
           extraWorkers={extra?.extraWorkers}
         />
         {/* Your things: spread through the rooms, a few per room */}
@@ -444,6 +488,19 @@ export function HomeRooms({
             const item = HOME_ITEMS.find((x) => x.key === k);
             const [x, y] = drag?.key === k ? [drag.x, drag.y] : placed ? [placed.x, placed.y] : ITEM_SPOTS[i % ITEM_SPOTS.length]!;
             return item ? (
+              <span key={`${k}-wrap`} style={{ display: "contents" }}>
+              {arranging && onSell && (
+                <button
+                  type="button"
+                  className="home-item-sell"
+                  style={{ left: `${x * 100}%`, top: `${y * 100}%`, zIndex: Math.round(y * 1000) + 2 }}
+                  onClick={() => onSell(k)}
+                  aria-label={`Sell back the ${item.name}`}
+                  title="Sell back for half its price"
+                >
+                  ✕
+                </button>
+              )}
               <img
                 key={k}
                 className="home-item"
@@ -451,7 +508,7 @@ export function HomeRooms({
                 alt={item.name}
                 title={item.name}
                 draggable={false}
-                style={{ left: `${x * 100}%`, top: `${y * 100}%`, cursor: arranging ? "grab" : undefined, zIndex: Math.round(y * 1000) + 1 }}
+                style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${(ITEM_WIDTH[k] ?? 0.1) * 100}%`, cursor: arranging ? "grab" : undefined, zIndex: Math.round(y * 1000) + 1 }}
                 onPointerDown={(e) => {
                   if (!arranging) return;
                   e.preventDefault();
@@ -470,6 +527,7 @@ export function HomeRooms({
                   setDrag(null);
                 }}
               />
+              </span>
             ) : null;
           })}
       </div>

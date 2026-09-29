@@ -147,9 +147,10 @@ export type PlayerAction =
   | "boxing"
   | "run"
   | "pushups"
-  | "skip";
+  | "skip"
+  | "cook";
 /** Every action the player can take in a room (for callers mapping activities to actions). */
-export const PLAYER_ACTIONS: PlayerAction[] = ["walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip"];
+export const PLAYER_ACTIONS: PlayerAction[] = ["walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip", "cook"];
 /** Marked places for the player: door (where they come in) and one per action that fits the room. */
 /** "workout": a free bit of floor at home for push-ups, skipping, dumbbells or shadow boxing. */
 export type SpotKey = "door" | "workout" | Exclude<PlayerAction, "walk">;
