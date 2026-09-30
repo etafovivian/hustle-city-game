@@ -1,0 +1,8 @@
+Layered sprite sheets for the player's own look, rendered for Naija Hustle City by scripts/blender/agent/sprites.py
+(Blender 5.2, headless, LOOK=toon with LAYERS=base / LAYERS=hair, and MASK=1 for the masks) from the CC0 Quaternius
+bodies and animations, with clothes from scripts/blender/agent/garments.py and hair from scripts/blender/hair.py.
+Original work for this project. Composited and tinted at runtime by src/components/spriteComposer.ts.
+  <body>-<outfit>/<sheet>.webp     the body in the outfit, no hair; skin and the outfit fabric in neutral grey
+  <body>-<outfit>/<sheet>.m.webp   its mask (lossless): red = skin, green = fabric
+  hair-<body>-<style>/<sheet>.webp one hair style in neutral grey, cut where the body, clothes or props hide it
+<sheet> = walk-<dir> or <pose>-<dir>, with the same frame sizes and anchors as ../walkers and ../poses.
