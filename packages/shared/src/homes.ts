@@ -149,7 +149,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-kitchen": {
-    cooker: { at: [0.28, 0.62], dir: "nw" },
+    cooker: { at: [0.3, 0.665], dir: "nw" },
     table: { at: [0.7, 0.66], dir: "ne" },
     floor: { at: [0.5, 0.7], dir: "se" },
   },
@@ -182,7 +182,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.5, 0.72], dir: "se" },
   },
   "home-villa-kitchen": {
-    cooker: { at: [0.335, 0.555], dir: "nw" },
+    cooker: { at: [0.41, 0.515], dir: "nw" },
     table: { at: [0.48, 0.6], dir: "ne" },
     floor: { at: [0.55, 0.78], dir: "se" },
   },

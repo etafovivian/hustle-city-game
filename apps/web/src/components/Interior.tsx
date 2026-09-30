@@ -120,7 +120,7 @@ export interface InteriorPlayer {
   action: PlayerAction;
   /** Go here instead of the room's spot for the action (the cooker, the TV, the mirror), passing `via` first
    * (sweeping the floor). A new `seq` sends them again. */
-  spot?: { at: Pt; dir: Facing; via?: Pt[]; seq: number };
+  spot?: { at: Pt; dir: Facing; via?: Pt[]; seq: number; water?: { box: [number, number, number, number]; wade: number } };
 }
 
 export function InteriorScene({
@@ -131,6 +131,7 @@ export function InteriorScene({
   player,
   onPlayerWalk,
   overlay,
+  overlayTop,
   extraWorkers,
 }: {
   src: string;
@@ -143,6 +144,8 @@ export function InteriorScene({
   onPlayerWalk?: () => void;
   /** Drawn over the room picture, under the people (a TV picture playing on the screen). Fractions of the room. */
   overlay?: ReactNode;
+  /** Drawn over everything, people included (water falling from a shower). */
+  overlayTop?: ReactNode;
   /** Extra people passing through (a delivery rider bringing food). */
   extraWorkers?: Worker[];
 }) {
@@ -269,6 +272,7 @@ export function InteriorScene({
     <div ref={box} className="interior-scene" onClick={player ? onTap : undefined} style={player && walkway.length > 1 ? { cursor: "pointer" } : undefined}>
       <img src={src} alt={alt} />
       {overlay && <div className="interior-overlay">{overlay}</div>}
+      {overlayTop && <div className="interior-overlay top">{overlayTop}</div>}
       {h > 0 && player && (
         <PlayerInRoom
           key={src}
@@ -342,7 +346,7 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false, water: undefined as { box: [number, number, number, number]; wade: number } | undefined });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -360,8 +364,12 @@ function PlayerInRoom({
     // Through the `via` points first (sweeping round the room), then to the spot.
     let from = m.at;
     const route: Pt[] = [];
-    for (const p of [...(spot && action !== "walk" ? (spot.via ?? []) : []), to]) {
-      if (!close(from, p, 0.002)) route.push(...routeTo(walkway, from, p, aspect).slice(1));
+    // Along the floor to the first point; after that straight from point to point (laps in a pool, rounds of the
+    // room), not back via the walkway each time.
+    for (const [i, p] of [...(spot && action !== "walk" ? (spot.via ?? []) : []), to].entries()) {
+      if (close(from, p, 0.002)) continue;
+      if (i === 0) route.push(...routeTo(walkway, from, p, aspect).slice(1));
+      else route.push(p);
       from = p;
     }
     m.route = route;
@@ -369,12 +377,16 @@ function PlayerInRoom({
     m.face = target?.spot.dir ?? m.face;
     m.behind = target?.spot.behind;
     m.sweepRoute = !!spot?.via?.length;
+    // In the water (swimming): the body below the waterline is hidden while you're inside the pool.
+    m.water = spot && action !== "walk" ? spot.water : undefined;
     m.atSpot = !!target;
     m.t0 = performance.now();
     m.settled = false;
     onSettle(null);
+    // Not on `room`: its object is rebuilt on every render of the caller, which restarted the walk midway (a new
+    // room means a new picture, and this component is remounted for it anyway).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [action, room, spot?.seq]);
+  }, [action, spot?.seq]);
 
   // A tap: walk there and stand.
   useEffect(() => {
@@ -403,7 +415,15 @@ function PlayerInRoom({
       // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
       // sweeping: the broom keeps going while they work their way round the room (the `via` route)
-      const pose = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
+      const want = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
+      // The player's own look as tinted layers (any pose, any look) when on and ready; else the nearest baked look,
+      // and a pose that look has no sheet for (a together pose, stirring at the hob) falls back to stand_idle.
+      const layered = want ? layerSheet(avatarRef.current, poseSheetName(want, sheetDir(want, m.face))) : null;
+      const pose: PoseAction | null = !want
+        ? null
+        : layered || POSE_VARIANTS[want].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(want)
+          ? want
+          : (POSE_SHEETS[want].fallback ?? "stand_idle");
       if (pose !== m.shown) {
         m.shown = pose;
         setShown(pose);
@@ -415,15 +435,16 @@ function PlayerInRoom({
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
         const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        // the player's own look (tinted layers) when on and ready, else the nearest baked look (a together pose, which
-        // only exists as layers, shows its fallback pose then)
-        const baked = POSE_VARIANTS[pose].includes(variant) ? pose : (POSE_SHEETS[pose].fallback ?? "stand_idle");
-        const layered = layerSheet(avatarRef.current, poseSheetName(pose, sheetDir(pose, m.face)));
-        node.style.backgroundImage = `url(${layered ?? poseSheet(baked, variant, m.face)})`;
+        node.style.backgroundImage = `url(${layered ?? poseSheet(pose, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.
-      node.style.clipPath = (pose && m.atSpot && !m.free && behindClip(m.at[1], m.behind, box.current?.clientHeight ?? 0, ph)) || "";
+      const [wx0, wy0, wx1, wy1] = m.water?.box ?? [0, 0, 0, 0];
+      // (the layered swim sheet is already cut at the waterline: no extra clip for it)
+      const inWater = !!m.water && pose !== "swim" && m.at[0] > wx0 && m.at[0] < wx1 && m.at[1] > wy0 && m.at[1] < wy1;
+      node.style.clipPath = inWater
+        ? `inset(0 0 ${Math.round(ph * m.water!.wade + ph * 0.1)}px 0)`
+        : (pose && m.atSpot && !m.free && behindClip(m.at[1], m.behind, box.current?.clientHeight ?? 0, ph)) || "";
     };
     const step = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);

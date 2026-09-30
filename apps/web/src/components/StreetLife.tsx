@@ -31,7 +31,7 @@ const KINDS: Record<string, Partial<Record<WalkDir, View>>> = {
   suvWhite: { sw: V("car-suv-white", 96), se: V("car-suv-white", 96, true), ne: V("car-suv-white-ne", 96), nw: V("car-suv-white-ne", 96, true) },
   // The interstate coach and the three-car train (Stitch batches 55-56), ridden by the player.
   coach: { sw: V("coach-sw", 190), se: V("coach-se", 190), ne: V("coach-ne", 190), nw: V("coach-ne", 190, true) },
-  train: { se: V("train-se", 380), sw: V("train-se", 380, true), ne: V("train-ne", 380), nw: V("train-ne", 380, true) },
+  train: { se: V("train-se", 290), sw: V("train-se", 290, true), ne: V("train-ne", 290), nw: V("train-ne", 290, true) },
 };
 /** A vehicle's art for a heading (the player's ride uses the same views as traffic). */
 export function vehicleView(kind: string, dir: WalkDir): View {
