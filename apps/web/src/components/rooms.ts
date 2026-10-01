@@ -57,7 +57,7 @@ export type PoseAction =
   | "hug_m"
   | "hug_w";
 /** Everyday adult looks with the life-at-home poses (baked; any look has them as layers). */
-const HOME_LOOKS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
+const HOME_LOOKS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"];
 /** Adult looks that have every pose, prayer included. */
 const ADULTS: WalkerVariant[] = ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS];
 /** Which variants have a sheet for each pose (the player's own variant always has dance, sit, eat, stand, sleep). */
@@ -87,7 +87,7 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   sick_sit: ["woman_buba", "woman_gele", "man_kaftan", "man_casual"],
   take_order: ["waiter", "bartender"],
   stand_talk: ["woman_buba", "woman_gele", "man_kaftan", "man_casual", ...OUTFIT_VARIANTS, ...STAFF_VARIANTS],
-  cook_hob: ["woman_buba", "woman_gele", "chef", "man_casual", "man_kaftan", ...OUTFIT_VARIANTS],
+  cook_hob: ["woman_buba", "woman_gele", "chef", "man_casual", "man_kaftan"],
   cut_hair: ["man_casual", "woman_buba", "woman_gele"],
   sew: ["woman_buba", "man_kaftan"],
   sit_desk: ["man_casual", "woman_buba", "man_kaftan", "woman_gele"],
