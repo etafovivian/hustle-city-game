@@ -115,6 +115,9 @@ export type HomeObject = "cooker" | "tv" | "screen" | "seat" | "table" | "wardro
 export interface ObjectSpot {
   at: [number, number];
   dir: "se" | "sw" | "ne" | "nw";
+  /** Seated at a table (or a counter, on a stool): eat with the plate on it. A number is the height of the table's
+   * near edge, when you sit on its far side and it hides your legs. */
+  table?: number | true;
   /** A screen's corners (top-left, top-right, bottom-right, bottom-left), for the moving picture. */
   screen?: [[number, number], [number, number], [number, number], [number, number]];
 }
@@ -124,79 +127,81 @@ export interface ObjectSpot {
  */
 export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>>> = {
   "home-face-me": {
-    cooker: { at: [0.41, 0.8], dir: "se" },
-    bucket: { at: [0.22, 0.72], dir: "sw" },
-    radio: { at: [0.62, 0.7], dir: "se" },
-    wardrobe: { at: [0.72, 0.55], dir: "ne" },
-    seat: { at: [0.3, 0.72], dir: "se" },
-    floor: { at: [0.55, 0.7], dir: "se" },
+    cooker: { at: [0.58, 0.855], dir: "sw" },
+    bucket: { at: [0.24, 0.745], dir: "sw" },
+    radio: { at: [0.7, 0.75], dir: "se" },
+    wardrobe: { at: [0.72, 0.62], dir: "ne" },
+    seat: { at: [0.375, 0.8], dir: "se" },
+    floor: { at: [0.6, 0.78], dir: "se" },
   },
   "home-self-contain": {
-    cooker: { at: [0.5, 0.5], dir: "ne" },
-    tv: { at: [0.58, 0.66], dir: "se", screen: [[0.691, 0.635], [0.752, 0.605], [0.755, 0.68], [0.695, 0.714]] },
-    wardrobe: { at: [0.76, 0.54], dir: "ne" },
-    seat: { at: [0.5, 0.62], dir: "se" },
+    cooker: { at: [0.545, 0.5], dir: "ne" },
+    // The set faces the bed (we see its back): the picture shows on the edge of the screen.
+    tv: { at: [0.46, 0.72], dir: "se", screen: [[0.689, 0.642], [0.702, 0.636], [0.704, 0.725], [0.691, 0.728]] },
+    wardrobe: { at: [0.85, 0.71], dir: "ne" },
+    seat: { at: [0.46, 0.72], dir: "se" },
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-mini-flat": {
-    tv: { at: [0.42, 0.62], dir: "se", screen: [[0.706, 0.336], [0.868, 0.413], [0.864, 0.511], [0.705, 0.441]] },
-    seat: { at: [0.42, 0.62], dir: "se" },
-    table: { at: [0.45, 0.62], dir: "se" },
-    floor: { at: [0.62, 0.8], dir: "se" },
+    tv: { at: [0.4, 0.69], dir: "se", screen: [[0.709, 0.345], [0.866, 0.418], [0.862, 0.513], [0.707, 0.447]] },
+    seat: { at: [0.4, 0.69], dir: "se" },
+    table: { at: [0.5, 0.645], dir: "se" },
+    floor: { at: [0.72, 0.78], dir: "se" },
   },
   "home-bedroom": {
-    wardrobe: { at: [0.74, 0.62], dir: "ne" },
+    wardrobe: { at: [0.57, 0.64], dir: "ne" },
+    seat: { at: [0.24, 0.7], dir: "sw" },
     floor: { at: [0.55, 0.75], dir: "se" },
   },
   "home-kitchen": {
     cooker: { at: [0.3, 0.665], dir: "nw" },
-    table: { at: [0.7, 0.66], dir: "ne" },
+    table: { at: [0.855, 0.64], dir: "sw", table: 0.61 },
     floor: { at: [0.5, 0.7], dir: "se" },
   },
   "home-compound-yard": {
-    bucket: { at: [0.4, 0.45], dir: "nw" },
-    line: { at: [0.8, 0.5], dir: "ne" },
-    garden: { at: [0.55, 0.42], dir: "nw" },
-    seat: { at: [0.68, 0.38], dir: "se" },
+    bucket: { at: [0.36, 0.53], dir: "nw" },
+    line: { at: [0.78, 0.53], dir: "ne" },
+    garden: { at: [0.495, 0.44], dir: "ne" },
+    seat: { at: [0.625, 0.48], dir: "sw" },
     floor: { at: [0.5, 0.6], dir: "se" },
   },
   "home-duplex": {
     seat: { at: [0.47, 0.725], dir: "se" },
-    table: { at: [0.28, 0.62], dir: "nw" },
-    floor: { at: [0.6, 0.8], dir: "se" },
+    table: { at: [0.24, 0.6], dir: "se", table: 0.585 },
+    floor: { at: [0.72, 0.76], dir: "se" },
   },
   "home-duplex-bedroom": {
-    tv: { at: [0.5, 0.62], dir: "sw", screen: [[0.055, 0.397], [0.218, 0.323], [0.218, 0.451], [0.059, 0.522]] },
-    wardrobe: { at: [0.84, 0.62], dir: "ne" },
+    tv: { at: [0.5, 0.62], dir: "sw", screen: [[0.059, 0.425], [0.217, 0.343], [0.217, 0.467], [0.06, 0.553]] },
+    wardrobe: { at: [0.8, 0.74], dir: "ne" },
     seat: { at: [0.5, 0.62], dir: "sw" },
     floor: { at: [0.45, 0.78], dir: "se" },
   },
   "home-mansion": {
     seat: { at: [0.4, 0.7], dir: "se" },
-    table: { at: [0.45, 0.68], dir: "se" },
-    floor: { at: [0.6, 0.85], dir: "se" },
+    table: { at: [0.54, 0.6], dir: "se" },
+    floor: { at: [0.74, 0.82], dir: "se" },
   },
   "home-villa-suite": {
-    wardrobe: { at: [0.22, 0.56], dir: "nw" },
-    seat: { at: [0.82, 0.62], dir: "sw" },
+    wardrobe: { at: [0.18, 0.62], dir: "nw" },
+    seat: { at: [0.76, 0.72], dir: "sw" },
     floor: { at: [0.5, 0.72], dir: "se" },
   },
   "home-villa-kitchen": {
-    cooker: { at: [0.41, 0.515], dir: "nw" },
-    table: { at: [0.48, 0.6], dir: "ne" },
-    floor: { at: [0.55, 0.78], dir: "se" },
+    cooker: { at: [0.395, 0.51], dir: "nw" },
+    table: { at: [0.48, 0.6], dir: "ne", table: true },
+    floor: { at: [0.35, 0.74], dir: "se" },
   },
   "home-villa-cinema": {
-    screen: { at: [0.74, 0.62], dir: "nw", screen: [[0.12, 0.277], [0.416, 0.142], [0.416, 0.382], [0.123, 0.551]] },
-    seat: { at: [0.74, 0.62], dir: "nw" },
+    screen: { at: [0.76, 0.62], dir: "sw", screen: [[0.124, 0.302], [0.416, 0.142], [0.416, 0.382], [0.123, 0.551]] },
+    seat: { at: [0.76, 0.62], dir: "sw" },
     floor: { at: [0.45, 0.7], dir: "se" },
   },
   "home-villa-pool": {
     pool: { at: [0.5, 0.78], dir: "se" },
-    shower: { at: [0.8, 0.58], dir: "sw" },
-    seat: { at: [0.3, 0.55], dir: "se" },
-    table: { at: [0.62, 0.45], dir: "nw" },
-    floor: { at: [0.4, 0.62], dir: "se" },
+    shower: { at: [0.8, 0.73], dir: "sw" },
+    seat: { at: [0.78, 0.66], dir: "sw" },
+    table: { at: [0.64, 0.475], dir: "ne", table: true },
+    floor: { at: [0.5, 0.55], dir: "se" },
   },
 };
 /** Things you can buy that bring an object into the house (when the room doesn't have it already). */

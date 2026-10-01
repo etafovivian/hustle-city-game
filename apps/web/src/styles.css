@@ -1110,3 +1110,6 @@ body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 @keyframes wf-fall { from { transform: translateY(0); opacity: 1; } to { transform: translateY(0.2px); opacity: 0; } }
 @keyframes wf-ripple { from { transform: scale(.4); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .water-fx * { animation: none !important; } }
+.call-bubble { position: absolute; transform: translateX(-50%); padding: 4px 9px; border-radius: 12px; background: #fff; color: #0a0f24; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgb(0 0 0 / 35%); animation: call-ring 0.9s ease-in-out infinite alternate; }
+@keyframes call-ring { from { transform: translateX(-50%) rotate(-3deg); } to { transform: translateX(-50%) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .call-bubble { animation: none; } }

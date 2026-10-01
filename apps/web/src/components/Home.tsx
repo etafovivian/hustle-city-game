@@ -152,7 +152,7 @@ export function HomeCard({
       notify((e as Error).message);
     }
   };
-  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe });
+  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar });
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
   const workout = async () => {
@@ -238,6 +238,20 @@ export function HomeCard({
           }}
         />
         <div className="row home-acts">
+          {/* Sleep any time; the energy comes once per rest. */}
+          <button
+            type="button"
+            className="btn sm go"
+            disabled={busy}
+            onClick={() => {
+              if (restLeft <= 0) return void rest();
+              setMe("sleep");
+              notify(`You lie down for a while. Full rest again in ${Math.ceil(restLeft / 60_000)} min.`);
+            }}
+          >
+            <BedDouble size={16} aria-hidden="true" /> Sleep
+            <span className="tiny muted">{restLeft > 0 ? " · lie down a while" : ` · +${home.restEnergy} energy`}</span>
+          </button>
           <button type="button" className="btn sm" onClick={() => setMe("dance")}>
             💃 Dance
           </button>
@@ -264,9 +278,6 @@ export function HomeCard({
               : "A rented room in a face-me-I-face-you: shared toilet, generator noise, good neighbours. Rent a proper flat, or buy land to build your own house."}
         </p>
         <div className="row">
-          <button type="button" className="btn go" disabled={busy || restLeft > 0} onClick={() => void rest()}>
-            <BedDouble size={16} aria-hidden="true" /> {restLeft > 0 ? `Rest again in ${Math.ceil(restLeft / 60_000)} min` : `Sleep (+${home.restEnergy} energy)`}
-          </button>
           {home.plotId ? (
             <button type="button" className="btn" onClick={() => setRebuild((x) => !x)}>
               <Hammer size={16} aria-hidden="true" /> Change house

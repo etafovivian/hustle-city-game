@@ -2,11 +2,13 @@
 // villa cinema a big screen, a parlour a TV; a thing you buy adds what a room lacks. Tapping an action takes you to
 // the room that has the thing, walks you to it and plays the pose; a TV or the cinema screen plays a moving picture
 // while you watch, a rider brings the food you ordered, a call lets you pick who.
-import { HOME_ACTIONS, HOME_ITEMS, HOME_OBJECTS, ITEM_OBJECT, NEED_ICON, NEED_LABEL, type ContactView, type HomeAction, type HomeObject, type NeedKey, type NeedsView, type ObjectSpot } from "@hc/shared";
+import { HOME_ACTIONS, HOME_ITEMS, HOME_OBJECTS, ITEM_OBJECT, NEED_ICON, NEED_LABEL, type ContactView, type HomeAction, type AvatarConfig, type HomeObject, type NeedKey, type NeedsView, type ObjectSpot } from "@hc/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, formatCoins } from "../api.js";
 import type { InteriorPlayer } from "./Interior.js";
-import type { PlayerAction, Pt, Worker } from "./rooms.js";
+import { Wardrobe } from "./Wardrobe.js";
+import { nearestOnPolyline } from "./interiorPath.js";
+import { ROOMS, type PlayerAction, type Pt, type Worker } from "./rooms.js";
 
 type HomeRoom = { key: string; label: string; art: string };
 
@@ -207,6 +209,15 @@ export function ScreenShow({ quad, programme }: { quad: Quad; programme: Program
 }
 
 /** Water: drops from a shower or a bucket over your head, or ripples round you in the pool (fractions of the room). */
+/** On the phone: a ringing phone and who you're talking to, over your head. */
+function CallBubble({ at, who }: { at: Pt; who: string }) {
+  return (
+    <div className="call-bubble" style={{ left: `${at[0] * 100}%`, top: `${Math.max(4, at[1] * 100 - 30)}%` }} aria-hidden="true">
+      📞 {who === "family" ? "Hello Mama!" : `Hey @${who}!`}
+    </div>
+  );
+}
+
 export function WaterFx({ at, kind }: { at: Pt; kind: "shower" | "splash" | "ripples" }) {
   const [x, y] = at;
   return (
@@ -237,7 +248,7 @@ function CallPicker({ onPick, onClose }: { onPick: (to: string) => void; onClose
       .catch(() => setContacts([]));
   }, []);
   return (
-    <div className="call-picker" role="dialog" aria-label="Who do you want to call?">
+    <div className="call-picker" role="dialog" aria-label="Who do you want to call?" ref={(el) => { if (el && !el.dataset.shown) { el.dataset.shown = "1"; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }}>
       <strong className="small">📞 Who do you want to call?</strong>
       <button type="button" className="btn sm" onClick={() => onPick("family")}>
         👨‍👩‍👧 Family back home
@@ -289,6 +300,7 @@ export function useHomeLife({
   notify,
   onChanged,
   setAction,
+  avatar,
 }: {
   rooms: HomeRoom[];
   roomKey: string | null;
@@ -299,11 +311,11 @@ export function useHomeLife({
   notify: (m: string) => void;
   onChanged: () => void;
   setAction: (a: PlayerAction) => void;
+  /** For the wardrobe ("Change your clothes"). */
+  avatar?: AvatarConfig | null;
 }) {
   const [busy, setBusy] = useState(false);
   const [again, setAgain] = useState<Record<string, number>>({});
-  /** When an action can be done again: from this visit, else from the server's record of when it was last done. */
-  const readyAt = (a: HomeAction) => again[a.key] ?? (doneAt[a.key] ? Date.parse(doneAt[a.key]!) + a.every * 60_000 : 0);
   /** Where you do the action under way: only for that action, in that room (sleeping or a tap doesn't reuse it). */
   const [spot, setSpot] = useState<{ room: string; act: PlayerAction; spot: NonNullable<InteriorPlayer["spot"]> } | null>(null);
   const [show, setShow] = useState<{ room: string; quad: Quad; programme: Programme } | null>(null);
@@ -313,9 +325,12 @@ export function useHomeLife({
   const [cooking, setCooking] = useState<string | null>(null);
   /** A TV you bought that's switched on (its picture plays on the thing itself). */
   const [onItem, setOnItem] = useState<string | null>(null);
-  const [rider, setRider] = useState<{ room: string; at: Pt; seq: number } | null>(null);
+  const [rider, setRider] = useState<{ room: string; at: Pt; door: Pt; seq: number } | null>(null);
   const [goRoom, setGoRoom] = useState<{ key: string; seq: number } | null>(null);
   const [calling, setCalling] = useState(false);
+  /** On a call: who, and where you stand. */
+  const [onCall, setOnCall] = useState<{ room: string; at: Pt; who: string } | null>(null);
+  const [dressing, setDressing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /** For each action: the room it's done in (this room if it can be, else the first that can), or none. */
@@ -354,20 +369,29 @@ export function useHomeLife({
     // Walk to the thing and do it (sweeping goes round the room first; swimming does laps in the water).
     const pool = HOME_OBJECTS[room.art]?.pool;
     const via: Pt[] | undefined =
-      a.key === "clean" ? [[0.3, 0.72], [0.62, 0.66], [0.5, 0.82]] : a.key === "swim" && pool ? [[0.42, 0.74], [0.6, 0.82], [0.44, 0.86], [0.58, 0.76]] : undefined;
+      a.key === "clean" ? ROOMS[room.art]?.walkway : a.key === "swim" && pool ? [[0.42, 0.74], [0.6, 0.82], [0.44, 0.86], [0.58, 0.76]] : undefined;
     const water = a.key === "swim" && pool ? { box: [0.3, 0.68, 0.7, 0.92] as [number, number, number, number], wade: 0.55 } : undefined;
     const act: PlayerAction = a.shows && at.bought ? "stand" : POSE[a.pose];
-    setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water } });
+    // At a table: seated at it with the plate on it, the table hiding the legs.
+    const table = at.spot.table != null && (act === "eat" || act === "sit") ? { pose: act === "eat" ? ("eat_table" as const) : ("sit_table" as const), behind: at.spot.table === true ? undefined : at.spot.table } : {};
+    setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water, ...table } });
     setFx(a.key === "swim" ? { room: room.key, at: at.spot.at, kind: "ripples" } : a.key === "bath" ? { room: room.key, at: at.spot.at, kind: at.obj === "shower" ? "shower" : "splash" } : null);
     setCooking(a.key === "cook" ? room.key : null);
+    setOnCall(a.key === "call" ? { room: room.key, at: at.spot.at, who: to ?? "family" } : null);
+    setDressing(false);
     // Watching a TV you bought: stand in front of it (there's no sofa facing it).
     setAction(act);
     if (a.shows && at.spot.screen) setShow({ room: room.key, quad: at.spot.screen, programme: pickProgramme(a.shows) });
     else setShow(null);
     // Watching on a TV you bought: switch it on.
     setOnItem(a.shows && !at.spot.screen ? (items.find((k) => ITEM_OBJECT[k] === at.obj) ?? null) : null);
-    // The rider comes in with the food and hands it over next to where you eat.
-    if (a.key === "order") setRider({ room: room.key, at: [at.spot.at[0] + 0.06, Math.min(0.9, at.spot.at[1] + 0.06)], seq: Date.now() });
+    // The rider comes in at the door with the food and hands it over from the open floor nearest where you eat.
+    if (a.key === "order") {
+      const r = ROOMS[room.art];
+      const near: Pt = [at.spot.at[0] + 0.06, Math.min(0.9, at.spot.at[1] + 0.06)];
+      const hand = r && r.walkway.length > 1 ? nearestOnPolyline(r.walkway, near).at : near;
+      setRider({ room: room.key, at: hand, door: r?.spots?.door?.at ?? r?.walkway[0] ?? [0.5, 0.92], seq: Date.now() });
+    }
     setBusy(true);
     try {
       const r = await api<NeedsView & { again: string; called?: string | null; boost?: boolean }>("POST", `/api/game/home/act/${a.key}`, { room: room.key, to });
@@ -380,7 +404,9 @@ export function useHomeLife({
           : `${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}.${who}`,
       );
       onChanged();
-      if (a.key === "dress") window.dispatchEvent(new CustomEvent("hc:open-phone", { detail: "wardrobe" }));
+      // The wardrobe opens right here in the house.
+      if (a.key === "dress") setDressing(true);
+      if (a.key === "call") window.setTimeout(() => setOnCall(null), 15_000);
     } catch (e) {
       setError((e as Error).message);
       setShow(null);
@@ -392,44 +418,33 @@ export function useHomeLife({
     }
   };
   const start = (a: HomeAction) => (a.key === "call" ? setCalling(true) : void run(a));
-  const waitFor = (a: HomeAction) => Math.max(0, Math.ceil((readyAt(a) - Date.now()) / 60_000));
 
+  // One rider per order: a new object each render would send him in again.
+  const riderWorker = useMemo<Worker | null>(
+    () =>
+      rider
+        ? {
+            variant: "man_casual",
+            start: 0,
+            visitor: { door: rider.door, away: 100_000, variants: ["man_casual"] },
+            tasks: [{ at: rider.at, pose: "serve", dir: "nw", secs: 3 }],
+          }
+        : null,
+    [rider],
+  );
   /** Props for the room scene now on show. */
   const scene = (room: string, action?: PlayerAction): { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean } => ({
     spot: spot?.room === room && spot.act === action ? spot.spot : undefined,
     onItem,
     hideCook: cooking === room,
     overlay: show && show.room === room ? <ScreenShow quad={show.quad} programme={show.programme} /> : undefined,
-    overlayTop: fx && fx.room === room ? <WaterFx at={fx.at} kind={fx.kind} /> : undefined,
-    extraWorkers:
-      rider && rider.room === room
-        ? [
-            {
-              variant: "man_casual",
-              start: 0,
-              visitor: { door: [0.5, 0.92], away: 100_000, variants: ["man_casual"] },
-              tasks: [{ at: rider.at, pose: "serve", dir: "nw", secs: 3 }],
-            },
-          ]
-        : undefined,
+    overlayTop:
+      fx && fx.room === room ? <WaterFx at={fx.at} kind={fx.kind} /> : onCall && onCall.room === room ? <CallBubble at={onCall.at} who={onCall.who} /> : undefined,
+    extraWorkers: rider && riderWorker && rider.room === room ? [riderWorker] : undefined,
   });
 
   const panel = (
     <>
-      <div className="row home-acts">
-        {available.map((a) => {
-          const left = waitFor(a);
-          const room = where.get(a.key)!;
-          const elsewhere = roomKey !== null && room.key !== roomKey && rooms.length > 1;
-          return (
-            <button key={a.key} type="button" className="btn sm home-act" disabled={busy} onClick={() => start(a)} title={a.note}>
-              {a.icon} {a.label}
-              <span className="tiny muted">{left > 0 && !a.cost ? ` · boost again in ${left} min` : elsewhere ? ` · in the ${room.label.toLowerCase()}` : ` · ${a.note}`}</span>
-            </button>
-          );
-        })}
-      </div>
-      {unlocks.length > 0 && <p className="tiny muted">More to do at home with: {unlocks.join(", ")} (in "Things for your house" below).</p>}
       {calling && (
         <CallPicker
           onClose={() => setCalling(false)}
@@ -439,6 +454,27 @@ export function useHomeLife({
           }}
         />
       )}
+      {dressing && avatar && (
+        <div className="call-picker" ref={(el) => { if (el && !el.dataset.shown) { el.dataset.shown = "1"; el.scrollIntoView({ block: "start", behavior: "smooth" }); } }}>
+          <Wardrobe avatar={avatar} notify={notify} onChanged={onChanged} />
+          <button type="button" className="btn sm quiet" onClick={() => setDressing(false)}>
+            Done
+          </button>
+        </div>
+      )}
+      <div className="row home-acts">
+        {available.map((a) => {
+          const room = where.get(a.key)!;
+          const elsewhere = roomKey !== null && room.key !== roomKey && rooms.length > 1;
+          return (
+            <button key={a.key} type="button" className="btn sm home-act" disabled={busy} onClick={() => start(a)} title={a.note}>
+              {a.icon} {a.label}
+              <span className="tiny muted">{elsewhere ? ` · in the ${room.label.toLowerCase()}` : ` · ${a.note}`}</span>
+            </button>
+          );
+        })}
+      </div>
+      {unlocks.length > 0 && <p className="tiny muted">More to do at home with: {unlocks.join(", ")} (in "Things for your house" below).</p>}
       {error && <p className="alert small">{error}</p>}
     </>
   );
