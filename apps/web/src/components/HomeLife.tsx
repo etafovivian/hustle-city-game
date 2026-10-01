@@ -304,7 +304,8 @@ export function useHomeLife({
   const [again, setAgain] = useState<Record<string, number>>({});
   /** When an action can be done again: from this visit, else from the server's record of when it was last done. */
   const readyAt = (a: HomeAction) => again[a.key] ?? (doneAt[a.key] ? Date.parse(doneAt[a.key]!) + a.every * 60_000 : 0);
-  const [spot, setSpot] = useState<InteriorPlayer["spot"]>();
+  /** Where you do the action under way: only for that action, in that room (sleeping or a tap doesn't reuse it). */
+  const [spot, setSpot] = useState<{ room: string; act: PlayerAction; spot: NonNullable<InteriorPlayer["spot"]> } | null>(null);
   const [show, setShow] = useState<{ room: string; quad: Quad; programme: Programme } | null>(null);
   /** Water while you bathe or swim. */
   const [fx, setFx] = useState<{ room: string; at: Pt; kind: "shower" | "splash" | "ripples" } | null>(null);
@@ -355,11 +356,12 @@ export function useHomeLife({
     const via: Pt[] | undefined =
       a.key === "clean" ? [[0.3, 0.72], [0.62, 0.66], [0.5, 0.82]] : a.key === "swim" && pool ? [[0.42, 0.74], [0.6, 0.82], [0.44, 0.86], [0.58, 0.76]] : undefined;
     const water = a.key === "swim" && pool ? { box: [0.3, 0.68, 0.7, 0.92] as [number, number, number, number], wade: 0.55 } : undefined;
-    setSpot({ at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water });
+    const act: PlayerAction = a.shows && at.bought ? "stand" : POSE[a.pose];
+    setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water } });
     setFx(a.key === "swim" ? { room: room.key, at: at.spot.at, kind: "ripples" } : a.key === "bath" ? { room: room.key, at: at.spot.at, kind: at.obj === "shower" ? "shower" : "splash" } : null);
     setCooking(a.key === "cook" ? room.key : null);
     // Watching a TV you bought: stand in front of it (there's no sofa facing it).
-    setAction(a.shows && at.bought ? "stand" : POSE[a.pose]);
+    setAction(act);
     if (a.shows && at.spot.screen) setShow({ room: room.key, quad: at.spot.screen, programme: pickProgramme(a.shows) });
     else setShow(null);
     // Watching on a TV you bought: switch it on.
@@ -368,11 +370,15 @@ export function useHomeLife({
     if (a.key === "order") setRider({ room: room.key, at: [at.spot.at[0] + 0.06, Math.min(0.9, at.spot.at[1] + 0.06)], seq: Date.now() });
     setBusy(true);
     try {
-      const r = await api<NeedsView & { again: string; called?: string | null }>("POST", `/api/game/home/act/${a.key}`, { room: room.key, to });
+      const r = await api<NeedsView & { again: string; called?: string | null; boost?: boolean }>("POST", `/api/game/home/act/${a.key}`, { room: room.key, to });
       setAgain((x) => ({ ...x, [a.key]: new Date(r.again).getTime() }));
       const bits = (Object.entries(a.gives) as [NeedKey, number][]).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : "−"}${NEED_ICON[k]} ${NEED_LABEL[k]}`);
       const who = a.key === "call" ? (r.called ? ` You called @${r.called}; they got a ring.` : " You called home. Everyone's fine.") : "";
-      notify(`${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}.${who}`);
+      notify(
+        r.boost === false
+          ? `${a.icon} ${a.label}. Enjoy! (The boost comes back in ${Math.max(1, Math.ceil((Date.parse(r.again) - Date.now()) / 60_000))} min.)${who}`
+          : `${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}.${who}`,
+      );
       onChanged();
       if (a.key === "dress") window.dispatchEvent(new CustomEvent("hc:open-phone", { detail: "wardrobe" }));
     } catch (e) {
@@ -389,8 +395,8 @@ export function useHomeLife({
   const waitFor = (a: HomeAction) => Math.max(0, Math.ceil((readyAt(a) - Date.now()) / 60_000));
 
   /** Props for the room scene now on show. */
-  const scene = (room: string): { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean } => ({
-    spot,
+  const scene = (room: string, action?: PlayerAction): { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean } => ({
+    spot: spot?.room === room && spot.act === action ? spot.spot : undefined,
     onItem,
     hideCook: cooking === room,
     overlay: show && show.room === room ? <ScreenShow quad={show.quad} programme={show.programme} /> : undefined,
@@ -416,9 +422,9 @@ export function useHomeLife({
           const room = where.get(a.key)!;
           const elsewhere = roomKey !== null && room.key !== roomKey && rooms.length > 1;
           return (
-            <button key={a.key} type="button" className="btn sm home-act" disabled={busy || left > 0} onClick={() => start(a)} title={a.note}>
+            <button key={a.key} type="button" className="btn sm home-act" disabled={busy} onClick={() => start(a)} title={a.note}>
               {a.icon} {a.label}
-              <span className="tiny muted">{left > 0 ? ` · again in ${left} min` : elsewhere ? ` · in the ${room.label.toLowerCase()}` : ` · ${a.note}`}</span>
+              <span className="tiny muted">{left > 0 && !a.cost ? ` · boost again in ${left} min` : elsewhere ? ` · in the ${room.label.toLowerCase()}` : ` · ${a.note}`}</span>
             </button>
           );
         })}

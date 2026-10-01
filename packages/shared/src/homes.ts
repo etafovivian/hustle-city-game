@@ -161,7 +161,7 @@ export const HOME_OBJECTS: Record<string, Partial<Record<HomeObject, ObjectSpot>
     floor: { at: [0.5, 0.6], dir: "se" },
   },
   "home-duplex": {
-    seat: { at: [0.45, 0.68], dir: "se" },
+    seat: { at: [0.47, 0.725], dir: "se" },
     table: { at: [0.28, 0.62], dir: "nw" },
     floor: { at: [0.6, 0.8], dir: "se" },
   },

@@ -426,7 +426,7 @@ export function HomeRooms({
   /** Switch to this room (an action happens there). */
   goRoom?: { key: string; seq: number } | null;
   /** What the room scene shows while you do something (your spot, a picture on the screen, a delivery). */
-  scene?: (room: string) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
+  scene?: (room: string, action?: PlayerAction) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
@@ -448,7 +448,7 @@ export function HomeRooms({
     const i = rooms.findIndex((r) => r.key === goRoom.key);
     if (i >= 0) setAt(i);
   }, [goRoom?.seq]);
-  const extra = scene?.(room.key);
+  const extra = scene?.(room.key, action);
   return (
     <div className="home-rooms">
       {rooms.length > 1 && (
