@@ -236,7 +236,7 @@ export function CityMap({
   onApp,
 }: {
   /** Open a phone app (a venue like the school can). */
-  onApp?: (app: "academy" | "garage") => void;
+  onApp?: (app: "academy" | "garage" | "love") => void;
   onOpen: (id: LocationKey) => void;
   visited: Set<string>;
   /** A shop visit happened (quest progress may have moved). */

@@ -1113,3 +1113,10 @@ body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 .call-bubble { position: absolute; transform: translateX(-50%); padding: 4px 9px; border-radius: 12px; background: #fff; color: #0a0f24; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgb(0 0 0 / 35%); animation: call-ring 0.9s ease-in-out infinite alternate; }
 @keyframes call-ring { from { transform: translateX(-50%) rotate(-3deg); } to { transform: translateX(-50%) rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) { .call-bubble { animation: none; } }
+.love-card { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: var(--sheet); border: 1px solid var(--rule-strong); }
+.love-card.partner { border-color: #db2777; box-shadow: 0 0 0 1px #db277755; }
+.love-stage { display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: #db277722; color: #f472b6; font-size: 11px; font-weight: 700; vertical-align: middle; }
+.love-bar { display: block; height: 6px; border-radius: 999px; background: var(--rule-strong); overflow: hidden; }
+.love-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #f472b6, #db2777); border-radius: inherit; transition: width .4s var(--ease-out); }
+.love-chat, .love-grid { display: grid; gap: 6px; }
+.love-answer { justify-content: flex-start; text-align: left; white-space: normal; }

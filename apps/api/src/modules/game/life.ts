@@ -2,10 +2,12 @@
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
 import { firstDayStep } from "./firstday.js";
+import { partnerAtHome } from "./partners.js";
 import { sendPing } from "../presence.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
   HOME_OBJECTS,
+  HOME_SOCIAL,
   ITEM_OBJECT,
   SELL_BACK,
   HOME_ACTION_BY_KEY,
@@ -169,7 +171,9 @@ export async function lifeRoutes(app: FastifyInstance) {
       const light = homeArea ? hasLight(homeArea, now) : true;
       const generator = items.some((k) => GENERATORS.includes(k));
       const gain = !light && !generator ? Math.round(restEnergy(items) / 2) : restEnergy(items);
-      const rested = { ...needs, energy: Math.min(100, needs.energy + gain) };
+      // Someone to come home to: a partner living with you lifts your Social every night.
+      const partner = await partnerAtHome(tx, user.id);
+      const rested = { ...needs, energy: Math.min(100, needs.energy + gain), social: Math.min(100, needs.social + (partner ? HOME_SOCIAL : 0)) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
       return { ...needsView(rested), gained: gain, light, generator };
     });
