@@ -29,9 +29,19 @@ describe("life at home", () => {
     const food0 = (await p.call("GET", "/api/game/needs")).json().needs.food as number;
     expect((await p.call("POST", "/api/game/home/act/cook", { room: "room" })).json().needs.food).toBe(Math.min(100, food0 + 30));
     expect(await coins()).toBe(before - 400);
-    expect((await p.call("POST", "/api/game/home/act/cook", { room: "room" })).statusCode).toBe(409);
+    // Cooking again soon: you pay and eat, but the skill only grows once per cooldown.
+    const again = await p.call("POST", "/api/game/home/act/cook", { room: "room" });
+    expect(again.statusCode).toBe(200);
+    expect(await coins()).toBe(before - 800);
     expect((await p.call("POST", "/api/game/home/act/leftovers", { room: "room" })).statusCode).toBe(200);
     expect((await p.call("GET", "/api/game/skills")).json().cooking.points).toBe(8);
+    // Free things can be done any time; the boost comes once per cooldown.
+    const n1 = (await p.call("POST", "/api/game/home/act/relax", { room: "room" })).json();
+    expect(n1.boost).toBe(true);
+    const n2 = await p.call("POST", "/api/game/home/act/relax", { room: "room" });
+    expect(n2.statusCode).toBe(200);
+    expect(n2.json().boost).toBe(false);
+    expect(n2.json().needs.energy).toBe(n1.needs.energy);
     // No TV in a face-me room, until you buy one.
     expect((await p.call("POST", "/api/game/home/act/tv", { room: "room" })).statusCode).toBe(409);
     expect((await p.call("POST", "/api/game/home/items", { key: "flat_tv" })).statusCode).toBe(201);

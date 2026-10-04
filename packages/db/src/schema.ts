@@ -83,6 +83,8 @@ export const profiles = pgTable(
     nicknameHidden: boolean("nickname_hidden").notNull().default(false),
     /** Where the player last stopped on the map ({x, y, at}), so every device starts them in the same place. */
     lastPos: jsonb("last_pos"),
+    /** Who you'd like to meet (love life): "men", "women" or "anyone"; null until chosen. */
+    partnerPref: text("partner_pref"),
     avatar: jsonb("avatar").notNull(),
     xp: integer("xp").notNull().default(0),
     // Onboarding choices (see @hc/shared onboarding.ts).
@@ -1131,4 +1133,27 @@ export const feedback = pgTable(
     lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("feedback_status_idx").on(t.status, t.createdAt), uniqueIndex("feedback_error_uq").on(t.userId, t.fingerprint)],
+);
+
+/** Your bond with someone in the city (an NPC for now): how close you are and how far it's gone. */
+export const partnerBonds = pgTable(
+  "partner_bonds",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    npc: text("npc").notNull(),
+    stage: text("stage").notNull().default("met"),
+    closeness: integer("closeness").notNull().default(0),
+    /** Chats so far (picks what they bring up next), and how many counted on `chatDay`. */
+    chats: integer("chats").notNull().default(0),
+    chatDay: text("chat_day"),
+    chatsOnDay: integer("chats_on_day").notNull().default(0),
+    giftDay: text("gift_day"),
+    dateAt: timestamp("date_at", { withTimezone: true }),
+    /** Last time you did anything together (drift starts a few days after). */
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.npc] })],
 );

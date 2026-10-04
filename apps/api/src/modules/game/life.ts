@@ -2,10 +2,12 @@
 // bought), resting at home, and your own bike or car. All money here is City Coins.
 
 import { firstDayStep } from "./firstday.js";
+import { partnerAtHome } from "./partners.js";
 import { sendPing } from "../presence.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
   HOME_OBJECTS,
+  HOME_SOCIAL,
   ITEM_OBJECT,
   SELL_BACK,
   HOME_ACTION_BY_KEY,
@@ -169,7 +171,9 @@ export async function lifeRoutes(app: FastifyInstance) {
       const light = homeArea ? hasLight(homeArea, now) : true;
       const generator = items.some((k) => GENERATORS.includes(k));
       const gain = !light && !generator ? Math.round(restEnergy(items) / 2) : restEnergy(items);
-      const rested = { ...needs, energy: Math.min(100, needs.energy + gain) };
+      // Someone to come home to: a partner living with you lifts your Social every night.
+      const partner = await partnerAtHome(tx, user.id);
+      const rested = { ...needs, energy: Math.min(100, needs.energy + gain), social: Math.min(100, needs.social + (partner ? HOME_SOCIAL : 0)) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
       return { ...needsView(rested), gained: gain, light, generator };
     });
@@ -215,17 +219,23 @@ export async function lifeRoutes(app: FastifyInstance) {
       const { needs, freeAt } = await loadNeeds(tx, user.id, now);
       const at = (k: string) => (freeAt[`__act_${k}`] ? new Date(freeAt[`__act_${k}`]!).getTime() : 0);
       const wait = at(act.key) + act.every * 60_000 - now.getTime();
-      if (wait > 0) throw new AppError(409, "too_soon", `You did that not long ago. Again in ${Math.ceil(wait / 60_000)} min.`);
       if (act.after && now.getTime() - at(act.after.action) > act.after.within * 60_000) throw new AppError(409, "nothing_cooked", "Nothing in the pot. Cook first.");
+      // You can do things at home whenever you like. The boost comes once per `every` minutes; before that you just do
+      // it (no boost, no cost). Things you pay for (cooking, ordering food) always give the food you paid for; skill
+      // and XP still come once per `every`.
+      const full = wait <= 0;
+      const boost = full || !!act.cost;
       const next = { ...needs };
-      for (const k of NEED_KEYS) next[k] = Math.max(0, Math.min(100, next[k] + (act.gives[k] ?? 0)));
-      if ((act.gives.energy ?? 0) < 0 && needs.energy < -(act.gives.energy ?? 0)) throw new AppError(409, "too_tired", "Too tired for that. Sleep first.");
+      if (boost) for (const k of NEED_KEYS) next[k] = Math.max(0, Math.min(100, next[k] + (act.gives[k] ?? 0)));
+      if (boost && (act.gives.energy ?? 0) < 0 && needs.energy < -(act.gives.energy ?? 0)) throw new AppError(409, "too_tired", "Too tired for that. Sleep first.");
       let balance: number | undefined;
-      if (act.cost) balance = (await postCoins(tx, user.id, -act.cost, "home_life", `home:${act.key}:${now.toISOString()}`)).balance;
-      await saveNeeds(tx, user.id, next, now, { ...freeAt, [`__act_${act.key}`]: now.toISOString() });
-      if (act.skill) await addSkill(tx, user.id, act.skill[0], act.skill[1]);
-      if (act.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${act.xp}` }).where(eq(profiles.userId, user.id));
-      if (act.gives.food && act.gives.food > 0) await firstDayStep(tx, user.id, "eat");
+      if (boost && act.cost) balance = (await postCoins(tx, user.id, -act.cost, "home_life", `home:${act.key}:${now.toISOString()}`)).balance;
+      if (boost) await saveNeeds(tx, user.id, next, now, full ? { ...freeAt, [`__act_${act.key}`]: now.toISOString() } : freeAt);
+      if (boost && act.gives.food && act.gives.food > 0) await firstDayStep(tx, user.id, "eat");
+      if (full) {
+        if (act.skill) await addSkill(tx, user.id, act.skill[0], act.skill[1]);
+        if (act.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${act.xp}` }).where(eq(profiles.userId, user.id));
+      }
       // A call to a friend reaches them (a note on their screen).
       let called: string | null = null;
       if (act.key === "call" && to && to !== "family") {
@@ -236,7 +246,7 @@ export async function lifeRoutes(app: FastifyInstance) {
           called = friend.nickname;
         }
       }
-      return { ...needsView(next), balance, called, again: new Date(now.getTime() + act.every * 60_000).toISOString() };
+      return { ...needsView(next), balance, called, boost, again: new Date((full ? now.getTime() : at(act.key)) + act.every * 60_000).toISOString() };
     });
   });
 

@@ -34,7 +34,8 @@ function spriteBox(ph: number, pose: PoseAction | null): CSSProperties {
  * box's bottom is 10% of a person below the feet. */
 const behindClip = (y: number, behind: number | undefined, h: number, ph: number) => {
   const cut = behind == null ? 0 : (y - behind) * h + ph * 0.1;
-  return cut > 0 ? `inset(0 0 ${cut}px 0)` : undefined;
+  // (Not clipped above or at the sides: the player's name tag sits over the box.)
+  return cut > 0 ? `inset(-50% -50% ${cut}px -50%)` : undefined;
 };
 /** Background position for frame `f` of a sheet with `n` frames. */
 const framePos = (f: number, n: number) => `${(f / (n - 1)) * 100}% 0`;
@@ -120,7 +121,7 @@ export interface InteriorPlayer {
   action: PlayerAction;
   /** Go here instead of the room's spot for the action (the cooker, the TV, the mirror), passing `via` first
    * (sweeping the floor). A new `seq` sends them again. */
-  spot?: { at: Pt; dir: Facing; via?: Pt[]; seq: number; water?: { box: [number, number, number, number]; wade: number } };
+  spot?: { at: Pt; dir: Facing; via?: Pt[]; seq: number; water?: { box: [number, number, number, number]; wade: number }; pose?: PoseAction; behind?: number };
 }
 
 export function InteriorScene({
@@ -359,7 +360,7 @@ function PlayerInRoom({
     const box0 = box.current;
     const aspect = box0 && box0.clientHeight ? box0.clientWidth / box0.clientHeight : 1;
     // A spot from the caller (the thing being used) wins over the room's own spot for the action.
-    const target = spot && action !== "walk" ? { spot: { at: spot.at, dir: spot.dir, behind: undefined as number | undefined }, pose: POSE_OF[action] } : spotFor(room, action);
+    const target = spot && action !== "walk" ? { spot: { at: spot.at, dir: spot.dir, behind: spot.behind }, pose: spot.pose ?? POSE_OF[action] } : spotFor(room, action);
     const to: Pt = target ? target.spot.at : walkway.length > 1 ? nearestOnPolyline(walkway, m.at, aspect).at : m.at;
     // Through the `via` points first (sweeping round the room), then to the spot.
     let from = m.at;
@@ -416,14 +417,18 @@ function PlayerInRoom({
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
       // sweeping: the broom keeps going while they work their way round the room (the `via` route)
       const want = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
-      // The player's own look as tinted layers (any pose, any look) when on and ready; else the nearest baked look,
-      // and a pose that look has no sheet for (a together pose, stirring at the hob) falls back to stand_idle.
+      // The player's own look as tinted layers (any pose, any look) when layers are on and the sheet is ready.
+      // Otherwise the nearest baked look: a pose that look has no sheet for (stirring at the hob, a together pose)
+      // falls back to standing, and at a thing on the far side (the hob, the wardrobe, the line) they stand busy with
+      // their hands, facing it (standing has no sheet facing away).
       const layered = want ? layerSheet(avatarRef.current, poseSheetName(want, sheetDir(want, m.face))) : null;
-      const pose: PoseAction | null = !want
-        ? null
-        : layered || POSE_VARIANTS[want].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(want)
-          ? want
-          : (POSE_SHEETS[want].fallback ?? "stand_idle");
+      let pose: PoseAction | null = want;
+      if (want && !layered) {
+        const has = POSE_VARIANTS[want].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(want);
+        const away = m.face === "nw" || m.face === "ne";
+        const busy = (!has || want === "stand_idle") && away && m.atSpot && !m.free && POSE_VARIANTS.stand_talk.includes(variant);
+        pose = busy ? "stand_talk" : has ? want : (POSE_SHEETS[want].fallback ?? "stand_idle");
+      }
       if (pose !== m.shown) {
         m.shown = pose;
         setShown(pose);
@@ -443,7 +448,7 @@ function PlayerInRoom({
       // (the layered swim sheet is already cut at the waterline: no extra clip for it)
       const inWater = !!m.water && pose !== "swim" && m.at[0] > wx0 && m.at[0] < wx1 && m.at[1] > wy0 && m.at[1] < wy1;
       node.style.clipPath = inWater
-        ? `inset(0 0 ${Math.round(ph * m.water!.wade + ph * 0.1)}px 0)`
+        ? `inset(-50% -50% ${Math.round(ph * m.water!.wade + ph * 0.1)}px -50%)`
         : (pose && m.atSpot && !m.free && behindClip(m.at[1], m.behind, box.current?.clientHeight ?? 0, ph)) || "";
     };
     const step = (now: number) => {

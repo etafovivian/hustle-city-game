@@ -25,6 +25,7 @@ import { reservationRoutes } from "./modules/reservations.js";
 import { sponsorRoutes } from "./modules/sponsors.js";
 import { feedbackRoutes } from "./modules/feedback.js";
 import { hustleRoutes } from "./modules/hustle.js";
+import { partnerRoutes } from "./modules/game/partners.js";
 import { jobsBoardRoutes } from "./modules/jobsboard.js";
 import { huntRoutes } from "./modules/game/hunt.js";
 import { gameRoutes } from "./modules/game/routes.js";
@@ -113,6 +114,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(jobsBoardRoutes);
   await app.register(hustleRoutes);
   await app.register(feedbackRoutes);
+  await app.register(partnerRoutes);
   await app.register(huntRoutes);
 
   return app;

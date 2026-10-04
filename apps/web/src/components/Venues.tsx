@@ -2,7 +2,7 @@
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
 import { CHIEF_TITLE, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { INK } from "../prints.js";
 import { InteriorScene, ROOMS, type PlayerAction } from "./Interior.js";
@@ -12,6 +12,7 @@ import { playAdhan, stopAdhan } from "./Ambience.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { GadgetCounter } from "./Gadgets.js";
+import { PeopleHere, npcWorkers } from "./Love.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
@@ -199,7 +200,7 @@ export function VenueCard({
   onChanged: () => void;
   notify: (m: string) => void;
   /** Open a phone app (the school opens the Academy). */
-  onApp?: (app: "academy" | "garage") => void;
+  onApp?: (app: "academy" | "garage" | "love") => void;
 }) {
   const base = VENUES_BY_KEY.get(venueKey)!;
   const venue = branch ? { ...base, name: branch.name, area: branch.area } : base;
@@ -207,6 +208,8 @@ export function VenueCard({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sheet = useRef<HTMLDivElement>(null);
+  // People you can meet here, standing about in the room (one list per place, so they don't restart on redraws).
+  const regulars = useMemo(() => (base.interior ? npcWorkers(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
 
   useEffect(() => {
     api<VenueDay>("GET", "/api/game/venues/today")
@@ -347,6 +350,7 @@ export function VenueCard({
               src={venue.interior}
               alt={`Inside ${venue.name}`}
               room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]}
+              extraWorkers={regulars}
               seed={(branch?.key ?? venue.key).length}
               player={avatar && present ? { avatar, action: me } : undefined}
               onPlayerWalk={() => setMe("walk")}
@@ -448,6 +452,7 @@ export function VenueCard({
             );
           })}
         </ul>
+        <PeopleHere venue={venue.key} at={branch?.key ?? venue.key} present={present} notify={notify} onLove={onApp && (() => onApp("love"))} />
         {job && work && (
           <div className="work-box">
             <strong className="small row" style={{ gap: 6 }}>

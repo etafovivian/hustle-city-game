@@ -51,6 +51,7 @@ const ITEM_WIDTH: Record<string, number> = {
 import type { PoseAction, Worker } from "./rooms.js";
 import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
+import { usePartnerAtHome } from "./Love.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -152,7 +153,9 @@ export function HomeCard({
       notify((e as Error).message);
     }
   };
-  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe });
+  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar });
+  // Your partner, if they live with you: at home with you (in the parlour or the kitchen).
+  const partner = usePartnerAtHome();
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
   const workout = async () => {
@@ -230,7 +233,7 @@ export function HomeCard({
           onSell={(k) => void sellItem(k)}
           goRoom={life.goRoom}
           scene={life.scene}
-          guests={guests}
+          guests={partner ? [{ avatar: partner.avatar, nickname: partner.name, partner: true }, ...guests] : guests}
           placements={placed}
           onPlace={(key, room, x, y) => {
             setPlaced((p) => ({ ...p, [key]: { room, x, y } }));
@@ -238,6 +241,20 @@ export function HomeCard({
           }}
         />
         <div className="row home-acts">
+          {/* Sleep any time; the energy comes once per rest. */}
+          <button
+            type="button"
+            className="btn sm go"
+            disabled={busy}
+            onClick={() => {
+              if (restLeft <= 0) return void rest();
+              setMe("sleep");
+              notify(`You lie down for a while. Full rest again in ${Math.ceil(restLeft / 60_000)} min.`);
+            }}
+          >
+            <BedDouble size={16} aria-hidden="true" /> Sleep
+            <span className="tiny muted">{restLeft > 0 ? " · lie down a while" : ` · +${home.restEnergy} energy`}</span>
+          </button>
           <button type="button" className="btn sm" onClick={() => setMe("dance")}>
             💃 Dance
           </button>
@@ -264,9 +281,6 @@ export function HomeCard({
               : "A rented room in a face-me-I-face-you: shared toilet, generator noise, good neighbours. Rent a proper flat, or buy land to build your own house."}
         </p>
         <div className="row">
-          <button type="button" className="btn go" disabled={busy || restLeft > 0} onClick={() => void rest()}>
-            <BedDouble size={16} aria-hidden="true" /> {restLeft > 0 ? `Rest again in ${Math.ceil(restLeft / 60_000)} min` : `Sleep (+${home.restEnergy} energy)`}
-          </button>
           {home.plotId ? (
             <button type="button" className="btn" onClick={() => setRebuild((x) => !x)}>
               <Hammer size={16} aria-hidden="true" /> Change house
@@ -410,8 +424,8 @@ export function HomeRooms({
   /** Where you put your things; with onPlace you can drag them (your own home). */
   placements?: Record<string, { room: string; x: number; y: number }>;
   onPlace?: (key: string, room: string, x: number, y: number) => void;
-  /** Players visiting this home right now. */
-  guests?: { avatar: AvatarConfig; nickname: string }[];
+  /** Players visiting this home right now (and your partner, if they live with you). */
+  guests?: { avatar: AvatarConfig; nickname: string; partner?: boolean }[];
   design: string | null;
   who: string;
   items?: string[];
@@ -426,7 +440,7 @@ export function HomeRooms({
   /** Switch to this room (an action happens there). */
   goRoom?: { key: string; seq: number } | null;
   /** What the room scene shows while you do something (your spot, a picture on the screen, a delivery). */
-  scene?: (room: string) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
+  scene?: (room: string, action?: PlayerAction) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
 }) {
   const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
   const [at, setAt] = useState(0);
@@ -448,7 +462,7 @@ export function HomeRooms({
     const i = rooms.findIndex((r) => r.key === goRoom.key);
     if (i >= 0) setAt(i);
   }, [goRoom?.seq]);
-  const extra = scene?.(room.key);
+  const extra = scene?.(room.key, action);
   return (
     <div className="home-rooms">
       {rooms.length > 1 && (
@@ -460,7 +474,7 @@ export function HomeRooms({
           ))}
         </div>
       )}
-      {guests.length > 0 && <p className="tiny muted">With you: {guests.map((g) => `@${g.nickname}`).join(", ")}</p>}
+      {guests.length > 0 && <p className="tiny muted">With you: {guests.map((g) => (g.partner ? `${g.nickname} 💞` : `@${g.nickname}`)).join(", ")}</p>}
       {onPlace && items.length > 0 && (
         <button type="button" className={`btn sm ${arranging ? "go" : ""}`} style={{ justifySelf: "start" }} onClick={() => setArranging((x) => !x)}>
           {arranging ? "Done arranging" : "🪑 Arrange furniture"}

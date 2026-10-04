@@ -225,6 +225,13 @@
       "when": 1791928806913,
       "tag": "0031_last_position",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791973906610,
+      "tag": "0032_partners",
+      "breakpoints": true
     }
   ]
 }
