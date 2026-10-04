@@ -247,7 +247,8 @@ export interface HomeAction {
   every: number;
   /** Only within this many minutes after another action (eating what you cooked). */
   after?: { action: string; within: number };
-  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair" | "cook";
+  /** What the player does in the room (Interior PlayerAction): its pose and the spot it goes to. */
+  pose: "sit" | "eat" | "dance" | "stand" | "pray" | "chair" | "cook" | "bath" | "laundry" | "sweep" | "water_plants" | "phone" | "games" | "swim" | "dress";
   /** What plays on a screen while you do it. */
   shows?: "tv" | "film" | "game";
 }
@@ -258,15 +259,15 @@ export const HOME_ACTIONS: readonly HomeAction[] = [
   { key: "order", label: "Order food (Chop Express)", icon: "🛵", note: "700 coins · a rider brings it · ++Food", uses: ["table", "seat", "floor"], cost: 700, gives: { food: 30 }, every: 60, pose: "eat" },
   { key: "tv", label: "Watch TV", icon: "📺", note: "+Fun", uses: ["tv"], gives: { fun: 15 }, every: 60, pose: "sit", shows: "tv" },
   { key: "film", label: "Watch a film", icon: "🎬", note: "++Fun", uses: ["screen"], gives: { fun: 25, social: 3 }, every: 120, pose: "sit", shows: "film" },
-  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", uses: ["screen", "tv"], needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "sit", shows: "game" },
-  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", uses: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "stand" },
-  { key: "bath", label: "Bath", icon: "🚿", note: "+Health +Style", uses: ["shower", "bucket"], gives: { health: 6, style: 10 }, every: 60, pose: "stand" },
-  { key: "dress", label: "Change your clothes", icon: "👗", note: "Opens your wardrobe · +Style", uses: ["wardrobe"], gives: { style: 12 }, every: 120, pose: "stand" },
+  { key: "games", label: "Play video games", icon: "🎮", note: "+Fun · Tech", uses: ["screen", "tv"], needs: ["game_console"], gives: { fun: 18, energy: -3 }, skill: ["tech", 4], every: 60, pose: "games", shows: "game" },
+  { key: "swim", label: "Swim in your pool", icon: "🏊🏾", note: "+Health +Fun · Fitness", uses: ["pool"], gives: { health: 10, fun: 10, energy: -5 }, skill: ["fitness", 6], every: 120, pose: "swim" },
+  { key: "bath", label: "Bath", icon: "🚿", note: "+Health +Style", uses: ["shower", "bucket"], gives: { health: 6, style: 10 }, every: 60, pose: "bath" },
+  { key: "dress", label: "Change your clothes", icon: "👗", note: "Opens your wardrobe · +Style", uses: ["wardrobe"], gives: { style: 12 }, every: 120, pose: "dress" },
   { key: "pray", label: "Pray", icon: "🙏🏾", note: "+Energy, a calm mind", uses: ["floor"], gives: { energy: 5, fun: 3 }, every: 60, pose: "pray" },
-  { key: "call", label: "Call someone", icon: "📞", note: "Pick who · +Social", uses: ["floor"], gives: { social: 12 }, every: 180, pose: "stand" },
-  { key: "clean", label: "Sweep and tidy up", icon: "🧹", note: "+Health · XP", uses: ["floor"], gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "stand" },
-  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", uses: ["line", "bucket"], gives: { style: 8, energy: -4 }, every: 240, pose: "stand" },
-  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", uses: ["garden"], gives: { health: 6, fun: 4 }, every: 180, pose: "stand" },
+  { key: "call", label: "Call someone", icon: "📞", note: "Pick who · +Social", uses: ["floor"], gives: { social: 12 }, every: 180, pose: "phone" },
+  { key: "clean", label: "Sweep and tidy up", icon: "🧹", note: "+Health · XP", uses: ["floor"], gives: { health: 4, energy: -3 }, xp: 5, every: 360, pose: "sweep" },
+  { key: "laundry", label: "Wash your clothes", icon: "🧺", note: "+Style", uses: ["line", "bucket"], gives: { style: 8, energy: -4 }, every: 240, pose: "laundry" },
+  { key: "garden", label: "Tend the plantain and pepper", icon: "🌿", note: "+Health +Fun", uses: ["garden"], gives: { health: 6, fun: 4 }, every: 180, pose: "water_plants" },
   { key: "radio_dance", label: "Dance to the radio", icon: "💃🏾", note: "+Fun", uses: ["radio"], gives: { fun: 10, energy: -4 }, every: 60, pose: "dance" },
   { key: "relax", label: "Sit and relax", icon: "🛋️", note: "+Energy", uses: ["seat"], gives: { energy: 5, fun: 2 }, every: 30, pose: "sit" },
 ];

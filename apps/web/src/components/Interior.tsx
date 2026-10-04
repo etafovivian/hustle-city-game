@@ -8,6 +8,7 @@
 import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
+import { layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
 import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey, type Worker } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
@@ -15,11 +16,11 @@ import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant
 export { ROOMS, type PlayerAction, type Room };
 
 // Only some poses have nw/ne sheets (POSE_SHEETS nw, ne); the others facing nw use their sw sheet, ne their se one.
-const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing | WalkDir) => {
+const sheetDir = (action: PoseAction, d: Facing | WalkDir) => {
   const s = POSE_SHEETS[action];
-  const dir = d === "nw" && !s.nw ? "sw" : d === "ne" && !s.ne ? "se" : d;
-  return `/art/life/poses/${action}-${v}-${dir}.webp`;
+  return d === "nw" && !s.nw ? "sw" : d === "ne" && !s.ne ? "se" : d;
 };
+const poseSheet = (action: PoseAction, v: WalkerVariant, d: Facing | WalkDir) => `/art/life/poses/${action}-${v}-${sheetDir(action, d)}.webp`;
 
 /** Box for a person `ph` tall showing a pose sheet (null: a walk sheet). Frames are sized in px of a 160 px tall
  * person; most are anchored at the feet (16 px up), lying ones on the middle of the body. */
@@ -54,6 +55,14 @@ const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
   pushups: "pushups",
   skip: "skip_rope",
   cook: "cook_hob",
+  bath: "bucket_bath",
+  laundry: "wash_clothes",
+  sweep: "sweep",
+  water_plants: "water_plants",
+  phone: "phone_call",
+  games: "play_games",
+  swim: "swim",
+  dress: "dress_mirror",
 };
 /** Where to go when a room has no spot for an action: eat or rest on a seat, dance where you'd stand. */
 const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
@@ -70,7 +79,16 @@ const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
   run: ["run"],
   pushups: ["pushups", "workout"],
   skip: ["skip", "workout"],
-  cook: ["stand"],
+  // life at home: its own spot (the cooker, the TV, the mirror, the pool), else where you'd stand or sit
+  cook: ["cook", "stand"],
+  bath: ["bath", "workout", "stand"],
+  laundry: ["laundry", "bath", "workout", "stand"],
+  sweep: ["sweep", "dance", "stand"],
+  water_plants: ["water_plants", "stand"],
+  phone: ["phone", "stand"],
+  games: ["games", "sit", "chair"],
+  swim: ["swim"],
+  dress: ["dress", "stand"],
 };
 /** The spot and pose for an action in a room (null: stay where you are). */
 export function spotFor(room: Room | undefined, action: PlayerAction): { spot: Spot; pose: PoseAction } | null {
@@ -226,6 +244,9 @@ export function InteriorScene({
         const { fps, frames } = POSE_SHEETS[p.action];
         const frame = (Math.floor(((now - t0) / 1000) * fps) + (p.phase ?? i * 3)) % frames;
         el.style.backgroundPosition = framePos(frame, frames);
+        // someone with their own look: their tinted layers once ready
+        const own = p.look && layerSheet(p.look, poseSheetName(p.action, sheetDir(p.action, p.dir)));
+        if (own) el.style.backgroundImage = `url(${own})`;
       });
       raf = requestAnimationFrame(step);
     };
@@ -320,10 +341,13 @@ function PlayerInRoom({
 }) {
   const el = useRef<HTMLDivElement>(null);
   const variant = variantFor(avatar);
+  // (a ref, so a new colour shows without restarting the walk loop)
+  const avatarRef = useRef(avatar);
+  avatarRef.current = avatar;
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, water: undefined as { box: [number, number, number, number]; wade: number } | undefined });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false, water: undefined as { box: [number, number, number, number]; wade: number } | undefined });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -353,6 +377,7 @@ function PlayerInRoom({
     m.pose = target?.pose ?? (action === "dance" ? "dance" : "stand_idle");
     m.face = target?.spot.dir ?? m.face;
     m.behind = target?.spot.behind;
+    m.sweepRoute = !!spot?.via?.length;
     // In the water (swimming): the body below the waterline is hidden while you're inside the pool.
     m.water = spot && action !== "walk" ? spot.water : undefined;
     m.atSpot = !!target;
@@ -390,31 +415,38 @@ function PlayerInRoom({
       node.style.top = `${m.at[1] * 100}%`;
       // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
-      const pose = m.route.length ? null : (m.pose ?? "stand_idle");
+      // sweeping: the broom keeps going while they work their way round the room (the `via` route)
+      const want = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
+      // The player's own look as tinted layers (any pose, any look) when layers are on and the sheet is ready.
+      // Otherwise the nearest baked look: a pose that look has no sheet for (stirring at the hob, a together pose)
+      // falls back to standing, and at a thing on the far side (the hob, the wardrobe, the line) they stand busy with
+      // their hands, facing it (standing has no sheet facing away).
+      const layered = want ? layerSheet(avatarRef.current, poseSheetName(want, sheetDir(want, m.face))) : null;
+      let pose: PoseAction | null = want;
+      if (want && !layered) {
+        const has = POSE_VARIANTS[want].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(want);
+        const away = m.face === "nw" || m.face === "ne";
+        const busy = (!has || want === "stand_idle") && away && m.atSpot && !m.free && POSE_VARIANTS.stand_talk.includes(variant);
+        pose = busy ? "stand_talk" : has ? want : (POSE_SHEETS[want].fallback ?? "stand_idle");
+      }
       if (pose !== m.shown) {
         m.shown = pose;
         setShown(pose);
       }
       if (!pose) {
         const frame = Math.floor(m.walked / 0.024) % 8;
-        node.style.backgroundImage = `url(${walkerSheet(variant, m.dir)})`;
+        node.style.backgroundImage = `url(${layerSheet(avatarRef.current, walkSheetName(m.dir)) ?? walkerSheet(variant, m.dir)})`;
         node.style.backgroundPosition = framePos(frame, 8);
       } else {
-        // A pose this look has no sheet for (stirring at the hob, until every look has it): stand instead. Standing
-        // has no sheet facing away, so at a thing on the far side (the hob, the wardrobe, the line) they stand busy
-        // with their hands, facing it.
-        const has = POSE_VARIANTS[pose].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(pose);
-        const away = m.face === "nw" || m.face === "ne";
-        const busy = (!has || pose === "stand_idle") && away && m.atSpot && !m.free && POSE_VARIANTS.stand_talk.includes(variant);
-        const usable = busy ? "stand_talk" : has ? pose : "stand_idle";
-        const { fps, frames } = POSE_SHEETS[usable];
+        const { fps, frames } = POSE_SHEETS[pose];
         const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        node.style.backgroundImage = `url(${poseSheet(usable, variant, m.face)})`;
+        node.style.backgroundImage = `url(${layered ?? poseSheet(pose, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.
       const [wx0, wy0, wx1, wy1] = m.water?.box ?? [0, 0, 0, 0];
-      const inWater = !!m.water && m.at[0] > wx0 && m.at[0] < wx1 && m.at[1] > wy0 && m.at[1] < wy1;
+      // (the layered swim sheet is already cut at the waterline: no extra clip for it)
+      const inWater = !!m.water && pose !== "swim" && m.at[0] > wx0 && m.at[0] < wx1 && m.at[1] > wy0 && m.at[1] < wy1;
       node.style.clipPath = inWater
         ? `inset(-50% -50% ${Math.round(ph * m.water!.wade + ph * 0.1)}px -50%)`
         : (pose && m.atSpot && !m.free && behindClip(m.at[1], m.behind, box.current?.clientHeight ?? 0, ph)) || "";

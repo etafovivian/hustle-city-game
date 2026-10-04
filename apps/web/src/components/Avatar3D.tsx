@@ -31,6 +31,9 @@ interface OutfitPaint {
   feet: string;
   /** Second colour for an Ankara circle pattern on the top. */
   pattern?: string;
+  /** The garment's own fabric colour, when it differs from the painted top (a jacket over a shirt, a saree over a
+   * blouse): the outfit colour then dyes the garment and the parts in that same cloth, not the shirt. */
+  fabric?: string;
 }
 
 const OUTFITS: Record<string, OutfitPaint> = {
@@ -43,6 +46,16 @@ const OUTFITS: Record<string, OutfitPaint> = {
   // Buba blouse and a long wrapper in the same Ankara cloth.
   buba_wrapper: { top: "#0f7b6c", upperArm: "#0f7b6c", forearm: "skin", bottom: "#0f7b6c", shin: "#0f7b6c", feet: "#c9921a", pattern: "#f2b705" },
   peplum_coral: { top: "#e4572e", upperArm: "skin", forearm: "skin", bottom: "#e4572e", shin: "skin", feet: "#c9921a", pattern: "#f6c8a8" },
+  // Added with the layered sprites: what shows under (or round) each new garment.
+  suit: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "#f4f4f2", bottom: "#1f2a6b", shin: "#1f2a6b", feet: "#151515", fabric: "#1f2a6b" },
+  jeans_jacket: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "#f4f4f2", bottom: "#3b5b8a", shin: "#3b5b8a", feet: "#f2f2f2", fabric: "#4b5a2a" },
+  summer_dress: { top: "#e985b5", upperArm: "skin", forearm: "skin", bottom: "#e985b5", shin: "skin", feet: "#c9921a", fabric: "#e985b5" },
+  abaya: { top: "#25282b", upperArm: "#25282b", forearm: "#25282b", bottom: "#25282b", shin: "#25282b", feet: "#25211d", fabric: "#25282b" },
+  kente: { top: "#f2b705", upperArm: "#f2b705", forearm: "skin", bottom: "#f2b705", shin: "skin", feet: "#6b3b1f", fabric: "#f2b705" },
+  boubou: { top: "#2f5fb3", upperArm: "#2f5fb3", forearm: "#2f5fb3", bottom: "#2f5fb3", shin: "#2f5fb3", feet: "#5a3a22", fabric: "#2f5fb3" },
+  kurta: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "#f4f4f2", bottom: "#ece6d6", shin: "#ece6d6", feet: "#6b3b1f", fabric: "#f4f4f2" },
+  salwar_kameez: { top: "#0f7b6c", upperArm: "#0f7b6c", forearm: "#0f7b6c", bottom: "#0f7b6c", shin: "#0f7b6c", feet: "#c9921a", fabric: "#0f7b6c" },
+  saree: { top: "#c9921a", upperArm: "#c9921a", forearm: "skin", bottom: "#c8321e", shin: "#c8321e", feet: "#c9921a", fabric: "#c8321e" },
 };
 
 // How far down the head the hair colour reaches (model is ~1.83 m tall).
@@ -58,10 +71,17 @@ const HAIR_LINE: Record<string, number | null> = {
   braids: 1.62,
   bob: 1.64,
   gele: 1.69,
+  straight: 1.72,
+  wavy: 1.66,
+  ponytail: 1.7,
+  bun: 1.7,
+  side_part: 1.73,
+  long_straight: 1.64,
+  hijab: 1.6,
 };
 
 /** Fabric colours for wraps and caps; everything else is near-black hair. */
-const HAIR_TINT: Record<string, string> = { cap: "#df382b", gele: "#f2b705" };
+const HAIR_TINT: Record<string, string> = { cap: "#df382b", gele: "#f2b705", hijab: "#7a1f3d" };
 
 /**
  * The outfit painted in the player's chosen fabric colour: everything dyed in the outfit's main colour takes the new
@@ -72,7 +92,7 @@ export function paintFor(a: AvatarConfig): OutfitPaint {
   const o = OUTFITS[a.outfit] ?? OUTFITS.ankara_green!;
   if (!a.outfitColor) return o;
   const pick = new THREE.Color(a.outfitColor);
-  const base = new THREE.Color(o.top);
+  const base = new THREE.Color(o.fabric ?? o.top);
   // (Color.sub clamps at zero, so compare channel by channel.)
   const near = (hex: string) => {
     if (hex === "skin") return false;
@@ -85,7 +105,8 @@ export function paintFor(a: AvatarConfig): OutfitPaint {
   const dye = (hex: string, deep = false) => (near(hex) ? (deep ? deeper : a.outfitColor!) : hex);
   return {
     ...o,
-    top: a.outfitColor,
+    top: o.fabric ? dye(o.top) : a.outfitColor,
+    fabric: a.outfitColor,
     upperArm: dye(o.upperArm),
     forearm: dye(o.forearm),
     bottom: dye(o.bottom, true),
@@ -179,7 +200,7 @@ function loadModel(body: string) {
 }
 
 /** 3D hair pieces made in Blender (scripts/blender/hair.py), in the mannequin's rest-pose space. */
-const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap"]);
+const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]);
 const hairCache = new Map<string, Promise<THREE.Object3D>>();
 function loadHair(body: string, style: string) {
   const key = `${body}/${style}`;
@@ -194,8 +215,19 @@ function loadHair(body: string, style: string) {
 
 /** Loose traditional clothes made in Blender (scripts/blender/agent/garments.py), skinned to the same skeleton. */
 const GARMENTS: Record<string, Partial<Record<string, string>>> = {
-  man: { agbada_white: "agbada", kaftan_gold: "kaftan" },
-  woman: { buba_wrapper: "buba_wrapper", peplum_coral: "peplum_gown" },
+  man: { agbada_white: "agbada", kaftan_gold: "kaftan", suit: "suit_jacket", jeans_jacket: "denim_jacket", kente: "kente", boubou: "boubou", kurta: "kurta" },
+  woman: {
+    buba_wrapper: "buba_wrapper",
+    peplum_coral: "peplum_gown",
+    suit: "suit_jacket",
+    jeans_jacket: "denim_jacket",
+    summer_dress: "summer_dress",
+    abaya: "abaya",
+    kente: "kente",
+    boubou: "boubou",
+    salwar_kameez: "kameez",
+    saree: "saree",
+  },
 };
 const garmentCache = new Map<string, Promise<THREE.Object3D>>();
 function loadGarment(body: string, key: string) {
@@ -442,7 +474,8 @@ export default function Avatar3D({
           if ((o as THREE.Bone).isBone) bones.set(o.name, o as THREE.Bone);
         });
         const group = new THREE.Group();
-        const colour = paintFor(avatar).top;
+        const paint = paintFor(avatar);
+        const colour = paint.fabric ?? paint.top;
         src.traverse((o) => {
           const m = o as THREE.SkinnedMesh;
           if (!m.isSkinnedMesh) return;
@@ -450,7 +483,12 @@ export default function Avatar3D({
           if (mine.some((b) => !b)) return;
           const mesh = new THREE.SkinnedMesh(m.geometry, (m.material as THREE.MeshStandardMaterial).clone());
           const mat = mesh.material as THREE.MeshStandardMaterial;
-          if (colour) mat.color.set(colour);
+          // Newer garments name their materials by role: T_fab (the fabric), T_deep (the same cloth a shade deeper),
+          // FIX_* (trims and kente accents, kept as they are).
+          if (colour && !mat.name.startsWith("FIX_")) {
+            mat.color.set(colour);
+            if (mat.name.startsWith("T_deep")) mat.color.multiplyScalar(0.86);
+          }
           mat.side = THREE.DoubleSide;
           mat.roughness = 0.75;
           mesh.frustumCulled = false;

@@ -11,10 +11,21 @@ export const LOCATION_KEYS: readonly string[] = LOCATIONS.map((l) => l.key);
 
 export const AVATAR_OPTIONS = {
   body: ["man", "woman"],
-  skinTone: ["#3b2219", "#5a3825", "#6b4226", "#8d5524", "#a86b3c", "#c68642"],
-  hairStyle: ["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "bald", "cap"],
-  outfit: ["ankara_green", "agbada_white", "kaftan_gold", "buba_wrapper", "peplum_coral", "jersey_red", "tee_blue", "hoodie_black"],
+  // Deep to light: the first six are the original tones (indexes stay put; DEFAULT_AVATAR uses [2]); then olive and
+  // South Asian browns and lighter tones, so everyone can find their own.
+  skinTone: ["#3b2219", "#5a3825", "#6b4226", "#8d5524", "#a86b3c", "#c68642", "#b98a5e", "#d8a47f", "#e9bf9d", "#f3d7c3"],
+  hairStyle: [
+    "low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "bald", "cap",
+    "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab",
+  ],
+  outfit: [
+    "ankara_green", "agbada_white", "kaftan_gold", "buba_wrapper", "peplum_coral", "jersey_red", "tee_blue", "hoodie_black",
+    "suit", "jeans_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "salwar_kameez", "saree",
+  ],
 } as const;
+
+/** Skin tones in the order the picker shows them (deep to light). */
+export const SKIN_ORDER: readonly string[] = ["#3b2219", "#5a3825", "#6b4226", "#8d5524", "#a86b3c", "#b98a5e", "#c68642", "#d8a47f", "#e9bf9d", "#f3d7c3"];
 
 export type BodyType = (typeof AVATAR_OPTIONS.body)[number];
 
@@ -25,13 +36,37 @@ export type BodyType = (typeof AVATAR_OPTIONS.body)[number];
  */
 export const LOOK_ORDER: Record<BodyType, { hair: string[]; outfit: string[] }> = {
   man: {
-    hair: ["low_cut", "buzzcut", "high_top", "curly", "locs", "bald", "cap", "puff", "braids", "bob", "gele"],
-    outfit: ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black"],
+    hair: ["low_cut", "buzzcut", "high_top", "curly", "locs", "bald", "cap", "straight", "side_part", "wavy", "puff", "braids", "bob", "ponytail", "bun", "long_straight", "gele"],
+    outfit: ["agbada_white", "kaftan_gold", "ankara_green", "jersey_red", "tee_blue", "hoodie_black", "suit", "jeans_jacket", "kente", "boubou", "kurta"],
   },
   woman: {
-    hair: ["braids", "puff", "bob", "gele", "curly", "locs", "low_cut", "high_top", "buzzcut", "bald", "cap"],
-    outfit: ["buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black"],
+    hair: ["braids", "puff", "bob", "gele", "hijab", "curly", "locs", "long_straight", "straight", "wavy", "ponytail", "bun", "side_part", "low_cut", "high_top", "buzzcut", "bald", "cap"],
+    outfit: [
+      "buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black",
+      "suit", "jeans_jacket", "summer_dress", "abaya", "kente", "boubou", "salwar_kameez", "saree",
+    ],
   },
+};
+
+/** Each outfit's own colour (the fabric when no outfitColor is picked) and its name in the picker. */
+export const OUTFIT_INFO: Record<string, { color: string; label: string }> = {
+  ankara_green: { color: "#1e7a46", label: "Ankara green" },
+  agbada_white: { color: "#ece6d6", label: "Agbada white" },
+  jersey_red: { color: "#c8321e", label: "Jersey red" },
+  tee_blue: { color: "#1f2a6b", label: "Indigo tee" },
+  kaftan_gold: { color: "#f2b705", label: "Kaftan gold" },
+  hoodie_black: { color: "#25282b", label: "Black hoodie" },
+  buba_wrapper: { color: "#0f7b6c", label: "Buba & wrapper" },
+  peplum_coral: { color: "#e4572e", label: "Coral peplum" },
+  suit: { color: "#1f2a6b", label: "Business suit" },
+  jeans_jacket: { color: "#4b5a2a", label: "Jeans & jacket" },
+  summer_dress: { color: "#e985b5", label: "Summer dress" },
+  abaya: { color: "#25282b", label: "Abaya" },
+  kente: { color: "#f2b705", label: "Kente" },
+  boubou: { color: "#2f5fb3", label: "Boubou" },
+  kurta: { color: "#f4f4f2", label: "Kurta" },
+  salwar_kameez: { color: "#0f7b6c", label: "Salwar kameez" },
+  saree: { color: "#c8321e", label: "Saree" },
 };
 
 /** Earlier hair keys still stored on some profiles, mapped to their current equivalent. */
@@ -77,10 +112,16 @@ export const HAIR_COLORS = [
   { hex: "#6d1830", label: "Burgundy" },
   { hex: "#c99a4a", label: "Honey blonde" },
   { hex: "#9a9a9a", label: "Grey" },
+  { hex: "#2a1a12", label: "Black-brown" },
+  { hex: "#e0bc6a", label: "Blonde" },
+  { hex: "#a5461c", label: "Copper" },
+  { hex: "#d8d8d4", label: "Silver" },
 ] as const;
 
 /** Styles that are fabric (wraps and caps): they take an outfit colour instead of a hair colour. */
-export const FABRIC_HAIR = new Set(["gele", "cap"]);
+export const FABRIC_HAIR = new Set(["gele", "cap", "hijab"]);
+/** The fabric colour of a wrap or cap when none is picked. */
+export const FABRIC_HAIR_DEFAULT: Record<string, string> = { gele: "#f2b705", cap: "#c8321e", hijab: "#7a1f3d" };
 const OUTFIT_COLOR_SET = new Set<string>(OUTFIT_COLORS.map((c) => c.hex));
 const HAIR_COLOR_SET = new Set<string>(HAIR_COLORS.map((c) => c.hex));
 
@@ -91,6 +132,26 @@ export const DEFAULT_AVATAR: AvatarConfig = {
   hairStyle: AVATAR_OPTIONS.hairStyle[0],
   outfit: AVATAR_OPTIONS.outfit[0],
 };
+
+/**
+ * A varied, valid look from a number (the same seed always gives the same look): for game characters such as a
+ * partner, drawn with the layered sprites. Any skin tone, a hair style and outfit from that body's picker, and often
+ * a fabric or hair colour of their own.
+ */
+export function lookFromSeed(seed: number, body?: BodyType): AvatarConfig {
+  let s = (Math.abs(Math.floor(seed)) % 2147483646) + 1;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)]!;
+  const b: BodyType = body ?? (rnd() < 0.5 ? "man" : "woman");
+  // the first few of each picker are the commonest choices: favour them
+  const favour = (xs: readonly string[]) => (rnd() < 0.6 ? xs[Math.floor(rnd() * Math.min(5, xs.length))]! : pick(xs));
+  const hairStyle = favour(LOOK_ORDER[b].hair.filter((h) => (b === "man" ? !["gele", "hijab", "bob", "ponytail", "bun"].includes(h) : true)));
+  const outfit = favour(LOOK_ORDER[b].outfit);
+  const look: AvatarConfig = { body: b, skinTone: pick(AVATAR_OPTIONS.skinTone), hairStyle, outfit };
+  if (rnd() < 0.6) look.outfitColor = pick(OUTFIT_COLORS).hex;
+  if (hairStyle !== "bald" && rnd() < 0.5) look.hairColor = FABRIC_HAIR.has(hairStyle) ? pick(OUTFIT_COLORS).hex : pick(HAIR_COLORS).hex;
+  return look;
+}
 
 export function isValidAvatar(value: unknown): value is AvatarConfig {
   if (!value || typeof value !== "object") return false;
