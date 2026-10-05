@@ -3,6 +3,16 @@ import { createAvatar } from "@dicebear/core";
 import * as personas from "@dicebear/personas";
 import { AVATAR_OPTIONS, FABRIC_HAIR, FABRIC_HAIR_DEFAULT, HAIR_COLORS, LEGACY_HAIR, LOOK_ORDER, OUTFIT_COLORS, OUTFIT_INFO, SKIN_ORDER, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
 import { useMemo } from "react";
+import { layersOn } from "./spriteComposer.js";
+
+/** The looks every player sees drawn in the city today; the newer ones only show while layered looks are on (admins
+ * first), so for now the picker offers them only there: what you pick is what you see. */
+const BAKED = {
+  skin: new Set<string>(AVATAR_OPTIONS.skinTone.slice(0, 6)),
+  hair: new Set<string>(AVATAR_OPTIONS.hairStyle.slice(0, 11)),
+  outfit: new Set<string>(AVATAR_OPTIONS.outfit.slice(0, 8)),
+};
+const offered = (kind: keyof typeof BAKED, list: readonly string[], current: string) => (layersOn() ? list : list.filter((k) => BAKED[kind].has(k) || k === current));
 
 type PersonasHair = NonNullable<personas.Options["hair"]>[number];
 
@@ -133,13 +143,13 @@ export function AvatarPicker({
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Skin tone</span>
         <div className="swatches">
-          {SKIN_ORDER.map((c, i) => (
+          {offered("skin", SKIN_ORDER, value.skinTone).map((c, i, all) => (
             <button
               key={c}
               type="button"
               className="swatch"
               style={{ background: c }}
-              aria-label={`Skin tone ${i + 1} of ${SKIN_ORDER.length}`}
+              aria-label={`Skin tone ${i + 1} of ${all.length}`}
               aria-pressed={value.skinTone === c}
               onClick={() => onChange({ ...value, skinTone: c })}
             />
@@ -149,7 +159,7 @@ export function AvatarPicker({
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Hair</span>
         <div className="swatches">
-          {LOOK_ORDER[bodyOf(value)].hair.map((h) => (
+          {offered("hair", LOOK_ORDER[bodyOf(value)].hair, value.hairStyle).map((h) => (
             <button key={h} type="button" className="chip" aria-pressed={value.hairStyle === h} onClick={() => onChange({ ...value, hairStyle: h, hairColor: FABRIC_HAIR.has(h) === FABRIC_HAIR.has(value.hairStyle) ? value.hairColor : undefined })}>
               {HAIR_LABEL[h]}
             </button>
@@ -159,7 +169,7 @@ export function AvatarPicker({
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Outfit</span>
         <div className="swatches">
-          {LOOK_ORDER[bodyOf(value)].outfit.map((o) => (
+          {offered("outfit", LOOK_ORDER[bodyOf(value)].outfit, value.outfit).map((o) => (
             <button key={o} type="button" className="chip" aria-pressed={value.outfit === o} onClick={() => onChange({ ...value, outfit: o })}>
               <i className="chip-dot" style={{ background: `#${OUTFIT[o]!.color}` }} aria-hidden="true" />
               {OUTFIT[o]!.label}
