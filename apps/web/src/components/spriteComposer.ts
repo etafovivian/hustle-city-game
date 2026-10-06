@@ -29,6 +29,16 @@ const BASES: Record<"man" | "woman", Set<string>> = {
 /** Hair styles with layers (sprites.py LAYER_HAIRS); "bald" needs none. */
 const HAIRS = new Set(["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]);
 const LEGACY_HAIR: Record<string, string> = { afro: "high_top", headwrap: "gele" };
+/** A close style to borrow while a newer style's pose layer is still missing (the walk has every style). */
+const NEAR_HAIR: Record<string, string> = {
+  straight: "low_cut",
+  side_part: "low_cut",
+  wavy: "curly",
+  ponytail: "puff",
+  bun: "puff",
+  long_straight: "braids",
+  hijab: "gele",
+};
 
 /**
  * The fabric colour when the player hasn't picked one: the baked sheets' own colours for the original outfits (so the
@@ -184,11 +194,18 @@ export function composeSheet(a: AvatarConfig, sheet: string): Promise<string | n
       if (!keys || typeof document === "undefined") return null;
       try {
         const root = "/art/life/layers";
-        const [b, m, h] = await Promise.all([
-          loadImage(`${root}/${keys.base}/${sheet}.webp`),
-          loadImage(`${root}/${keys.base}/${sheet}.m.webp`),
-          keys.hair ? loadImage(`${root}/${keys.hair}/${sheet}.webp`) : Promise.resolve(null),
-        ]);
+        const hairImg = async () => {
+          if (!keys.hair) return null;
+          try {
+            return await loadImage(`${root}/${keys.hair}/${sheet}.webp`);
+          } catch (e) {
+            const style = keys.hair.split("-").slice(2).join("-");
+            const near = NEAR_HAIR[style];
+            if (!near) throw e;
+            return loadImage(`${root}/${keys.hair.replace(new RegExp(`-${style}$`), `-${near}`)}/${sheet}.webp`);
+          }
+        };
+        const [b, m, h] = await Promise.all([loadImage(`${root}/${keys.base}/${sheet}.webp`), loadImage(`${root}/${keys.base}/${sheet}.m.webp`), hairImg()]);
         const base = pixels(b);
         const mask = pixels(m);
         const hair = h ? pixels(h) : null;
@@ -235,6 +252,10 @@ export function useLayerSheet(a: AvatarConfig | undefined, sheet: string, fallba
   }, []);
   return (a && layerSheet(a, sheet)) || fallback;
 }
+
+/** Poses where someone stands on the spot: while their own layered sheet is missing, the look's own walk sheet held
+ * on one frame stands in (better than another look's baked sheet). */
+export const STANDING_POSES = new Set(["stand_idle", "stand_talk", "phone_call", "dress_mirror", "water_plants", "cook_hob", "pour_drink", "wipe_counter", "write_chart", "take_order", "wedding_l", "wedding_r", "hug_m", "hug_w", "dance_pair"]);
 
 /** The sheet name for a pose and facing (sheets without nw/ne fall back to sw/se, as the baked ones do). */
 export const poseSheetName = (pose: string, dir: string) => `${pose}-${dir}`;
