@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import { api, formatCoins } from "../api.js";
 import { Avatar } from "./Avatar.js";
 import { variantFor } from "./AvatarWalker.js";
-import type { Room, Worker } from "./rooms.js";
+import type { Room } from "./rooms.js";
 
 const placeName = (v: string) => VENUES_BY_KEY.get(v)?.name ?? v;
 
@@ -320,14 +320,18 @@ export function usePartnerAtHome(): Npc | null {
   return npc;
 }
 
-/** The people who hang out at a place, standing about in its room (on the walkway, apart from each other). */
-export function npcWorkers(room: Room | undefined, venue: string): Worker[] | undefined {
+/** A place's room with the people who hang out there standing about in it (on the walkway, apart from each other),
+ * drawn in their own look (layered) with the nearest everyday look as the fallback. */
+export function withRegulars(room: Room | undefined, venue: string): Room | undefined {
   const people = npcsAt(venue, "anyone");
   const walk = room?.walkway ?? [];
-  if (!people.length || walk.length < 2) return undefined;
-  return people.slice(0, 2).map((n, i) => ({
+  if (!room || !people.length || walk.length < 2) return room;
+  const extra = people.slice(0, 2).map((n, i) => ({
+    action: "stand_idle" as const,
+    at: walk[Math.min(walk.length - 1, Math.round((walk.length - 1) * (i ? 0.25 : 0.7)))]!,
+    dir: i ? ("se" as const) : ("sw" as const),
     variant: variantFor(n.avatar),
-    start: i * 3,
-    tasks: [{ at: walk[Math.min(walk.length - 1, Math.round((walk.length - 1) * (i ? 0.25 : 0.7)))]!, pose: "stand_idle" as const, dir: i ? ("se" as const) : ("sw" as const), secs: 600 }],
+    look: n.avatar,
   }));
+  return { ...room, stations: [...room.stations, ...extra] };
 }

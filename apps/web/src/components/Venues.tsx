@@ -12,7 +12,7 @@ import { playAdhan, stopAdhan } from "./Ambience.js";
 import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { GadgetCounter } from "./Gadgets.js";
-import { PeopleHere, npcWorkers } from "./Love.js";
+import { PeopleHere, withRegulars } from "./Love.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
@@ -209,7 +209,7 @@ export function VenueCard({
   const [error, setError] = useState<string | null>(null);
   const sheet = useRef<HTMLDivElement>(null);
   // People you can meet here, standing about in the room (one list per place, so they don't restart on redraws).
-  const regulars = useMemo(() => (base.interior ? npcWorkers(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
+  const room = useMemo(() => (base.interior ? withRegulars(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
 
   useEffect(() => {
     api<VenueDay>("GET", "/api/game/venues/today")
@@ -349,8 +349,7 @@ export function VenueCard({
             <InteriorScene
               src={venue.interior}
               alt={`Inside ${venue.name}`}
-              room={ROOMS[venue.interior.split("/").pop()!.replace(".webp", "")]}
-              extraWorkers={regulars}
+              room={room}
               seed={(branch?.key ?? venue.key).length}
               player={avatar && present ? { avatar, action: me } : undefined}
               onPlayerWalk={() => setMe("walk")}

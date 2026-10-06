@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHAT_PROMPTS, DATE_SPOTS, NPCS, chatPromptFor, npcsAt } from "./partners.js";
-import { AVATAR_OPTIONS, OUTFIT_COLORS } from "./profile.js";
+import { AVATAR_OPTIONS, OUTFIT_COLORS, isValidAvatar } from "./profile.js";
 import { VENUES_BY_KEY } from "./venues.js";
 
 describe("love life people", () => {
@@ -8,6 +8,7 @@ describe("love life people", () => {
     for (const n of NPCS) {
       for (const v of n.hangouts) expect(VENUES_BY_KEY.has(v), `${n.key} at ${v}`).toBe(true);
       expect(DATE_SPOTS.some((d) => d.venue === n.favDate), n.key).toBe(true);
+      expect(isValidAvatar(n.avatar), n.key).toBe(true);
       expect(AVATAR_OPTIONS.hairStyle).toContain(n.avatar.hairStyle);
       expect(AVATAR_OPTIONS.outfit).toContain(n.avatar.outfit);
       expect(AVATAR_OPTIONS.skinTone).toContain(n.avatar.skinTone);
