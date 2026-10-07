@@ -8,7 +8,7 @@
 import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
-import { layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
+import { STANDING_POSES, layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
 import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey, type Worker } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
@@ -422,8 +422,15 @@ function PlayerInRoom({
       // falls back to standing, and at a thing on the far side (the hob, the wardrobe, the line) they stand busy with
       // their hands, facing it (standing has no sheet facing away).
       const layered = want ? layerSheet(avatarRef.current, poseSheetName(want, sheetDir(want, m.face))) : null;
+      // A standing pose whose layered sheet is missing: the look's own layered walk, held on one frame.
+      const standIn =
+        want && !layered && STANDING_POSES.has(want)
+          ? (layerSheet(avatarRef.current, poseSheetName("stand_idle", sheetDir("stand_idle", m.face))) ??
+            (m.face === "se" || m.face === "sw" || m.face === "ne" || m.face === "nw" ? layerSheet(avatarRef.current, walkSheetName(m.face)) : null))
+          : null;
       let pose: PoseAction | null = want;
-      if (want && !layered) {
+      if (standIn) pose = standIn.includes("walk") ? null : "stand_idle";
+      else if (want && !layered) {
         const has = POSE_VARIANTS[want].includes(variant) || ["sit_talk", "sit_eat", "sleep", "dance", "stand_idle"].includes(want);
         const away = m.face === "nw" || m.face === "ne";
         const busy = (!has || want === "stand_idle") && away && m.atSpot && !m.free && POSE_VARIANTS.stand_talk.includes(variant);
@@ -434,13 +441,13 @@ function PlayerInRoom({
         setShown(pose);
       }
       if (!pose) {
-        const frame = Math.floor(m.walked / 0.024) % 8;
-        node.style.backgroundImage = `url(${layerSheet(avatarRef.current, walkSheetName(m.dir)) ?? walkerSheet(variant, m.dir)})`;
+        const frame = standIn ? 0 : Math.floor(m.walked / 0.024) % 8;
+        node.style.backgroundImage = `url(${standIn ?? layerSheet(avatarRef.current, walkSheetName(m.dir)) ?? walkerSheet(variant, m.dir)})`;
         node.style.backgroundPosition = framePos(frame, 8);
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
         const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        node.style.backgroundImage = `url(${layered ?? poseSheet(pose, variant, m.face)})`;
+        node.style.backgroundImage = `url(${layered ?? standIn ?? poseSheet(pose, variant, m.face)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.

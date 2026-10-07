@@ -229,6 +229,49 @@ const GARMENTS: Record<string, Partial<Record<string, string>>> = {
     saree: "saree",
   },
 };
+/**
+ * Woven and printed cloth, drawn in the shader from the garment's own (rest-pose) position, like the ankara circles:
+ * kente is woven in blocks and bands (the fabric colour with gold, green and black), the boubou's cloth carries a
+ * printed lattice a shade lighter or darker than the fabric.
+ */
+function patterned(mat: THREE.MeshStandardMaterial, kind: "kente" | "print", fabric: THREE.Color) {
+  const light = new THREE.Color(fabric).lerp(new THREE.Color(fabric.getHSL({ h: 0, s: 0, l: 0 }).l < 0.45 ? "#f2e6c8" : "#2a1a10"), 0.45);
+  const u = { uFab: { value: fabric.clone() }, uAlt: { value: light }, uKind: { value: kind === "kente" ? 0 : 1 } };
+  mat.color.set("#ffffff");
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vCloth;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvCloth = position;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vCloth;\nuniform vec3 uFab;\nuniform vec3 uAlt;\nuniform float uKind;")
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+vec3 c = uFab;
+if (uKind < 0.5) {
+  // kente: bands every 5.5 cm; every fourth a narrow accent stripe, between them blocks round the body
+  float band = floor(vCloth.y / 0.055);
+  float col = floor((atan(vCloth.z, vCloth.x) + 3.14159) / 6.28318 * 12.0);
+  float fy = fract(vCloth.y / 0.055);
+  if (mod(band, 4.0) == 1.0) c = mod(col, 2.0) < 1.0 ? vec3(0.07, 0.36, 0.16) : vec3(0.03, 0.025, 0.02);
+  else if (mod(band / 4.0 + col, 3.0) < 1.0) c = vec3(0.93, 0.66, 0.04);
+  // the weave: fine stripes across each band
+  c *= 0.9 + 0.1 * step(0.5, fract(fy * 6.0));
+} else {
+  // a printed lattice of diamonds with a dot in each
+  vec2 p = vec2(vCloth.x + vCloth.z, vCloth.y) * 14.0;
+  vec2 q = abs(fract(p) - 0.5);
+  float line = step(0.44, q.x + q.y);
+  float dot_ = step(length(fract(p) - 0.5), 0.09);
+  c = mix(uFab, uAlt, max(line, dot_));
+}
+diffuseColor.rgb = c;`,
+      );
+  };
+  mat.needsUpdate = true;
+}
+
 const garmentCache = new Map<string, Promise<THREE.Object3D>>();
 function loadGarment(body: string, key: string) {
   const id = `${body}/${key}`;
@@ -392,9 +435,14 @@ export default function Avatar3D({
       el.removeEventListener("pointercancel", up);
       renderer.dispose();
       renderer.domElement.remove();
+      // (a new body builds a new scene: the hair and garment effects re-run for it once it's ready)
+      state.current = {};
+      setReady(false);
     };
-    // Scene is built once; avatar and action changes are applied by the effects below.
-  }, []);
+    // Built once per body (the woman's and man's models differ); look and action changes are applied by the effects
+    // below. Rebuilding on a body switch keeps a saree from being shown on the man's body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body]);
 
   // Repaint when the look changes.
   useEffect(() => {
@@ -485,7 +533,9 @@ export default function Avatar3D({
           const mat = mesh.material as THREE.MeshStandardMaterial;
           // Newer garments name their materials by role: T_fab (the fabric), T_deep (the same cloth a shade deeper),
           // FIX_* (trims and kente accents, kept as they are).
-          if (colour && !mat.name.startsWith("FIX_")) {
+          if (key === "kente") patterned(mat, "kente", new THREE.Color(colour ?? "#f2b705"));
+          else if (key === "boubou" && !mat.name.startsWith("FIX_")) patterned(mat, "print", new THREE.Color(colour ?? "#2f5fb3"));
+          else if (colour && !mat.name.startsWith("FIX_")) {
             mat.color.set(colour);
             if (mat.name.startsWith("T_deep")) mat.color.multiplyScalar(0.86);
           }

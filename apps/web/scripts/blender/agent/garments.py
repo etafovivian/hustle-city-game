@@ -255,6 +255,11 @@ def build_kaftan(F, mat):
     return F.finish(p, "kaftan", mat)
 
 
+def folds(a, z, z_from, k=14, amp=0.007):
+    """Soft vertical folds in hanging cloth: a ripple round the section, growing from z_from down."""
+    return amp * smoothstep(z_from, z_from - 0.25, z) * math.sin(k * a)
+
+
 def build_agbada(F, mat):
     p = Part()
     # inner tunic (mostly hidden): long, a bit leaner
@@ -264,8 +269,9 @@ def build_agbada(F, mat):
     zn, zs_ = F.z_neck, F.z_shoulder
     # boxy (superellipse) cross-sections: flat front/back panels, shoulders widened by the folded sleeves
     # (owner, 2026-10-12: the first cut was far too puffy; this drapes just past the arms)
-    ell = [(zn - 0.01, 0.19, 0.13), (zn - 0.05, 0.25, 0.14), (zs_ - 0.03, 0.3, 0.155), (zs_ - 0.12, 0.32, 0.16),
-           (F.z_wrist, 0.33, 0.16), (hem, 0.35, 0.165)]
+    # (2026-10-14: draped closer still: thinner front to back, the width falling in folds instead of a box)
+    ell = [(zn - 0.01, 0.18, 0.12), (zn - 0.05, 0.23, 0.125), (zs_ - 0.03, 0.28, 0.13), (zs_ - 0.12, 0.295, 0.13),
+           (F.z_wrist, 0.3, 0.13), (hem, 0.31, 0.135)]
 
     def minell(z):
         if z > ell[0][0] + 0.005:
@@ -280,7 +286,16 @@ def build_agbada(F, mat):
     zs = [zt, zn + 0.01] + [e[0] for e in ell[:4]] + levels(ell[3][0] - 0.06, hem, 0.06)
     n = 28
     mask = TORSO | LEGS | {"upperarm_l", "upperarm_r"}
-    rings = F.body_loft(zs, mask, n, lambda z, a: 0.025, minell, exact=lambda z: nk if z == zt else None)
+    n = 56
+    rings = F.body_loft(zs, mask, n, lambda z, a: 0.018, minell, exact=lambda z: nk if z == zt else None)
+    # folds falling from the shoulders
+    for ring, z in zip(rings, zs):
+        for j, q in enumerate(ring):
+            a = 2 * math.pi * j / n
+            r = math.hypot(q.x, q.y)
+            if r > 1e-4:
+                k = 1 + folds(a, z, zs_ - 0.05, 18, 0.01) / r
+                ring[j] = Vector((q.x * k, q.y * k, q.z))
     wz = F.z_wrist + 0.06
 
     def drop(i, j, c):  # open side slits below the wrists
@@ -294,7 +309,15 @@ def build_agbada(F, mat):
         aw = F.B.weights_near(ap, ARM[s] | {f"clavicle_{s}"}, k=10)
         a = 0.7 * smoothstep(0.12, 0.32, abs(q.x)) * smoothstep(F.z_wrist - 0.35, F.z_wrist + 0.05, q.z)
         w.append(mix_w((1 - a, base), (a, aw)) if a > 0 else base)
-    p.add(v, f, w)
+    zsh = F.z_shoulder
+
+    def embroidery(f_, verts):
+        # a broad embroidered panel round the neck and down the chest (the agbada's pride)
+        c = sum((verts[k] for k in f_), Vector()) / len(f_)
+        if c.y < 0 and zsh - 0.32 < c.z < zt and abs(c.x) < 0.05 + 0.07 * smoothstep(zsh - 0.32, zsh, c.z):
+            return 2
+        return 0
+    p.add(v, f, w, embroidery if isinstance(mat, (list, tuple)) else 0)
     return F.finish(p, "agbada", mat)
 
 
@@ -372,8 +395,58 @@ def build_jacket(F, mats, hem=None, z_close=None, name="jacket"):
     hem = F.z_hip - 0.1 if hem is None else hem
     zt = F.z_neck + 0.03
     zc = F.z_waist + 0.04 if z_close is None else z_close
-    kaftan_like(F, p, hem, n=24, m_top=0.022, m_hem=0.04, sleeve_m=(0.02, 0.024), sleeve_n=10, step=0.04, drop=front_open(F, zt, zc, 0.085, 0.02))
+    kaftan_like(F, p, hem, n=32, m_top=0.014, m_hem=0.026, sleeve_m=(0.013, 0.016), sleeve_n=10, step=0.03, drop=front_open(F, zt, zc, 0.085, 0.02))
+    # lapels: a band of the deeper cloth along each edge of the V; the hem and cuffs too
+    op = front_open(F, zt, zc, 0.085, 0.02)
+
+    def lapel(f_, verts):
+        c = sum((verts[k] for k in f_), Vector()) / len(f_)
+        if c.y < 0 and zc < c.z < zt:
+            near = op(0, 0, Vector((c.x * 0.72, c.y, c.z))) and not op(0, 0, c)
+            if near:
+                return 1
+        if c.z < hem + 0.03:
+            return 1
+        return 0
+    p.m = [lapel(f_, p.v) if k == 0 else k for f_, k in zip(p.f, p.m)]
+    # the tie down the shirt front in the V, a knot at the collar
+    if name == "jacket":
+        pts = [q for q in F.B.pts(TORSO, zc - 0.02, F.z_neck) if abs(q.x) < 0.03]
+        for k in range(8):
+            z0 = F.z_neck - 0.02 - (F.z_neck - 0.02 - zc) * k / 8
+            z1 = F.z_neck - 0.02 - (F.z_neck - 0.02 - zc) * (k + 1) / 8
+            near = [q for q in pts if z1 - 0.02 < q.z < z0 + 0.02]
+            if not near:
+                continue
+            y = min(q.y for q in near) - 0.006
+            w0 = 0.014 + 0.012 * k / 8
+            w1 = 0.014 + 0.012 * (k + 1) / 8
+            quad = [Vector((-w0, y, z0)), Vector((w0, y, z0)), Vector((w1, y, z1)), Vector((-w1, y, z1))]
+            p.add(quad, [(0, 3, 2, 1)], [F.body_w(Vector((0, y, (z0 + z1) / 2)))] * 4, 2)
+    # buttons down the closed front
+    if name == "jacket":
+        front = [q for q in p.v if abs(q.x) < 0.02 and q.y < 0 and zc - 0.25 < q.z < zc]
+        if front:
+            for zb in (zc - 0.03, zc - 0.13):
+                near_v = min(front, key=lambda q: abs(q.z - zb))
+                add_ball(p, Vector((0.0, near_v.y - 0.006, zb)), 0.011, F.body_w(near_v), 3)
     return F.finish(p, name, mats)
+
+
+def add_ball(part, c, r, w, mat):
+    """A small sphere (a button) carried by the weights `w`."""
+    nu, nv = 8, 5
+    verts, faces = [], []
+    for i in range(nv + 1):
+        th = math.pi * i / nv
+        for j in range(nu):
+            ph = 2 * math.pi * j / nu
+            verts.append(c + Vector((r * math.sin(th) * math.cos(ph), -r * 0.5 * math.sin(th) * math.sin(ph) - r * 0.2, r * math.cos(th))))
+    for i in range(nv):
+        for j in range(nu):
+            j2 = (j + 1) % nu
+            faces.append((i * nu + j, (i + 1) * nu + j, (i + 1) * nu + j2, i * nu + j2))
+    part.add(verts, faces, [w] * len(verts), mat)
 
 
 def build_denim_jacket(F, mats):
@@ -397,7 +470,7 @@ def build_summer_dress(F, mats):
 def build_abaya(F, mats):
     """A loose full-length robe with long, wide sleeves."""
     p = Part()
-    kaftan_like(F, p, F.z_ankle + 0.03, n=26, m_top=0.03, m_hem=0.085, sleeve_m=(0.028, 0.06), sleeve_n=11)
+    kaftan_like(F, p, F.z_ankle + 0.03, n=32, m_top=0.02, m_hem=0.055, sleeve_m=(0.018, 0.04), sleeve_n=11)
     return F.finish(p, "abaya", mats)
 
 
@@ -416,7 +489,7 @@ def kente_mat(f, verts):
 def build_kente(F, mats):
     """Kente cloth: for the man a full robe to mid-calf with short sleeves; woven blocks and bands."""
     p = Part()
-    kaftan_like(F, p, (F.z_knee + F.z_ankle) / 2, n=24, m_top=0.03, m_hem=0.08, sleeve_m=(0.026, 0.05), sleeve_n=6, sleeve_end=0.42, mat=kente_mat)
+    kaftan_like(F, p, (F.z_knee + F.z_ankle) / 2, n=32, m_top=0.02, m_hem=0.055, sleeve_m=(0.018, 0.035), sleeve_n=6, sleeve_end=0.42, mat=kente_mat)
     return F.finish(p, "kente", mats)
 
 
@@ -465,7 +538,9 @@ def build_boubou(F, mats):
 def build_kurta(F, mats):
     """A kurta: a straight tunic to just above the knee with long sleeves and a placket at the neck."""
     p = Part()
-    kaftan_like(F, p, F.z_knee + 0.07, n=24, m_top=0.026, m_hem=0.05, sleeve_m=(0.02, 0.026), sleeve_n=10)
+    def slit(i, j, c):  # side slits from the hip down
+        return c.z < F.z_hip - 0.04 and abs(c.y) < 0.03 and abs(c.x) > 0.1
+    kaftan_like(F, p, F.z_knee + 0.05, n=32, m_top=0.016, m_hem=0.032, sleeve_m=(0.013, 0.017), sleeve_n=10, step=0.035, drop=slit)
 
     # the placket: a short strip down the front from the neck in the fixed colour
     zt = F.z_neck + 0.03
@@ -474,6 +549,11 @@ def build_kurta(F, mats):
         c = sum((verts[k] for k in f), Vector()) / len(f)
         return 2 if (c.y < 0 and abs(c.x) < 0.018 and F.z_shoulder - 0.17 < c.z < zt) else 0
     p.m = [mat(f, p.v) if k == 0 else k for f, k in zip(p.f, p.m)]
+    front = [q for q in p.v if abs(q.x) < 0.02 and q.y < 0 and F.z_shoulder - 0.17 < q.z < zt]
+    for zb in (F.z_shoulder - 0.03, F.z_shoulder - 0.08, F.z_shoulder - 0.13):
+        if front:
+            near_v = min(front, key=lambda q: abs(q.z - zb))
+            add_ball(p, Vector((0.0, near_v.y - 0.004, zb)), 0.008, F.body_w(near_v), 3)
     return F.finish(p, "kurta", mats)
 
 
@@ -496,7 +576,7 @@ def build_kameez(F, mats):
 
     def slit(i, j, c):
         return c.z < F.z_hip - 0.06 and abs(c.y - 0.0) < 0.035 and abs(c.x) > 0.1
-    kaftan_like(F, p, hem, n=24, m_top=0.025, m_hem=0.07, sleeve_m=(0.02, 0.03), sleeve_n=8, sleeve_end=0.78, drop=slit)
+    kaftan_like(F, p, hem, n=32, m_top=0.017, m_hem=0.05, sleeve_m=(0.014, 0.02), sleeve_n=8, sleeve_end=0.78, drop=slit)
     zsh = F.z_shoulder
 
     def centre(x, y):
@@ -513,10 +593,11 @@ def build_saree(F, mats):
     zs = levels(F.z_waist - 0.02, F.z_ankle - 0.01, 0.05)
 
     def m(z, a):
-        if z > F.z_hip:
-            return 0.03
-        return lerp(0.045, 0.085, smoothstep(F.z_hip, F.z_ankle, z))
-    rings = F.body_loft(zs, TORSO | LEGS, 26, m)
+        base = 0.025 if z > F.z_hip else lerp(0.035, 0.065, smoothstep(F.z_hip, F.z_ankle, z))
+        # the pleats: a fan of folds down the front (the side that faces -y)
+        front = smoothstep(0.2, 0.9, -math.sin(a)) * smoothstep(F.z_hip + 0.05, F.z_hip - 0.15, z)
+        return base + front * (0.012 + 0.012 * math.cos(22 * a))
+    rings = F.body_loft(zs, TORSO | LEGS, 64, m)
     v, f = grid(rings)
     p.add(v, f, [F.body_w(q) for q in v])
     zsh, zw = F.z_shoulder, F.z_waist - 0.04
@@ -527,7 +608,7 @@ def build_saree(F, mats):
             return lerp(zw, zsh + 0.02, (x + xs) / (2 * xs))
         # back: falls from the left shoulder straight down, across the back
         return lerp(zsh - 0.32, zsh + 0.02, smoothstep(-0.05, xs, x))
-    band_drape(F, p, F.z_hip - 0.08, zsh + 0.06, centre, 0.13, margin=0.04)
+    band_drape(F, p, F.z_hip - 0.08, zsh + 0.06, centre, 0.13, margin=0.03, mat=1, n=72, step=0.01)
     return F.finish(p, "saree", mats)
 
 
@@ -552,6 +633,8 @@ GARMENTS = [
 ]
 # Fixed colours for material slots 2 and 3 of each garment (trim, accents); slot 1 is slot 0 a shade deeper.
 GARMENT_FIXED = {
+    "agbada": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
+    "suit_jacket": ((0.48, 0.09, 0.17), (0.06, 0.06, 0.07)),
     "kente": ((0.12, 0.42, 0.18), (0.05, 0.04, 0.03)),
     "boubou": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
     "kurta": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
@@ -602,7 +685,7 @@ def main():
         build_one(srcs[sex], who, key, rgb, fn, out)
 
 
-NEW_KEYS = {"suit_jacket", "denim_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "kameez", "saree"}
+NEW_KEYS = {"agbada", "suit_jacket", "denim_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "kameez", "saree"}
 
 
 def build_one(src, who, key, rgb, fn, OUT):
