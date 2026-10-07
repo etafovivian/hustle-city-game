@@ -138,8 +138,11 @@ function regionColors(a: AvatarConfig): THREE.Color[] {
 
 /** One material for the whole body: picks a colour per vertex region, adds hair and an Ankara pattern. */
 function makeMaterial(a: AvatarConfig) {
+  // One uniform per region, not a vec3 array: some phone GPUs (Mali) read vec3 uniform arrays wrongly, which drew
+  // every skin and trouser region in its red channel only.
+  const colors = regionColors(a);
   const uniforms = {
-    uColors: { value: regionColors(a) },
+    ...Object.fromEntries(colors.map((c, i) => [`uC${i}`, { value: c }])),
     uPattern: { value: new THREE.Color(paintFor(a).pattern ?? "#000000") },
     uHasPattern: { value: paintFor(a).pattern ? 1 : 0 },
     uHairLine: { value: HAIR_LINE[a.hairStyle] ?? 1.75 },
@@ -158,7 +161,14 @@ function makeMaterial(a: AvatarConfig) {
         `#include <common>
 varying float vRegion;
 varying vec3 vLocal;
-uniform vec3 uColors[8];
+uniform vec3 uC0;
+uniform vec3 uC1;
+uniform vec3 uC2;
+uniform vec3 uC3;
+uniform vec3 uC4;
+uniform vec3 uC5;
+uniform vec3 uC6;
+uniform vec3 uC7;
 uniform vec3 uPattern;
 uniform float uHasPattern;
 uniform float uHairLine;
@@ -169,8 +179,7 @@ uniform vec3 uHairColor;`,
         "#include <color_fragment>",
         `#include <color_fragment>
 int r = int(floor(vRegion + 0.5));
-vec3 base = uColors[0];
-for (int i = 0; i < 8; i++) { if (i == r) base = uColors[i]; }
+vec3 base = r == 1 ? uC1 : r == 2 ? uC2 : r == 3 ? uC3 : r == 4 ? uC4 : r == 5 ? uC5 : r == 6 ? uC6 : r == 7 ? uC7 : uC0;
 // Ankara-style circles on the torso and sleeves.
 if (uHasPattern > 0.5 && (r == 1 || r == 2)) {
   vec2 p = vec2(vLocal.x * 9.0, vLocal.y * 9.0);
@@ -449,7 +458,8 @@ export default function Avatar3D({
     const u = state.current.uniforms;
     if (!u) return;
     const fresh = makeMaterial(avatar).uniforms;
-    u.uColors.value = fresh.uColors.value;
+    const regions = (x: object) => x as Record<string, { value: THREE.Color }>;
+    for (let i = 0; i < 8; i++) regions(u)[`uC${i}`]!.value = regions(fresh)[`uC${i}`]!.value;
     u.uPattern.value = fresh.uPattern.value;
     u.uHasPattern.value = fresh.uHasPattern.value;
     u.uHairLine.value = fresh.uHairLine.value;
