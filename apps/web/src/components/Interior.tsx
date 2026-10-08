@@ -58,6 +58,7 @@ const POSE_OF: Record<Exclude<PlayerAction, "walk">, PoseAction> = {
   bath: "bucket_bath",
   laundry: "wash_clothes",
   sweep: "sweep",
+  vacuum: "vacuum",
   water_plants: "water_plants",
   phone: "phone_call",
   games: "play_games",
@@ -84,6 +85,7 @@ const FALLBACK: Record<Exclude<PlayerAction, "walk">, SpotKey[]> = {
   bath: ["bath", "workout", "stand"],
   laundry: ["laundry", "bath", "workout", "stand"],
   sweep: ["sweep", "dance", "stand"],
+  vacuum: ["sweep", "dance", "stand"],
   water_plants: ["water_plants", "stand"],
   phone: ["phone", "stand"],
   games: ["games", "sit", "chair"],
@@ -416,7 +418,9 @@ function PlayerInRoom({
       // Just in front of anyone at the same depth (a seat's own furniture is part of the room image).
       node.style.zIndex = String(Math.round(m.at[1] * 1000) + 1);
       // sweeping: the broom keeps going while they work their way round the room (the `via` route)
-      const want = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : null) : (m.pose ?? "stand_idle");
+      // the vacuum is a walk sheet: pushed along the route with the walking frames, facing the way they go
+      const vacuuming = m.pose === "vacuum" && m.sweepRoute && m.route.length > 0;
+      const want = m.route.length ? (m.pose === "sweep" && m.sweepRoute ? "sweep" : vacuuming ? "vacuum" : null) : (m.pose ?? "stand_idle");
       // The player's own look as tinted layers (any pose, any look) when layers are on and the sheet is ready.
       // Otherwise the nearest baked look: a pose that look has no sheet for (stirring at the hob, a together pose)
       // falls back to standing, and at a thing on the far side (the hob, the wardrobe, the line) they stand busy with
@@ -446,8 +450,11 @@ function PlayerInRoom({
         node.style.backgroundPosition = framePos(frame, 8);
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
-        const frame = reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
-        node.style.backgroundImage = `url(${layered ?? standIn ?? poseSheet(pose, variant, m.face)})`;
+        const walkSheet = vacuuming && pose === "vacuum";
+        const frame = walkSheet ? Math.floor(m.walked / 0.024) % 8 : reduce ? 0 : Math.floor(((now - m.t0) / 1000) * fps) % frames;
+        const dir = walkSheet ? m.dir : m.face;
+        const own = walkSheet ? layerSheet(avatarRef.current, poseSheetName("vacuum", dir)) : layered;
+        node.style.backgroundImage = `url(${own ?? standIn ?? poseSheet(pose, variant, dir)})`;
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.

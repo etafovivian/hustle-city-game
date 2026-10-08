@@ -43,6 +43,7 @@ export type PoseAction =
   | "bucket_bath"
   | "wash_clothes"
   | "sweep"
+  | "vacuum"
   | "water_plants"
   | "phone_call"
   | "play_games"
@@ -96,6 +97,8 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   bucket_bath: HOME_LOOKS,
   wash_clothes: HOME_LOOKS,
   sweep: HOME_LOOKS,
+  // (baked vacuum sheets are still rendering: until they land, the vacuum is layers only and falls back to sweep)
+  vacuum: [],
   water_plants: HOME_LOOKS,
   phone_call: HOME_LOOKS,
   play_games: HOME_LOOKS,
@@ -175,6 +178,8 @@ export const POSE_SHEETS: Record<
   bucket_bath: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true },
   wash_clothes: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
   sweep: { w: 96, h: 160, frames: 8, fps: 7, nw: true, ne: true },
+  // vacuum: walking behind an upright vacuum cleaner (a walk sheet, four ways): cleaning round a bigger house
+  vacuum: { w: 96, h: 160, frames: 8, fps: 10, nw: true, ne: true, walk: true, fallback: "sweep" },
   water_plants: { w: 96, h: 160, frames: 8, fps: 4, nw: true, ne: true },
   phone_call: { w: 96, h: 160, frames: 8, fps: 3, nw: true, ne: true },
   play_games: { w: 96, h: 160, frames: 8, fps: 6, nw: true, ne: true },
@@ -240,6 +245,7 @@ export type PlayerAction =
   | "bath"
   | "laundry"
   | "sweep"
+  | "vacuum"
   | "water_plants"
   | "phone"
   | "games"
@@ -248,7 +254,7 @@ export type PlayerAction =
 /** Every action the player can take in a room (for callers mapping activities to actions). */
 export const PLAYER_ACTIONS: PlayerAction[] = [
   "walk", "sit", "eat", "sleep", "dance", "chair", "stand", "pray", "lift_weights", "boxing", "run", "pushups", "skip",
-  "cook", "bath", "laundry", "sweep", "water_plants", "phone", "games", "swim", "dress",
+  "cook", "bath", "laundry", "sweep", "vacuum", "water_plants", "phone", "games", "swim", "dress",
 ];
 /** Marked places for the player: door (where they come in) and one per action that fits the room. */
 /** "workout": a free bit of floor at home for push-ups, skipping, dumbbells or shadow boxing. */
