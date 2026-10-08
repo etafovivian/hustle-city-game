@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, formatCoins } from "../api.js";
 import type { InteriorPlayer } from "./Interior.js";
 import { Wardrobe } from "./Wardrobe.js";
+import { music, musicState } from "../music.js";
 import { nearestOnPolyline } from "./interiorPath.js";
 import { ROOMS, type PlayerAction, type Pt, type Worker } from "./rooms.js";
 
@@ -395,6 +396,8 @@ export function useHomeLife({
     setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water, ...table } });
     setFx(a.key === "swim" ? { room: room.key, at: at.spot.at, kind: "ripples" } : a.key === "bath" ? { room: room.key, at: at.spot.at, kind: at.obj === "shower" ? "shower" : "splash" } : null);
     setCooking(a.key === "cook" ? room.key : null);
+    // Dancing to the radio puts a station on (unless something's already playing).
+    if (a.key === "radio_dance" && !musicState().playing) music.play("afro");
     setOnCall(a.key === "call" ? { room: room.key, at: at.spot.at, who: to ?? "family" } : null);
     setDressing(false);
     // Watching a TV you bought: stand in front of it (there's no sofa facing it).

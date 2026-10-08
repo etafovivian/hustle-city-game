@@ -1,5 +1,6 @@
 import { LOCATIONS, type LocationKey, type Me, type NeedsView, type QuestBoard, type ShopView } from "@hc/shared";
 import { setLayerRoles } from "./components/spriteComposer.js";
+import { MiniPlayer } from "./components/Music.js";
 import { ArrowLeft, Coins, ListChecks, LogOut, Map as MapIcon, Search, ShoppingBag, Smartphone, Sparkles, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, formatCoins } from "./api.js";
@@ -359,6 +360,7 @@ export function App() {
         </div>
       </div>
 
+      <MiniPlayer onOpen={() => setPhone("music")} />
       <nav className="dock" aria-label="Main">
         <button type="button" className="dock-item" aria-current={tab === "map" && !phone ? "page" : undefined} onClick={goMap}>
           <MapIcon size={22} aria-hidden="true" />

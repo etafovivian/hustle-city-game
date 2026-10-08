@@ -42,7 +42,10 @@ class Engine {
   constructor() {
     this.master.gain.value = 0.5;
     this.master.connect(this.ctx.destination);
+    // The city steps back while the Music app plays.
+    window.addEventListener("hc:music", this.duck);
   }
+  private duck = (e: Event) => this.master.gain.setTargetAtTime((e as CustomEvent<boolean>).detail ? 0.12 : 0.5, this.ctx.currentTime, 0.4);
   private fade(name: string, to: number) {
     const l = this.layers.get(name);
     if (l) l.gain.gain.setTargetAtTime(to, this.ctx.currentTime, 0.8);
@@ -181,6 +184,7 @@ class Engine {
     }
   }
   stop() {
+    window.removeEventListener("hc:music", this.duck);
     this.clearTimers();
     this.layers.forEach((l) => l.stop());
     this.layers.clear();
