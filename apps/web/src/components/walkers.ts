@@ -22,10 +22,11 @@ export type OutfitVariant = (typeof OUTFIT_VARIANTS)[number];
 /**
  * People at work in uniform (scripts/blender/agent/sprites.py STAFF_VARIANTS): a nurse in light-blue scrubs and cap, a
  * doctor in a white coat with a stethoscope, a chef in whites and a toque, a waiter in a black waistcoat and long white
- * apron, a barman in a dark shirt with rolled sleeves and a leather apron. Only for staff in rooms (Room.workers and
+ * apron, a barman in a dark shirt with rolled sleeves and a leather apron, a delivery rider in an open-face helmet and
+ * a plain green jacket with a box bag. Only for staff in rooms (Room.workers and
  * stations): never on the street.
  */
-export const STAFF_VARIANTS = ["nurse", "doctor", "chef", "waiter", "bartender"] as const;
+export const STAFF_VARIANTS = ["nurse", "doctor", "chef", "waiter", "bartender", "rider"] as const;
 export type StaffVariant = (typeof STAFF_VARIANTS)[number];
 export type WalkerVariant = LegacyVariant | OutfitVariant | StaffVariant;
 /** Everyday looks: anyone in the street or milling about in a room. */

@@ -153,7 +153,7 @@ export function HomeCard({
       notify((e as Error).message);
     }
   };
-  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar });
+  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar, design: home.design });
   // Your partner, if they live with you: at home with you (in the parlour or the kitchen).
   const partner = usePartnerAtHome();
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;

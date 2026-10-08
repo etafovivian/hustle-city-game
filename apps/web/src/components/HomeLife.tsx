@@ -319,7 +319,10 @@ export function useHomeLife({
   onChanged,
   setAction,
   avatar,
+  design,
 }: {
+  /** The house design ("starter" is the face-me room): cleaning a bigger house is done with a vacuum. */
+  design?: string | null;
   rooms: HomeRoom[];
   roomKey: string | null;
   items: string[];
@@ -389,7 +392,7 @@ export function useHomeLife({
     const via: Pt[] | undefined =
       a.key === "clean" ? ROOMS[room.art]?.walkway : a.key === "swim" && pool ? [[0.42, 0.74], [0.6, 0.82], [0.44, 0.86], [0.58, 0.76]] : undefined;
     const water = a.key === "swim" && pool ? { box: [0.3, 0.68, 0.7, 0.92] as [number, number, number, number], wade: 0.55 } : undefined;
-    const act: PlayerAction = a.shows && at.bought ? "stand" : POSE[a.pose];
+    const act: PlayerAction = a.shows && at.bought ? "stand" : a.key === "clean" && design && design !== "starter" ? "vacuum" : POSE[a.pose];
     // At a table: seated at it with the plate on it, the table hiding the legs.
     const table = at.spot.table != null && (act === "eat" || act === "sit") ? { pose: act === "eat" ? ("eat_table" as const) : ("sit_table" as const), behind: at.spot.table === true ? undefined : at.spot.table } : {};
     setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water, ...table } });
@@ -442,10 +445,11 @@ export function useHomeLife({
     () =>
       rider
         ? {
-            variant: "man_casual",
+            // the delivery rider (helmet, plain jacket, box bag) hands the food over and chats a moment
+            variant: "rider",
             start: 0,
-            visitor: { door: rider.door, away: 100_000, variants: ["man_casual"] },
-            tasks: [{ at: rider.at, pose: "serve", dir: "nw", secs: 3 }],
+            visitor: { door: rider.door, away: 100_000, variants: ["rider"] },
+            tasks: [{ at: rider.at, pose: "stand_talk", dir: "nw", secs: 3 }],
           }
         : null,
     [rider],

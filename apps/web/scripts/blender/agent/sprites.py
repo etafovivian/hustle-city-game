@@ -622,6 +622,7 @@ def import_library_actions(names):
 def prepare_variant(name, sex, fn, extra_actions=()):
     arm, body, others = load_body(os.path.join(HUSTLE, f"body-{sex}.glb"))
     BODY_OBJ[0] = body
+    PARTNERS.clear()  # (a fresh scene: any partner body from the last look is gone)
     if extra_actions:
         import_library_actions(extra_actions)
     skin = body.material_slots[0].material
@@ -1698,7 +1699,7 @@ GENERIC_PROPS = {"sit_eat": [("plate_lap", "l"), ("spoon", "r")]}
 REACH = 0.43  # m from the shoulder
 WORK_DIRS = {"sick_sit": ["se", "sw"], "wedding_l": ["se", "sw"], "wedding_r": ["se", "sw"]}
 WORK_FPS = {}
-HOME_POSES = ["bucket_bath", "wash_clothes", "sweep", "water_plants", "phone_call", "play_games", "dress_mirror"]
+HOME_POSES = ["bucket_bath", "wash_clothes", "sweep", "vacuum", "water_plants", "phone_call", "play_games", "dress_mirror"]
 PAIR_POSES = ["walk_hand_l", "walk_hand_r", "dance_pair", "wedding_l", "wedding_r", "hug_m", "hug_w"]
 WORK_ACTIONS = HOME_POSES + PAIR_POSES + ["sit_table", "eat_table", "cook_hob", "cut_hair", "sew", "sit_desk", "check_patient", "write_chart", "pour_drink", "carry_tray", "serve_tray", "cook_stir", "wipe_counter", "sick_sit", "take_order"]
 LEGACY_ADULTS = ["woman_buba", "woman_gele", "man_kaftan", "man_casual"]
@@ -1821,6 +1822,9 @@ def work_frame(action, i, n):
         q = P(sp1=55, sp2=12, head=-12, neck=-6, knee=14, hip=6)
         sw = math.sin(ph)
         return dict(q=q, r=ab(-0.1 + 0.18 * sw, -0.52, 0.32), l=ab(-0.02 + 0.12 * sw, -0.44, 0.52), props=[("broom", "l", "r")])
+    if action == "vacuum":
+        # walking behind an upright vacuum cleaner, both hands on the handle at the waist (a walk sheet)
+        return dict(walk=True, r=bp("pelvis", (-0.06, -0.36, 0.08)), l=bp("pelvis", (0.06, -0.36, 0.1)), props=[("vacuum", "r", "l")])
     if action == "water_plants":
         # a watering can held forward and tipped over the plants; the other arm loose
         tip = 25 + 10 * math.sin(ph)
@@ -2109,6 +2113,14 @@ def build_props(arm, specs):
             made.append(_prop("spout", (0.15, 0.55, 0.35), lambda bm: _cyl(bm, spout0, spout1, 0.015, 0.01, seg=8)))
             ground_pt = spout1 + fwd * 0.1 - up * 0.28
             made.append(_prop("water", (0.6, 0.85, 0.98), lambda bm: _cyl(bm, spout1, ground_pt, 0.008, 0.025, seg=8)))
+        elif kind == "vacuum":
+            a, b = H[sp[1]], H[sp[2]]
+            grip = (a + b) / 2
+            foot = Vector((grip.x, grip.y, 0.0)) + fwd * 0.42
+            made.append(_prop("vac_handle", (0.15, 0.15, 0.17), lambda bm: _cyl(bm, grip, foot + up * 0.2, 0.014, seg=8)))
+            made.append(_prop("vac_grip", (0.15, 0.15, 0.17), lambda bm: _cyl(bm, a - left * 0.03, b + left * 0.03, 0.016, seg=8)))
+            made.append(_prop("vac_body", (0.82, 0.14, 0.12), lambda bm: _box(bm, foot + up * 0.24 - fwd * 0.02, (left, fwd, up), (0.18, 0.12, 0.3))))
+            made.append(_prop("vac_head", (0.2, 0.2, 0.22), lambda bm: _box(bm, foot + up * 0.04 + fwd * 0.06, (left, fwd, up), (0.3, 0.14, 0.07))))
         elif kind == "phone":
             g = H[sp[1]]
             made.append(_prop("phone", (0.08, 0.08, 0.1), lambda bm: _box(bm, g, (fwd, left, up), (0.075, 0.012, 0.15))))
@@ -2185,7 +2197,10 @@ def place_partner(arm, sex, q, dist=0.3):
 def hide_partners():
     for pa, meshes in PARTNERS.values():
         for o in meshes:
-            o.hide_render = True
+            try:
+                o.hide_render = True
+            except ReferenceError:  # a new look loaded a fresh scene: the old partner is gone
+                pass
 
 
 def render_work(arm, scene, look, name, action, tmp, first):
