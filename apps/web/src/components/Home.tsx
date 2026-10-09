@@ -1,5 +1,6 @@
 // Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
 import {
+  PARTY_BY_KEY,
   SELL_BACK,
   GENERATORS,
   HOME_ITEMS,
@@ -52,6 +53,7 @@ import { PAIR_POSES, type PoseAction, type Worker } from "./rooms.js";
 import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 import { usePartnerAtHome } from "./Love.js";
+import { PartyPanel, useParties, withParty } from "./Party.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -156,6 +158,7 @@ export function HomeCard({
   const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar, design: home.design });
   // Your partner, if they live with you: at home with you (in the parlour or the kitchen).
   const partner = usePartnerAtHome();
+  const [parties, reloadParties] = useParties();
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 
   const workout = async () => {
@@ -234,6 +237,7 @@ export function HomeCard({
           goRoom={life.goRoom}
           scene={life.scene}
           guests={partner ? [{ avatar: partner.avatar, nickname: partner.name, partner: true }, ...guests] : guests}
+          party={parties?.mine ? { crowd: PARTY_BY_KEY.get(parties.mine.size)!.crowd, seed: parties.mine.id.charCodeAt(0) + parties.mine.id.charCodeAt(1) } : null}
           placements={placed}
           onPlace={(key, room, x, y) => {
             setPlaced((p) => ({ ...p, [key]: { room, x, y } }));
@@ -266,6 +270,7 @@ export function HomeCard({
           <span className="tiny muted">Tap the floor to walk around.</span>
         </div>
         {life.panel}
+        {home.plotId && <PartyPanel design={home.design} view={parties} reload={reloadParties} notify={notify} onChanged={onChanged} />}
         <p className={`small power-line ${hasLight ? "on" : "off"}`}>
           {hasLight
             ? "💡 There's light."
@@ -433,7 +438,10 @@ export function HomeRooms({
   guests = [],
   placements = {},
   onPlace,
+  party,
 }: {
+  /** A party on in this house: how many people dance in it (and a seed for their looks). */
+  party?: { crowd: number; seed: number } | null;
   /** Where you put your things; with onPlace you can drag them (your own home). */
   placements?: Record<string, { room: string; x: number; y: number }>;
   onPlace?: (key: string, room: string, x: number, y: number) => void;
@@ -498,7 +506,7 @@ export function HomeRooms({
           key={room.key}
           src={`/art/interiors/${room.art}.webp`}
           alt={`Inside ${who} ${room.label.toLowerCase()}`}
-          room={withoutCook(privateRoom(ROOMS[room.art], room.key, guests), !!extra?.hideCook)}
+          room={withParty(withoutCook(privateRoom(ROOMS[room.art], room.key, guests), !!extra?.hideCook), room.key, party ?? null)}
           seed={3 + at}
           player={avatar ? { avatar, action, spot: extra?.spot } : undefined}
           onPlayerWalk={() => onAction?.("walk")}

@@ -1134,3 +1134,8 @@ body.hud-hidden .firstday, body.hud-hidden .firstday-pill { display: none; }
 /* Room for the music mini player above the dock. */
 body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom: 112px; }
 @media (max-width: 899px) { body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom: 156px; } }
+.call-phone { position: absolute; transform: translate(-50%, -50%) rotate(-18deg); font-size: clamp(10px, 2.6vw, 16px); filter: drop-shadow(0 1px 1px rgb(0 0 0 / 50%)); }
+.party-box { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--rule-strong); background: var(--sheet); }
+.party-box.on { border-color: #f59e0b; background: linear-gradient(135deg, rgb(245 158 11 / 16%), var(--sheet)); }
+.party-kinds { display: grid; gap: 6px; }
+.party-kinds .btn { justify-content: flex-start; text-align: left; white-space: normal; }

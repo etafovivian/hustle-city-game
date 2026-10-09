@@ -22,6 +22,7 @@ import { JobsBoard } from "./JobsBoard.js";
 import { AdminHustle, HustleBoard } from "./HustleBoard.js";
 import { LoveApp } from "./Love.js";
 import { MusicApp } from "./Music.js";
+import { PartiesNow } from "./Party.js";
 import { AdminFeedback, ReportProblem } from "./ReportProblem.js";
 import { Quests } from "./Quests.js";
 
@@ -210,6 +211,7 @@ export function Phone({
               }}
             />
           )}
+          {app === "events" && <PartiesNow onClose={onClose} />}
           {app === "events" && (
             <EventsApp
               onGo={(v) => {

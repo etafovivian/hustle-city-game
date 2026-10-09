@@ -1157,3 +1157,36 @@ export const partnerBonds = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.npc] })],
 );
+
+/** A house party: one host, at their house, for an hour. */
+export const houseParties = pgTable(
+  "house_parties",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    plotId: text("plot_id").notNull(),
+    size: text("size").notNull(),
+    /** The host's Lagos day, for one party a day. */
+    day: text("day").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("house_parties_host_day").on(t.hostId, t.day), index("house_parties_ends").on(t.endsAt)],
+);
+
+/** Who came to a party (rewards once each). */
+export const partyGuests = pgTable(
+  "party_guests",
+  {
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => houseParties.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.partyId, t.userId] })],
+);

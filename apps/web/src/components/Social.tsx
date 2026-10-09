@@ -1,6 +1,7 @@
 // Meeting people: other players on the map (and their card: wave, buy a drink, go to them, visit their home),
 // and visiting someone's house.
-import { HOUSE_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type MapHome, type PresencePlayer } from "@hc/shared";
+import { JoinParty, useParties } from "./Party.js";
+import { HOUSE_BY_KEY, PARTY_BY_KEY, VENUES_BY_KEY, type AvatarConfig, type MapHome, type PresencePlayer } from "@hc/shared";
 import { Beer, Hand, Home as HomeIcon, MessageCircle, Navigation, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -192,6 +193,8 @@ export function VisitHome({
   const sheet = useSheet(onClose);
   const [me, setMe] = useState<PlayerAction>("walk");
   const ownerIn = inside.some((p) => p.nickname === home.nickname);
+  const [parties, reloadParties] = useParties();
+  const party = parties?.friends.find((p) => p.plotId === home.plotId) ?? null;
   const knock = async () => {
     try {
       await api("POST", "/api/presence/wave", { to: home.nickname });
@@ -217,7 +220,15 @@ export function VisitHome({
         </div>
         <div className="venue-layout has-room">
           <div className="venue-room">
-            <HomeRooms design={home.design} who={`@${home.nickname}'s`} avatar={avatar} action={me} onAction={setMe} guests={inside} />
+            <HomeRooms
+              design={home.design}
+              who={`@${home.nickname}'s`}
+              avatar={avatar}
+              action={me}
+              onAction={setMe}
+              guests={inside}
+              party={party ? { crowd: PARTY_BY_KEY.get(party.size)!.crowd, seed: party.id.charCodeAt(0) + party.id.charCodeAt(1) } : null}
+            />
             <div className="row home-acts">
               <button type="button" className="btn sm" onClick={() => setMe("sit")}>
                 🛋️ Sit down
@@ -232,6 +243,7 @@ export function VisitHome({
           </div>
           <div className="venue-info">
             <p className="small">Make yourself at home. {ownerIn ? `@${home.nickname} is in: say hello!` : `@${home.nickname} isn't in. Knock and they'll see it next time they look.`}</p>
+            {party && <JoinParty party={party} notify={notify} onChanged={() => undefined} reload={reloadParties} />}
             <RoomChat place={`home:${home.plotId}`} />
             <div className="row">
               <button type="button" className="btn go" onClick={() => void knock()}>
