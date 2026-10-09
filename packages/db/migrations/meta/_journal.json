@@ -232,6 +232,13 @@
       "when": 1791973906610,
       "tag": "0032_partners",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791989882432,
+      "tag": "0033_house_parties",
+      "breakpoints": true
     }
   ]
 }

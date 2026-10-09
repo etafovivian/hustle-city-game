@@ -213,9 +213,15 @@ export function ScreenShow({ quad, programme }: { quad: Quad; programme: Program
 /** On the phone: a ringing phone and who you're talking to, over your head. */
 function CallBubble({ at, who }: { at: Pt; who: string }) {
   return (
-    <div className="call-bubble" style={{ left: `${at[0] * 100}%`, top: `${Math.max(4, at[1] * 100 - 30)}%` }} aria-hidden="true">
-      📞 {who === "family" ? "Hello Mama!" : `Hey @${who}!`}
-    </div>
+    <>
+      <div className="call-bubble" style={{ left: `${at[0] * 100}%`, top: `${Math.max(4, at[1] * 100 - 30)}%` }} aria-hidden="true">
+        📞 {who === "family" ? "Hello Mama!" : `Hey @${who}!`}
+      </div>
+      {/* The phone at your ear (until every look has its own phone-call drawing). */}
+      <span className="call-phone" style={{ left: `${at[0] * 100 + 2}%`, top: `${at[1] * 100 - 14}%` }} aria-hidden="true">
+        📱
+      </span>
+    </>
   );
 }
 
