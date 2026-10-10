@@ -49,7 +49,7 @@ const ITEM_WIDTH: Record<string, number> = {
   flat_tv: 0.12,
   game_console: 0.07,
 };
-import type { PoseAction, Worker } from "./rooms.js";
+import { PAIR_POSES, type PoseAction, type Worker } from "./rooms.js";
 import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 import { usePartnerAtHome } from "./Love.js";
@@ -390,8 +390,21 @@ export function Garage({ notify, onChanged, showroom = false }: { notify: (m: st
  * A private home: no strangers. A house help works in the kitchen, and guests (players visiting now) sit in the
  * living rooms or at the kitchen table, each in their own seat. Bedrooms are just for the household.
  */
-function privateRoom(room: Room | undefined, kind: string, guests: { avatar: AvatarConfig }[]): Room | undefined {
+function privateRoom(room: Room | undefined, kind: string, guests: { avatar: AvatarConfig; partner?: boolean }[]): Room | undefined {
   if (!room) return room;
+  // Your partner takes the together spot next to yours where the room has one (Room.pairs): across the table in the
+  // kitchen, beside you on the sofa elsewhere, in their own look.
+  const pairKey = /kitchen/.test(kind) ? "eat" : "sit";
+  const pair = room.pairs?.[pairKey];
+  const partner = pair ? guests.find((g) => g.partner) : undefined;
+  if (partner && pair) {
+    const pose = PAIR_POSES[pairKey].partner;
+    const rest = privateRoom(room, kind, guests.filter((g) => g !== partner));
+    return {
+      ...rest!,
+      stations: [...rest!.stations, { action: pair[1].pose ?? pose, at: pair[1].at, dir: pair[1].dir, behind: pair[1].behind, variant: variantFor(partner.avatar), look: partner.avatar }],
+    };
+  }
   const kitchen = /kitchen/.test(kind);
   const social = /parlour|living|lounge|cinema|room|pool|yard/.test(kind);
   const seats = [
