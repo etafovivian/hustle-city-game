@@ -24,6 +24,8 @@ import { api, formatCoins } from "../api.js";
 import { Avatar } from "./Avatar.js";
 import { variantFor } from "./AvatarWalker.js";
 import type { Room } from "./rooms.js";
+import { WEDDING_VENUE, startDate } from "./Dates.js";
+import { music, musicState } from "../music.js";
 
 const placeName = (v: string) => VENUES_BY_KEY.get(v)?.name ?? v;
 
@@ -45,7 +47,7 @@ function Closeness({ value }: { value: number }) {
   );
 }
 
-function BondCard({ b, partner, notify, onView, onChanged }: { b: BondView; partner: string | null; notify: (m: string) => void; onView: (v: LoveView) => void; onChanged: () => void }) {
+function BondCard({ b, partner, notify, onView, onChanged, onGo }: { b: BondView; partner: string | null; notify: (m: string) => void; onView: (v: LoveView) => void; onChanged: () => void; onGo: (venue: string) => void }) {
   const npc = NPC_BY_KEY.get(b.npc)!;
   const [open, setOpen] = useState<null | "chat" | "gift" | "date">(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +104,14 @@ function BondCard({ b, partner, notify, onView, onChanged }: { b: BondView; part
           </button>
         )}
         {b.can.wedding && (
-          <button type="button" className="btn sm gold" disabled={busy} onClick={() => void call<LoveView>("wedding", {}, (v) => (onView(v), notify(`Owambe! You and ${npc.name} are married. 🎉 +${WEDDING.xp} XP`)))}>
+          <button type="button" className="btn sm gold" disabled={busy} onClick={() => void call<LoveView>("wedding", {}, (v) => {
+                onView(v);
+                notify(`Owambe! You and ${npc.name} are married. 🎉 +${WEDDING.xp} XP`);
+                // The owambe itself: the event centre, the two of you, everyone dancing.
+                if (!musicState().playing) music.play("highlife");
+                startDate(b.npc, WEDDING_VENUE, "the event centre", true);
+                onGo(WEDDING_VENUE);
+              })}>
             🎉 Owambe wedding · {formatCoins(WEDDING.cost)}
           </button>
         )}
@@ -174,6 +183,9 @@ function BondCard({ b, partner, notify, onView, onChanged }: { b: BondView; part
                 void call<Gained & { fav: boolean }>("date", { venue: d.venue }, (r) => {
                   onView(r.love);
                   setOpen(null);
+                  // Go there together: the place opens with the two of you in it.
+                  startDate(b.npc, d.venue, d.label);
+                  onGo(d.venue);
                   notify(
                     r.gained
                       ? `${d.icon} ${d.label} with ${npc.name}${r.fav ? `: their favourite!` : ""} +${r.gained} closeness, +Fun, +Social`
@@ -224,7 +236,7 @@ export function LoveApp({ notify, onGo, onChanged }: { notify: (m: string) => vo
       </div>
       {view.bonds.length > 0 && <h3 className="small">People you know</h3>}
       {view.bonds.map((b) => (
-        <BondCard key={b.npc} b={b} partner={view.partner} notify={notify} onView={setView} onChanged={onChanged} />
+        <BondCard key={b.npc} b={b} partner={view.partner} notify={notify} onView={setView} onChanged={onChanged} onGo={onGo} />
       ))}
       {toMeet.length > 0 && (
         <>

@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { CHIEF_TITLE, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { CHIEF_TITLE, NPC_BY_KEY, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -13,6 +13,7 @@ import { RoomChat } from "./Chat.js";
 import { Haggle, Stalls } from "./Market.js";
 import { GadgetCounter } from "./Gadgets.js";
 import { PeopleHere, withRegulars } from "./Love.js";
+import { dateRoom, endDate, holdDate, useDateAt } from "./Dates.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
@@ -209,7 +210,11 @@ export function VenueCard({
   const [error, setError] = useState<string | null>(null);
   const sheet = useRef<HTMLDivElement>(null);
   // People you can meet here, standing about in the room (one list per place, so they don't restart on redraws).
-  const room = useMemo(() => (base.interior ? withRegulars(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
+  const regulars = useMemo(() => (base.interior ? withRegulars(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
+  // On a date here (Phone → Love): the two of you in the room, together.
+  const date = useDateAt(base.key);
+  const scene = useMemo(() => dateRoom(regulars, date), [regulars, date]);
+  const room = scene.room;
 
   useEffect(() => {
     api<VenueDay>("GET", "/api/game/venues/today")
@@ -218,6 +223,8 @@ export function VenueCard({
   }, []);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // Leaving the place ends a date there.
+  useEffect(() => holdDate(), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", onKey);
@@ -351,13 +358,23 @@ export function VenueCard({
               alt={`Inside ${venue.name}`}
               room={room}
               seed={(branch?.key ?? venue.key).length}
-              player={avatar && present ? { avatar, action: me } : undefined}
+              player={avatar && (present || date) ? { avatar, action: date ? "stand" : me, spot: scene.spot ?? undefined } : undefined}
               onPlayerWalk={() => setMe("walk")}
             />
           </div>
         )}
         <div className="venue-info">
-        {!present && (
+        {date && (
+          <div className="party-box on">
+            <strong className="small">
+              {date.wedding ? "💍 Your wedding owambe" : "🌹 On a date"} with {NPC_BY_KEY.get(date.npc)?.name} · {date.label}
+            </strong>
+            <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => endDate()}>
+              {date.wedding ? "Leave the party" : "End the date"}
+            </button>
+          </div>
+        )}
+        {!present && !date && (
           <div className="away-note">
             <span className="small">You're not here yet. Go there to do things, work or chat inside.</span>
             <button type="button" className="btn sm go" onClick={onWalk}>
