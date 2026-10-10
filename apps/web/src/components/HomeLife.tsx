@@ -9,7 +9,9 @@ import type { InteriorPlayer } from "./Interior.js";
 import { Wardrobe } from "./Wardrobe.js";
 import { music, musicState } from "../music.js";
 import { nearestOnPolyline } from "./interiorPath.js";
-import { ROOMS, type PlayerAction, type Pt, type Worker } from "./rooms.js";
+import { POSE_VARIANTS, ROOMS, type PlayerAction, type Pt, type Worker } from "./rooms.js";
+import { variantFor } from "./AvatarWalker.js";
+import { layerKeys, layersOn } from "./spriteComposer.js";
 
 type HomeRoom = { key: string; label: string; art: string };
 
@@ -211,16 +213,17 @@ export function ScreenShow({ quad, programme }: { quad: Quad; programme: Program
 
 /** Water: drops from a shower or a bucket over your head, or ripples round you in the pool (fractions of the room). */
 /** On the phone: a ringing phone and who you're talking to, over your head. */
-function CallBubble({ at, who }: { at: Pt; who: string }) {
+function CallBubble({ at, who, drawn }: { at: Pt; who: string; drawn?: boolean }) {
   return (
     <>
       <div className="call-bubble" style={{ left: `${at[0] * 100}%`, top: `${Math.max(4, at[1] * 100 - 30)}%` }} aria-hidden="true">
         📞 {who === "family" ? "Hello Mama!" : `Hey @${who}!`}
       </div>
-      {/* The phone at your ear (until every look has its own phone-call drawing). */}
-      <span className="call-phone" style={{ left: `${at[0] * 100 + 2}%`, top: `${at[1] * 100 - 14}%` }} aria-hidden="true">
+      {/* The phone at your ear, only where the character isn't already drawn holding one (a look without the
+          phone-call sheet: layers off and not one of the everyday looks). */}
+      {!drawn && <span className="call-phone" style={{ left: `${at[0] * 100 + 2}%`, top: `${at[1] * 100 - 14}%` }} aria-hidden="true">
         📱
-      </span>
+      </span>}
     </>
   );
 }
@@ -463,6 +466,8 @@ export function useHomeLife({
         : null,
     [rider],
   );
+  // Is the player drawn holding the phone? Their own layered sheet (layers on), or a baked everyday look with it.
+  const phoneDrawn = !!avatar && ((layersOn() && !!layerKeys(avatar)) || POSE_VARIANTS.phone_call.includes(variantFor(avatar)));
   /** Props for the room scene now on show. */
   const scene = (room: string, action?: PlayerAction): { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean } => ({
     spot: spot?.room === room && spot.act === action ? spot.spot : undefined,
@@ -470,7 +475,7 @@ export function useHomeLife({
     hideCook: cooking === room,
     overlay: show && show.room === room ? <ScreenShow quad={show.quad} programme={show.programme} /> : undefined,
     overlayTop:
-      fx && fx.room === room ? <WaterFx at={fx.at} kind={fx.kind} /> : onCall && onCall.room === room ? <CallBubble at={onCall.at} who={onCall.who} /> : undefined,
+      fx && fx.room === room ? <WaterFx at={fx.at} kind={fx.kind} /> : onCall && onCall.room === room ? <CallBubble at={onCall.at} who={onCall.who} drawn={phoneDrawn} /> : undefined,
     extraWorkers: rider && riderWorker && rider.room === room ? [riderWorker] : undefined,
   });
 

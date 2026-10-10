@@ -97,8 +97,7 @@ export const POSE_VARIANTS: Record<PoseAction, WalkerVariant[]> = {
   bucket_bath: HOME_LOOKS,
   wash_clothes: HOME_LOOKS,
   sweep: HOME_LOOKS,
-  // (baked vacuum sheets are still rendering: until they land, the vacuum is layers only and falls back to sweep)
-  vacuum: [],
+  vacuum: HOME_LOOKS,
   water_plants: HOME_LOOKS,
   phone_call: HOME_LOOKS,
   play_games: HOME_LOOKS,
