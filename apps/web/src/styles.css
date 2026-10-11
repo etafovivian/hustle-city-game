@@ -1139,3 +1139,17 @@ body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom
 .party-box.on { border-color: #f59e0b; background: linear-gradient(135deg, rgb(245 158 11 / 16%), var(--sheet)); }
 .party-kinds { display: grid; gap: 6px; }
 .party-kinds .btn { justify-content: flex-start; text-align: left; white-space: normal; }
+.books-bar { gap: 6px; align-items: center; }
+.books-title { flex: 1; min-width: 0; justify-content: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.books-reader { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: #fbf6ea; color: #2b2116; line-height: 1.6; font-family: Georgia, "Times New Roman", serif; }
+.books-verse { margin: 0; }
+.books-verse sup { color: #9a6b2e; font: 700 0.7em system-ui, sans-serif; margin-right: 2px; }
+.books-stanza { margin: 0; white-space: pre-line; }
+.books-today { display: grid; gap: 4px; text-align: left; padding: 12px; border-radius: 14px; border: 1px solid #c9a86a66; background: linear-gradient(135deg, rgb(201 168 106 / 18%), var(--sheet)); color: inherit; cursor: pointer; }
+.books-today-text { font-family: Georgia, serif; font-style: italic; }
+.books-list, .books-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.books-grid .chip { min-width: 40px; justify-content: center; }
+.books-rows { display: grid; gap: 4px; max-height: 60vh; overflow: auto; }
+.books-row { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px; border-radius: 10px; border: 1px solid var(--rule-strong); background: var(--sheet); color: inherit; cursor: pointer; }
+.books-row[aria-pressed="true"] { border-color: #c9a86a; }
+.books-num { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #7c5c2e; color: #fff; font: 700 12px system-ui, sans-serif; }

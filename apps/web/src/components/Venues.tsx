@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { CHIEF_TITLE, NPC_BY_KEY, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { CHIEF_TITLE, NPC_BY_KEY, WORSHIP_BOOK, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -14,6 +14,7 @@ import { Haggle, Stalls } from "./Market.js";
 import { GadgetCounter } from "./Gadgets.js";
 import { PeopleHere, withRegulars } from "./Love.js";
 import { dateRoom, endDate, holdDate, useDateAt } from "./Dates.js";
+import { openBook } from "./Books.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
@@ -468,6 +469,11 @@ export function VenueCard({
             );
           })}
         </ul>
+        {WORSHIP_BOOK[base.key] && (
+          <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => openBook(WORSHIP_BOOK[base.key]!)}>
+            📖 Read the {WORSHIP_BOOK[base.key] === "quran" ? "Qur'an" : "Bible"}
+          </button>
+        )}
         <PeopleHere venue={venue.key} at={branch?.key ?? venue.key} present={present} notify={notify} onLove={onApp && (() => onApp("love"))} />
         {job && work && (
           <div className="work-box">
