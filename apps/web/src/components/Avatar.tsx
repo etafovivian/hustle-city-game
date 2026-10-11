@@ -35,6 +35,11 @@ const HAIR: Record<string, PersonasHair> = {
   side_part: "shortComboverChops",
   long_straight: "long",
   hijab: "beanie",
+  knotless: "extraLong",
+  big_afro: "curly",
+  bob_wig: "bobBangs",
+  twists: "long",
+  fade_part: "fade",
 };
 
 const HAIR_LABEL: Record<string, string> = {
@@ -56,6 +61,11 @@ const HAIR_LABEL: Record<string, string> = {
   side_part: "Side part",
   long_straight: "Long straight",
   hijab: "Hijab",
+  knotless: "Knotless braids",
+  big_afro: "Big afro",
+  bob_wig: "Bob wig",
+  twists: "Twists",
+  fade_part: "Fade with a part",
 };
 
 // Outfit colours drawn from the wax-print dyes (shared OUTFIT_INFO, without the "#").

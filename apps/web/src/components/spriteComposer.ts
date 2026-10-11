@@ -20,14 +20,15 @@ export const LAYERS_FOR_EVERYONE = false;
 
 /** The base looks that have layers (sprites.py LAYER_LOOK), per body. */
 const BASES: Record<"man" | "woman", Set<string>> = {
-  man: new Set(["ankara_green", "agbada_white", "kaftan_gold", "jersey_red", "tee_blue", "hoodie_black", "suit", "jeans_jacket", "kente", "boubou", "kurta"]),
+  man: new Set(["ankara_green", "agbada_white", "kaftan_gold", "jersey_red", "tee_blue", "hoodie_black", "suit", "jeans_jacket", "kente", "boubou", "kurta", "streetwear", "varsity", "tracksuit", "polo_chinos", "jersey_shorts"]),
   woman: new Set([
     "buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black",
     "suit", "jeans_jacket", "summer_dress", "abaya", "kente", "boubou", "salwar_kameez", "saree",
+    "crop_jeans", "mini_skirt", "bodycon", "ankara_two_piece", "athleisure", "denim_mini",
   ]),
 };
 /** Hair styles with layers (sprites.py LAYER_HAIRS); "bald" needs none. */
-const HAIRS = new Set(["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]);
+const HAIRS = new Set(["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab", "knotless", "big_afro", "bob_wig", "twists", "fade_part"]);
 const LEGACY_HAIR: Record<string, string> = { afro: "high_top", headwrap: "gele" };
 /** A close style to borrow while a newer style's pose layer is still missing (the walk has every style). */
 const NEAR_HAIR: Record<string, string> = {
@@ -38,6 +39,11 @@ const NEAR_HAIR: Record<string, string> = {
   bun: "puff",
   long_straight: "braids",
   hijab: "gele",
+  knotless: "braids",
+  big_afro: "curly",
+  bob_wig: "bob",
+  twists: "locs",
+  fade_part: "low_cut",
 };
 
 /**
@@ -62,7 +68,13 @@ let enabledFor = false;
 export function setLayerRoles(roles: readonly string[] | undefined) {
   enabledFor = !!roles?.includes("admin");
 }
+let flagCache: boolean | null = null;
 function testFlag(): boolean {
+  // read once (it's asked every animation frame by the street walkers)
+  if (flagCache === null) flagCache = readFlag();
+  return flagCache;
+}
+function readFlag(): boolean {
   try {
     const q = new URLSearchParams(window.location.search).get("layers");
     if (q === "1" || q === "0") sessionStorage.setItem("hc_layers", q);

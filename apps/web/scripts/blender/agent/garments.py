@@ -612,6 +612,71 @@ def build_saree(F, mats):
     return F.finish(p, "saree", mats)
 
 
+# ---------------------------------------------------------------- modern fashion (2026-10): stylish, not revealing
+def skirt(F, part, top, hem, flare, n=40, pleats=0.0, mat=0):
+    zs = levels(top, hem, 0.04)
+
+    def m(z, a):
+        t = smoothstep(top, hem, z)
+        return lerp(0.014, flare, t) + pleats * t * math.cos(16 * a)
+    rings = F.body_loft(zs, TORSO | LEGS, n, m)
+    v, f = grid(rings)
+    part.add(v, f, [F.body_w(q) for q in v], mat)
+
+
+def build_mini_skirt(F, mats):
+    """A mini skirt from the waist to mid-thigh, a gentle A-line."""
+    p = Part()
+    skirt(F, p, F.z_waist + 0.02, (F.z_hip + F.z_knee) / 2 - 0.02, 0.05)
+    return F.finish(p, "mini_skirt", mats)
+
+
+def build_bodycon(F, mats):
+    """A fitted midi dress from the bust to mid-calf, close to the body all the way down."""
+    p = Part()
+    zt = F.z_shoulder - 0.08
+    hem = (F.z_knee + F.z_ankle) / 2 + 0.04
+    zs = levels(zt, hem, 0.035)
+    rings = F.body_loft(zs, TORSO | UPPERLEGS | LEGS, 40, lambda z, a: 0.01 + 0.02 * smoothstep(F.z_hip, hem, z), shoulders=False)
+    v, f = grid(rings)
+    p.add(v, f, [F.body_w(q) for q in v])
+    return F.finish(p, "bodycon", mats)
+
+
+def build_flare_skirt(F, mats):
+    """The ankara two-piece's skirt: fitted at the waist, flaring to mid-calf in soft folds."""
+    p = Part()
+    skirt(F, p, F.z_waist + 0.02, (F.z_knee + F.z_ankle) / 2, 0.11, pleats=0.008)
+    return F.finish(p, "flare_skirt", mats)
+
+
+def build_big_tee(F, mats):
+    """An oversized tee: dropped shoulders, wide short sleeves, a straight hem at the hip."""
+    p = Part()
+    kaftan_like(F, p, F.z_hip - 0.06, n=32, m_top=0.03, m_hem=0.05, sleeve_m=(0.03, 0.045), sleeve_n=6, sleeve_end=0.48)
+    return F.finish(p, "big_tee", mats)
+
+
+def build_varsity(F, mats):
+    """A varsity jacket: body in the fabric, sleeves in cream leather (fixed), ribbed cuffs and hem (deeper), open front."""
+    p = Part()
+    zt = F.z_neck + 0.03
+    hem = F.z_waist - 0.04
+    kaftan_like(F, p, hem, n=32, m_top=0.02, m_hem=0.03, sleeve_m=(0.022, 0.024), sleeve_n=10, step=0.035,
+                drop=front_open(F, zt, hem - 0.2, 0.05, 0.03))
+    zsh = F.z_shoulder
+
+    def role(f_, verts):
+        c = sum((verts[k] for k in f_), Vector()) / len(f_)
+        if c.z < hem + 0.035:
+            return 1  # ribbed hem
+        if abs(c.x) > 0.21 and c.z > F.z_wrist - 0.05:
+            return 2  # leather sleeves
+        return 0
+    p.m = [role(f_, p.v) for f_ in p.f]
+    return F.finish(p, "varsity", mats)
+
+
 GARMENTS = [
     ("man", "Male", "agbada", (0.93, 0.9, 0.84), build_agbada),
     ("man", "Male", "kaftan", (0.12, 0.16, 0.37), build_kaftan),
@@ -630,9 +695,15 @@ GARMENTS = [
     ("man", "Male", "kurta", (0.96, 0.96, 0.95), build_kurta),
     ("woman", "Female", "kameez", (0.06, 0.48, 0.42), build_kameez),
     ("woman", "Female", "saree", (0.78, 0.2, 0.12), build_saree),
+    ("woman", "Female", "mini_skirt", (0.15, 0.15, 0.17), build_mini_skirt),
+    ("woman", "Female", "bodycon", (0.48, 0.12, 0.24), build_bodycon),
+    ("woman", "Female", "flare_skirt", (0.91, 0.54, 0.1), build_flare_skirt),
+    ("man", "Male", "big_tee", (0.15, 0.15, 0.17), build_big_tee),
+    ("man", "Male", "varsity", (0.48, 0.12, 0.24), build_varsity),
 ]
 # Fixed colours for material slots 2 and 3 of each garment (trim, accents); slot 1 is slot 0 a shade deeper.
 GARMENT_FIXED = {
+    "varsity": ((0.93, 0.9, 0.82), (0.93, 0.9, 0.82)),
     "agbada": ((0.85, 0.62, 0.12), (0.85, 0.62, 0.12)),
     "suit_jacket": ((0.48, 0.09, 0.17), (0.06, 0.06, 0.07)),
     "kente": ((0.12, 0.42, 0.18), (0.05, 0.04, 0.03)),
@@ -685,7 +756,7 @@ def main():
         build_one(srcs[sex], who, key, rgb, fn, out)
 
 
-NEW_KEYS = {"agbada", "suit_jacket", "denim_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "kameez", "saree"}
+NEW_KEYS = {"mini_skirt", "bodycon", "flare_skirt", "big_tee", "varsity", "agbada", "suit_jacket", "denim_jacket", "summer_dress", "abaya", "kente", "boubou", "kurta", "kameez", "saree"}
 
 
 def build_one(src, who, key, rgb, fn, OUT):

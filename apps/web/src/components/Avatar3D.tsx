@@ -56,6 +56,18 @@ const OUTFITS: Record<string, OutfitPaint> = {
   kurta: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "#f4f4f2", bottom: "#ece6d6", shin: "#ece6d6", feet: "#6b3b1f", fabric: "#f4f4f2" },
   salwar_kameez: { top: "#0f7b6c", upperArm: "#0f7b6c", forearm: "#0f7b6c", bottom: "#0f7b6c", shin: "#0f7b6c", feet: "#c9921a", fabric: "#0f7b6c" },
   saree: { top: "#c9921a", upperArm: "#c9921a", forearm: "skin", bottom: "#c8321e", shin: "#c8321e", feet: "#c9921a", fabric: "#c8321e" },
+  // modern street fashion
+  crop_jeans: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "skin", bottom: "#3b5b8a", shin: "#3b5b8a", feet: "#f2f2f2" },
+  mini_skirt: { top: "#25282b", upperArm: "#25282b", forearm: "skin", bottom: "skin", shin: "skin", feet: "#151515", fabric: "#25282b" },
+  bodycon: { top: "#7a1f3d", upperArm: "skin", forearm: "skin", bottom: "#7a1f3d", shin: "skin", feet: "#c9921a", fabric: "#7a1f3d" },
+  ankara_two_piece: { top: "#e88a1a", upperArm: "#e88a1a", forearm: "skin", bottom: "skin", shin: "skin", feet: "#c9921a", pattern: "#3a2410", fabric: "#e88a1a" },
+  athleisure: { top: "#8a8f98", upperArm: "#8a8f98", forearm: "#8a8f98", bottom: "#202022", shin: "#202022", feet: "#f2f2f2" },
+  denim_mini: { top: "#e985b5", upperArm: "#e985b5", forearm: "skin", bottom: "skin", shin: "skin", feet: "#f2f2f2", fabric: "#e985b5" },
+  streetwear: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "skin", bottom: "#6b6a4a", shin: "#6b6a4a", feet: "#f2f2f2", fabric: "#25282b" },
+  varsity: { top: "#f4f4f2", upperArm: "#f4f4f2", forearm: "skin", bottom: "#3b5b8a", shin: "#3b5b8a", feet: "#f2f2f2", fabric: "#7a1f3d" },
+  tracksuit: { top: "#1e7a46", upperArm: "#1e7a46", forearm: "#1e7a46", bottom: "#1a6a3c", shin: "#1a6a3c", feet: "#f2f2f2" },
+  polo_chinos: { top: "#2f5fb3", upperArm: "#2f5fb3", forearm: "skin", bottom: "#c9b48a", shin: "#c9b48a", feet: "#5a3a22" },
+  jersey_shorts: { top: "#f2b705", upperArm: "#f2b705", forearm: "skin", bottom: "#d9a404", shin: "skin", feet: "#f2f2f2" },
 };
 
 // How far down the head the hair colour reaches (model is ~1.83 m tall).
@@ -78,6 +90,11 @@ const HAIR_LINE: Record<string, number | null> = {
   side_part: 1.73,
   long_straight: 1.64,
   hijab: 1.6,
+  knotless: 1.62,
+  big_afro: 1.68,
+  bob_wig: 1.64,
+  twists: 1.68,
+  fade_part: 1.76,
 };
 
 /** Fabric colours for wraps and caps; everything else is near-black hair. */
@@ -209,7 +226,7 @@ function loadModel(body: string) {
 }
 
 /** 3D hair pieces made in Blender (scripts/blender/hair.py), in the mannequin's rest-pose space. */
-const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]);
+const HAIR_FILES = new Set(["low_cut", "buzzcut", "curly", "high_top", "puff", "bob", "braids", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab", "knotless", "big_afro", "bob_wig", "twists", "fade_part"]);
 const hairCache = new Map<string, Promise<THREE.Object3D>>();
 function loadHair(body: string, style: string) {
   const key = `${body}/${style}`;
@@ -224,7 +241,17 @@ function loadHair(body: string, style: string) {
 
 /** Loose traditional clothes made in Blender (scripts/blender/agent/garments.py), skinned to the same skeleton. */
 const GARMENTS: Record<string, Partial<Record<string, string>>> = {
-  man: { agbada_white: "agbada", kaftan_gold: "kaftan", suit: "suit_jacket", jeans_jacket: "denim_jacket", kente: "kente", boubou: "boubou", kurta: "kurta" },
+  man: {
+    agbada_white: "agbada",
+    kaftan_gold: "kaftan",
+    suit: "suit_jacket",
+    jeans_jacket: "denim_jacket",
+    kente: "kente",
+    boubou: "boubou",
+    kurta: "kurta",
+    streetwear: "big_tee",
+    varsity: "varsity",
+  },
   woman: {
     buba_wrapper: "buba_wrapper",
     peplum_coral: "peplum_gown",
@@ -236,6 +263,10 @@ const GARMENTS: Record<string, Partial<Record<string, string>>> = {
     boubou: "boubou",
     salwar_kameez: "kameez",
     saree: "saree",
+    mini_skirt: "mini_skirt",
+    bodycon: "bodycon",
+    ankara_two_piece: "flare_skirt",
+    denim_mini: "mini_skirt+denim_jacket#3b5b8a",
   },
 };
 /**
@@ -524,8 +555,13 @@ export default function Avatar3D({
     const show = () => void (model.visible = true);
     const fallback = window.setTimeout(show, 5000);
     let cancelled = false;
-    loadGarment(body, key)
-      .then((src) => {
+    // "a+b": two garments (a mini dress under a denim jacket); "name#hex": that garment in a fixed colour
+    const parts = key.split("+").map((k) => {
+      const [g, fixed] = k.split("#");
+      return { g: g!, fixed: fixed ? `#${fixed}` : undefined };
+    });
+    Promise.all(parts.map((p) => loadGarment(body, p.g).then((src) => ({ ...p, src }))))
+      .then((loaded) => {
         if (cancelled || !s.model) return;
         const bones = new Map<string, THREE.Bone>();
         s.model.traverse((o) => {
@@ -533,7 +569,8 @@ export default function Avatar3D({
         });
         const group = new THREE.Group();
         const paint = paintFor(avatar);
-        const colour = paint.fabric ?? paint.top;
+        for (const { g: gkey, fixed, src } of loaded) {
+        const colour = fixed ?? paint.fabric ?? paint.top;
         src.traverse((o) => {
           const m = o as THREE.SkinnedMesh;
           if (!m.isSkinnedMesh) return;
@@ -543,8 +580,9 @@ export default function Avatar3D({
           const mat = mesh.material as THREE.MeshStandardMaterial;
           // Newer garments name their materials by role: T_fab (the fabric), T_deep (the same cloth a shade deeper),
           // FIX_* (trims and kente accents, kept as they are).
-          if (key === "kente") patterned(mat, "kente", new THREE.Color(colour ?? "#f2b705"));
-          else if (key === "boubou" && !mat.name.startsWith("FIX_")) patterned(mat, "print", new THREE.Color(colour ?? "#2f5fb3"));
+          if (gkey === "kente") patterned(mat, "kente", new THREE.Color(colour ?? "#f2b705"));
+          else if (gkey === "boubou" && !mat.name.startsWith("FIX_")) patterned(mat, "print", new THREE.Color(colour ?? "#2f5fb3"));
+          else if (fixed) mat.color.set(fixed);
           else if (colour && !mat.name.startsWith("FIX_")) {
             mat.color.set(colour);
             if (mat.name.startsWith("T_deep")) mat.color.multiplyScalar(0.86);
@@ -555,6 +593,7 @@ export default function Avatar3D({
           mesh.bind(new THREE.Skeleton(mine as THREE.Bone[], m.skeleton.boneInverses), m.bindMatrix);
           group.add(mesh);
         });
+        }
         s.model.add(group);
         s.garment = group;
         group.visible = !NO_GARMENT_POSES.has(action);

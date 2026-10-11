@@ -283,6 +283,54 @@ def _():
     return obj_from_bm(bm, "hijab", WRAP)
 
 
+# ---- modern styles (2026-10): long knotless braids, a big afro, a bob wig with a fringe, twists, a fade with a part
+@style("knotless")
+def _():
+    bm = cap(0.006)
+    strands(bm, 26, 0.008, 0.52)
+    return obj_from_bm(bm, "knotless", HAIR)
+
+
+@style("big_afro")
+def _():
+    bm = cap(0.01)
+    add_ellipsoid(bm, Vector((cx, cy + ry * 0.12, cz + rz * 0.35)), (rx * 1.75, ry * 1.6, rz * 1.45), 20)
+    # roughen the outline a little so it reads as hair, not a ball
+    rnd = random.Random(3)
+    for v in bm.verts:
+        d = v.co - Vector((cx, cy, cz))
+        if d.length > rx * 1.2:
+            v.co += d.normalized() * rnd.uniform(-0.006, 0.01)
+    # keep the face clear
+    face = [v for v in bm.verts if v.co.y < cy - ry * 0.55 and v.co.z < cz + rz * 0.3]
+    bmesh.ops.delete(bm, geom=face, context="VERTS")
+    return obj_from_bm(bm, "big_afro", HAIR)
+
+
+@style("bob_wig")
+def _():
+    face = lambda c: c.y < cy - ry * 0.2 and c.z < cz + rz * 0.2
+    bm = shell(0.026, lambda c: c.z > cz - rz * 0.95 and not face(c))
+    fringe(bm, 0.02, 0.04)
+    return obj_from_bm(bm, "bob_wig", HAIR)
+
+
+@style("twists")
+def _():
+    bm = cap(0.01)
+    strands(bm, 22, 0.012, 0.16)
+    return obj_from_bm(bm, "twists", HAIR)
+
+
+@style("fade_part")
+def _():
+    bm = cap(0.006)
+    # the part: a thin line shaved from the forehead back on the right side
+    line = [f for f in bm.faces if abs(f.calc_center_median().x - (cx - rx * 0.42)) < 0.006 and f.calc_center_median().z > cz + rz * 0.2]
+    bmesh.ops.delete(bm, geom=line, context="FACES")
+    return obj_from_bm(bm, "fade_part", HAIR)
+
+
 # Preview: camera at three-quarter front, simple light, workbench render.
 scene = bpy.context.scene
 scene.render.engine = "BLENDER_WORKBENCH"

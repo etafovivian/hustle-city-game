@@ -5,11 +5,19 @@
 // directly; React only re-renders a few times a second when a walker passes another object's depth.
 // Beyond Junction 101 every area has its own walkers on its street pavements (areaWalks.ts). Only walkers in view
 // (or near it) are moved on screen; the rest are hidden and just keep their place in the walk, so phones stay smooth.
+import { lookFromSeed, type AvatarConfig } from "@hc/shared";
 import { frameGate } from "./frameGate.js";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AREA_WALKERS, areaCrowd, pointOn, type WalkPath } from "./areaWalks.js";
 import { FOOTPATHS, PRESETS } from "./cityLayout.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, walkerSize, type WalkDir } from "./walkers.js";
+import { layerSheet, walkSheetName } from "./spriteComposer.js";
+
+/**
+ * The street's modern looks: a small fixed set (8 people's worth, reused round the city) so a slow phone composes at
+ * most 32 walk sheets however many walkers there are. Biased to the modern street outfits (lookFromSeed `modern`).
+ */
+const STREET_LOOKS: AvatarConfig[] = Array.from({ length: 8 }, (_, k) => lookFromSeed(20261015 + k * 7919, k % 2 ? "woman" : "man", 0.85));
 
 export interface DepthItem {
   key: string;
@@ -100,6 +108,10 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
       walked: number;
       speed: number;
       variant: (typeof WALKER_VARIANTS)[number];
+      /** A modern look drawn from layers (half the crowd), with the baked variant as the fallback. */
+      look?: AvatarConfig;
+      /** The layered sheet is on show (stop re-checking). */
+      layered: boolean;
       dir: WalkDir | "";
       shown: boolean;
       // On Junction 101's footpath network: between nodes `from` and `to`, `t` of the way.
@@ -110,7 +122,7 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
       path?: WalkPath;
       s: number;
     };
-    const base = (i: number) => ({ x: 0, y: 0, dx: 0, dy: 1, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, dir: "" as WalkDir | "", shown: true, from: 0, to: 0, t: 0, s: 0 });
+    const base = (i: number) => ({ x: 0, y: 0, dx: 0, dy: 1, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, look: i % 2 ? STREET_LOOKS[(i >> 1) % STREET_LOOKS.length] : undefined, layered: false, dir: "" as WalkDir | "", shown: true, from: 0, to: 0, t: 0, s: 0 });
     const crowd: Walker[] = Array.from({ length: JUNCTION_WALKERS }, (_, i) => {
       const from = Math.floor(rnd() * nodes.length);
       const to = links[from]![Math.floor(rnd() * links[from]!.length)]!;
@@ -185,9 +197,13 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
         const img = sheets.current[i];
         if (!img) continue;
         const dir = walkDir(p.dx, p.dy);
-        if (dir !== p.dir) {
+        if (dir !== p.dir || (p.look && !p.layered)) {
+          // half the crowd in modern street looks (tinted layers, composed once per look and direction and shared);
+          // the baked look shows until that sheet is ready, or if layers are off
+          const own = p.look ? layerSheet(p.look, walkSheetName(dir)) : null;
+          if (dir !== p.dir || own) img.setAttribute("href", own ?? walkerSheet(p.variant, dir));
+          p.layered = !!own;
           p.dir = dir;
-          img.setAttribute("href", walkerSheet(p.variant, dir));
         }
         const frame = Math.floor((p.walked / STRIDE) * WALK.frames) % WALK.frames;
         img.setAttribute("x", String(-WALK.w * frame));
