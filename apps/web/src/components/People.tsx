@@ -200,7 +200,7 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
         if (dir !== p.dir || (p.look && !p.layered)) {
           // half the crowd in modern street looks (tinted layers, composed once per look and direction and shared);
           // the baked look shows until that sheet is ready, or if layers are off
-          const own = p.look ? layerSheet(p.look, walkSheetName(dir)) : null;
+          const own = p.look ? layerSheet(p.look, walkSheetName(dir), true) : null;
           if (dir !== p.dir || own) img.setAttribute("href", own ?? walkerSheet(p.variant, dir));
           p.layered = !!own;
           p.dir = dir;

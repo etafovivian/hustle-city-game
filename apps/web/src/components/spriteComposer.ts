@@ -246,12 +246,41 @@ export function composeSheet(a: AvatarConfig, sheet: string): Promise<string | n
  * The composed sheet if it's ready; otherwise starts composing it and returns null (show the baked sheet meanwhile).
  * Cheap enough to call every animation frame. Off (always null) unless layers are on.
  */
-export function layerSheet(a: AvatarConfig, sheet: string): string | null {
+export function layerSheet(a: AvatarConfig, sheet: string, background = false): string | null {
   if (!layersOn() || !layerKeys(a)) return null;
   const id = `${lookId(a)}#${sheet}`;
   if (ready.has(id)) return ready.get(id) ?? null;
-  void composeSheet(a, sheet);
+  if (background) queueBackground(id, a, sheet);
+  else void composeSheet(a, sheet);
   return null;
+}
+
+/**
+ * Background composing (the people in the street): one sheet at a time, only when the main thread is idle, so a slow
+ * phone never gets a burst of long tasks while it pans the map. The player's own sheets don't wait for this.
+ */
+const waiting = new Map<string, () => Promise<unknown>>();
+let busy = false;
+function queueBackground(id: string, a: AvatarConfig, sheet: string) {
+  if (cache.has(id) || waiting.has(id)) return;
+  waiting.set(id, () => composeSheet(a, sheet));
+  pump();
+}
+function pump() {
+  if (busy || !waiting.size) return;
+  busy = true;
+  const idle = (cb: () => void) =>
+    typeof window !== "undefined" && "requestIdleCallback" in window
+      ? (window as Window & { requestIdleCallback: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback(cb, { timeout: 3000 })
+      : setTimeout(cb, 200);
+  idle(() => {
+    const [id, run] = waiting.entries().next().value as [string, () => Promise<unknown>];
+    waiting.delete(id);
+    void run().finally(() => {
+      busy = false;
+      pump();
+    });
+  });
 }
 
 /** For React-rendered sprites: the composed sheet when ready (re-renders then), else the fallback. */
