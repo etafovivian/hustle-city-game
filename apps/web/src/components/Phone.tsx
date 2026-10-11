@@ -1,6 +1,6 @@
 // The in-game phone: one place for Jobs, Quests, Standings, Messages and the real Market.
 import type { AvatarConfig, DreamView, QuestBoard, ServiceRequestSummary } from "@hc/shared";
-import { ArrowLeft, BookOpen, Briefcase, Bug, Handshake, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Heart, Music2, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BookOpen, PawPrint, Briefcase, Bug, Handshake, GraduationCap, Hammer, ListChecks, Megaphone, MessageCircle, Settings, ShieldCheck, Store, Ticket, Car, MessagesSquare, Shirt, CalendarDays, Users, Gamepad2, Heart, Music2, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { AcademyApp, AdminAcademy } from "./Academy.js";
@@ -23,11 +23,12 @@ import { AdminHustle, HustleBoard } from "./HustleBoard.js";
 import { LoveApp } from "./Love.js";
 import { MusicApp } from "./Music.js";
 import { BooksApp } from "./Books.js";
+import { PetsApp } from "./Pets.js";
 import { PartiesNow } from "./Party.js";
 import { AdminFeedback, ReportProblem } from "./ReportProblem.js";
 import { Quests } from "./Quests.js";
 
-export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games" | "hustle" | "report" | "love" | "music" | "books";
+export type PhoneApp = "home" | "dream" | "jobs" | "quests" | "standings" | "messages" | "account" | "workshop" | "admin" | "ads" | "academy" | "deals" | "garage" | "chats" | "wardrobe" | "events" | "contacts" | "games" | "hustle" | "report" | "love" | "music" | "books" | "pets";
 
 const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: LucideIcon; tint: string }[] = [
   { key: "academy", label: "Academy", Icon: GraduationCap, tint: "#0e7490" },
@@ -44,6 +45,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "love", label: "Love", Icon: Heart, tint: "#db2777" },
   { key: "music", label: "Music", Icon: Music2, tint: "#e4572e" },
   { key: "books", label: "Holy books", Icon: BookOpen, tint: "#7c5c2e" },
+  { key: "pets", label: "Pets", Icon: PawPrint, tint: "#a16207" },
   { key: "deals", label: "Deals", Icon: Ticket, tint: "#15803d" },
   { key: "garage", label: "Garage", Icon: Car, tint: "#334155" },
   { key: "wardrobe", label: "Wardrobe", Icon: Shirt, tint: "#be185d" },
@@ -54,7 +56,7 @@ const APPS: { key: Exclude<PhoneApp, "home"> | "market"; label: string; Icon: Lu
   { key: "admin", label: "Admin", Icon: ShieldCheck, tint: "#0f766e" },
 ];
 
-const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", hustle: "Hustle board", love: "Love life", music: "Music", books: "Holy books", report: "Report a problem", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
+const TITLES: Record<PhoneApp, string> = { home: "Phone", academy: "Academy", dream: "Dream", account: "Account", workshop: "Your business", deals: "Deals", chats: "Chats", garage: "Garage", wardrobe: "Wardrobe", events: "Events", contacts: "Contacts", games: "Games", hustle: "Hustle board", love: "Love life", music: "Music", books: "Holy books", pets: "Your pet", report: "Report a problem", admin: "Admin", ads: "Ads", jobs: "Jobs", quests: "Quests", standings: "Standings", messages: "Messages" };
 
 export function Phone({
   app,
@@ -224,6 +226,7 @@ export function Phone({
           )}
           {app === "music" && <MusicApp />}
           {app === "books" && <BooksApp notify={notify} />}
+          {app === "pets" && <PetsApp notify={notify} onChanged={onChanged} />}
           {app === "love" && (
             <LoveApp
               notify={notify}

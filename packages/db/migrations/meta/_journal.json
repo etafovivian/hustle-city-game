@@ -239,6 +239,13 @@
       "when": 1791989882432,
       "tag": "0033_house_parties",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792006409688,
+      "tag": "0034_pets",
+      "breakpoints": true
     }
   ]
 }

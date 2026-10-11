@@ -54,6 +54,7 @@ import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 import { usePartnerAtHome } from "./Love.js";
 import { PartyPanel, useParties, withParty } from "./Party.js";
+import { HomePet, usePet } from "./Pets.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -468,6 +469,7 @@ export function HomeRooms({
   const [arranging, setArranging] = useState(false);
   const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const pet = usePet();
   // Going to sleep takes you to the bedroom (when the house has one). Other things you do pick their own room
   // (life at home, goRoom).
   useEffect(() => {
@@ -514,6 +516,8 @@ export function HomeRooms({
           overlayTop={extra?.overlayTop}
           extraWorkers={extra?.extraWorkers}
         />
+        {/* Your pet, pottering about (only in your own home) */}
+        {onPlace && pet && <HomePet key={`pet-${room.key}`} kind={pet.kind} walkway={ROOMS[room.art]?.walkway ?? []} asleep={action === "sleep"} />}
         {/* Your things: spread through the rooms, a few per room */}
         {items
           .map((k, i) => ({ k, i, placed: placements[k] }))

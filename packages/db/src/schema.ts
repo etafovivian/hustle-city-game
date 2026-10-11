@@ -1190,3 +1190,18 @@ export const partyGuests = pgTable(
   },
   (t) => [primaryKey({ columns: [t.partyId, t.userId] })],
 );
+
+/** Your pet (one at a time): its happiness is saved with when it was last cared for, and drifts down from there. */
+export const playerPets = pgTable("player_pets", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  happiness: integer("happiness").notNull().default(70),
+  /** When happiness was last saved (drift is counted from here). */
+  happyAt: timestamp("happy_at", { withTimezone: true }).notNull().defaultNow(),
+  /** When each kind of care last counted. */
+  cared: jsonb("cared").notNull().default({}),
+  adoptedAt: timestamp("adopted_at", { withTimezone: true }).notNull().defaultNow(),
+});
