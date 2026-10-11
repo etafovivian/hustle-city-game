@@ -138,10 +138,9 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
       const body = avatar.body ?? pick(AVATAR_OPTIONS.body);
       setAvatar({
         body,
-        // The looks drawn for everyone today (the newer ones show only with layered looks on).
-        skinTone: pick(AVATAR_OPTIONS.skinTone.slice(0, 6)),
+        skinTone: pick(AVATAR_OPTIONS.skinTone),
         // Shuffle within the body's most common looks, so results feel natural.
-        hairStyle: pick(LOOK_ORDER[body].hair.filter((h) => (AVATAR_OPTIONS.hairStyle as readonly string[]).indexOf(h) < 11).slice(0, 5)),
+        hairStyle: pick(LOOK_ORDER[body].hair.slice(0, 6)),
         outfit: pick(LOOK_ORDER[body].outfit.slice(0, 4)),
       });
       if (!nickname) setNickname(pick(NICK_SUGGESTIONS));

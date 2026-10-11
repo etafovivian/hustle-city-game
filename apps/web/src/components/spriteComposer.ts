@@ -14,9 +14,12 @@
 // missing or failing gives null, and callers keep today's baked sheet (variantFor): nothing that works breaks.
 import { FABRIC_HAIR, FABRIC_HAIR_DEFAULT, OUTFIT_INFO, bodyOf, type AvatarConfig } from "@hc/shared";
 import { useEffect, useState } from "react";
+import { composePixels } from "./composeCore.js";
 
-/** One line to turn the layered looks on for everyone (until then: admins, or ?layers=1 to test). */
-export const LAYERS_FOR_EVERYONE = false;
+export { composePixels };
+
+/** The layered looks, on for everyone since 2026-10-15 (false: admins only, or ?layers=1 to test). */
+export const LAYERS_FOR_EVERYONE = true;
 
 /** The base looks that have layers (sprites.py LAYER_LOOK), per body. */
 const BASES: Record<"man" | "woman", Set<string>> = {
@@ -55,7 +58,6 @@ const BAKED_FABRIC: Record<string, string> = {
   peplum_coral: "#e4572e",
 };
 const HAIR_DEFAULT = "#1b1410";
-const NEUTRAL = 0.8;
 
 let enabledFor = false;
 /** Called with the signed-in user's roles (from /api/me): admins see the layered looks first. */
@@ -133,33 +135,6 @@ export function tintsFor(a: AvatarConfig) {
 }
 
 // ---------------------------------------------------------------- compositing
-/** Tints and stacks layer pixels in place: `base` (RGBA) by `mask` (red skin, green fabric), then `hair` over it. */
-export function composePixels(
-  base: Uint8ClampedArray,
-  mask: Uint8ClampedArray,
-  hair: Uint8ClampedArray | null,
-  t: { skin: [number, number, number]; fabric: [number, number, number]; hair: [number, number, number] },
-) {
-  const ks = t.skin.map((c) => c / NEUTRAL);
-  const kf = t.fabric.map((c) => c / NEUTRAL);
-  const kh = t.hair.map((c) => c / NEUTRAL);
-  for (let i = 0; i < base.length; i += 4) {
-    const a = base[i + 3]!;
-    if (a) {
-      const ms = mask[i]! / 255;
-      const mf = mask[i + 1]! / 255;
-      for (let c = 0; c < 3; c++) base[i + c] = base[i + c]! * (1 + ms * (ks[c]! - 1) + mf * (kf[c]! - 1));
-    }
-    if (hair) {
-      const ha = hair[i + 3]! / 255;
-      if (ha > 0) {
-        for (let c = 0; c < 3; c++) base[i + c] = hair[i + c]! * kh[c]! * ha + base[i + c]! * (1 - ha);
-        base[i + 3] = 255 * (ha + (a / 255) * (1 - ha));
-      }
-    }
-  }
-}
-
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -178,6 +153,30 @@ function pixels(img: HTMLImageElement): ImageData {
   return g.getImageData(0, 0, c.width, c.height);
 }
 
+/** The compose worker (one, started on first use), or null where workers or OffscreenCanvas aren't available. */
+let worker: Worker | null | undefined;
+const waiting = new Map<string, (b: Blob | null) => void>();
+function composer(): Worker | null {
+  if (worker !== undefined) return worker;
+  try {
+    if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined" || typeof createImageBitmap === "undefined") return (worker = null);
+    worker = new Worker(new URL("./composeWorker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (e: MessageEvent<{ id: string; blob: Blob | null }>) => {
+      waiting.get(e.data.id)?.(e.data.blob);
+      waiting.delete(e.data.id);
+    };
+    worker.onerror = () => {
+      // A worker that can't run: compose on the page from now on, and let anything waiting fall back.
+      worker = null;
+      waiting.forEach((r) => r(null));
+      waiting.clear();
+    };
+  } catch {
+    worker = null;
+  }
+  return worker;
+}
+
 const cache = new Map<string, Promise<string | null>>();
 const ready = new Map<string, string | null>();
 const listeners = new Set<() => void>();
@@ -192,8 +191,20 @@ export function composeSheet(a: AvatarConfig, sheet: string): Promise<string | n
     p = (async () => {
       const keys = layerKeys(a);
       if (!keys || typeof document === "undefined") return null;
+      const root = "/art/life/layers";
+      // Off the main thread where the browser can (a worker with OffscreenCanvas), else here.
+      const w = composer();
+      if (w) {
+        const style = keys.hair?.split("-").slice(2).join("-");
+        const near = style ? NEAR_HAIR[style] : undefined;
+        const hair = keys.hair ? [`${root}/${keys.hair}/${sheet}.webp`, ...(near ? [`${root}/${keys.hair.replace(new RegExp(`-${style}$`), `-${near}`)}/${sheet}.webp`] : [])] : [];
+        const blob = await new Promise<Blob | null>((resolve) => {
+          waiting.set(id, resolve);
+          w.postMessage({ id, base: `${root}/${keys.base}/${sheet}.webp`, mask: `${root}/${keys.base}/${sheet}.m.webp`, hair, tints: tintsFor(a) });
+        });
+        return blob ? URL.createObjectURL(blob) : null;
+      }
       try {
-        const root = "/art/life/layers";
         const hairImg = async () => {
           if (!keys.hair) return null;
           try {
