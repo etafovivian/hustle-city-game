@@ -4,11 +4,13 @@
 // number of page elements. Local only: run against `vite preview` (production build) and the local API.
 //
 //   node scripts/perf-phone.mjs [http://localhost:4190] [--cpu 6] [--chrome "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
-import { DEFAULT_AVATAR } from "@hc/shared";
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// The default look (as @hc/shared DEFAULT_AVATAR), inlined so the script runs on its own (e.g. in a container).
+const DEFAULT_AVATAR = { skinTone: "#6b4226", hairStyle: "low_cut", outfit: "ankara_green" };
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
