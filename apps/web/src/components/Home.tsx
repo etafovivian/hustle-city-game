@@ -21,7 +21,7 @@ import { createPortal } from "react-dom";
 import { LetBox, RentPicker, Tenancy } from "./Rent.js";
 import { api, formatCoins } from "../api.js";
 import { InteriorScene, ROOMS, type InteriorPlayer, type PlayerAction, type Room } from "./Interior.js";
-import { ITEM_SPOTS, useHomeLife } from "./HomeLife.js";
+import { itemAt, useHomeLife } from "./HomeLife.js";
 
 /** While you cook, the house cook steps out of the kitchen (you're at the hob now). */
 function withoutCook(room: Room | undefined, hide: boolean): Room | undefined {
@@ -38,14 +38,14 @@ const ITEM_WIDTH: Record<string, number> = {
   standing_fan: 0.06,
   sofa_ankara: 0.2,
   adire_sofa_set: 0.24,
-  generator_small: 0.1,
-  big_generator: 0.14,
-  water_tank: 0.11,
+  generator_small: 0.07,
+  big_generator: 0.1,
+  water_tank: 0.14,
   dumbbell_set: 0.09,
-  punching_bag: 0.07,
+  punching_bag: 0.09,
   radio: 0.06,
   prayer_mat: 0.12,
-  gas_cooker: 0.09,
+  gas_cooker: 0.1,
   flat_tv: 0.12,
   game_console: 0.07,
 };
@@ -518,14 +518,13 @@ export function HomeRooms({
         />
         {/* Your pet, pottering about (only in your own home) */}
         {onPlace && pet && <HomePet key={`pet-${room.key}`} kind={pet.kind} walkway={ROOMS[room.art]?.walkway ?? []} asleep={action === "sleep"} />}
-        {/* Your things: spread through the rooms, a few per room */}
+        {/* Your things: where you put them, else each in its own sort of room (see itemAt) */}
         {items
-          .map((k, i) => ({ k, i, placed: placements[k] }))
-          // Placed things show in their room; the rest spread through the rooms at default spots.
-          .filter(({ i, placed }) => (placed ? placed.room === room.key : i % rooms.length === at))
-          .map(({ k, i, placed }) => {
+          .map((k) => ({ k, spot: itemAt(items, k, rooms, placements) }))
+          .filter(({ spot }) => spot.room === room.key)
+          .map(({ k, spot }) => {
             const item = HOME_ITEMS.find((x) => x.key === k);
-            const [x, y] = drag?.key === k ? [drag.x, drag.y] : placed ? [placed.x, placed.y] : ITEM_SPOTS[i % ITEM_SPOTS.length]!;
+            const [x, y] = drag?.key === k ? [drag.x, drag.y] : [spot.x, spot.y];
             return item ? (
               <span key={`${k}-wrap`} style={{ display: "contents" }}>
               {arranging && onSell && (

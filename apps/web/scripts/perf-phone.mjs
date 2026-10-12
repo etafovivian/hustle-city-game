@@ -42,7 +42,9 @@ const [cookieName, cookieValue] = reg.headers.get("set-cookie").split(";")[0].sp
 
 // 2. Headless Chrome with the DevTools protocol.
 const profile = mkdtempSync(join(tmpdir(), "hc-perf-"));
-const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "--no-first-run", "--window-size=360,780", "about:blank"], { stdio: "ignore" });
+// In a container (the lab perf runner) Chrome has no sandbox to use: PERF_NO_SANDBOX=1.
+const sandbox = process.env.PERF_NO_SANDBOX ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+const chrome = spawn(CHROME, ["--headless=new", ...sandbox, `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "--no-first-run", "--window-size=360,780", "about:blank"], { stdio: "ignore" });
 let pageWs;
 for (let i = 0; i < 50 && !pageWs; i++) {
   await sleep(200);

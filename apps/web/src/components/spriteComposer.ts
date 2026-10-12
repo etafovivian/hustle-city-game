@@ -64,17 +64,21 @@ let enabledFor = false;
 export function setLayerRoles(roles: readonly string[] | undefined) {
   enabledFor = !!roles?.includes("admin");
 }
-function testFlag(): boolean {
+/** ?layers=1 turns the layered looks on for this tab, ?layers=0 off (to compare, e.g. in performance runs). */
+function testFlag(): "1" | "0" | null {
   try {
     const q = new URLSearchParams(window.location.search).get("layers");
     if (q === "1" || q === "0") sessionStorage.setItem("hc_layers", q);
-    return sessionStorage.getItem("hc_layers") === "1";
+    const v = sessionStorage.getItem("hc_layers");
+    return v === "1" || v === "0" ? v : null;
   } catch {
-    return false;
+    return null;
   }
 }
 export function layersOn(): boolean {
-  return LAYERS_FOR_EVERYONE || enabledFor || testFlag();
+  const flag = testFlag();
+  if (flag === "0") return false;
+  return LAYERS_FOR_EVERYONE || enabledFor || flag === "1";
 }
 
 /** The layer folders for a look, or null when it has none (an outfit not cut for that body). */
