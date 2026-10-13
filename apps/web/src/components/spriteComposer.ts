@@ -23,14 +23,15 @@ export const LAYERS_FOR_EVERYONE = true;
 
 /** The base looks that have layers (sprites.py LAYER_LOOK), per body. */
 const BASES: Record<"man" | "woman", Set<string>> = {
-  man: new Set(["ankara_green", "agbada_white", "kaftan_gold", "jersey_red", "tee_blue", "hoodie_black", "suit", "jeans_jacket", "kente", "boubou", "kurta"]),
+  man: new Set(["ankara_green", "agbada_white", "kaftan_gold", "jersey_red", "tee_blue", "hoodie_black", "suit", "jeans_jacket", "kente", "boubou", "kurta", "streetwear", "varsity", "tracksuit", "polo_chinos", "jersey_shorts"]),
   woman: new Set([
     "buba_wrapper", "peplum_coral", "ankara_green", "kaftan_gold", "tee_blue", "jersey_red", "hoodie_black",
     "suit", "jeans_jacket", "summer_dress", "abaya", "kente", "boubou", "salwar_kameez", "saree",
+    "crop_jeans", "mini_skirt", "bodycon", "ankara_two_piece", "athleisure", "denim_mini",
   ]),
 };
 /** Hair styles with layers (sprites.py LAYER_HAIRS); "bald" needs none. */
-const HAIRS = new Set(["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]);
+const HAIRS = new Set(["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap", "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab", "knotless", "big_afro", "bob_wig", "twists", "fade_part"]);
 const LEGACY_HAIR: Record<string, string> = { afro: "high_top", headwrap: "gele" };
 /** A close style to borrow while a newer style's pose layer is still missing (the walk has every style). */
 const NEAR_HAIR: Record<string, string> = {
@@ -41,6 +42,11 @@ const NEAR_HAIR: Record<string, string> = {
   bun: "puff",
   long_straight: "braids",
   hijab: "gele",
+  knotless: "braids",
+  big_afro: "curly",
+  bob_wig: "bob",
+  twists: "locs",
+  fade_part: "low_cut",
 };
 
 /**
@@ -64,8 +70,14 @@ let enabledFor = false;
 export function setLayerRoles(roles: readonly string[] | undefined) {
   enabledFor = !!roles?.includes("admin");
 }
-/** ?layers=1 turns the layered looks on for this tab, ?layers=0 off (to compare, e.g. in performance runs). */
+/** ?layers=1 turns the layered looks on for this tab, ?layers=0 off (to compare, e.g. in performance runs). Read once
+ * (the street walkers ask every animation frame). */
+let flagCache: "1" | "0" | null | undefined;
 function testFlag(): "1" | "0" | null {
+  if (flagCache === undefined) flagCache = readFlag();
+  return flagCache;
+}
+function readFlag(): "1" | "0" | null {
   try {
     const q = new URLSearchParams(window.location.search).get("layers");
     if (q === "1" || q === "0") sessionStorage.setItem("hc_layers", q);
@@ -249,12 +261,41 @@ export function composeSheet(a: AvatarConfig, sheet: string): Promise<string | n
  * The composed sheet if it's ready; otherwise starts composing it and returns null (show the baked sheet meanwhile).
  * Cheap enough to call every animation frame. Off (always null) unless layers are on.
  */
-export function layerSheet(a: AvatarConfig, sheet: string): string | null {
+export function layerSheet(a: AvatarConfig, sheet: string, background = false): string | null {
   if (!layersOn() || !layerKeys(a)) return null;
   const id = `${lookId(a)}#${sheet}`;
   if (ready.has(id)) return ready.get(id) ?? null;
-  void composeSheet(a, sheet);
+  if (background) queueBackground(id, a, sheet);
+  else void composeSheet(a, sheet);
   return null;
+}
+
+/**
+ * Background composing (the people in the street): one sheet at a time, only when the main thread is idle, so a slow
+ * phone never gets a burst of long tasks while it pans the map. The player's own sheets don't wait for this.
+ */
+const bgWaiting = new Map<string, () => Promise<unknown>>();
+let busy = false;
+function queueBackground(id: string, a: AvatarConfig, sheet: string) {
+  if (cache.has(id) || bgWaiting.has(id)) return;
+  bgWaiting.set(id, () => composeSheet(a, sheet));
+  pump();
+}
+function pump() {
+  if (busy || !bgWaiting.size) return;
+  busy = true;
+  const idle = (cb: () => void) =>
+    typeof window !== "undefined" && "requestIdleCallback" in window
+      ? (window as Window & { requestIdleCallback: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback(cb, { timeout: 3000 })
+      : setTimeout(cb, 200);
+  idle(() => {
+    const [id, run] = bgWaiting.entries().next().value as [string, () => Promise<unknown>];
+    bgWaiting.delete(id);
+    void run().finally(() => {
+      busy = false;
+      pump();
+    });
+  });
 }
 
 /** For React-rendered sprites: the composed sheet when ready (re-renders then), else the fallback. */

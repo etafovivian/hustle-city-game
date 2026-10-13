@@ -317,10 +317,20 @@ def outfit_variant(body_key, outfit):
                 for pb in arm.pose.bones:
                     pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
 
+        hw = 0.12 if ex.get("high_waist") else 0.06
+
         def rule(c, ds, L):
             if shoes(c, ds, L, 0.04 if feet == "#f2f2f2" else 0.02):
                 return "feet"
-            if bottom and not is_arm(ds) and c.z < L["hip"] + 0.06:
+            if "socks" in ex and not is_arm(ds) and c.z < L["ankle"] + 0.16:
+                return "socks"
+            if "stripe" in ex and not is_arm(ds) and c.z < L["hip"] + 0.06 and abs(abs(c.x) - (L["sh_x"] * 0.62)) < 0.012 and abs(c.y) < 0.03:
+                return "stripe"
+            if "cargo" in ex and not is_arm(ds) and L["knee"] < c.z < L["hip"] - 0.08 and abs(c.y) < 0.035 and abs(c.x) > 0.1:
+                return "pocket"
+            if "collar" in ex and not is_arm(ds) and L["neck"] - 0.06 < c.z < L["neck"] + 0.01:
+                return "collar"
+            if bottom and not is_arm(ds) and c.z < L["hip"] + hw:
                 if length == "knee" and c.z < L["knee"] - 0.02:
                     return None
                 return "bottom"
@@ -1586,6 +1596,12 @@ LAYER_LOOK = {
         "kente": (None, 0, None, "ankle", "#6b3b1f", "kente", {}),
         "boubou": (None, 0, "deep", "ankle", "#5a3a22", "boubou", {}),
         "kurta": (None, 0, "#ece6d6", "ankle", "#6b3b1f", "kurta", {}),
+        # modern street fashion
+        "streetwear": ("#f4f4f2", 0.28, "#6b6a4a", "ankle", "#f2f2f2", "big_tee", {"cargo": True}),
+        "varsity": ("#f4f4f2", 0.28, "#3b5b8a", "ankle", "#f2f2f2", "varsity", {}),
+        "tracksuit": ("fab", 0.97, "deep", "ankle", "#f2f2f2", None, {"stripe": "#f4f4f2"}),
+        "polo_chinos": ("fab", 0.28, "#c9b48a", "ankle", "#5a3a22", None, {"collar": True}),
+        "jersey_shorts": ("fab", 0.28, "deep", "knee", "#f2f2f2", None, {"socks": "#f4f4f2"}),
     },
     "woman": {
         "buba_wrapper": (None, 0, None, "ankle", "#c9921a", "buba_wrapper", {}),
@@ -1603,6 +1619,13 @@ LAYER_LOOK = {
         "boubou": (None, 0, "deep", "ankle", "#5a3a22", "boubou", {}),
         "salwar_kameez": (None, 0, "deep", "ankle", "#c9921a", "kameez", {}),
         "saree": ("#c9921a", 0.28, None, "ankle", "#c9921a", "saree", {"top_min": "waist"}),
+        # modern street fashion (stylish, not revealing: a crop shows a little midriff at most)
+        "crop_jeans": ("fab", 0.28, "#3b5b8a", "ankle", "#f2f2f2", None, {"top_min": "waist", "high_waist": True}),
+        "mini_skirt": ("fab", 0.28, None, "ankle", "#151515", "mini_skirt", {}),
+        "bodycon": ("fab", 0.0, None, "ankle", "#c9921a", "bodycon", {}),
+        "ankara_two_piece": ("fab", 0.28, None, "ankle", "#c9921a", "flare_skirt", {"top_min": "waist", "pattern": True}),
+        "athleisure": ("fab", 0.97, "#202022", "ankle", "#f2f2f2", None, {"top_min": "waist", "high_waist": True}),
+        "denim_mini": ("fab", 0.28, None, "ankle", "#f2f2f2", "mini_skirt+denim_jacket#3b5b8a", {}),
     },
 }
 OLD_GARMENT_KEYS = {"agbada", "kaftan", "buba_wrapper", "peplum_gown"}
@@ -1629,15 +1652,21 @@ def layer_base(body_key, outfit):
             for pb in arm.pose.bones:
                 pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
         elif garment:
-            before = set(bpy.data.objects)
-            bind_garment(arm, os.path.join(GDIR, f"garment-{body_key}-{garment}.glb"))
-            for o in bpy.data.objects:
-                if o in before or o.type != "MESH":
-                    continue
-                if garment in OLD_GARMENT_KEYS:  # one plain material: the fabric
-                    o.data.materials.clear()
-                    o.data.materials.append(make_mat("T_fab_" + garment, (0.5, 0.5, 0.5)))
-                # new garments carry their roles in the material names (garments.py garment_mats)
+            # "a+b": two garments; "name#hex": a garment in a fixed colour (a denim jacket over a dress)
+            for g_ in garment.split("+"):
+                gkey, _, fixed = g_.partition("#")
+                before = set(bpy.data.objects)
+                bind_garment(arm, os.path.join(GDIR, f"garment-{body_key}-{gkey}.glb"))
+                for o in bpy.data.objects:
+                    if o in before or o.type != "MESH":
+                        continue
+                    if fixed:
+                        o.data.materials.clear()
+                        o.data.materials.append(make_mat("FIX_" + gkey, hexrgb("#" + fixed)))
+                    elif gkey in OLD_GARMENT_KEYS:  # one plain material: the fabric
+                        o.data.materials.clear()
+                        o.data.materials.append(make_mat("T_fab_" + gkey, (0.5, 0.5, 0.5)))
+                    # new garments carry their roles in the material names (garments.py garment_mats)
         top_min = ex.get("top_min")
 
         def rule(c, ds, L):
@@ -1661,6 +1690,14 @@ def layer_base(body_key, outfit):
             mats["top"] = role_mat("top", top)
         if "tie" in ex:
             mats["tie"] = role_mat("tie", ex["tie"])
+        if "socks" in ex:
+            mats["socks"] = role_mat("socks", ex["socks"])
+        if "stripe" in ex:
+            mats["stripe"] = role_mat("stripe", ex["stripe"])
+        if "cargo" in ex:
+            mats["pocket"] = role_mat("pocket", "#57563c")
+        if "collar" in ex:
+            mats["collar"] = role_mat("collar", "deep")
         region_paint(body, arm, rule, mats)
     return fn
 
@@ -1681,7 +1718,8 @@ def layer_hair(body_key, style):
 
 HAIRDIR = os.environ.get("HAIRDIR", HUSTLE)
 LAYER_HAIRS = ["low_cut", "buzzcut", "high_top", "curly", "puff", "braids", "bob", "locs", "gele", "cap",
-               "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab"]
+               "straight", "wavy", "ponytail", "bun", "side_part", "long_straight", "hijab",
+               "knotless", "big_afro", "bob_wig", "twists", "fade_part"]
 if LAYERS == "base":
     VARIANTS = [(f"L-{b}-{o}", "Male" if b == "man" else "Female", layer_base(b, o)) for b in LAYER_LOOK for o in LAYER_LOOK[b]]
 elif LAYERS == "hair":
