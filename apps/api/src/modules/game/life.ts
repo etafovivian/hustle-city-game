@@ -3,11 +3,13 @@
 
 import { firstDayStep } from "./firstday.js";
 import { partnerAtHome } from "./partners.js";
+import { happyPet } from "./pets.js";
 import { sendPing } from "../presence.js";
 import { businessPlots, gameLedgerEntries, homeItems, playerJobs, playerPlots, playerVehicles, profiles } from "@hc/db";
 import {
   HOME_OBJECTS,
   HOME_SOCIAL,
+  PET_HOME_SOCIAL,
   ITEM_OBJECT,
   SELL_BACK,
   HOME_ACTION_BY_KEY,
@@ -173,7 +175,9 @@ export async function lifeRoutes(app: FastifyInstance) {
       const gain = !light && !generator ? Math.round(restEnergy(items) / 2) : restEnergy(items);
       // Someone to come home to: a partner living with you lifts your Social every night.
       const partner = await partnerAtHome(tx, user.id);
-      const rested = { ...needs, energy: Math.min(100, needs.energy + gain), social: Math.min(100, needs.social + (partner ? HOME_SOCIAL : 0)) };
+      // A happy pet curled up at home helps too.
+      const pet = await happyPet(tx, user.id, now);
+      const rested = { ...needs, energy: Math.min(100, needs.energy + gain), social: Math.min(100, needs.social + (partner ? HOME_SOCIAL : 0) + (pet ? PET_HOME_SOCIAL : 0)) };
       await saveNeeds(tx, user.id, rested, now, { ...freeAt, __home: now.toISOString() });
       return { ...needsView(rested), gained: gain, light, generator };
     });

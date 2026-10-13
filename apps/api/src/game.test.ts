@@ -142,6 +142,11 @@ describe("simulated shop economy", () => {
     const shop = (await p.call("GET", "/api/game/shop")).json() as ShopView;
     const order = shop.order!;
     expect(order.slot).toBe(orderSlotIndex(new Date()));
+    // A new shop may already hold some of what this customer wants (it depends on the time of day): empty it, so the
+    // order can't be met yet.
+    const sql = postgres(TEST_DATABASE_URL, { max: 1 });
+    await sql`update sim_inventory set quantity = 0 where shop_id = ${shop.id} and item_key = ${order.itemKey}`;
+    await sql.end();
 
     const short = await p.call("POST", "/api/game/shop/order", { slot: order.slot });
     expect(short.statusCode).toBe(422); // no stock yet

@@ -18,6 +18,14 @@ import { layerSheet, walkSheetName } from "./spriteComposer.js";
  * most 32 walk sheets however many walkers there are. Biased to the modern street outfits (lookFromSeed `modern`).
  */
 const STREET_LOOKS: AvatarConfig[] = Array.from({ length: 8 }, (_, k) => lookFromSeed(20261015 + k * 7919, k % 2 ? "woman" : "man", 0.85));
+/** ?crowd=0 turns the modern street looks off (to compare performance, e.g. deploy/lab/perf.sh); default on. */
+const CROWD = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get("crowd") !== "0";
+  } catch {
+    return true;
+  }
+})();
 
 export interface DepthItem {
   key: string;
@@ -122,7 +130,7 @@ export function DepthSorted({ items, people, me }: { items: DepthItem[]; people:
       path?: WalkPath;
       s: number;
     };
-    const base = (i: number) => ({ x: 0, y: 0, dx: 0, dy: 1, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, look: i % 2 ? STREET_LOOKS[(i >> 1) % STREET_LOOKS.length] : undefined, layered: false, dir: "" as WalkDir | "", shown: true, from: 0, to: 0, t: 0, s: 0 });
+    const base = (i: number) => ({ x: 0, y: 0, dx: 0, dy: 1, walked: rnd() * STRIDE, speed: 40 + rnd() * 10, variant: WALKER_VARIANTS[i % WALKER_VARIANTS.length]!, look: CROWD && i % 2 ? STREET_LOOKS[(i >> 1) % STREET_LOOKS.length] : undefined, layered: false, dir: "" as WalkDir | "", shown: true, from: 0, to: 0, t: 0, s: 0 });
     const crowd: Walker[] = Array.from({ length: JUNCTION_WALKERS }, (_, i) => {
       const from = Math.floor(rnd() * nodes.length);
       const to = links[from]![Math.floor(rnd() * links[from]!.length)]!;

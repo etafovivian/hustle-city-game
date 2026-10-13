@@ -16,7 +16,7 @@ import { layerKeys, layersOn } from "./spriteComposer.js";
 type HomeRoom = { key: string; label: string; art: string };
 
 /** Where furniture stands in a room until you arrange it (front of the floor, fractions of the image). */
-export const ITEM_SPOTS: [number, number][] = [
+const ITEM_SPOTS: [number, number][] = [
   [0.24, 0.8],
   [0.76, 0.8],
   [0.38, 0.9],
@@ -26,9 +26,35 @@ export const ITEM_SPOTS: [number, number][] = [
   [0.5, 0.95],
   [0.3, 0.7],
 ];
+/**
+ * Where each thing goes until you arrange it: the first of these rooms (by picture) the house has, on open floor
+ * clear of the room's own furniture. Generators and the tank outside (yard, pool deck) or in a back corner; the cooker
+ * in the kitchen; the TV, console, sofas and radio in the parlour; the mat, fan and workout things in the bedroom.
+ */
+const ITEM_HOME: Record<string, [string, number, number][]> = {
+  plastic_chairs: [["home-mansion", 0.12, 0.74], ["home-duplex", 0.08, 0.66], ["home-mini-flat", 0.68, 0.86], ["home-self-contain", 0.42, 0.84], ["home-face-me", 0.44, 0.77]],
+  bucket_set: [["home-compound-yard", 0.3, 0.56], ["home-villa-pool", 0.87, 0.77], ["home-kitchen", 0.25, 0.83], ["home-villa-kitchen", 0.86, 0.72], ["home-mini-flat", 0.12, 0.74], ["home-self-contain", 0.66, 0.53], ["home-face-me", 0.15, 0.77]],
+  standing_fan: [["home-villa-suite", 0.36, 0.54], ["home-duplex-bedroom", 0.3, 0.56], ["home-bedroom", 0.56, 0.61], ["home-self-contain", 0.62, 0.88], ["home-face-me", 0.52, 0.58]],
+  sofa_ankara: [["home-mansion", 0.88, 0.8], ["home-duplex", 0.88, 0.68], ["home-mini-flat", 0.86, 0.75], ["home-self-contain", 0.7, 0.83], ["home-face-me", 0.78, 0.66]],
+  generator_small: [["home-compound-yard", 0.62, 0.86], ["home-villa-pool", 0.46, 0.38], ["home-kitchen", 0.63, 0.88], ["home-mini-flat", 0.84, 0.66], ["home-self-contain", 0.91, 0.72], ["home-face-me", 0.93, 0.73]],
+  adire_sofa_set: [["home-mansion", 0.25, 0.86], ["home-duplex", 0.23, 0.85], ["home-mini-flat", 0.17, 0.68], ["home-self-contain", 0.3, 0.86], ["home-face-me", 0.74, 0.89]],
+  big_generator: [["home-compound-yard", 0.72, 0.82], ["home-villa-pool", 0.54, 0.4], ["home-kitchen", 0.72, 0.84], ["home-mini-flat", 0.94, 0.69], ["home-self-contain", 0.83, 0.77], ["home-face-me", 0.85, 0.79]],
+  water_tank: [["home-compound-yard", 0.16, 0.62], ["home-villa-pool", 0.88, 0.56], ["home-kitchen", 0.16, 0.77], ["home-mini-flat", 0.07, 0.73], ["home-self-contain", 0.12, 0.74], ["home-face-me", 0.07, 0.73]],
+  dumbbell_set: [["home-villa-suite", 0.5, 0.9], ["home-duplex-bedroom", 0.52, 0.9], ["home-bedroom", 0.66, 0.86], ["home-self-contain", 0.56, 0.9], ["home-face-me", 0.36, 0.9]],
+  punching_bag: [["home-villa-suite", 0.3, 0.84], ["home-duplex-bedroom", 0.72, 0.86], ["home-bedroom", 0.86, 0.76], ["home-self-contain", 0.95, 0.66], ["home-face-me", 0.06, 0.66]],
+  radio: [["home-mansion", 0.88, 0.68], ["home-duplex", 0.65, 0.5], ["home-mini-flat", 0.87, 0.6], ["home-self-contain", 0.37, 0.86], ["home-face-me", 0.62, 0.62]],
+  prayer_mat: [["home-villa-suite", 0.34, 0.8], ["home-duplex-bedroom", 0.3, 0.8], ["home-bedroom", 0.3, 0.8], ["home-self-contain", 0.5, 0.93], ["home-face-me", 0.52, 0.79]],
+  gas_cooker: [["home-kitchen", 0.1, 0.68], ["home-villa-kitchen", 0.28, 0.6], ["home-compound-yard", 0.24, 0.68], ["home-self-contain", 0.44, 0.47], ["home-face-me", 0.47, 0.92], ["home-mini-flat", 0.62, 0.56]],
+  flat_tv: [["home-mansion", 0.84, 0.64], ["home-duplex", 0.74, 0.56], ["home-mini-flat", 0.6, 0.9], ["home-self-contain", 0.21, 0.78], ["home-face-me", 0.86, 0.6]],
+  game_console: [["home-mansion", 0.8, 0.68], ["home-duplex", 0.77, 0.6], ["home-mini-flat", 0.67, 0.55], ["home-self-contain", 0.27, 0.83], ["home-face-me", 0.93, 0.64]],
+};
 /** Where a thing you own stands: where you put it, else its default room and spot (as the home card draws it). */
-function itemAt(items: string[], key: string, rooms: HomeRoom[], placed: Record<string, { room: string; x: number; y: number }>) {
+export function itemAt(items: readonly string[], key: string, rooms: readonly HomeRoom[], placed: Record<string, { room: string; x: number; y: number }>) {
   if (placed[key]) return placed[key]!;
+  for (const [art, x, y] of ITEM_HOME[key] ?? []) {
+    const room = rooms.find((r) => r.art === art);
+    if (room) return { room: room.key, x, y };
+  }
   const i = items.indexOf(key);
   const [x, y] = ITEM_SPOTS[i % ITEM_SPOTS.length]!;
   return { room: rooms[i % rooms.length]!.key, x, y };
@@ -286,10 +312,11 @@ function spotIn(room: HomeRoom, uses: readonly HomeObject[], items: string[], pl
     const item = items.find((k) => ITEM_OBJECT[k] === o && itemAt(items, k, rooms, placed).room === room.key);
     if (item) {
       const p = itemAt(items, item, rooms, placed);
-      // In front of it, facing it (a TV faces the room, so you stand before it with your back to us).
-      const facing = o === "tv" || o === "radio";
-      const at: [number, number] = facing ? [Math.min(0.9, p.x + 0.08), Math.min(0.92, p.y + 0.08)] : [p.x, Math.min(0.92, p.y + 0.06)];
-      return { obj: o, spot: { at, dir: facing ? ("nw" as const) : ("se" as const), screen: undefined }, bought: true };
+      // A seat you sit on (feet just in front of it); anything else you stand in front of and a little to the side,
+      // facing it (a TV or cooker faces the room, so your back is to us).
+      if (o === "seat") return { obj: o, spot: { at: [p.x, Math.min(0.94, p.y + 0.01)] as [number, number], dir: "se" as const, screen: undefined }, bought: true };
+      const at: [number, number] = [Math.min(0.92, p.x + 0.05), Math.min(0.94, p.y + 0.06)];
+      return { obj: o, spot: { at, dir: "nw" as const, screen: undefined }, bought: true };
     }
   }
   return null;

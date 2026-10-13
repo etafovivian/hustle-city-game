@@ -1,0 +1,5 @@
+Pet sprite sheets rendered for Naija Hustle City by scripts/blender/agent/pets.py (Blender 5.2, headless, toon look
+with ink outlines, the same 2:1 isometric camera and 76 px per metre as the people). Original work for this project.
+Kinds: dog_local (Nigerian street dog), lhasa, boerboel, shepherd (German Shepherd), cat_tabby, cat_black, parrot
+(African grey). Each file: 8 frames of 128x112 in a row, ground 18 px above the frame bottom. Manifest:
+src/components/petSheets.ts (PET_SHEETS).

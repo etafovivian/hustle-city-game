@@ -16,9 +16,9 @@ os.makedirs(OUT, exist_ok=True)
 TMP = os.path.join(OUT, "_frames")
 os.makedirs(TMP, exist_ok=True)
 
-FW, FH, NF = 96, 96, 8
+FW, FH, NF = 128, 112, 8  # (room for a Boerboel side-on)
 PPM = 76.0
-FOOT_PX = 14
+FOOT_PX = 18
 SS = 2
 ELEV = math.degrees(math.atan(0.5))
 CAM_AZ = -45.0

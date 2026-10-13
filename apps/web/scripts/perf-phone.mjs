@@ -4,11 +4,13 @@
 // number of page elements. Local only: run against `vite preview` (production build) and the local API.
 //
 //   node scripts/perf-phone.mjs [http://localhost:4190] [--cpu 6] [--chrome "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
-import { DEFAULT_AVATAR } from "@hc/shared";
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// The default look (as @hc/shared DEFAULT_AVATAR), inlined so the script runs on its own (e.g. in a container).
+const DEFAULT_AVATAR = { skinTone: "#6b4226", hairStyle: "low_cut", outfit: "ankara_green" };
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -42,7 +44,9 @@ const [cookieName, cookieValue] = reg.headers.get("set-cookie").split(";")[0].sp
 
 // 2. Headless Chrome with the DevTools protocol.
 const profile = mkdtempSync(join(tmpdir(), "hc-perf-"));
-const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "--no-first-run", "--window-size=360,780", "about:blank"], { stdio: "ignore" });
+// In a container (the lab perf runner) Chrome has no sandbox to use: PERF_NO_SANDBOX=1.
+const sandbox = process.env.PERF_NO_SANDBOX ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+const chrome = spawn(CHROME, ["--headless=new", ...sandbox, `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "--no-first-run", "--window-size=360,780", "about:blank"], { stdio: "ignore" });
 let pageWs;
 for (let i = 0; i < 50 && !pageWs; i++) {
   await sleep(200);
