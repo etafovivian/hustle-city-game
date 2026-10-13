@@ -4,6 +4,8 @@ import { PETS, PET_BY_KIND, PET_CARE, parrotLine, type PetCare, type PetKind, ty
 import { PawPrint } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, formatCoins } from "../api.js";
+import { PET_FRAME, petSheet } from "./petSheets.js";
+import { walkerSize } from "./walkers.js";
 
 // ---- your pet, shared by the map, the home and the app
 let pet: PetView | null = null;
@@ -31,28 +33,47 @@ export function usePet(): PetView | null {
   );
 }
 
-/** Kinds that have their own drawn sheets (walk, sit, sleep, eat, play); the rest show as an emoji for now. */
-export const PET_SHEETS = new Set<PetKind>();
 export type PetPose = "walk" | "sit" | "sleep" | "eat" | "play";
 
-/** The pet at a spot: its sheet when it has one, else its emoji (flipped to face the way it goes). */
-export function PetSprite({ kind, pose, dir, size }: { kind: PetKind; pose: PetPose; dir: "se" | "sw" | "ne" | "nw"; size: number }) {
-  const info = PET_BY_KIND.get(kind)!;
-  if (PET_SHEETS.has(kind)) {
-    const d = pose === "walk" ? dir : dir === "sw" || dir === "nw" ? "sw" : "se";
+/**
+ * The pet doing something, drawn from its sheet (petSheets.ts: 8 frames of 128x112 at the people's scale) with its
+ * feet at the box's anchor; `k` is screen px per sheet px (a person's sheet is 160 px tall). An emoji where a pet
+ * has no sheet for it (the parrot doesn't play).
+ */
+export function PetSprite({ kind, pose, dir, k }: { kind: PetKind; pose: PetPose; dir: "se" | "sw" | "ne" | "nw"; k: number }) {
+  const url = petSheet(kind, pose, dir) ?? (pose === "play" ? petSheet(kind, "sit", dir) : null);
+  if (url) {
+    const fps = pose === "walk" ? 10 : pose === "play" ? 8 : 3;
     return (
       <span
-        className={`pet-sheet ${pose === "walk" ? "walking" : ""}`}
-        style={{ width: size, height: size, backgroundImage: `url(/art/life/pets/${kind}-${pose}-${d}.webp)` }}
+        className="pet-sheet"
+        style={{
+          width: PET_FRAME.w * k,
+          height: PET_FRAME.h * k,
+          marginTop: -(PET_FRAME.h - PET_FRAME.ground) * k,
+          marginLeft: (-PET_FRAME.w * k) / 2,
+          backgroundImage: `url(${url})`,
+          animationDuration: `${PET_FRAME.frames / fps}s`,
+        }}
         aria-hidden="true"
       />
     );
   }
-  // Emoji animals face left: turn them to face right when going right.
   const right = dir === "se" || dir === "ne";
   return (
-    <span className={`pet-emoji ${pose}`} style={{ fontSize: size * 0.75, transform: right ? "scaleX(-1)" : undefined }} aria-hidden="true">
-      {pose === "sleep" ? "💤" : info.icon}
+    <span className={`pet-emoji ${pose}`} style={{ fontSize: 60 * k, transform: `translate(-50%, -100%)${right ? " scaleX(-1)" : ""}` }} aria-hidden="true">
+      {PET_BY_KIND.get(kind)!.icon}
+    </span>
+  );
+}
+
+/** A still portrait of the pet (sitting), in a box of its own, for the app. */
+function PetPortrait({ kind, k }: { kind: PetKind; k: number }) {
+  return (
+    <span className="pet-portrait" style={{ width: PET_FRAME.w * k, height: PET_FRAME.h * k }}>
+      <span style={{ position: "absolute", left: (PET_FRAME.w * k) / 2, top: (PET_FRAME.h - PET_FRAME.ground) * k }}>
+        <PetSprite kind={kind} pose="sit" dir="se" k={k} />
+      </span>
     </span>
   );
 }
@@ -87,9 +108,7 @@ export function PetsApp({ notify, onChanged }: { notify: (m: string) => void; on
         <div className="pet-kinds">
           {PETS.map((k) => (
             <button key={k.kind} type="button" className="pet-kind" aria-pressed={kind === k.kind} onClick={() => setKind(k.kind)}>
-              <span className="pet-kind-icon" aria-hidden="true">
-                {k.icon}
-              </span>
+              <PetPortrait kind={k.kind} k={0.5} />
               <span className="stack" style={{ gap: 1, minWidth: 0 }}>
                 <strong className="small">{k.label}</strong>
                 <span className="tiny muted">
@@ -136,9 +155,7 @@ export function PetsApp({ notify, onChanged }: { notify: (m: string) => void; on
         <PawPrint size={20} aria-hidden="true" /> {p.name}
       </h2>
       <div className={`pet-card ${p.mood}`}>
-        <span className="pet-big" aria-hidden="true">
-          {info.icon}
-        </span>
+        <PetPortrait kind={p.kind} k={0.9} />
         <div className="stack" style={{ gap: 4, flex: 1 }}>
           <strong className="small">
             {p.name} · {info.label}
@@ -199,33 +216,24 @@ export function PetsApp({ notify, onChanged }: { notify: (m: string) => void; on
   );
 }
 
-/** On the map (SVG): your pet trotting a step behind you, or sitting beside you when you stop. */
+/** On the map (SVG): your pet trotting a step behind you, or sitting beside you when you stop (people's scale). */
+const MAP_K = walkerSize(70).h / 160;
 export function MapPet({ kind, heading, walking }: { kind: PetKind; heading: number; walking: boolean }) {
-  const info = PET_BY_KIND.get(kind)!;
-  const big = kind === "boerboel" || kind === "shepherd";
-  const size = info.species === "parrot" ? 22 : info.species === "cat" ? 24 : big ? 34 : 28;
   // Behind you as you walk; to your side when you stand still.
-  const dx = walking ? -Math.cos(heading) * 30 : 24;
+  const dx = walking ? -Math.cos(heading) * 30 : 26;
   const dy = walking ? -Math.sin(heading) * 30 + 4 : 6;
   const right = Math.cos(heading) > 0;
   const dir = right ? (Math.sin(heading) > 0 ? "se" : "ne") : Math.sin(heading) > 0 ? "sw" : "nw";
-  if (PET_SHEETS.has(kind)) {
-    const pose = walking ? "walk" : "sit";
-    const d = pose === "walk" ? dir : right ? "se" : "sw";
-    return (
-      <svg x={dx - size / 2} y={dy - size} width={size} height={size} overflow="hidden" className="map-pet">
-        <image href={`/art/life/pets/${kind}-${pose}-${d}.webp`} width={size * 8} height={size}>
-          {walking && <animate attributeName="x" dur="0.6s" repeatCount="indefinite" calcMode="discrete" values={Array.from({ length: 8 }, (_, f) => -size * f).join(";")} />}
-        </image>
-      </svg>
-    );
-  }
+  const url = petSheet(kind, walking ? "walk" : "sit", dir);
+  if (!url) return null;
+  const w = PET_FRAME.w * MAP_K;
+  const h = PET_FRAME.h * MAP_K;
   return (
-    <g transform={`translate(${dx} ${dy})${right ? " scale(-1 1)" : ""}`} className={`map-pet ${walking ? "trot" : ""}`}>
-      <text fontSize={size} textAnchor="middle" y={-2}>
-        {info.icon}
-      </text>
-    </g>
+    <svg x={dx - w / 2} y={dy - (PET_FRAME.h - PET_FRAME.ground) * MAP_K} width={w} height={h} overflow="hidden" className="map-pet">
+      <image href={url} width={w * PET_FRAME.frames} height={h}>
+        <animate attributeName="x" dur={walking ? "0.8s" : "2.6s"} repeatCount="indefinite" calcMode="discrete" values={Array.from({ length: PET_FRAME.frames }, (_, f) => -w * f).join(";")} />
+      </image>
+    </svg>
   );
 }
 
@@ -250,16 +258,22 @@ export function HomePet({ kind, walkway, asleep }: { kind: PetKind; walkway: rea
   const prev = walkway[(i + walkway.length - 1) % walkway.length] ?? [x, y];
   const dir = x >= prev[0] ? (y >= prev[1] ? "se" : "ne") : y >= prev[1] ? "sw" : "nw";
   const info = PET_BY_KIND.get(kind)!;
-  const size = info.species === "parrot" ? 26 : info.species === "cat" ? 28 : kind === "boerboel" || kind === "shepherd" ? 40 : 32;
+  // The room's people are 0.21 of the scene's height per 160 sheet px (Interior.tsx): the same for the pet.
+  const [k, setK] = useState(0.4);
+  const ref = (el: HTMLButtonElement | null) => {
+    const hgt = el?.parentElement?.clientHeight;
+    if (hgt && Math.abs((hgt * 0.21) / 160 - k) > 0.01) setK((hgt * 0.21) / 160);
+  };
   return (
     <button
+      ref={ref}
       type="button"
       className="home-pet"
       style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
       onClick={() => window.dispatchEvent(new CustomEvent("hc:open-phone", { detail: "pets" }))}
       aria-label={`Your ${info.label.toLowerCase()}`}
     >
-      <PetSprite kind={kind} pose={asleep ? "sleep" : moving ? "walk" : "sit"} dir={dir} size={size} />
+      <PetSprite kind={kind} pose={asleep ? "sleep" : moving ? "walk" : "sit"} dir={dir} k={k} />
     </button>
   );
 }

@@ -1153,14 +1153,14 @@ body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom
 .books-row { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px; border-radius: 10px; border: 1px solid var(--rule-strong); background: var(--sheet); color: inherit; cursor: pointer; }
 .books-row[aria-pressed="true"] { border-color: #c9a86a; }
 .books-num { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #7c5c2e; color: #fff; font: 700 12px system-ui, sans-serif; }
-.home-pet { position: absolute; z-index: 850; transform: translate(-50%, -90%); border: 0; background: none; padding: 0; cursor: pointer; transition: left 2.4s linear, top 2.4s linear; line-height: 1; }
+.home-pet { position: absolute; z-index: 850; width: 0; height: 0; border: 0; background: none; padding: 0; cursor: pointer; transition: left 2.4s linear, top 2.4s linear; line-height: 1; }
+.home-pet > * { position: absolute; left: 0; top: 0; }
 .pet-emoji { display: inline-block; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 45%)); }
 .pet-emoji.walk { animation: pet-trot 0.35s ease-in-out infinite alternate; }
 .pet-emoji.sleep { opacity: 0.85; }
 @keyframes pet-trot { from { translate: 0 0; } to { translate: 0 -3px; } }
 .map-pet.trot text { animation: pet-trot 0.3s ease-in-out infinite alternate; }
-.pet-sheet { display: inline-block; background-size: 800% 100%; background-repeat: no-repeat; }
-.pet-sheet.walking { animation: pet-frames 0.7s steps(7) infinite; }
+.pet-sheet { display: block; background-size: 800% 100%; background-repeat: no-repeat; animation: pet-frames 0.8s steps(7) infinite; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 35%)); }
 @keyframes pet-frames { from { background-position: 0 0; } to { background-position: 100% 0; } }
 .pet-kinds { display: grid; gap: 6px; }
 .pet-kind { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 14px; border: 1px solid var(--rule-strong); background: var(--sheet); color: inherit; text-align: left; cursor: pointer; }
@@ -1170,4 +1170,5 @@ body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom
 .pet-card.happy { border-color: #4ade80aa; }
 .pet-card.sad { border-color: #f8717188; }
 .pet-big { font-size: 52px; }
-@media (prefers-reduced-motion: reduce) { .pet-emoji.walk, .map-pet.trot text, .pet-sheet.walking { animation: none; } .home-pet { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pet-emoji.walk, .pet-sheet { animation: none; } .home-pet { transition: none; } }
+.pet-portrait { position: relative; flex: none; display: inline-block; }
