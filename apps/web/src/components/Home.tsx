@@ -503,6 +503,30 @@ export function HomeRooms({
           {arranging ? "Done arranging" : "🪑 Arrange furniture"}
         </button>
       )}
+      {arranging && onPlace && (
+        // All your things, wherever they are: bring any of them into this room, then drag it into place.
+        <div className="arrange-tray">
+          <span className="tiny muted">Your things ({items.length}). Drag them in the picture; "Bring here" moves one into the {room.label.toLowerCase()}.</span>
+          {items.map((k) => {
+            const item = HOME_ITEMS.find((x) => x.key === k);
+            const at = itemAt(items, k, rooms, placements);
+            const here = at.room === room.key;
+            const walk = ROOMS[room.art]?.walkway ?? [];
+            const spot = walk[Math.floor(walk.length / 2)] ?? [0.5, 0.75];
+            return (
+              <div key={k} className="arrange-row">
+                <span className="small">{item?.name.split(" (")[0] ?? k}</span>
+                <span className="tiny muted">{here ? "here" : `in the ${rooms.find((r) => r.key === at.room)?.label.toLowerCase() ?? "house"}`}</span>
+                {!here && (
+                  <button type="button" className="btn sm" onClick={() => onPlace(k, room.key, Math.min(0.9, Math.max(0.1, spot[0])), Math.min(0.95, Math.max(0.35, spot[1])))}>
+                    Bring here
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
       <div className={`home-room-frame ${arranging ? "arranging" : ""}`} ref={frame}>
         <InteriorScene
           key={room.key}

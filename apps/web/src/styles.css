@@ -1172,3 +1172,5 @@ body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom
 .pet-big { font-size: 52px; }
 @media (prefers-reduced-motion: reduce) { .pet-emoji.walk, .pet-sheet { animation: none; } .home-pet { transition: none; } }
 .pet-portrait { position: relative; flex: none; display: inline-block; }
+.arrange-tray { display: grid; gap: 4px; padding: 8px 10px; border-radius: 12px; border: 1px dashed var(--rule-strong); background: var(--sheet); max-height: 220px; overflow: auto; }
+.arrange-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
