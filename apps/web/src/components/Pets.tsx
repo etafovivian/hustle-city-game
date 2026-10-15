@@ -16,6 +16,36 @@ const setPet = (p: PetView | null) => {
   loaded = true;
   listeners.forEach((f) => f());
 };
+// ---- out for a walk: your pet stays home unless you take it out (remembered on this device)
+const WALK_KEY = "hc_pet_walk";
+let walking = (() => {
+  try {
+    return localStorage.getItem(WALK_KEY) === "1";
+  } catch {
+    return false;
+  }
+})();
+export function setPetWalking(on: boolean) {
+  walking = on;
+  try {
+    localStorage.setItem(WALK_KEY, on ? "1" : "0");
+  } catch {
+    /* not essential */
+  }
+  listeners.forEach((f) => f());
+}
+/** Your pet if it's out with you (on a walk), else null. */
+export function useWalkingPet(): PetView | null {
+  const p = usePet();
+  useSyncExternalStore(
+    (f) => {
+      listeners.add(f);
+      return () => void listeners.delete(f);
+    },
+    () => walking,
+  );
+  return walking ? p : null;
+}
 export const reloadPet = () =>
   api<{ pet: PetView | null }>("GET", "/api/pets")
     .then((r) => setPet(r.pet))
@@ -81,6 +111,7 @@ function PetPortrait({ kind, k }: { kind: PetKind; k: number }) {
 // ---- Phone → Pets
 export function PetsApp({ notify, onChanged }: { notify: (m: string) => void; onChanged: () => void }) {
   const p = usePet();
+  useWalkingPet();
   const [kind, setKind] = useState<PetKind>("dog_local");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -172,14 +203,33 @@ export function PetsApp({ notify, onChanged }: { notify: (m: string) => void; on
         </div>
       </div>
       <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-        {(Object.keys(PET_CARE) as PetCare[]).map((c) => (
+        <button
+          type="button"
+          className="btn sm go"
+          disabled={busy}
+          onClick={() => {
+            if (walking) {
+              setPetWalking(false);
+              notify(`${p.name} is back home.`);
+              return;
+            }
+            setPetWalking(true);
+            care("walk");
+            window.dispatchEvent(new CustomEvent("hc:close-phone"));
+          }}
+        >
+          {walking ? `🏠 Take ${p.name} home` : `🦮 Take ${p.name} for a walk`}
+        </button>
+        {(["feed", "play"] as PetCare[]).map((c) => (
           <button key={c} type="button" className="btn sm" disabled={busy} onClick={() => care(c)}>
             {PET_CARE[c].icon} {PET_CARE[c].label}
             {PET_CARE[c].cost ? <span className="tiny muted"> · {formatCoins(PET_CARE[c].cost)}</span> : null}
           </button>
         ))}
       </div>
-      <p className="tiny muted">A happy pet lifts your Social when you sleep at home. {p.name} follows you around the city.</p>
+      <p className="tiny muted">
+        A happy pet lifts your Social when you sleep at home. {p.name} stays home unless you take them for a walk; on a walk they wait outside shops, churches and mosques (the beach and the clubs are fine).
+      </p>
       <div className="row" style={{ gap: 6 }}>
         <button
           type="button"

@@ -54,7 +54,7 @@ import { variantFor } from "./AvatarWalker.js";
 import { RoomChat } from "./Chat.js";
 import { usePartnerAtHome } from "./Love.js";
 import { PartyPanel, useParties, withParty } from "./Party.js";
-import { HomePet, usePet } from "./Pets.js";
+import { HomePet, setPetWalking, usePet } from "./Pets.js";
 
 function useSheet(onClose: () => void) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -159,6 +159,8 @@ export function HomeCard({
   const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar, design: home.design });
   // Your partner, if they live with you: at home with you (in the parlour or the kitchen).
   const partner = usePartnerAtHome();
+  // Home again: a pet out on a walk is back in the house.
+  useEffect(() => setPetWalking(false), []);
   const [parties, reloadParties] = useParties();
   const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
 

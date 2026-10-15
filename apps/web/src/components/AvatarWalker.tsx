@@ -7,7 +7,7 @@ import { avatarUri } from "./Avatar.js";
 import { CX, CY, HALF, ROUNDABOUT, roadRoute, walkRoute } from "./cityLayout.js";
 import { vehicleView } from "./StreetLife.js";
 import { useLayerSheet, walkSheetName } from "./spriteComposer.js";
-import { MapPet, usePet } from "./Pets.js";
+import { MapPet, useWalkingPet } from "./Pets.js";
 import { outfitVariant, walkDir, walkerSheet, walkerSize, type WalkDir, type WalkerVariant } from "./walkers.js";
 
 type Point = { x: number; y: number };
@@ -278,7 +278,7 @@ export function AvatarWalker({
 
   // The player's own look from tinted layers (spriteComposer) when on; the baked walker until it is ready.
   const walkHref = useLayerSheet(avatar, walkSheetName(facing), walkerSheet(variantFor(avatar), facing));
-  const pet = usePet();
+  const pet = useWalkingPet();
   return (
     <g aria-label={`${nickname} (you)`} className="me-walker" pointerEvents="none">
       {walking && target && (
@@ -290,7 +290,7 @@ export function AvatarWalker({
         </g>
       )}
       <g transform={`translate(${pos.x} ${pos.y})`}>
-        {/* Your pet walks with you (not on rides). */}
+        {/* Your pet, when you've taken it for a walk (not on rides). */}
         {pet && (!walking || riding === "walk") && <MapPet kind={pet.kind} heading={heading} walking={walking} />}
         <ellipse rx="18" ry="6" fill="rgb(0 0 0 / 30%)" />
         <ellipse rx="26" ry="11" fill="none" stroke="#ffc72c" strokeWidth="3" />

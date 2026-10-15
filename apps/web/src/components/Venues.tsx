@@ -1,6 +1,6 @@
 // Venues on the map: the building, a floating icon badge with its name, and the place card
 // (story, regulars, paid activities, walk there, and real businesses where it fits).
-import { CHIEF_TITLE, NPC_BY_KEY, WORSHIP_BOOK, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
+import { CHIEF_TITLE, NPC_BY_KEY, PET_BY_KIND, PET_FRIENDLY, WORSHIP_BOOK, eventAt, GAME_TABLES, TABLE_GAMES, JOB_BY_VENUE, SHIFT_COST, SHIFT_SECONDS, VENUES_BY_KEY, VIBE_LABEL, type JobView, type PresencePlayer, type AvatarConfig, clockHour, hoursLabel, isOpenAt, venueActions, venueHours, type Venue, type VenueAction, type VenueDay } from "@hc/shared";
 import { Briefcase, CheckCircle2, Clock, Coins, Crown, Footprints, GraduationCap, Sparkles, Store, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatCoins } from "../api.js";
@@ -15,6 +15,7 @@ import { GadgetCounter } from "./Gadgets.js";
 import { PeopleHere, withRegulars } from "./Love.js";
 import { dateRoom, endDate, holdDate, useDateAt } from "./Dates.js";
 import { openBook } from "./Books.js";
+import { useWalkingPet } from "./Pets.js";
 import { Garage } from "./Home.js";
 import { useLagosLight } from "./lagosTime.js";
 import { SponsorBanner } from "./Sponsors.js";
@@ -214,6 +215,7 @@ export function VenueCard({
   const regulars = useMemo(() => (base.interior ? withRegulars(ROOMS[base.interior.split("/").pop()!.replace(".webp", "")], base.key) : undefined), [base.key]);
   // On a date here (Phone → Love): the two of you in the room, together.
   const date = useDateAt(base.key);
+  const pet = useWalkingPet();
   const scene = useMemo(() => dateRoom(regulars, date), [regulars, date]);
   const room = scene.room;
 
@@ -469,6 +471,11 @@ export function VenueCard({
             );
           })}
         </ul>
+        {pet && present && (
+          <span className="tiny muted">
+            {PET_BY_KIND.get(pet.kind)?.icon} {PET_FRIENDLY.has(base.key) ? `${pet.name} came in with you.` : `${pet.name} waits outside for you.`}
+          </span>
+        )}
         {WORSHIP_BOOK[base.key] && (
           <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => openBook(WORSHIP_BOOK[base.key]!)}>
             📖 Read the {WORSHIP_BOOK[base.key] === "quran" ? "Qur'an" : "Bible"}

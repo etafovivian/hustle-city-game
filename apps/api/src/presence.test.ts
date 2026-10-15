@@ -1,4 +1,5 @@
 // Presence: players see each other, wave, and buy a drink when they're together.
+import { EVENT_XP, eventAt } from "@hc/shared";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
 
@@ -54,7 +55,8 @@ describe("presence", () => {
     await a.call("POST", "/api/presence", { x: 5000, y: 2400, place: "mama_nkechi_buka" });
     await b.call("POST", "/api/presence", { x: 5010, y: 2400, place: "mama_nkechi_buka" });
     const r = (await a.call("POST", "/api/game/venues/mama_nkechi_buka/amala")).json();
-    expect(r).toMatchObject({ gained: 15, together: ["tunde_together"] });
+    // Together: +50%; and +50% more while a city event is on there.
+    expect(r).toMatchObject({ gained: Math.round(10 * 1.5 * (eventAt("mama_nkechi_buka", new Date()) ? EVENT_XP : 1)), together: ["tunde_together"] });
     const pings = (await b.call("POST", "/api/presence", { x: 5010, y: 2400, place: "mama_nkechi_buka" })).json().pings;
     expect(pings[0]).toMatchObject({ kind: "join", from: "bisi_together" });
   });

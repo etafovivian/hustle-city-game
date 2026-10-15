@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { STOCK_ITEMS_BY_KEY, VENUES_BY_KEY, isOpenAt, lagosHourOf, orderSlotIndex, type QuestBoard, type ShopView } from "@hc/shared";
+import { EVENT_XP, STOCK_ITEMS_BY_KEY, VENUES_BY_KEY, eventAt, isOpenAt, lagosHourOf, orderSlotIndex, type QuestBoard, type ShopView } from "@hc/shared";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { TEST_DATABASE_URL, prepareDatabase, registerPlayer, resetDatabase, testServer } from "./test/harness.js";
@@ -418,14 +418,16 @@ describe("venue activities", () => {
     const before = (await p.call("GET", "/api/me")).json();
     const res = await p.call("POST", "/api/game/venues/mama_nkechi_buka/amala");
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ gained: 10, done: ["mama_nkechi_buka:amala"] });
+    // (+50% XP while a city event is on at the buka, e.g. a big market day)
+    const boost = eventAt("mama_nkechi_buka", new Date()) ? EVENT_XP : 1;
+    expect(res.json()).toMatchObject({ gained: Math.round(10 * boost), done: ["mama_nkechi_buka:amala"] });
     // Amala fills Food and Social by 25 from where they were.
     const needs = (await p.call("GET", "/api/game/needs")).json();
     expect(needs.needs.food).toBeGreaterThan(90);
     expect(needs.mood.label).toBeTruthy();
     const after = (await p.call("GET", "/api/me")).json();
     expect(after.coins).toBe(before.coins - 300);
-    expect(after.xp).toBe(before.xp + 10);
+    expect(after.xp).toBe(before.xp + Math.round(10 * boost));
 
     expect((await p.call("POST", "/api/game/venues/mama_nkechi_buka/amala")).statusCode).toBe(409);
     expect((await p.call("GET", "/api/me")).json().coins).toBe(before.coins - 300);

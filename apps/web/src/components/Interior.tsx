@@ -8,7 +8,7 @@
 import type { AvatarConfig } from "@hc/shared";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { variantFor } from "./AvatarWalker.js";
-import { STANDING_POSES, layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
+import { STANDING_POSES, layerPending, layerSheet, poseSheetName, walkSheetName } from "./spriteComposer.js";
 import { close, nearestOnPolyline, routeTo } from "./interiorPath.js";
 import { POSE_SHEETS, POSE_VARIANTS, ROOMS, type Facing, type PlayerAction, type PoseAction, type Pt, type Room, type Spot, type SpotKey, type Worker } from "./rooms.js";
 import { WALKER_VARIANTS, walkDir, walkerSheet, type WalkDir, type WalkerVariant } from "./walkers.js";
@@ -349,7 +349,7 @@ function PlayerInRoom({
   const walkway = room?.walkway ?? [];
   const door: Pt = room?.spots?.door?.at ?? walkway[0] ?? [0.5, 0.85];
   // Live state for the loop: where they are, the route ahead, and what to do on arrival.
-  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false, water: undefined as { box: [number, number, number, number]; wade: number } | undefined });
+  const me = useRef({ at: door, route: [] as Pt[], walked: 0, dir: "se" as WalkDir, pose: null as PoseAction | null, face: "se" as Facing, shown: null as PoseAction | null, shownLayered: false, t0: 0, settled: false, free: false, atSpot: false, behind: undefined as number | undefined, sweepRoute: false, water: undefined as { box: [number, number, number, number]; wade: number } | undefined });
   /** The sheet on show (null while walking): sets the box size. */
   const [shown, setShown] = useState<PoseAction | null>(null);
 
@@ -425,7 +425,10 @@ function PlayerInRoom({
       // Otherwise the nearest baked look: a pose that look has no sheet for (stirring at the hob, a together pose)
       // falls back to standing, and at a thing on the far side (the hob, the wardrobe, the line) they stand busy with
       // their hands, facing it (standing has no sheet facing away).
-      const layered = want ? layerSheet(avatarRef.current, poseSheetName(want, sheetDir(want, m.face))) : null;
+      const wantSheet = want ? poseSheetName(want, sheetDir(want, m.face)) : null;
+      const layered = wantSheet ? layerSheet(avatarRef.current, wantSheet) : null;
+      // Still being put together: keep the drawing already up (your own look) rather than flash another look's.
+      if (wantSheet && !layered && m.shownLayered && layerPending(avatarRef.current, wantSheet)) return;
       // A standing pose whose layered sheet is missing: the look's own layered walk, held on one frame.
       const standIn =
         want && !layered && STANDING_POSES.has(want)
@@ -446,7 +449,12 @@ function PlayerInRoom({
       }
       if (!pose) {
         const frame = standIn ? 0 : Math.floor(m.walked / 0.024) % 8;
-        node.style.backgroundImage = `url(${standIn ?? layerSheet(avatarRef.current, walkSheetName(m.dir)) ?? walkerSheet(variant, m.dir)})`;
+        const walkUrl = standIn ?? layerSheet(avatarRef.current, walkSheetName(m.dir));
+        // A new direction still being put together: keep walking in the sheet already up.
+        if (walkUrl || !m.shownLayered || !layerPending(avatarRef.current, walkSheetName(m.dir))) {
+          node.style.backgroundImage = `url(${walkUrl ?? walkerSheet(variant, m.dir)})`;
+          m.shownLayered = !!walkUrl;
+        }
         node.style.backgroundPosition = framePos(frame, 8);
       } else {
         const { fps, frames } = POSE_SHEETS[pose];
@@ -455,6 +463,7 @@ function PlayerInRoom({
         const dir = walkSheet ? m.dir : m.face;
         const own = walkSheet ? layerSheet(avatarRef.current, poseSheetName("vacuum", dir)) : layered;
         node.style.backgroundImage = `url(${own ?? standIn ?? poseSheet(pose, variant, dir)})`;
+        m.shownLayered = !!(own ?? standIn);
         node.style.backgroundPosition = framePos(frame, frames);
       }
       // At a spot behind a table or counter: hide what it hides.

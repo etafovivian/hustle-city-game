@@ -1,5 +1,5 @@
 import { LOCATIONS, type LocationKey, type Me, type NeedsView, type QuestBoard, type ShopView } from "@hc/shared";
-import { setLayerRoles } from "./components/spriteComposer.js";
+import { setLayerRoles, warmLook } from "./components/spriteComposer.js";
 import { MiniPlayer } from "./components/Music.js";
 import { ArrowLeft, Coins, ListChecks, LogOut, Map as MapIcon, Search, ShoppingBag, Smartphone, Sparkles, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -103,6 +103,8 @@ export function App() {
     const [m, b] = await Promise.all([api<Me>("GET", "/api/me"), api<QuestBoard>("GET", "/api/game/quests")]);
     setMe(m);
     setLayerRoles(m.roles);
+    // Your own look's everyday sheets, built ahead so nothing flashes while they're made.
+    warmLook(m.avatar);
     setBoard(b);
     api<NeedsView>("GET", "/api/game/needs")
       .then(setNeeds)

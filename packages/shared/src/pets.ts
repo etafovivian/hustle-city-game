@@ -34,6 +34,8 @@ export const PET_DRIFT_PER_HOUR = 2;
 /** Sleeping at home with a happy pet (happiness at least this) lifts Social. */
 export const PET_HAPPY = 60;
 export const PET_HOME_SOCIAL = 6;
+/** Outdoor places a pet on a walk may come into; everywhere else it waits outside. */
+export const PET_FRIENDLY = new Set(["sandbar_beach", "lagoon_golf_club", "capital_polo_club"]);
 export const PET_NAME = /^[\p{L}][\p{L} '-]{0,19}$/u;
 
 export interface PetView {

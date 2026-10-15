@@ -13,7 +13,7 @@
 // the baked colours) and the hair laid over the base. The result is a blob URL, cached per look and sheet. Anything
 // missing or failing gives null, and callers keep today's baked sheet (variantFor): nothing that works breaks.
 import { FABRIC_HAIR, FABRIC_HAIR_DEFAULT, OUTFIT_INFO, bodyOf, type AvatarConfig } from "@hc/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { composePixels } from "./composeCore.js";
 
 export { composePixels };
@@ -298,15 +298,40 @@ function pump() {
   });
 }
 
-/** For React-rendered sprites: the composed sheet when ready (re-renders then), else the fallback. */
+/** A layered sheet that is still being put together (show the look's last one meanwhile, not another look's). */
+export function layerPending(a: AvatarConfig, sheet: string): boolean {
+  if (!layersOn() || !layerKeys(a)) return false;
+  return !ready.has(`${lookId(a)}#${sheet}`);
+}
+
+/** The sheets someone needs most (walking every way, standing, sitting, eating, dancing): built ahead, one at a time. */
+export function warmLook(a: AvatarConfig) {
+  if (!layersOn() || !layerKeys(a)) return;
+  const sheets = ["se", "sw", "ne", "nw"].map(walkSheetName).concat(["stand_idle", "sit_talk", "sit_eat", "dance"].flatMap((p) => [poseSheetName(p, "se"), poseSheetName(p, "sw")]));
+  void sheets.reduce<Promise<unknown>>((prev, s) => prev.then(() => composeSheet(a, s)), Promise.resolve());
+}
+
+/**
+ * For React-rendered sprites: the composed sheet when ready (re-renders then). While a new one is being built (a
+ * new facing), the last one shown stays up rather than flashing another look's baked sheet; the fallback only when
+ * there's no layered sheet at all.
+ */
 export function useLayerSheet(a: AvatarConfig | undefined, sheet: string, fallback: string): string {
   const [, bump] = useState(0);
+  const last = useRef<{ id: string; url: string } | null>(null);
   useEffect(() => {
     const f = () => bump((n) => n + 1);
     listeners.add(f);
     return () => void listeners.delete(f);
   }, []);
-  return (a && layerSheet(a, sheet)) || fallback;
+  if (!a) return fallback;
+  const url = layerSheet(a, sheet);
+  const id = lookId(a);
+  if (url) {
+    last.current = { id, url };
+    return url;
+  }
+  return layerPending(a, sheet) && last.current?.id === id ? last.current.url : fallback;
 }
 
 /** Poses where someone stands on the spot: while their own layered sheet is missing, the look's own walk sheet held
