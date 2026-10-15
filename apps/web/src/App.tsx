@@ -228,7 +228,7 @@ export function App() {
   const location = view.kind === "location" ? LOCATIONS.find((l) => l.key === view.id) : undefined;
   const onChanged = () => void refresh();
   const tab: Tab = view.kind === "market" ? "market" : view.kind === "location" && view.id === "market_square" && marketTab !== "merchants" ? "shop" : "map";
-  const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
+  const readyQuests = board ? [...board.daily, ...(board.life ? [board.life] : [])].filter((q) => q.progress >= q.target && !q.claimed).length : 0;
   const openShop = () => {
     setMarketTab("shop");
     void openLocation("market_square");

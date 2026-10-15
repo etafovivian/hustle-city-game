@@ -137,7 +137,7 @@ export function Quests({
         <TimeBar start={day.start} end={day.end} label="New quests at midnight (Lagos)" />
       </div>
       <div className="rule-list" style={{ borderTop: "1px solid var(--rule)" }}>
-        {board.daily.map((q) => (
+        {[...board.daily, ...(board.life ? [board.life] : [])].map((q) => (
           <Bolt
             key={q.key}
             print={questPrint(q.key)}
@@ -149,7 +149,10 @@ export function Quests({
             busy={busy}
             onClaim={() => claim(q.key, q.rewardCoins)}
           >
-            <p className="small muted">{q.description}</p>
+            <p className="small muted">
+              {q === board.life && <strong className="tiny">Just for you · </strong>}
+              {q.description}
+            </p>
           </Bolt>
         ))}
       </div>

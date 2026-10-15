@@ -104,7 +104,7 @@ export function Phone({
       .then(setDream)
       .catch(() => setDream(null));
   }, []);
-  const readyQuests = board ? board.daily.filter((q) => q.progress >= q.target && !q.claimed).length : 0;
+  const readyQuests = board ? [...board.daily, ...(board.life ? [board.life] : [])].filter((q) => q.progress >= q.target && !q.claimed).length : 0;
 
   const closeRef = useRef(onClose);
   closeRef.current = onClose;

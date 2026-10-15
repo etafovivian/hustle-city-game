@@ -12,6 +12,7 @@ import { AppError, notFound } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { placeOf, sendPing } from "../presence.js";
 import { loadNeeds, saveNeeds } from "./needs.js";
+import { recordEvents } from "./quests.js";
 
 type Party = typeof houseParties.$inferSelect;
 const addXp = (tx: Tx, userId: string, xp: number) => tx.update(profiles).set({ xp: sql`${profiles.xp} + ${xp}` }).where(eq(profiles.userId, userId));
@@ -78,6 +79,7 @@ export async function partyRoutes(app: FastifyInstance) {
         .returning();
       await boost(tx, user.id, now, kind.gives);
       await addXp(tx, user.id, kind.xp);
+      await recordEvents(tx, user.id, [{ type: "party_fun" }], now, tz);
       // Invitations: every contact gets a note on their screen.
       const [me] = await tx.select({ n: profiles.nickname }).from(profiles).where(eq(profiles.userId, user.id));
       const area = plotInfo(plot.plotId)?.area;
@@ -102,6 +104,7 @@ export async function partyRoutes(app: FastifyInstance) {
       if (added.length) {
         await boost(tx, user.id, now, PARTY_GUEST);
         await addXp(tx, user.id, PARTY_GUEST.xp);
+        await recordEvents(tx, user.id, [{ type: "party_fun" }], now, tz);
         const [{ n }] = (await tx.select({ n: count() }).from(partyGuests).where(eq(partyGuests.partyId, id))) as [{ n: number }];
         if (Number(n) <= PARTY_GUEST.maxGuestXp) await addXp(tx, party.hostId, PARTY_GUEST.hostXp);
         const [me] = await tx.select({ n: profiles.nickname }).from(profiles).where(eq(profiles.userId, user.id));

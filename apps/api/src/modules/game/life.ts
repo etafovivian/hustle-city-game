@@ -62,6 +62,7 @@ import { loadNeeds, needsView, saveNeeds } from "./needs.js";
 import { graduatePay, isGraduate } from "../university.js";
 import { addSkill, skillLevelOf } from "./skills.js";
 import { collect, letInfo, moveIn, moveOut, setLet, settleRent } from "./rent.js";
+import { recordEvents } from "./quests.js";
 
 const shiftsToday = async (tx: Tx, userId: string, day: string) => {
   const [{ n }] = (await tx
@@ -236,6 +237,7 @@ export async function lifeRoutes(app: FastifyInstance) {
       if (boost && act.cost) balance = (await postCoins(tx, user.id, -act.cost, "home_life", `home:${act.key}:${now.toISOString()}`)).balance;
       if (boost) await saveNeeds(tx, user.id, next, now, full ? { ...freeAt, [`__act_${act.key}`]: now.toISOString() } : freeAt);
       if (boost && act.gives.food && act.gives.food > 0) await firstDayStep(tx, user.id, "eat");
+      await recordEvents(tx, user.id, [{ type: "home_action", key: act.key }], now, tz);
       if (full) {
         if (act.skill) await addSkill(tx, user.id, act.skill[0], act.skill[1]);
         if (act.xp) await tx.update(profiles).set({ xp: sql`${profiles.xp} + ${act.xp}` }).where(eq(profiles.userId, user.id));

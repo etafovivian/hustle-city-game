@@ -32,6 +32,7 @@ import { lockProfile, type Tx } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
+import { recordEvents } from "./quests.js";
 
 type Bond = typeof partnerBonds.$inferSelect;
 const DAY = 86_400_000;
@@ -136,7 +137,8 @@ export async function partnerRoutes(app: FastifyInstance) {
     const { at } = z.object({ at: z.string().max(60) }).parse(request.body ?? {});
     if (!npc.hangouts.includes(at.split("@")[0]!)) throw new AppError(409, "not_here", `${npc.name} isn't here.`);
     const view = await inTx(async (tx, now) => {
-      await tx.insert(partnerBonds).values({ userId: user.id, npc: npc.key, closeness: 5, lastAt: now }).onConflictDoNothing();
+      const fresh = await tx.insert(partnerBonds).values({ userId: user.id, npc: npc.key, closeness: 5, lastAt: now }).onConflictDoNothing().returning();
+      if (fresh.length) await recordEvents(tx, user.id, [{ type: "love_met", key: npc.key }], now, tz);
       return loveView(tx, user.id, now);
     });
     return reply.code(201).send(view);
@@ -156,6 +158,7 @@ export async function partnerRoutes(app: FastifyInstance) {
       // After a few chats in a day they're busy: you still talk, but it doesn't count.
       const gained = used < CHATS_PER_DAY ? chatGain(npc, picked.trait) : 0;
       await saveBond(tx, b, now, { closeness: drifted(b, now) + gained, chats: b.chats + 1, chatDay: day, chatsOnDay: used + 1 });
+      await recordEvents(tx, user.id, [{ type: "love_chat" }], now, tz);
       if (gained) {
         const { needs, freeAt } = await loadNeeds(tx, user.id, now);
         await saveNeeds(tx, user.id, { ...needs, social: Math.min(100, needs.social + 4) }, now, freeAt);
@@ -199,6 +202,7 @@ export async function partnerRoutes(app: FastifyInstance) {
       const { balance } = await postCoins(tx, user.id, -spot.cost, "love", `love:date:${b.npc}:${now.toISOString()}`);
       const gained = counts ? (npc.favDate === venue ? GAIN.dateFav : GAIN.date) : 0;
       await saveBond(tx, b, now, { closeness: drifted(b, now) + gained, ...(counts ? { dateAt: now } : {}) });
+      await recordEvents(tx, user.id, [{ type: "date_done" }], now, tz);
       const { needs, freeAt } = await loadNeeds(tx, user.id, now);
       const after = { ...needs, fun: Math.min(100, needs.fun + spot.fun), social: Math.min(100, needs.social + 15) };
       await saveNeeds(tx, user.id, after, now, freeAt);

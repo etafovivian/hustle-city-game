@@ -41,6 +41,8 @@ export interface IntroStepView {
 export interface QuestBoard {
   day: string;
   daily: QuestView[];
+  /** Your own quest of the day, from your life (a pet, a date, a party, someone new). */
+  life: QuestView;
   intro: {
     title: string;
     description: string;

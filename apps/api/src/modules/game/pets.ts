@@ -11,6 +11,7 @@ import { lockProfile, type Tx } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
 import { requireUser } from "../../plugins/auth.js";
 import { loadNeeds, needsView, saveNeeds } from "./needs.js";
+import { recordEvents } from "./quests.js";
 
 type Pet = typeof playerPets.$inferSelect;
 const HOUR = 3_600_000;
@@ -44,6 +45,7 @@ export async function happyPet(tx: Tx, userId: string, now: Date) {
 }
 
 export async function petRoutes(app: FastifyInstance) {
+  const tz = app.config.GAME_TIMEZONE;
   const inTx = <T>(fn: (tx: Tx, now: Date) => Promise<T>) => app.db.transaction((tx) => fn(tx, new Date()));
   const mine = async (tx: Tx, userId: string) => {
     const [p] = await tx.select().from(playerPets).where(eq(playerPets.userId, userId)).for("update");
@@ -104,6 +106,7 @@ export async function petRoutes(app: FastifyInstance) {
         for (const [k, v] of Object.entries(c.gives) as [keyof typeof needs, number][]) needs[k] = Math.min(100, needs[k] + v);
         await saveNeeds(tx, user.id, needs, now, n.freeAt);
       }
+      if (counts) await recordEvents(tx, user.id, [{ type: "pet_cared", key: care }], now, tz);
       const happiness = Math.min(100, happinessOf(p, now) + (counts ? c.happy : 0));
       const [q] = await tx
         .update(playerPets)
