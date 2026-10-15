@@ -1,0 +1,545 @@
+// Life at home (see @hc/shared HOME_ACTIONS): what you can do depends on your house. A kitchen has a cooker, the
+// villa cinema a big screen, a parlour a TV; a thing you buy adds what a room lacks. Tapping an action takes you to
+// the room that has the thing, walks you to it and plays the pose; a TV or the cinema screen plays a moving picture
+// while you watch, a rider brings the food you ordered, a call lets you pick who.
+import { HOME_ACTIONS, HOME_ITEMS, HOME_OBJECTS, ITEM_OBJECT, NEED_ICON, NEED_LABEL, type ContactView, type HomeAction, type AvatarConfig, type HomeObject, type NeedKey, type NeedsView, type ObjectSpot } from "@hc/shared";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { api, formatCoins } from "../api.js";
+import type { InteriorPlayer } from "./Interior.js";
+import { Wardrobe } from "./Wardrobe.js";
+import { music, musicState } from "../music.js";
+import { nearestOnPolyline } from "./interiorPath.js";
+import { POSE_VARIANTS, ROOMS, type PlayerAction, type Pt, type Worker } from "./rooms.js";
+import { variantFor } from "./AvatarWalker.js";
+import { layerKeys, layersOn } from "./spriteComposer.js";
+
+type HomeRoom = { key: string; label: string; art: string };
+
+/** Where furniture stands in a room until you arrange it (front of the floor, fractions of the image). */
+const ITEM_SPOTS: [number, number][] = [
+  [0.24, 0.8],
+  [0.76, 0.8],
+  [0.38, 0.9],
+  [0.62, 0.9],
+  [0.14, 0.68],
+  [0.86, 0.68],
+  [0.5, 0.95],
+  [0.3, 0.7],
+];
+/**
+ * Where each thing goes until you arrange it: the first of these rooms (by picture) the house has, on open floor
+ * clear of the room's own furniture. Generators and the tank outside (yard, pool deck) or in a back corner; the cooker
+ * in the kitchen; the TV, console, sofas and radio in the parlour; the mat, fan and workout things in the bedroom.
+ */
+const ITEM_HOME: Record<string, [string, number, number][]> = {
+  plastic_chairs: [["home-mansion", 0.12, 0.74], ["home-duplex", 0.08, 0.66], ["home-mini-flat", 0.68, 0.86], ["home-self-contain", 0.42, 0.84], ["home-face-me", 0.44, 0.77]],
+  bucket_set: [["home-compound-yard", 0.29, 0.5], ["home-villa-pool", 0.87, 0.77], ["home-kitchen", 0.22, 0.84], ["home-villa-kitchen", 0.86, 0.72], ["home-mini-flat", 0.12, 0.74], ["home-self-contain", 0.66, 0.53], ["home-face-me", 0.15, 0.77]],
+  standing_fan: [["home-villa-suite", 0.36, 0.54], ["home-duplex-bedroom", 0.3, 0.56], ["home-bedroom", 0.56, 0.61], ["home-self-contain", 0.62, 0.88], ["home-face-me", 0.52, 0.58]],
+  sofa_ankara: [["home-mansion", 0.88, 0.8], ["home-duplex", 0.88, 0.68], ["home-mini-flat", 0.86, 0.75], ["home-self-contain", 0.66, 0.88], ["home-face-me", 0.78, 0.66]],
+  generator_small: [["home-compound-yard", 0.62, 0.86], ["home-villa-pool", 0.25, 0.56], ["home-kitchen", 0.63, 0.88], ["home-mini-flat", 0.84, 0.66], ["home-self-contain", 0.79, 0.81], ["home-face-me", 0.93, 0.73]],
+  adire_sofa_set: [["home-mansion", 0.25, 0.86], ["home-duplex", 0.23, 0.85], ["home-mini-flat", 0.17, 0.68], ["home-self-contain", 0.45, 0.88], ["home-face-me", 0.74, 0.89]],
+  big_generator: [["home-compound-yard", 0.72, 0.82], ["home-villa-pool", 0.18, 0.57], ["home-kitchen", 0.72, 0.84], ["home-mini-flat", 0.94, 0.69], ["home-self-contain", 0.86, 0.76], ["home-face-me", 0.85, 0.79]],
+  water_tank: [["home-compound-yard", 0.16, 0.62], ["home-villa-pool", 0.88, 0.56], ["home-kitchen", 0.12, 0.74], ["home-mini-flat", 0.07, 0.73], ["home-self-contain", 0.93, 0.68], ["home-face-me", 0.07, 0.73]],
+  dumbbell_set: [["home-villa-suite", 0.52, 0.92], ["home-duplex-bedroom", 0.52, 0.9], ["home-bedroom", 0.66, 0.86], ["home-self-contain", 0.56, 0.9], ["home-face-me", 0.36, 0.9]],
+  punching_bag: [["home-villa-suite", 0.4, 0.88], ["home-duplex-bedroom", 0.72, 0.86], ["home-bedroom", 0.86, 0.76], ["home-self-contain", 0.95, 0.66], ["home-face-me", 0.06, 0.66]],
+  radio: [["home-mansion", 0.77, 0.62], ["home-duplex", 0.65, 0.5], ["home-mini-flat", 0.87, 0.6], ["home-self-contain", 0.37, 0.86], ["home-face-me", 0.62, 0.62]],
+  prayer_mat: [["home-villa-suite", 0.3, 0.76], ["home-duplex-bedroom", 0.3, 0.8], ["home-bedroom", 0.3, 0.8], ["home-self-contain", 0.5, 0.93], ["home-face-me", 0.52, 0.79]],
+  gas_cooker: [["home-kitchen", 0.36, 0.89], ["home-villa-kitchen", 0.28, 0.6], ["home-compound-yard", 0.24, 0.68], ["home-self-contain", 0.44, 0.47], ["home-face-me", 0.47, 0.92], ["home-mini-flat", 0.62, 0.56]],
+  flat_tv: [["home-mansion", 0.84, 0.64], ["home-duplex", 0.74, 0.56], ["home-mini-flat", 0.6, 0.9], ["home-self-contain", 0.21, 0.78], ["home-face-me", 0.86, 0.6]],
+  game_console: [["home-mansion", 0.8, 0.68], ["home-duplex", 0.77, 0.6], ["home-mini-flat", 0.67, 0.55], ["home-self-contain", 0.27, 0.83], ["home-face-me", 0.93, 0.64]],
+};
+/** Where a thing you own stands: where you put it, else its default room and spot (as the home card draws it). */
+export function itemAt(items: readonly string[], key: string, rooms: readonly HomeRoom[], placed: Record<string, { room: string; x: number; y: number }>) {
+  if (placed[key]) return placed[key]!;
+  for (const [art, x, y] of ITEM_HOME[key] ?? []) {
+    const room = rooms.find((r) => r.art === art);
+    if (room) return { room: room.key, x, y };
+  }
+  const i = items.indexOf(key);
+  const [x, y] = ITEM_SPOTS[i % ITEM_SPOTS.length]!;
+  return { room: rooms[i % rooms.length]!.key, x, y };
+}
+type Quad = NonNullable<ObjectSpot["screen"]>;
+
+/** What can be on: TV channels, cinema films, video games. A different one each time you switch on. */
+export type Programme = "football" | "news" | "music" | "nollywood" | "cartoon" | "chase" | "sunset" | "runner" | "racing";
+const PROGRAMMES: Record<"tv" | "film" | "game", Programme[]> = {
+  tv: ["football", "news", "music", "nollywood", "cartoon"],
+  film: ["chase", "sunset", "nollywood", "music"],
+  game: ["runner", "racing", "football"],
+};
+export const pickProgramme = (kind: "tv" | "film" | "game") => PROGRAMMES[kind][Math.floor(Math.random() * PROGRAMMES[kind].length)]!;
+
+/** One programme, drawn in a 1×1 box (the screen maps it onto itself). */
+function ProgrammeArt({ p }: { p: Programme }) {
+  switch (p) {
+    case "football":
+      return (
+        <>
+          <rect width="1" height="1" fill="#2f8a3a" />
+          {[0.1, 0.3, 0.5, 0.7, 0.9].map((x) => (
+            <rect key={x} x={x - 0.1} width="0.1" height="1" fill="#2a7d33" />
+          ))}
+          <rect x="0.04" y="0.06" width="0.92" height="0.88" fill="none" stroke="#f4f1e8" strokeWidth="0.015" />
+          <line x1="0.5" y1="0.06" x2="0.5" y2="0.94" stroke="#f4f1e8" strokeWidth="0.012" />
+          <circle cx="0.5" cy="0.5" r="0.12" fill="none" stroke="#f4f1e8" strokeWidth="0.012" />
+          <g className="pg-teamA">{[[0.3, 0.3], [0.35, 0.65], [0.2, 0.5]].map(([x, y]) => <circle key={`${x}${y}`} cx={x} cy={y} r="0.035" fill="#c8321e" />)}</g>
+          <g className="pg-teamB">{[[0.7, 0.35], [0.62, 0.6], [0.8, 0.5]].map(([x, y]) => <circle key={`${x}${y}`} cx={x} cy={y} r="0.035" fill="#f4f1e8" />)}</g>
+          <circle className="pg-ball" cx="0.45" cy="0.48" r="0.018" fill="#fff" stroke="#000" strokeWidth="0.004" />
+          <rect x="0.03" y="0.03" width="0.3" height="0.1" rx="0.02" fill="#0a0f24" opacity=".8" />
+          <text x="0.05" y="0.105" fontSize="0.07" fill="#fff" fontWeight="800">LAG 1 – 0 ABJ</text>
+        </>
+      );
+    case "news":
+      return (
+        <>
+          <rect width="1" height="1" fill="#1f3a6b" />
+          <rect x="0.55" y="0.12" width="0.38" height="0.4" fill="#2f6fd1" />
+          <g className="pg-map">
+            <path d="M0.6 0.4 L0.7 0.2 L0.82 0.28 L0.88 0.44 Z" fill="#7cc4f0" />
+          </g>
+          <g className="pg-anchor">
+            <rect x="0.16" y="0.42" width="0.22" height="0.4" rx="0.05" fill="#7a1f3d" />
+            <circle cx="0.27" cy="0.34" r="0.09" fill="#6b4226" />
+          </g>
+          <rect x="0.08" y="0.7" width="0.5" height="0.12" fill="#0a0f24" />
+          <rect y="0.82" width="1" height="0.18" fill="#b8323a" />
+          <text className="ss-ticker" y="0.95" fontSize="0.12" fill="#fff" fontWeight="800">
+            BREAKING: Junction 101 traffic clears at last · Hot day in Lagos · Match night on Saturday ·
+          </text>
+        </>
+      );
+    case "music":
+      return (
+        <>
+          <rect width="1" height="1" fill="#2a0f3d" />
+          <g className="pg-lights">
+            <path d="M0.2 0 L0.05 1 L0.35 1 Z" fill="#ff4fd8" opacity=".35" />
+            <path d="M0.8 0 L0.65 1 L0.95 1 Z" fill="#4fd8ff" opacity=".35" />
+          </g>
+          {[0.3, 0.5, 0.7].map((x, i) => (
+            <g key={x} className={`pg-dancer d${i}`}>
+              <rect x={x - 0.04} y="0.45" width="0.08" height="0.3" rx="0.03" fill="#0a0f24" />
+              <circle cx={x} cy="0.39" r="0.05" fill="#0a0f24" />
+            </g>
+          ))}
+          <rect y="0.82" width="1" height="0.18" fill="#0a0f24" />
+          {[0.1, 0.25, 0.4, 0.55, 0.7, 0.85].map((x, i) => (
+            <rect key={x} className={`pg-eq e${i % 3}`} x={x} y="0.84" width="0.08" height="0.14" fill="#ffc72c" />
+          ))}
+        </>
+      );
+    case "nollywood":
+      return (
+        <>
+          <rect width="1" height="1" fill="#5a3825" />
+          <rect x="0.05" y="0.1" width="0.3" height="0.4" fill="#f2b84b" opacity=".5" />
+          <g className="pg-left">
+            <rect x="0.2" y="0.4" width="0.18" height="0.6" rx="0.06" fill="#1e7a46" />
+            <circle cx="0.29" cy="0.32" r="0.09" fill="#3b2219" />
+            <path d="M0.2 0.24 Q0.29 0.12 0.38 0.24 Z" fill="#c8321e" />
+          </g>
+          <g className="pg-right">
+            <rect x="0.6" y="0.38" width="0.2" height="0.62" rx="0.06" fill="#f4f1e8" />
+            <circle cx="0.7" cy="0.3" r="0.09" fill="#5a3825" />
+          </g>
+          <rect className="pg-sub" x="0.1" y="0.86" width="0.8" height="0.09" rx="0.02" fill="#0a0f24" opacity=".75" />
+          <text x="0.14" y="0.925" fontSize="0.06" fill="#fff">"You think I don't know?"</text>
+        </>
+      );
+    case "cartoon":
+      return (
+        <>
+          <rect width="1" height="1" fill="#7cc4f0" />
+          <rect y="0.72" width="1" height="0.28" fill="#6fbf4f" />
+          <circle cx="0.85" cy="0.18" r="0.09" fill="#ffd34d" />
+          <g className="pg-bounce">
+            <ellipse cx="0.35" cy="0.58" rx="0.12" ry="0.14" fill="#ff8a3d" />
+            <circle cx="0.31" cy="0.54" r="0.025" fill="#fff" />
+            <circle cx="0.39" cy="0.54" r="0.025" fill="#fff" />
+            <circle cx="0.31" cy="0.54" r="0.012" fill="#000" />
+            <circle cx="0.39" cy="0.54" r="0.012" fill="#000" />
+          </g>
+          <g className="pg-bounce2">
+            <rect x="0.6" y="0.5" width="0.16" height="0.2" rx="0.06" fill="#7a4fd6" />
+          </g>
+        </>
+      );
+    case "chase":
+      return (
+        <>
+          <rect width="1" height="1" fill="#1a1022" />
+          <rect y="0.6" width="1" height="0.4" fill="#2b2f3a" />
+          <g className="pg-city">{[0.05, 0.25, 0.45, 0.65, 0.85, 1.05, 1.25].map((x, i) => <rect key={x} x={x} y={0.25 + (i % 3) * 0.08} width="0.15" height={0.4 - (i % 3) * 0.08} fill="#3b2f55" />)}</g>
+          <g className="pg-lanes">{[0, 0.3, 0.6, 0.9, 1.2].map((x) => <rect key={x} x={x} y="0.78" width="0.15" height="0.02" fill="#ffc72c" />)}</g>
+          <g className="pg-car"><rect x="0.3" y="0.62" width="0.22" height="0.08" rx="0.03" fill="#c8321e" /><rect x="0.6" y="0.64" width="0.2" height="0.07" rx="0.03" fill="#0a0f24" /></g>
+        </>
+      );
+    case "sunset":
+      return (
+        <>
+          <rect width="1" height="1" fill="#f2884b" />
+          <rect y="0.5" width="1" height="0.5" fill="#3b2f55" />
+          <circle className="pg-sun" cx="0.5" cy="0.5" r="0.16" fill="#ffd34d" />
+          <rect y="0.55" width="1" height="0.45" fill="#2f5fb3" opacity=".7" />
+          <g className="pg-couple"><rect x="0.42" y="0.48" width="0.06" height="0.18" fill="#0a0f24" /><rect x="0.52" y="0.47" width="0.06" height="0.19" fill="#0a0f24" /></g>
+        </>
+      );
+    case "racing":
+      return (
+        <>
+          <rect width="1" height="1" fill="#6fbf4f" />
+          <path d="M0.3 0 L0.7 0 L0.9 1 L0.1 1 Z" fill="#3b3f46" />
+          <g className="pg-stripes">{[0, 0.25, 0.5, 0.75, 1].map((y) => <rect key={y} x="0.48" y={y} width="0.04" height="0.12" fill="#f4f1e8" />)}</g>
+          <rect className="pg-player" x="0.44" y="0.72" width="0.12" height="0.18" rx="0.03" fill="#c8321e" />
+          <rect className="pg-rival" x="0.36" y="0.2" width="0.1" height="0.14" rx="0.03" fill="#1f6fd1" />
+          <text x="0.04" y="0.1" fontSize="0.08" fill="#fff" fontWeight="800">LAP 2/3</text>
+        </>
+      );
+    default:
+      return (
+        <>
+          <rect width="1" height="1" fill="#101935" />
+          <rect y="0.78" width="1" height="0.22" fill="#2f7d3a" />
+          <g className="ss-runner">
+            <rect x="0.12" y="0.56" width="0.08" height="0.22" fill="#ffc72c" />
+            <rect x="0.13" y="0.5" width="0.06" height="0.07" fill="#f4c7a1" />
+          </g>
+          <g className="ss-scroll">
+            {[0.2, 0.55, 0.9, 1.25, 1.6].map((x) => <rect key={x} x={x} y="0.66" width="0.07" height="0.12" fill="#df382b" />)}
+            {[0.35, 0.8, 1.15, 1.5].map((x) => <circle key={x} cx={x} cy="0.3" r="0.04" fill="#ffd34d" />)}
+          </g>
+          <text x="0.05" y="0.14" fontSize="0.1" fill="#fff" fontWeight="800">SCORE</text>
+        </>
+      );
+  }
+}
+
+/** A programme playing on a screen (the four corners of the screen in the room picture). */
+export function ScreenShow({ quad, programme }: { quad: Quad; programme: Programme }) {
+  const [tl, tr, , bl] = quad;
+  // The screen as a slanted rectangle: draw in 0..1 and map with one matrix.
+  const m = `matrix(${tr[0] - tl[0]} ${tr[1] - tl[1]} ${bl[0] - tl[0]} ${bl[1] - tl[1]} ${tl[0]} ${tl[1]})`;
+  return (
+    <svg className="screen-show" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <clipPath id="screen-clip" clipPathUnits="userSpaceOnUse">
+          <polygon points={quad.map((p) => p.join(",")).join(" ")} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#screen-clip)">
+        <g transform={m}>
+          <ProgrammeArt p={programme} />
+          <rect className="ss-flicker" width="1" height="1" fill="#fff" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+/** Water: drops from a shower or a bucket over your head, or ripples round you in the pool (fractions of the room). */
+/** On the phone: a ringing phone and who you're talking to, over your head. */
+function CallBubble({ at, who, drawn }: { at: Pt; who: string; drawn?: boolean }) {
+  return (
+    <>
+      <div className="call-bubble" style={{ left: `${at[0] * 100}%`, top: `${Math.max(4, at[1] * 100 - 30)}%` }} aria-hidden="true">
+        📞 {who === "family" ? "Hello Mama!" : `Hey @${who}!`}
+      </div>
+      {/* The phone at your ear, only where the character isn't already drawn holding one (a look without the
+          phone-call sheet: layers off and not one of the everyday looks). */}
+      {!drawn && <span className="call-phone" style={{ left: `${at[0] * 100 + 2}%`, top: `${at[1] * 100 - 14}%` }} aria-hidden="true">
+        📱
+      </span>}
+    </>
+  );
+}
+
+export function WaterFx({ at, kind }: { at: Pt; kind: "shower" | "splash" | "ripples" }) {
+  const [x, y] = at;
+  return (
+    <svg className={`water-fx ${kind}`} viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+      {kind === "ripples" ? (
+        <g>
+          {[0, 1, 2].map((i) => (
+            <ellipse key={i} className={`wf-ripple r${i}`} cx={x} cy={y} rx="0.05" ry="0.02" fill="none" stroke="#e8fbff" strokeWidth="0.004" />
+          ))}
+        </g>
+      ) : (
+        <g>
+          {Array.from({ length: 9 }, (_, i) => (
+            <line key={i} className={`wf-drop d${i % 3}`} x1={x - 0.03 + (i % 5) * 0.015} y1={y - 0.24} x2={x - 0.03 + (i % 5) * 0.015} y2={y - 0.21} stroke="#bfe9ff" strokeWidth="0.005" strokeLinecap="round" />
+          ))}
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/** Who to call: your contacts, or family. */
+function CallPicker({ onPick, onClose }: { onPick: (to: string) => void; onClose: () => void }) {
+  const [contacts, setContacts] = useState<ContactView[] | null>(null);
+  useEffect(() => {
+    api<ContactView[]>("GET", "/api/contacts")
+      .then(setContacts)
+      .catch(() => setContacts([]));
+  }, []);
+  return (
+    <div className="call-picker" role="dialog" aria-label="Who do you want to call?" ref={(el) => { if (el && !el.dataset.shown) { el.dataset.shown = "1"; el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }}>
+      <strong className="small">📞 Who do you want to call?</strong>
+      <button type="button" className="btn sm" onClick={() => onPick("family")}>
+        👨‍👩‍👧 Family back home
+      </button>
+      {contacts?.map((c) => (
+        <button key={c.nickname} type="button" className="btn sm" onClick={() => onPick(c.nickname)}>
+          {c.online ? "🟢" : "⚪"} @{c.nickname}
+        </button>
+      ))}
+      {contacts?.length === 0 && <span className="tiny muted">No contacts yet. Meet people in the city and add them.</span>}
+      <button type="button" className="btn sm quiet" onClick={onClose}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+/** Where to stand to use an object in a room: the room's own thing, or a thing you bought that stands there. */
+function spotIn(room: HomeRoom, uses: readonly HomeObject[], items: string[], placed: Record<string, { room: string; x: number; y: number }>, rooms: HomeRoom[]) {
+  const own = HOME_OBJECTS[room.art] ?? {};
+  for (const o of uses) {
+    const s = own[o];
+    if (s) return { obj: o, spot: s, bought: false };
+    // A thing you bought is used in the room where it stands.
+    const item = items.find((k) => ITEM_OBJECT[k] === o && itemAt(items, k, rooms, placed).room === room.key);
+    if (item) {
+      const p = itemAt(items, item, rooms, placed);
+      // A seat you sit on (feet just in front of it); anything else you stand in front of and a little to the side,
+      // facing it (a TV or cooker faces the room, so your back is to us).
+      if (o === "seat") return { obj: o, spot: { at: [p.x, Math.min(0.94, p.y + 0.01)] as [number, number], dir: "se" as const, screen: undefined }, bought: true };
+      const at: [number, number] = [Math.min(0.92, p.x + 0.05), Math.min(0.94, p.y + 0.06)];
+      return { obj: o, spot: { at, dir: "nw" as const, screen: undefined }, bought: true };
+    }
+  }
+  return null;
+}
+
+const POSE: Record<HomeAction["pose"], PlayerAction> = {
+  sit: "sit",
+  eat: "eat",
+  dance: "dance",
+  stand: "stand",
+  pray: "pray",
+  chair: "chair",
+  // their own poses (Interior POSE_OF): cooking at the hob, a bucket bath, scrubbing in a basin, sweeping, watering,
+  // the phone at the ear, a controller in hand, at the wardrobe or mirror, floating in the pool
+  cook: "cook",
+  bath: "bath",
+  laundry: "laundry",
+  sweep: "sweep",
+  water_plants: "water_plants",
+  phone: "phone",
+  games: "games",
+  swim: "swim",
+  dress: "dress",
+};
+
+/**
+ * Life at home for the home card: the actions this house can do (and where), and what the room scene should show
+ * while you do one (your spot, a picture on the screen, a delivery rider).
+ */
+export function useHomeLife({
+  rooms,
+  roomKey,
+  items,
+  placed,
+  doneAt = {},
+  notify,
+  onChanged,
+  setAction,
+  avatar,
+  design,
+}: {
+  /** The house design ("starter" is the face-me room): cleaning a bigger house is done with a vacuum. */
+  design?: string | null;
+  rooms: HomeRoom[];
+  roomKey: string | null;
+  items: string[];
+  placed: Record<string, { room: string; x: number; y: number }>;
+  /** When each action was last done (from the server). */
+  doneAt?: Record<string, string>;
+  notify: (m: string) => void;
+  onChanged: () => void;
+  setAction: (a: PlayerAction) => void;
+  /** For the wardrobe ("Change your clothes"). */
+  avatar?: AvatarConfig | null;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [again, setAgain] = useState<Record<string, number>>({});
+  /** Where you do the action under way: only for that action, in that room (sleeping or a tap doesn't reuse it). */
+  const [spot, setSpot] = useState<{ room: string; act: PlayerAction; spot: NonNullable<InteriorPlayer["spot"]> } | null>(null);
+  const [show, setShow] = useState<{ room: string; quad: Quad; programme: Programme } | null>(null);
+  /** Water while you bathe or swim. */
+  const [fx, setFx] = useState<{ room: string; at: Pt; kind: "shower" | "splash" | "ripples" } | null>(null);
+  /** Cooking: the house cook steps aside while you're at the hob. */
+  const [cooking, setCooking] = useState<string | null>(null);
+  /** A TV you bought that's switched on (its picture plays on the thing itself). */
+  const [onItem, setOnItem] = useState<string | null>(null);
+  const [rider, setRider] = useState<{ room: string; at: Pt; door: Pt; seq: number } | null>(null);
+  const [goRoom, setGoRoom] = useState<{ key: string; seq: number } | null>(null);
+  const [calling, setCalling] = useState(false);
+  /** On a call: who, and where you stand. */
+  const [onCall, setOnCall] = useState<{ room: string; at: Pt; who: string } | null>(null);
+  const [dressing, setDressing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /** For each action: the room it's done in (this room if it can be, else the first that can), or none. */
+  const where = useMemo(() => {
+    const current = rooms.find((r) => r.key === roomKey) ?? rooms[0]!;
+    return new Map(
+      HOME_ACTIONS.map((a) => {
+        if (a.needs && !a.needs.some((k) => items.includes(k))) return [a.key, null] as const;
+        // "Eat what you cooked" only after cooking.
+        if (a.after) {
+          const done = again[a.after.action] ? again[a.after.action]! - (HOME_ACTIONS.find((x) => x.key === a.after!.action)?.every ?? 0) * 60_000 : doneAt[a.after.action] ? Date.parse(doneAt[a.after.action]!) : 0;
+          if (Date.now() - done > a.after.within * 60_000) return [a.key, null] as const;
+        }
+        const pick = [current, ...rooms.filter((r) => r !== current)].find((r) => spotIn(r, a.uses, items, placed, rooms));
+        return [a.key, pick ?? null] as const;
+      }),
+    );
+  }, [rooms, roomKey, items, placed, again, doneAt]);
+  const available = HOME_ACTIONS.filter((a) => where.get(a.key));
+  /** Things you could buy to do more at home. */
+  const unlocks = [
+    ...new Set(
+      HOME_ACTIONS.filter((a) => !where.get(a.key) && !a.after)
+        .flatMap((a) => [...(a.needs ?? []), ...Object.keys(ITEM_OBJECT).filter((k) => a.uses.includes(ITEM_OBJECT[k]!))].slice(0, 1))
+        .map((k) => HOME_ITEMS.find((i) => i.key === k)?.name.split(" (")[0])
+        .filter(Boolean),
+    ),
+  ];
+
+  const run = async (a: HomeAction, to?: string) => {
+    const room = where.get(a.key);
+    if (!room) return;
+    const at = spotIn(room, a.uses, items, placed, rooms)!;
+    setError(null);
+    if (room.key !== roomKey) setGoRoom({ key: room.key, seq: Date.now() });
+    // Walk to the thing and do it (sweeping goes round the room first; swimming does laps in the water).
+    const pool = HOME_OBJECTS[room.art]?.pool;
+    const via: Pt[] | undefined =
+      a.key === "clean" ? ROOMS[room.art]?.walkway : a.key === "swim" && pool ? [[0.42, 0.74], [0.6, 0.82], [0.44, 0.86], [0.58, 0.76]] : undefined;
+    const water = a.key === "swim" && pool ? { box: [0.3, 0.68, 0.7, 0.92] as [number, number, number, number], wade: 0.55 } : undefined;
+    const act: PlayerAction = a.shows && at.bought ? "stand" : a.key === "clean" && design && design !== "starter" ? "vacuum" : POSE[a.pose];
+    // At a table: seated at it with the plate on it, the table hiding the legs.
+    const table = at.spot.table != null && (act === "eat" || act === "sit") ? { pose: act === "eat" ? ("eat_table" as const) : ("sit_table" as const), behind: at.spot.table === true ? undefined : at.spot.table } : {};
+    setSpot({ room: room.key, act, spot: { at: at.spot.at, dir: at.spot.dir, via, seq: Date.now(), water, ...table } });
+    setFx(a.key === "swim" ? { room: room.key, at: at.spot.at, kind: "ripples" } : a.key === "bath" ? { room: room.key, at: at.spot.at, kind: at.obj === "shower" ? "shower" : "splash" } : null);
+    setCooking(a.key === "cook" ? room.key : null);
+    // Dancing to the radio puts a station on (unless something's already playing).
+    if (a.key === "radio_dance" && !musicState().playing) music.play("afro");
+    setOnCall(a.key === "call" ? { room: room.key, at: at.spot.at, who: to ?? "family" } : null);
+    setDressing(false);
+    // Watching a TV you bought: stand in front of it (there's no sofa facing it).
+    setAction(act);
+    if (a.shows && at.spot.screen) setShow({ room: room.key, quad: at.spot.screen, programme: pickProgramme(a.shows) });
+    else setShow(null);
+    // Watching on a TV you bought: switch it on.
+    setOnItem(a.shows && !at.spot.screen ? (items.find((k) => ITEM_OBJECT[k] === at.obj) ?? null) : null);
+    // The rider comes in at the door with the food and hands it over from the open floor nearest where you eat.
+    if (a.key === "order") {
+      const r = ROOMS[room.art];
+      const near: Pt = [at.spot.at[0] + 0.06, Math.min(0.9, at.spot.at[1] + 0.06)];
+      const hand = r && r.walkway.length > 1 ? nearestOnPolyline(r.walkway, near).at : near;
+      setRider({ room: room.key, at: hand, door: r?.spots?.door?.at ?? r?.walkway[0] ?? [0.5, 0.92], seq: Date.now() });
+    }
+    setBusy(true);
+    try {
+      const r = await api<NeedsView & { again: string; called?: string | null; boost?: boolean }>("POST", `/api/game/home/act/${a.key}`, { room: room.key, to });
+      setAgain((x) => ({ ...x, [a.key]: new Date(r.again).getTime() }));
+      const bits = (Object.entries(a.gives) as [NeedKey, number][]).filter(([, v]) => v).map(([k, v]) => `${v > 0 ? "+" : "−"}${NEED_ICON[k]} ${NEED_LABEL[k]}`);
+      const who = a.key === "call" ? (r.called ? ` You called @${r.called}; they got a ring.` : " You called home. Everyone's fine.") : "";
+      notify(
+        r.boost === false
+          ? `${a.icon} ${a.label}. Enjoy! (The boost comes back in ${Math.max(1, Math.ceil((Date.parse(r.again) - Date.now()) / 60_000))} min.)${who}`
+          : `${a.icon} ${a.label}${a.cost ? ` (−${formatCoins(a.cost)} coins)` : ""}: ${bits.join(" ")}.${who}`,
+      );
+      onChanged();
+      // The wardrobe opens right here in the house.
+      if (a.key === "dress") setDressing(true);
+      if (a.key === "call") window.setTimeout(() => setOnCall(null), 15_000);
+    } catch (e) {
+      setError((e as Error).message);
+      setShow(null);
+      setFx(null);
+      setCooking(null);
+      setAction("stand");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const start = (a: HomeAction) => (a.key === "call" ? setCalling(true) : void run(a));
+
+  // One rider per order: a new object each render would send him in again.
+  const riderWorker = useMemo<Worker | null>(
+    () =>
+      rider
+        ? {
+            // the delivery rider (helmet, plain jacket, box bag) hands the food over and chats a moment
+            variant: "rider",
+            start: 0,
+            visitor: { door: rider.door, away: 100_000, variants: ["rider"] },
+            tasks: [{ at: rider.at, pose: "stand_talk", dir: "nw", secs: 3 }],
+          }
+        : null,
+    [rider],
+  );
+  // Is the player drawn holding the phone? Their own layered sheet (layers on), or a baked everyday look with it.
+  const phoneDrawn = !!avatar && ((layersOn() && !!layerKeys(avatar)) || POSE_VARIANTS.phone_call.includes(variantFor(avatar)));
+  /** Props for the room scene now on show. */
+  const scene = (room: string, action?: PlayerAction): { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean } => ({
+    spot: spot?.room === room && spot.act === action ? spot.spot : undefined,
+    onItem,
+    hideCook: cooking === room,
+    overlay: show && show.room === room ? <ScreenShow quad={show.quad} programme={show.programme} /> : undefined,
+    overlayTop:
+      fx && fx.room === room ? <WaterFx at={fx.at} kind={fx.kind} /> : onCall && onCall.room === room ? <CallBubble at={onCall.at} who={onCall.who} drawn={phoneDrawn} /> : undefined,
+    extraWorkers: rider && riderWorker && rider.room === room ? [riderWorker] : undefined,
+  });
+
+  const panel = (
+    <>
+      {calling && (
+        <CallPicker
+          onClose={() => setCalling(false)}
+          onPick={(to) => {
+            setCalling(false);
+            void run(HOME_ACTIONS.find((x) => x.key === "call")!, to);
+          }}
+        />
+      )}
+      {dressing && avatar && (
+        <div className="call-picker" ref={(el) => { if (el && !el.dataset.shown) { el.dataset.shown = "1"; el.scrollIntoView({ block: "start", behavior: "smooth" }); } }}>
+          <Wardrobe avatar={avatar} notify={notify} onChanged={onChanged} />
+          <button type="button" className="btn sm quiet" onClick={() => setDressing(false)}>
+            Done
+          </button>
+        </div>
+      )}
+      <div className="row home-acts">
+        {available.map((a) => {
+          const room = where.get(a.key)!;
+          const elsewhere = roomKey !== null && room.key !== roomKey && rooms.length > 1;
+          return (
+            <button key={a.key} type="button" className="btn sm home-act" disabled={busy} onClick={() => start(a)} title={a.note}>
+              {a.icon} {a.label}
+              <span className="tiny muted">{elsewhere ? ` · in the ${room.label.toLowerCase()}` : ` · ${a.note}`}</span>
+            </button>
+          );
+        })}
+      </div>
+      {unlocks.length > 0 && <p className="tiny muted">More to do at home with: {unlocks.join(", ")} (in "Things for your house" below).</p>}
+      {error && <p className="alert small">{error}</p>}
+    </>
+  );
+  return { panel, scene, goRoom };
+}

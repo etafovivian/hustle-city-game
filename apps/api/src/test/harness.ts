@@ -42,7 +42,7 @@ export async function resetDatabase() {
 }
 
 export async function testServer() {
-  const config = loadConfig({ ...process.env, DATABASE_URL: TEST_DATABASE_URL, WEB_ORIGIN: ORIGIN, AUTH_RATE_LIMIT: "1000" });
+  const config = loadConfig({ ...process.env, DATABASE_URL: TEST_DATABASE_URL, WEB_ORIGIN: ORIGIN, AUTH_RATE_LIMIT: "1000", ACTION_RATE_SCALE: "100" });
   return buildServer(config, { logger: false });
 }
 
@@ -51,16 +51,16 @@ type App = Awaited<ReturnType<typeof testServer>>;
 export interface Player {
   cookie: string;
   id: string;
-  call: (method: "GET" | "POST" | "PATCH", url: string, body?: unknown) => Promise<Awaited<ReturnType<App["inject"]>>>;
+  call: (method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", url: string, body?: unknown) => Promise<Awaited<ReturnType<App["inject"]>>>;
 }
 
 let counter = 0;
-export async function registerPlayer(app: App, nickname = `player_${++counter}`): Promise<Player> {
+export async function registerPlayer(app: App, nickname = `player_${++counter}`, extra: Record<string, unknown> = {}): Promise<Player> {
   const res = await app.inject({
     method: "POST",
     url: "/api/auth/register",
     headers: { origin: ORIGIN },
-    payload: { email: `${nickname}@example.test`, password: "correct-horse-battery", nickname, avatar: DEFAULT_AVATAR, confirmAdult: true },
+    payload: { email: `${nickname}@example.test`, password: "correct-horse-battery", nickname, avatar: DEFAULT_AVATAR, hustle: "artisan", confirmAdult: true, ...extra },
   });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.statusCode} ${res.body}`);
   const setCookie = res.headers["set-cookie"];

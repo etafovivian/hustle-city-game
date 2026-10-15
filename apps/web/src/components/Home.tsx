@@ -1,0 +1,751 @@
+// Your home (the starter room or the house on your plot), the house picker for buying or rebuilding, and the garage.
+import {
+  PARTY_BY_KEY,
+  SELL_BACK,
+  GENERATORS,
+  HOME_ITEMS,
+  HOME_ROOMS,
+  HOUSE_BY_KEY,
+  HOUSE_DESIGNS,
+  REBUILD_CREDIT,
+  REST,
+  VEHICLES,
+  plotPriceOf,
+  type AvatarConfig,
+  type HomeView,
+  type NeedsView,
+  type VehicleKind, fuelPriceOn, type OwnedPlot, WORKOUT } from "@hc/shared";
+import { BedDouble, Car, Check, Coins, Hammer, Home as HomeIcon, Sofa, X, KeyRound } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { LetBox, RentPicker, Tenancy } from "./Rent.js";
+import { api, formatCoins } from "../api.js";
+import { InteriorScene, ROOMS, type InteriorPlayer, type PlayerAction, type Room } from "./Interior.js";
+import { itemAt, useHomeLife } from "./HomeLife.js";
+
+/** While you cook, the house cook steps out of the kitchen (you're at the hob now). */
+function withoutCook(room: Room | undefined, hide: boolean): Room | undefined {
+  if (!room || !hide) return room;
+  const cooks = (p: string | undefined) => p === "cook_hob" || p === "cook_stir";
+  return { ...room, stations: room.stations.filter((st) => !cooks(st.action)), workers: room.workers?.filter((w) => !w.tasks.some((t) => cooks(t.pose))) };
+}
+
+/** How wide each thing for the house is drawn, as a share of the room (a person is about 12%): a chair is smaller
+ * than a person, a sofa wider. */
+const ITEM_WIDTH: Record<string, number> = {
+  plastic_chairs: 0.07,
+  bucket_set: 0.08,
+  standing_fan: 0.06,
+  sofa_ankara: 0.2,
+  adire_sofa_set: 0.24,
+  generator_small: 0.07,
+  big_generator: 0.1,
+  water_tank: 0.14,
+  dumbbell_set: 0.09,
+  punching_bag: 0.09,
+  radio: 0.06,
+  prayer_mat: 0.12,
+  gas_cooker: 0.1,
+  flat_tv: 0.12,
+  game_console: 0.07,
+};
+import { PAIR_POSES, type PoseAction, type Worker } from "./rooms.js";
+import { variantFor } from "./AvatarWalker.js";
+import { RoomChat } from "./Chat.js";
+import { usePartnerAtHome } from "./Love.js";
+import { PartyPanel, useParties, withParty } from "./Party.js";
+import { HomePet, usePet } from "./Pets.js";
+
+function useSheet(onClose: () => void) {
+  const sheet = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    window.addEventListener("keydown", onKey);
+    // Focus the sheet once when it opens; refocusing on every re-render pulled focus out of text fields.
+    sheet.current?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return sheet;
+}
+
+const houseArt = (key: string) => `/art/buildings/${HOUSE_BY_KEY.get(key)?.art ?? "bungalow"}.webp`;
+
+/** Pick a house: for a plot you're buying (with the land price added) or to rebuild on your own plot. */
+export function HousePicker({ plotId, current, onPick, busy }: { plotId?: string; current?: string | null; onPick: (key: string) => void; busy: boolean }) {
+  const land = plotId ? (plotPriceOf(plotId) ?? 0) : 0;
+  const credit = current ? Math.round((HOUSE_BY_KEY.get(current)?.price ?? 0) * REBUILD_CREDIT) : 0;
+  return (
+    <ul className="house-grid">
+      {HOUSE_DESIGNS.map((h) => {
+        const cost = plotId ? land + h.price : Math.max(0, h.price - credit);
+        const isCurrent = current === h.key;
+        return (
+          <li key={h.key}>
+            <button type="button" className={`house-option ${isCurrent ? "current" : ""}`} disabled={busy || isCurrent} onClick={() => onPick(h.key)}>
+              <img src={`/art/buildings/${h.art}.webp`} alt="" />
+              <strong>{h.label}</strong>
+              <span className="tiny muted">{h.note}</span>
+              <span className="land-price">
+                {isCurrent ? (
+                  <>
+                    <Check size={13} aria-hidden="true" /> Your house
+                  </>
+                ) : (
+                  <>
+                    <Coins size={13} aria-hidden="true" /> {formatCoins(cost)}
+                  </>
+                )}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Your home: rest here, and (on your own plot) rebuild; in the starter room, a nudge to buy land. */
+
+export function HomeCard({
+  home,
+  label,
+  onClose,
+  onChanged,
+  notify,
+  onBuyLand,
+  chatPlace,
+  avatar,
+  guests = [],
+  area,
+  hasLight = true,
+}: {
+  /** Your home's area (power cuts) and whether it has light right now. */
+  area?: string;
+  hasLight?: boolean;
+  guests?: { avatar: AvatarConfig; nickname: string }[];
+  avatar?: AvatarConfig;
+  /** The presence/chat key for your home ("home:<plot>" or your room). */
+  chatPlace?: string;
+  home: HomeView;
+  /** "Room 4, face-me block" or the house name. */
+  label: string;
+  onClose: () => void;
+  onChanged: () => void;
+  notify: (m: string) => void;
+  onBuyLand: () => void;
+}) {
+  const sheet = useSheet(onClose);
+  const [renting, setRenting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [rebuild, setRebuild] = useState(false);
+  const [me, setMe] = useState<PlayerAction>("walk");
+  /** The room on show (what you can do there depends on what it has). */
+  const [roomKey, setRoomKey] = useState<string | null>(null);
+  const [placed, setPlaced] = useState(home.placements ?? {});
+  const [error, setError] = useState<string | null>(null);
+  const sellItem = async (key: string) => {
+    const item = HOME_ITEMS.find((i) => i.key === key);
+    if (!item || !window.confirm(`Sell back your ${item.name.split(" (")[0]!.toLowerCase()} for ${formatCoins(Math.floor(item.price * SELL_BACK))} coins (half what it cost)?`)) return;
+    try {
+      const r = await api<{ refund: number }>("DELETE", `/api/game/home/items/${key}`);
+      notify(`Sold back for ${formatCoins(r.refund)} coins.`);
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  };
+  const life = useHomeLife({ rooms: HOME_ROOMS[home.design ?? "starter"] ?? HOME_ROOMS.starter!, roomKey, items: home.items, placed, doneAt: home.actsDoneAt, notify, onChanged, setAction: setMe, avatar, design: home.design });
+  // Your partner, if they live with you: at home with you (in the parlour or the kitchen).
+  const partner = usePartnerAtHome();
+  const [parties, reloadParties] = useParties();
+  const restLeft = home.restAgainAt ? Math.max(0, new Date(home.restAgainAt).getTime() - Date.now()) : 0;
+
+  const workout = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      // Box with the bag if you have one, else curl the dumbbells (at the room's workout spot).
+      setMe(home.items.includes("punching_bag") ? "boxing" : "lift_weights");
+      await api("POST", "/api/game/home/workout");
+      notify(`Good session! +${WORKOUT.health} Health, +Fitness, −${WORKOUT.energy} Energy`);
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+      setMe("stand");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const rest = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setMe("sleep");
+      const r = await api<NeedsView & { gained: number; light: boolean; generator: boolean }>("POST", "/api/game/home/rest", { area });
+      notify(
+        !r.light && !r.generator
+          ? `NEPA took light: hot night, only +${r.gained} energy. A generator would help.`
+          : !r.light
+            ? `NEPA took light, but your generator dey hum. +${r.gained} energy`
+            : `Good night! +${r.gained} energy`,
+      );
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const build = async (design: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ paid: number }>("POST", `/api/plots/${encodeURIComponent(home.plotId!)}/build`, { design });
+      notify(`Rebuilt as a ${HOUSE_BY_KEY.get(design)!.label.toLowerCase()} (${formatCoins(r.paid)} coins)`);
+      onChanged();
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return createPortal(
+    <div className="phone-backdrop" onClick={onClose}>
+      <div ref={sheet} className="visit-sheet home-card" role="dialog" aria-modal="true" aria-label="Your home" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="phone-close visit-close" onClick={onClose} aria-label="Close">
+          <X size={18} aria-hidden="true" />
+        </button>
+        <div className="venue-head">
+          <img className="biz-art" src={home.design ? houseArt(home.design) : "/art/buildings/face-me-block.webp"} alt="" />
+          <div>
+            <h2>Your home</h2>
+            <span className="small muted">{label}</span>
+          </div>
+        </div>
+        <HomeRooms
+          design={home.design}
+          who="your"
+          items={home.items}
+          avatar={avatar}
+          action={me}
+          onAction={setMe}
+          onRoom={setRoomKey}
+          onSell={(k) => void sellItem(k)}
+          goRoom={life.goRoom}
+          scene={life.scene}
+          guests={partner ? [{ avatar: partner.avatar, nickname: partner.name, partner: true }, ...guests] : guests}
+          party={parties?.mine ? { crowd: PARTY_BY_KEY.get(parties.mine.size)!.crowd, seed: parties.mine.id.charCodeAt(0) + parties.mine.id.charCodeAt(1) } : null}
+          placements={placed}
+          onPlace={(key, room, x, y) => {
+            setPlaced((p) => ({ ...p, [key]: { room, x, y } }));
+            void api("PATCH", `/api/game/home/items/${key}`, { room, x, y }).catch(() => notify("Couldn't save that spot"));
+          }}
+        />
+        <div className="row home-acts">
+          {/* Sleep any time; the energy comes once per rest. */}
+          <button
+            type="button"
+            className="btn sm go"
+            disabled={busy}
+            onClick={() => {
+              if (restLeft <= 0) return void rest();
+              setMe("sleep");
+              notify(`You lie down for a while. Full rest again in ${Math.ceil(restLeft / 60_000)} min.`);
+            }}
+          >
+            <BedDouble size={16} aria-hidden="true" /> Sleep
+            <span className="tiny muted">{restLeft > 0 ? " · lie down a while" : ` · +${home.restEnergy} energy`}</span>
+          </button>
+          <button type="button" className="btn sm" onClick={() => setMe("dance")}>
+            💃 Dance
+          </button>
+          {home.items.some((k) => WORKOUT.items.includes(k)) && (
+            <button type="button" className="btn sm" disabled={busy} onClick={() => void workout()}>
+              {home.items.includes("punching_bag") ? "🥊" : "🏋️"} Work out
+            </button>
+          )}
+          <span className="tiny muted">Tap the floor to walk around.</span>
+        </div>
+        {life.panel}
+        {home.plotId && <PartyPanel design={home.design} view={parties} reload={reloadParties} notify={notify} onChanged={onChanged} />}
+        <p className={`small power-line ${hasLight ? "on" : "off"}`}>
+          {hasLight
+            ? "💡 There's light."
+            : home.items.some((k) => GENERATORS.includes(k))
+              ? "🕯️ NEPA took light. Your generator is running."
+              : "🕯️ NEPA took light. Sleeping now gives half the energy (a generator fixes that)."}
+        </p>
+        <p className="small">
+          {home.plotId
+            ? "Your own house on your own land. Rest here, and rebuild it bigger as your hustle grows."
+            : home.rental
+              ? "Your rented flat: your own space, your own key. Keep the rent paid."
+              : "A rented room in a face-me-I-face-you: shared toilet, generator noise, good neighbours. Rent a proper flat, or buy land to build your own house."}
+        </p>
+        <div className="row">
+          {home.plotId ? (
+            <button type="button" className="btn" onClick={() => setRebuild((x) => !x)}>
+              <Hammer size={16} aria-hidden="true" /> Change house
+            </button>
+          ) : (
+            <>
+              {!home.rental && (
+                <button type="button" className="btn" onClick={() => setRenting((x) => !x)}>
+                  <KeyRound size={16} aria-hidden="true" /> Rent a flat
+                </button>
+              )}
+              <button type="button" className="btn" onClick={onBuyLand}>
+                <HomeIcon size={16} aria-hidden="true" /> Buy land
+              </button>
+            </>
+          )}
+        </div>
+        {home.rental && <Tenancy rental={home.rental} notify={notify} onChanged={onChanged} />}
+        {renting && !home.rental && !home.plotId && <RentPicker notify={notify} onChanged={onChanged} />}
+        <HomeShop home={home} notify={notify} onChanged={onChanged} />
+        {rebuild && home.plotId && (
+          <>
+            <p className="tiny muted">Rebuilding gives you back half of what your current house cost.</p>
+            <HousePicker current={home.design} onPick={(k) => void build(k)} busy={busy} />
+          </>
+        )}
+        {error && <p className="alert small">{error}</p>}
+        {chatPlace && <RoomChat place={chatPlace} />}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** Phone → Garage: buy a bike, keke or car and drive yourself. */
+export function Garage({ notify, onChanged, showroom = false }: { notify: (m: string) => void; onChanged: () => void; showroom?: boolean }) {
+  const [owned, setOwned] = useState<VehicleKind[] | null>(null);
+  const [busy, setBusy] = useState<VehicleKind | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = () =>
+    api<VehicleKind[]>("GET", "/api/game/vehicles")
+      .then(setOwned)
+      .catch(() => setOwned([]));
+  useEffect(() => {
+    void load();
+  }, []);
+  const buy = async (kind: VehicleKind) => {
+    setBusy(kind);
+    setError(null);
+    try {
+      await api("POST", "/api/game/vehicles", { kind });
+      notify("It's yours! Next time you tap \"Go there\", choose \"Drive your…\" at the top.");
+      onChanged();
+      void load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="stack account-form">
+      <div className="stack" style={{ gap: 2 }}>
+        <h2 style={{ fontSize: showroom ? 17 : 20 }}>
+          <Car size={20} aria-hidden="true" /> {showroom ? "Pick your ride" : "Garage"}
+        </h2>
+        <p className="small muted">Drive yourself: no fare, just a little fuel. Faster than a danfo, and the area boys mostly leave a car alone.</p>
+      </div>
+      <ul className="garage">
+        {VEHICLES.map((v) => {
+          const mine = owned?.includes(v.kind);
+          return (
+            <li key={v.kind} className="quote-card garage-item">
+              <img src={v.image} alt="" />
+              <span className="stack" style={{ gap: 2 }}>
+                <strong>{v.label}</strong>
+                <span className="tiny muted">
+                  {v.note} · fuel {Math.round(v.fuelPerKm * fuelPriceOn().factor)} coins/km{fuelPriceOn().scarcity ? " today (scarcity)" : ""}
+                </span>
+              </span>
+              {mine ? (
+                <span className="notice small">
+                  <Check size={14} aria-hidden="true" /> Yours
+                </span>
+              ) : (
+                <button type="button" className="btn sm go" disabled={busy !== null} onClick={() => void buy(v.kind)}>
+                  {busy === v.kind ? "…" : `${formatCoins(v.price)} coins`}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p className="alert small">{error}</p>}
+    </div>
+  );
+}
+
+/** The rooms of a home with tabs to move between them (bigger houses have more rooms). */
+
+/**
+ * A private home: no strangers. A house help works in the kitchen, and guests (players visiting now) sit in the
+ * living rooms or at the kitchen table, each in their own seat. Bedrooms are just for the household.
+ */
+function privateRoom(room: Room | undefined, kind: string, guests: { avatar: AvatarConfig; partner?: boolean }[]): Room | undefined {
+  if (!room) return room;
+  // Your partner takes the together spot next to yours where the room has one (Room.pairs): across the table in the
+  // kitchen, beside you on the sofa elsewhere, in their own look.
+  const pairKey = /kitchen/.test(kind) ? "eat" : "sit";
+  const pair = room.pairs?.[pairKey];
+  const partner = pair ? guests.find((g) => g.partner) : undefined;
+  if (partner && pair) {
+    const pose = PAIR_POSES[pairKey].partner;
+    const rest = privateRoom(room, kind, guests.filter((g) => g !== partner));
+    return {
+      ...rest!,
+      stations: [...rest!.stations, { action: pair[1].pose ?? pose, at: pair[1].at, dir: pair[1].dir, behind: pair[1].behind, variant: variantFor(partner.avatar), look: partner.avatar }],
+    };
+  }
+  const kitchen = /kitchen/.test(kind);
+  const social = /parlour|living|lounge|cinema|room|pool|yard/.test(kind);
+  const seats = [
+    ...(room.spots?.sit ? [room.spots.sit] : []),
+    ...(room.spots?.eat ? [room.spots.eat] : []),
+    ...room.stations.filter((s) => s.action === "sit_talk" || s.action === "sit_eat").map((s) => ({ at: s.at, dir: s.dir })),
+  ];
+  const help = kitchen ? room.stations.filter((s) => s.action === "serve").slice(0, 1) : [];
+  const guestSeats = kitchen || social ? guests.slice(0, seats.length) : [];
+  return {
+    ...room,
+    walkers: 0,
+    stations: [
+      ...help,
+      ...guestSeats.map((g, i) => ({ action: (kitchen ? "sit_eat" : "sit_talk") as PoseAction, at: seats[i]!.at, dir: seats[i]!.dir, variant: variantFor(g.avatar), look: g.avatar })),
+    ],
+  };
+}
+
+export function HomeRooms({
+  design,
+  who,
+  items = [],
+  avatar,
+  action = "walk",
+  onAction,
+  onRoom,
+  onSell,
+  goRoom,
+  scene,
+  guests = [],
+  placements = {},
+  onPlace,
+  party,
+}: {
+  /** A party on in this house: how many people dance in it (and a seed for their looks). */
+  party?: { crowd: number; seed: number } | null;
+  /** Where you put your things; with onPlace you can drag them (your own home). */
+  placements?: Record<string, { room: string; x: number; y: number }>;
+  onPlace?: (key: string, room: string, x: number, y: number) => void;
+  /** Players visiting this home right now (and your partner, if they live with you). */
+  guests?: { avatar: AvatarConfig; nickname: string; partner?: boolean }[];
+  design: string | null;
+  who: string;
+  items?: string[];
+  /** You in the room (you walk around, sit, eat, sleep). */
+  avatar?: AvatarConfig;
+  action?: PlayerAction;
+  onAction?: (a: PlayerAction) => void;
+  /** The room now on show. */
+  onRoom?: (key: string) => void;
+  /** Sell a thing back (from the ✕ on it while arranging). */
+  onSell?: (key: string) => void;
+  /** Switch to this room (an action happens there). */
+  goRoom?: { key: string; seq: number } | null;
+  /** What the room scene shows while you do something (your spot, a picture on the screen, a delivery). */
+  scene?: (room: string, action?: PlayerAction) => { spot?: InteriorPlayer["spot"]; overlay?: ReactNode; overlayTop?: ReactNode; extraWorkers?: Worker[]; onItem?: string | null; hideCook?: boolean };
+}) {
+  const rooms = HOME_ROOMS[design ?? "starter"] ?? HOME_ROOMS.starter!;
+  const [at, setAt] = useState(0);
+  const [arranging, setArranging] = useState(false);
+  const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const pet = usePet();
+  // Going to sleep takes you to the bedroom (when the house has one). Other things you do pick their own room
+  // (life at home, goRoom).
+  useEffect(() => {
+    const want = action === "sleep" ? /bed|suite|room/ : null;
+    if (!want) return;
+    const i = rooms.findIndex((r) => want.test(r.key));
+    if (i >= 0) setAt(i);
+  }, [action]);
+  const room = rooms[Math.min(at, rooms.length - 1)]!;
+  useEffect(() => onRoom?.(room.key), [room.key]);
+  useEffect(() => {
+    if (!goRoom) return;
+    const i = rooms.findIndex((r) => r.key === goRoom.key);
+    if (i >= 0) setAt(i);
+  }, [goRoom?.seq]);
+  const extra = scene?.(room.key, action);
+  return (
+    <div className="home-rooms">
+      {rooms.length > 1 && (
+        <div className="row" role="tablist" aria-label="Rooms">
+          {rooms.map((r, i) => (
+            <button key={r.key} type="button" role="tab" className="chip" aria-selected={i === at} aria-pressed={i === at} onClick={() => setAt(i)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {guests.length > 0 && <p className="tiny muted">With you: {guests.map((g) => (g.partner ? `${g.nickname} 💞` : `@${g.nickname}`)).join(", ")}</p>}
+      {onPlace && items.length > 0 && (
+        <button type="button" className={`btn sm ${arranging ? "go" : ""}`} style={{ justifySelf: "start" }} onClick={() => setArranging((x) => !x)}>
+          {arranging ? "Done arranging" : "🪑 Arrange furniture"}
+        </button>
+      )}
+      {arranging && onPlace && (
+        // All your things, wherever they are: bring any of them into this room, then drag it into place.
+        <div className="arrange-tray">
+          <span className="tiny muted">Your things ({items.length}). Drag them in the picture; "Bring here" moves one into the {room.label.toLowerCase()}.</span>
+          {items.map((k) => {
+            const item = HOME_ITEMS.find((x) => x.key === k);
+            const at = itemAt(items, k, rooms, placements);
+            const here = at.room === room.key;
+            const walk = ROOMS[room.art]?.walkway ?? [];
+            const spot = walk[Math.floor(walk.length / 2)] ?? [0.5, 0.75];
+            return (
+              <div key={k} className="arrange-row">
+                <span className="small">{item?.name.split(" (")[0] ?? k}</span>
+                <span className="tiny muted">{here ? "here" : `in the ${rooms.find((r) => r.key === at.room)?.label.toLowerCase() ?? "house"}`}</span>
+                {!here && (
+                  <button type="button" className="btn sm" onClick={() => onPlace(k, room.key, Math.min(0.9, Math.max(0.1, spot[0])), Math.min(0.95, Math.max(0.35, spot[1])))}>
+                    Bring here
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className={`home-room-frame ${arranging ? "arranging" : ""}`} ref={frame}>
+        <InteriorScene
+          key={room.key}
+          src={`/art/interiors/${room.art}.webp`}
+          alt={`Inside ${who} ${room.label.toLowerCase()}`}
+          room={withParty(withoutCook(privateRoom(ROOMS[room.art], room.key, guests), !!extra?.hideCook), room.key, party ?? null)}
+          seed={3 + at}
+          player={avatar ? { avatar, action, spot: extra?.spot } : undefined}
+          onPlayerWalk={() => onAction?.("walk")}
+          overlay={extra?.overlay}
+          overlayTop={extra?.overlayTop}
+          extraWorkers={extra?.extraWorkers}
+        />
+        {/* Your pet, pottering about (only in your own home) */}
+        {onPlace && pet && <HomePet key={`pet-${room.key}`} kind={pet.kind} walkway={ROOMS[room.art]?.walkway ?? []} asleep={action === "sleep"} />}
+        {/* Your things: where you put them, else each in its own sort of room (see itemAt) */}
+        {items
+          .map((k) => ({ k, spot: itemAt(items, k, rooms, placements) }))
+          .filter(({ spot }) => spot.room === room.key)
+          .map(({ k, spot }) => {
+            const item = HOME_ITEMS.find((x) => x.key === k);
+            const [x, y] = drag?.key === k ? [drag.x, drag.y] : [spot.x, spot.y];
+            return item ? (
+              <span key={`${k}-wrap`} style={{ display: "contents" }}>
+              {arranging && onSell && (
+                <button
+                  type="button"
+                  className="home-item-sell"
+                  style={{ left: `${x * 100}%`, top: `${y * 100}%`, zIndex: Math.round(y * 1000) + 2 }}
+                  onClick={() => onSell(k)}
+                  aria-label={`Sell back the ${item.name}`}
+                  title="Sell back for half its price"
+                >
+                  ✕
+                </button>
+              )}
+              <img
+                key={k}
+                className="home-item"
+                src={extra?.onItem === k && item.art.endsWith(".svg") ? item.art.replace(/\.svg$/, "-on.svg") : item.art}
+                alt={item.name}
+                title={item.name}
+                draggable={false}
+                style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${(ITEM_WIDTH[k] ?? 0.1) * 100}%`, cursor: arranging ? "grab" : undefined, zIndex: Math.round(y * 1000) + 1 }}
+                onPointerDown={(e) => {
+                  if (!arranging) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                  setDrag({ key: k, x, y });
+                }}
+                onPointerMove={(e) => {
+                  if (!drag || drag.key !== k || !frame.current) return;
+                  const r = frame.current.getBoundingClientRect();
+                  setDrag({ key: k, x: Math.min(0.95, Math.max(0.05, (e.clientX - r.left) / r.width)), y: Math.min(0.98, Math.max(0.3, (e.clientY - r.top) / r.height)) });
+                }}
+                onPointerUp={() => {
+                  if (!drag || drag.key !== k) return;
+                  onPlace?.(k, room.key, drag.x, drag.y);
+                  setDrag(null);
+                }}
+              />
+              </span>
+            ) : null;
+          })}
+      </div>
+    </div>
+  );
+}
+
+/** Things for the house: buy each once; they appear in your rooms and make sleeping at home better. */
+function HomeShop({ home, notify, onChanged }: { home: HomeView; notify: (m: string) => void; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const buy = async (key: string) => {
+    setBusy(key);
+    try {
+      await api("POST", "/api/game/home/items", { key });
+      notify("Delivered! It's in your house now.");
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const sell = async (key: string, name: string, price: number) => {
+    if (!window.confirm(`Sell back your ${name.split(" (")[0]!.toLowerCase()} for ${formatCoins(Math.floor(price * SELL_BACK))} coins (half what it cost)?`)) return;
+    setBusy(key);
+    try {
+      const r = await api<{ refund: number }>("DELETE", `/api/game/home/items/${key}`);
+      notify(`Sold back for ${formatCoins(r.refund)} coins.`);
+      onChanged();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="home-shop">
+      <button type="button" className="btn sm" onClick={() => setOpen((x) => !x)}>
+        <Sofa size={15} aria-hidden="true" /> Things for your house ({home.items.length}/{HOME_ITEMS.length})
+      </button>
+      {open && (
+        <ul className="garage">
+          {HOME_ITEMS.map((it) => {
+            const owned = home.items.includes(it.key);
+            return (
+              <li key={it.key} className="quote-card garage-item">
+                <img src={it.art} alt="" />
+                <span className="stack" style={{ gap: 2 }}>
+                  <strong>{it.name}</strong>
+                  <span className="tiny muted">+{it.comfort} energy every sleep</span>
+                </span>
+                {owned ? (
+                  <span className="stack" style={{ gap: 4, justifyItems: "end" }}>
+                    <span className="notice small">
+                      <Check size={14} aria-hidden="true" /> Yours
+                    </span>
+                    <button type="button" className="btn sm quiet" disabled={busy !== null} onClick={() => void sell(it.key, it.name, it.price)}>
+                      {busy === it.key ? "…" : `Sell back (${formatCoins(Math.floor(it.price * SELL_BACK))})`}
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" className="btn sm go" disabled={busy !== null} onClick={() => void buy(it.key)}>
+                    {busy === it.key ? "…" : `${formatCoins(it.price)} coins`}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** One of your plots: build or rebuild a house, make it home, or go inside. */
+export function PlotCard({
+  plot,
+  area,
+  onClose,
+  onChanged,
+  notify,
+}: {
+  plot: OwnedPlot;
+  area: string;
+  onClose: () => void;
+  onChanged: () => void;
+  notify: (m: string) => void;
+}) {
+  const sheet = useSheet(onClose);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(!plot.design);
+  const build = async (design: string) => {
+    setBusy(true);
+    try {
+      const r = await api<{ paid: number }>("POST", `/api/plots/${encodeURIComponent(plot.plotId)}/build`, { design });
+      notify(`${HOUSE_BY_KEY.get(design)!.label} built (${formatCoins(r.paid)} coins)`);
+      onChanged();
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const makeHome = async () => {
+    setBusy(true);
+    try {
+      await api("POST", `/api/plots/${encodeURIComponent(plot.plotId)}/home`);
+      notify("This is home now");
+      onChanged();
+      onClose();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return createPortal(
+    <div className="phone-backdrop" onClick={onClose}>
+      <div ref={sheet} className="visit-sheet home-card" role="dialog" aria-modal="true" aria-label="Your plot" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="phone-close visit-close" onClick={onClose} aria-label="Close">
+          <X size={18} aria-hidden="true" />
+        </button>
+        <div className="venue-head">
+          <img className="biz-art" src={plot.design ? houseArt(plot.design) : "/art/props/for-sale-sign.webp"} alt="" />
+          <div>
+            <h2>{plot.design ? `Your ${HOUSE_BY_KEY.get(plot.design)?.label.toLowerCase()}` : "Your land"}</h2>
+            <span className="small muted">
+              {area}
+              {plot.isHome ? " · your home" : ""}
+            </span>
+          </div>
+        </div>
+        {plot.design && <HomeRooms design={plot.design} who="your" />}
+        <div className="row">
+          {plot.design && !plot.isHome && (
+            <button type="button" className="btn go" disabled={busy} onClick={() => void makeHome()}>
+              <HomeIcon size={16} aria-hidden="true" /> Make this my home
+            </button>
+          )}
+          {plot.design && (
+            <button type="button" className="btn" onClick={() => setPicking((x) => !x)}>
+              <Hammer size={16} aria-hidden="true" /> Change house
+            </button>
+          )}
+        </div>
+        {plot.design && !plot.isHome && <LetBox plot={plot} notify={notify} onChanged={onChanged} />}
+        {picking && (
+          <>
+            <p className="tiny muted">{plot.design ? "Rebuilding gives you back half of what this house cost." : "Pick a house to build on your land."}</p>
+            <HousePicker current={plot.design} onPick={(k) => void build(k)} busy={busy} />
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}

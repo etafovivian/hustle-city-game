@@ -1,0 +1,17 @@
+Walk-cycle sprite sheets rendered for Naija Hustle City by scripts/blender/agent/sprites.py (Blender 5.2, headless, LOOK=toon:
+cel bands plus Freestyle outlines)
+from the CC0 Quaternius bodies and animations in public/models (see public/models/LICENSE.txt), with clothes from
+scripts/blender/agent/garments.py and hair from scripts/blender/hair.py. Original work for this project.
+Each file: 8 frames of 96x160 in a row (Walk_Loop), direction se/sw/ne/nw = walking towards screen down-right,
+down-left, up-right, up-left. Feet on a ground line 16 px above the frame bottom; 76 px per metre.
+
+Outfit looks (one per body and outfit a player can wear, named <body>-<outfit>, e.g. man-tee_blue, woman-peplum_coral):
+painted in the outfit colours of src/components/Avatar3D.tsx OUTFITS; agbada, kaftan, buba and peplum garments from
+garments.py recoloured (the woman's kaftan is built on her body by sprites.py). Hair: man low_cut, woman braids, gele
+with the peplum. Their pose sheets are in ../poses.
+
+Staff in uniform (sprites.py STAFF_VARIANTS; for people at work in rooms only, never street walkers): nurse (light-blue
+scrubs, white cap, bob hair), doctor (white coat open over a blue shirt and tie, stethoscope), chef (whites, white
+apron, toque), waiter (white shirt, black waistcoat, long white apron) and bartender (dark shirt with rolled sleeves,
+leather apron). Uniforms are painted on the body; the coat and aprons are lofted round the body and skinned (garments.py
+Fit); the cap, toque and stethoscope are small meshes on the head and chest bones. Their work poses are in ../poses.

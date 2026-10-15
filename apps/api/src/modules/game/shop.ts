@@ -2,11 +2,13 @@
 // The client never changes coins or inventory directly (FR02).
 
 import { randomUUID } from "node:crypto";
-import { simInventory, simOrders, simShops } from "@hc/db";
+import { shopDecor, simInventory, simOrders, simShops } from "@hc/db";
 import {
   ECONOMY,
   STOCK_ITEMS,
   STOCK_ITEMS_BY_KEY,
+  appealOf,
+  demandBoost,
   customerOrderFor,
   isValidPrice,
   orderSlotIndex,
@@ -23,14 +25,27 @@ import { recordEvents } from "./quests.js";
 
 type ShopRow = typeof simShops.$inferSelect;
 
-export async function createShop(tx: Tx, userId: string, nickname: string, now: Date) {
+export async function createShop(
+  tx: Tx,
+  userId: string,
+  shopName: string,
+  now: Date,
+  starter?: { itemKey: string; units: number },
+) {
   const [shop] = await tx
     .insert(simShops)
-    .values({ ownerId: userId, name: `${nickname}'s Shop`, settledStep: stepIndex(now) })
+    .values({ ownerId: userId, name: shopName, settledStep: stepIndex(now) })
     .returning();
   await tx
     .insert(simInventory)
-    .values(STOCK_ITEMS.map((i) => ({ shopId: shop!.id, itemKey: i.key, quantity: 0, price: i.referencePrice })));
+    .values(
+      STOCK_ITEMS.map((i) => ({
+        shopId: shop!.id,
+        itemKey: i.key,
+        quantity: starter?.itemKey === i.key ? starter.units : 0,
+        price: i.referencePrice,
+      })),
+    );
   return shop!;
 }
 
@@ -45,7 +60,8 @@ async function openShop(tx: Tx, userId: string, now: Date, timeZone: string) {
 
 async function settle(tx: Tx, shop: ShopRow, now: Date, timeZone: string) {
   const lines = await tx.select().from(simInventory).where(eq(simInventory.shopId, shop.id));
-  const result = settleShop(shop.id, lines, shop.settledStep, stepIndex(now));
+  const decor = await tx.select().from(shopDecor).where(eq(shopDecor.shopId, shop.id));
+  const result = settleShop(shop.id, lines, shop.settledStep, stepIndex(now), demandBoost(appealOf(decor)));
 
   for (const sale of result.sales) {
     await tx
@@ -147,6 +163,32 @@ export async function restock(ctx: ShopCtx, itemKey: string, units: number, requ
         target: [simInventory.shopId, simInventory.itemKey],
         set: { quantity: sql`${simInventory.quantity} + ${units}` },
       });
+    await recordEvents(tx, userId, [{ type: "stock_purchased" }], now, timeZone);
+  }
+  return view(tx, shop, recentSales, now);
+}
+
+/** Stock bought at Balogun Market at a haggled total price (instead of the usual wholesale cost). */
+export async function stockFromMarket(ctx: ShopCtx, itemKey: string, units: number, paid: number, requestId: string) {
+  const { tx, userId, now, timeZone } = ctx;
+  const item = itemOrThrow(itemKey);
+  if (!Number.isInteger(units) || units < 1 || units > ECONOMY.maxRestockUnits) {
+    throw badRequest("invalid_units", `Buy between 1 and ${ECONOMY.maxRestockUnits} units.`);
+  }
+  const { shop, recentSales } = await openShop(tx, userId, now, timeZone);
+  const [line] = await tx
+    .select()
+    .from(simInventory)
+    .where(and(eq(simInventory.shopId, shop.id), eq(simInventory.itemKey, item.key)));
+  if ((line?.quantity ?? 0) + units > ECONOMY.maxStockPerItem) {
+    throw badRequest("stock_limit", `You can hold at most ${ECONOMY.maxStockPerItem} of one item.`);
+  }
+  const posting = await postCoins(tx, userId, -paid, "restock", `market:${requestId}`);
+  if (posting.applied) {
+    await tx
+      .insert(simInventory)
+      .values({ shopId: shop.id, itemKey: item.key, quantity: units, price: item.referencePrice })
+      .onConflictDoUpdate({ target: [simInventory.shopId, simInventory.itemKey], set: { quantity: sql`${simInventory.quantity} + ${units}` } });
     await recordEvents(tx, userId, [{ type: "stock_purchased" }], now, timeZone);
   }
   return view(tx, shop, recentSales, now);

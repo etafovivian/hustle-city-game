@@ -1,113 +1,223 @@
-import { AVATAR_OPTIONS, type AvatarConfig } from "@hc/shared";
+// Player avatars drawn with DiceBear "Personas" by Draftbit (CC BY 4.0, credited in the picker and README).
+import { createAvatar } from "@dicebear/core";
+import * as personas from "@dicebear/personas";
+import { AVATAR_OPTIONS, FABRIC_HAIR, FABRIC_HAIR_DEFAULT, HAIR_COLORS, LEGACY_HAIR, LOOK_ORDER, OUTFIT_COLORS, OUTFIT_INFO, SKIN_ORDER, bodyOf, type AvatarConfig, type BodyType } from "@hc/shared";
+import { useMemo } from "react";
+import { layersOn } from "./spriteComposer.js";
 
-const OUTFIT_COLORS: Record<string, { base: string; trim: string }> = {
-  ankara_green: { base: "#0f7b4b", trim: "#f5c542" },
-  agbada_white: { base: "#f3efe6", trim: "#8a7f68" },
-  jersey_red: { base: "#c0392b", trim: "#ffffff" },
-  tee_blue: { base: "#2f6fb2", trim: "#1d4f82" },
-  kaftan_gold: { base: "#c99a2e", trim: "#6b4e12" },
-  hoodie_black: { base: "#25282b", trim: "#5a5f64" },
+/** The looks every player sees drawn in the city today; the newer ones only show while layered looks are on (admins
+ * first), so for now the picker offers them only there: what you pick is what you see. */
+const BAKED = {
+  skin: new Set<string>(AVATAR_OPTIONS.skinTone.slice(0, 6)),
+  hair: new Set<string>(AVATAR_OPTIONS.hairStyle.slice(0, 11)),
+  outfit: new Set<string>(AVATAR_OPTIONS.outfit.slice(0, 8)),
+};
+const offered = (kind: keyof typeof BAKED, list: readonly string[], current: string) => (layersOn() ? list : list.filter((k) => BAKED[kind].has(k) || k === current));
+
+type PersonasHair = NonNullable<personas.Options["hair"]>[number];
+
+const HAIR: Record<string, PersonasHair> = {
+  low_cut: "fade",
+  buzzcut: "buzzcut",
+  high_top: "curlyHighTop",
+  curly: "curly",
+  puff: "curlyBun",
+  locs: "long",
+  bald: "bald",
+  cap: "cap",
+  braids: "extraLong",
+  bob: "bobCut",
+  gele: "beanie",
+  straight: "shortCombover",
+  wavy: "bobBangs",
+  ponytail: "pigtails",
+  bun: "straightBun",
+  side_part: "shortComboverChops",
+  long_straight: "long",
+  hijab: "beanie",
+  knotless: "extraLong",
+  big_afro: "curly",
+  bob_wig: "bobBangs",
+  twists: "long",
+  fade_part: "fade",
 };
 
-const HAIR = "#1b1410";
+const HAIR_LABEL: Record<string, string> = {
+  low_cut: "Low cut",
+  buzzcut: "Buzz cut",
+  high_top: "High top",
+  curly: "Curls",
+  puff: "Puff",
+  locs: "Locs",
+  bald: "Bald",
+  cap: "Cap",
+  braids: "Braids",
+  bob: "Bob",
+  gele: "Gele",
+  straight: "Straight",
+  wavy: "Wavy",
+  ponytail: "Ponytail",
+  bun: "Bun",
+  side_part: "Side part",
+  long_straight: "Long straight",
+  hijab: "Hijab",
+  knotless: "Knotless braids",
+  big_afro: "Big afro",
+  bob_wig: "Bob wig",
+  twists: "Twists",
+  fade_part: "Fade with a part",
+};
 
-function Hair({ style }: { style: string }) {
-  switch (style) {
-    case "afro":
-      return <circle cx="50" cy="30" r="22" fill={HAIR} />;
-    case "braids":
-      return (
-        <g fill={HAIR}>
-          <path d="M31 34c0-14 8-21 19-21s19 7 19 21c-4-6-10-9-19-9s-15 3-19 9z" />
-          <rect x="29" y="34" width="5" height="22" rx="2.5" />
-          <rect x="66" y="34" width="5" height="22" rx="2.5" />
-        </g>
-      );
-    case "locs":
-      return (
-        <g fill={HAIR}>
-          <path d="M30 36c0-15 9-23 20-23s20 8 20 23c-5-6-11-9-20-9s-15 3-20 9z" />
-          {[30, 36, 62, 68].map((x) => (
-            <rect key={x} x={x} y="32" width="4" height="26" rx="2" />
-          ))}
-        </g>
-      );
-    case "bald":
-      return <ellipse cx="44" cy="24" rx="5" ry="2.5" fill="#fff" opacity="0.25" />;
-    case "headwrap":
-      return (
-        <g>
-          <path d="M28 34c0-16 10-24 22-24s22 8 22 24H28z" fill="#e2572b" />
-          <path d="M40 14c6-6 16-6 22 2-6 0-12 2-16 6z" fill="#f5c542" />
-        </g>
-      );
-    default: // low_cut
-      return <path d="M32 34c0-13 8-19 18-19s18 6 18 19c-4-5-10-7-18-7s-14 2-18 7z" fill={HAIR} />;
-  }
+// Outfit colours drawn from the wax-print dyes (shared OUTFIT_INFO, without the "#").
+const OUTFIT: Record<string, { color: string; label: string }> = Object.fromEntries(
+  Object.entries(OUTFIT_INFO).map(([k, v]) => [k, { color: v.color.slice(1), label: v.label }]),
+);
+
+/** Gele, caps and the hijab take a fabric colour; hair is near-black. */
+const HAIR_COLOR: Record<string, string> = Object.fromEntries(Object.entries(FABRIC_HAIR_DEFAULT).map(([k, v]) => [k, v.slice(1)]));
+
+export function avatarUri(a: AvatarConfig): string {
+  const hairKey = HAIR[a.hairStyle] ? a.hairStyle : (LEGACY_HAIR[a.hairStyle] ?? "low_cut");
+  return createAvatar(personas, {
+    seed: "naija-hustle-city",
+    skinColor: [a.skinTone.replace("#", "")],
+    hair: [HAIR[hairKey]!],
+    hairColor: [(a.hairColor ?? "").replace("#", "") || (HAIR_COLOR[hairKey] ?? "1b1410")],
+    clothingColor: [(a.outfitColor ?? "").replace("#", "") || (OUTFIT[a.outfit]?.color ?? OUTFIT.ankara_green!.color)],
+    body: ["rounded"],
+    eyes: ["open"],
+    mouth: ["smile"],
+    nose: ["smallRound"],
+    facialHairProbability: 0,
+    scale: 112,
+    translateY: 4,
+  }).toDataUri();
 }
 
-export function Avatar({ avatar, size = 40 }: { avatar: AvatarConfig; size?: number }) {
-  const outfit = OUTFIT_COLORS[avatar.outfit] ?? OUTFIT_COLORS.ankara_green!;
+export function Avatar({ avatar, size = 40, className }: { avatar: AvatarConfig; size?: number; className?: string }) {
+  const src = useMemo(() => avatarUri(avatar), [avatar.skinTone, avatar.hairStyle, avatar.outfit, avatar.body, avatar.outfitColor, avatar.hairColor]);
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Avatar">
-      <circle cx="50" cy="50" r="50" fill="var(--surface-2)" />
-      <path d="M18 100c2-20 15-32 32-32s30 12 32 32z" fill={outfit.base} />
-      <path d="M42 70l8 10 8-10" fill="none" stroke={outfit.trim} strokeWidth="3" />
-      <rect x="44" y="56" width="12" height="12" rx="4" fill={avatar.skinTone} />
-      <circle cx="50" cy="38" r="19" fill={avatar.skinTone} />
-      <Hair style={avatar.hairStyle} />
-      <circle cx="43" cy="40" r="2" fill="#1b1410" />
-      <circle cx="57" cy="40" r="2" fill="#1b1410" />
-      <path d="M44 47c3 3 9 3 12 0" fill="none" stroke="#1b1410" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <span className={`avatar ${className ?? ""}`} style={{ width: size, height: size }}>
+      <img src={src} width={size} height={size} alt="Your avatar" draggable={false} />
+    </span>
   );
 }
 
-const label = (s: string) => s.replace(/_/g, " ");
+/** Switching body starts from that body's most common hair and outfit (players can still pick any). */
+function withBody(a: AvatarConfig, body: BodyType): AvatarConfig {
+  if (a.body === body) return a;
+  return { ...a, body, hairStyle: LOOK_ORDER[body].hair[0]!, outfit: LOOK_ORDER[body].outfit[0]! };
+}
 
-export function AvatarPicker({ value, onChange }: { value: AvatarConfig; onChange: (v: AvatarConfig) => void }) {
+export function AvatarPicker({
+  value,
+  onChange,
+  preview = true,
+}: {
+  value: AvatarConfig;
+  onChange: (v: AvatarConfig) => void;
+  preview?: boolean;
+}) {
   return (
-    <div className="avatar-picker">
-      <div className="row">
-        <Avatar avatar={value} size={84} />
-        <p className="muted small">Pick a look. You can change it later.</p>
+    <fieldset className="avatar-picker">
+      <legend className="field-label" style={{ padding: 0, marginBottom: 10 }}>
+        Your look
+      </legend>
+      {preview && (
+      <div className="look-card">
+        <span className="look-avatar">
+          <Avatar avatar={value} size={64} />
+          <span className="level-badge">Lvl 1</span>
+        </span>
+        <p className="muted small">Pick a look now. You can change it any time inside Junction 101.</p>
       </div>
-      <div>
-        <div className="small muted">Skin tone</div>
+      )}
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">You are a</span>
+        <div className="body-pick" role="radiogroup" aria-label="Body">
+          {AVATAR_OPTIONS.body.map((b) => (
+            <button
+              key={b}
+              type="button"
+              role="radio"
+              className="chip body-chip"
+              aria-checked={value.body === b}
+              aria-pressed={value.body === b}
+              onClick={() => onChange(withBody(value, b))}
+            >
+              {b === "man" ? "Man" : "Woman"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">Skin tone</span>
         <div className="swatches">
-          {AVATAR_OPTIONS.skinTone.map((c) => (
+          {offered("skin", SKIN_ORDER, value.skinTone).map((c, i, all) => (
             <button
               key={c}
               type="button"
               className="swatch"
               style={{ background: c }}
-              aria-label={`Skin tone ${c}`}
+              aria-label={`Skin tone ${i + 1} of ${all.length}`}
               aria-pressed={value.skinTone === c}
               onClick={() => onChange({ ...value, skinTone: c })}
             />
           ))}
         </div>
       </div>
-      <div>
-        <div className="small muted">Hair</div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">Hair</span>
         <div className="swatches">
-          {AVATAR_OPTIONS.hairStyle.map((h) => (
-            <button key={h} type="button" className="chip" aria-pressed={value.hairStyle === h} onClick={() => onChange({ ...value, hairStyle: h })}>
-              {label(h)}
+          {offered("hair", LOOK_ORDER[bodyOf(value)].hair, value.hairStyle).map((h) => (
+            <button key={h} type="button" className="chip" aria-pressed={value.hairStyle === h} onClick={() => onChange({ ...value, hairStyle: h, hairColor: FABRIC_HAIR.has(h) === FABRIC_HAIR.has(value.hairStyle) ? value.hairColor : undefined })}>
+              {HAIR_LABEL[h]}
             </button>
           ))}
         </div>
       </div>
-      <div>
-        <div className="small muted">Outfit</div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">Outfit</span>
         <div className="swatches">
-          {AVATAR_OPTIONS.outfit.map((o) => (
+          {offered("outfit", LOOK_ORDER[bodyOf(value)].outfit, value.outfit).map((o) => (
             <button key={o} type="button" className="chip" aria-pressed={value.outfit === o} onClick={() => onChange({ ...value, outfit: o })}>
-              {label(o)}
+              <i className="chip-dot" style={{ background: `#${OUTFIT[o]!.color}` }} aria-hidden="true" />
+              {OUTFIT[o]!.label}
             </button>
           ))}
         </div>
       </div>
-    </div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="small muted">Outfit colour</span>
+        <div className="swatches">
+          <button type="button" className="swatch swatch-default" style={{ background: `#${OUTFIT[value.outfit]?.color ?? "1e7a46"}` }} aria-label="The outfit's own colour" aria-pressed={!value.outfitColor} onClick={() => onChange({ ...value, outfitColor: undefined })} />
+          {OUTFIT_COLORS.map((c) => (
+            <button key={c.hex} type="button" className="swatch" style={{ background: c.hex }} aria-label={`Outfit colour: ${c.label}`} title={c.label} aria-pressed={value.outfitColor === c.hex} onClick={() => onChange({ ...value, outfitColor: c.hex })} />
+          ))}
+        </div>
+      </div>
+      {value.hairStyle !== "bald" && (
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="small muted">{FABRIC_HAIR.has(value.hairStyle) ? (value.hairStyle === "gele" ? "Gele colour" : value.hairStyle === "hijab" ? "Hijab colour" : "Cap colour") : "Hair colour"}</span>
+          <div className="swatches">
+            {(FABRIC_HAIR.has(value.hairStyle) ? OUTFIT_COLORS : HAIR_COLORS).map((c) => (
+              <button
+                key={c.hex}
+                type="button"
+                className="swatch"
+                style={{ background: c.hex }}
+                aria-label={`${FABRIC_HAIR.has(value.hairStyle) ? "Fabric" : "Hair"} colour: ${c.label}`}
+                title={c.label}
+                aria-pressed={(value.hairColor ?? (FABRIC_HAIR.has(value.hairStyle) ? "" : "#1b1410")) === c.hex}
+                onClick={() => onChange({ ...value, hairColor: c.hex })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="tiny muted">
+        Avatar art: “Personas” by Draftbit, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, via DiceBear.
+      </p>
+    </fieldset>
   );
 }

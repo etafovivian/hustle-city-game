@@ -1,0 +1,28 @@
+Pose sprite sheets (sit_eat, sit_talk, stand_idle, serve, dance, sleep) rendered for Naija Hustle City by
+scripts/blender/agent/sprites.py (Blender 5.2, headless, POSE=all LOOK=toon) from the CC0 Quaternius bodies and
+Universal Animation Library clips (see public/models/LICENSE.txt), with clothes from scripts/blender/agent/garments.py.
+Eating, stirring and the dance arms are keyframed on top of the nearest library clip. Original work for this project.
+Each file: 8 frames of 96x160 in a row, directions se/sw only; feet 16 px above the frame bottom; 76 px per metre.
+Seated poses: the seat sits about 0.3 m behind the feet point.
+Sleep: the library has no lying clip, so the first Idle_Loop frame (legs straightened) is laid flat on its back
+with the chest rising and falling over the loop. Sleep sheets are 8 frames of 192x112 (wider than tall); the frame
+centre is the middle of the body, anchored on the middle of the mattress. se = feet towards the bottom right.
+Prayer (posed bone by bone in sprites.py, no library clip; every adult look):
+pray_salah: one rak'ah, 16 frames of 144x160 (qiyam with hands folded, ruku, standing, sujud, jalsa, sujud, standing),
+facing se, sw and nw (towards a mihrab); the women's looks wear a plain headscarf. pray_church: standing with hands
+raised, swaying (8 frames); kneel_pray: kneeling, hands together, head bowing (8 frames); se and sw.
+Workouts (every adult look): run is the library's Jog_Fwd_Loop (se, sw, nw); lift_weights (alternating dumbbell
+curls, 96x160), boxing (guard, jab, cross in red gloves, 112x160, se/sw/nw), pushups (plank, lowering and pushing up,
+192x112 centred on the body like sleep) and skip_rope (112x160) are posed bone by bone in sprites.py, with the
+dumbbells, gloves and rope modelled per frame. 8 frames each.
+Work poses (posed bone by bone in sprites.py work_frame, arm IK to hand targets, props modelled per frame; 8 frames of
+96x160, feet 16 px up; se/sw/ne/nw so a worker can face what they work on): check_patient (bent over a bed, a hand on
+the patient's arm, injection), write_chart (clipboard and pen), take_order (notepad, looking up now and then),
+pour_drink (shaker, then pouring into a glass), serve_tray (tray on one hand, setting a plate down), cook_stir (ladle
+in a big pot on a low stove; the pot is in the sheet), wipe_counter (cloth going round on the counter top), sick_sit
+(a patient on a bed edge holding head and stomach; se/sw, the seat behind the feet). carry_tray is a walk sheet: the
+library Walk_Loop with the right hand up under a tray (plate of jollof, a bottle, a glass). Looks: nurse and doctor
+(check_patient, write_chart), bartender (pour_drink, wipe_counter, take_order), waiter (carry_tray, serve_tray,
+take_order, wipe_counter), chef (cook_stir, carry_tray, serve_tray, wipe_counter), plus man_casual (pour_drink,
+carry_tray, serve_tray), woman_buba (cook_stir, wipe_counter) and the four first adults (sick_sit). Staff also have
+stand_idle (se/sw).

@@ -1,9 +1,10 @@
 import { profiles, users, type Db } from "@hc/db";
-import { checkNickname, isValidAvatar, type AvatarConfig, type Me, type Role } from "@hc/shared";
+import { checkNickname, cleanAvatar, isValidAvatar, type AvatarConfig, type Me, type Role } from "@hc/shared";
 import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.js";
+import { settleCrew } from "./crew.js";
 import { requireUser } from "../plugins/auth.js";
 
 export async function loadMe(db: Db, userId: string): Promise<Me> {
@@ -17,18 +18,34 @@ export async function loadMe(db: Db, userId: string): Promise<Me> {
       avatar: profiles.avatar,
       coins: profiles.coinBalance,
       xp: profiles.xp,
+      hustle: profiles.hustle,
+      dream: profiles.dream,
+      lastPos: profiles.lastPos,
     })
     .from(users)
     .innerJoin(profiles, eq(profiles.userId, users.id))
     .where(eq(users.id, userId));
   if (!row) throw notFound("Profile");
-  return { ...row, roles: row.roles as Role[], avatar: row.avatar as AvatarConfig };
+  return { ...row, roles: row.roles as Role[], avatar: row.avatar as AvatarConfig, lastPos: (row.lastPos as Me["lastPos"]) ?? null };
 }
 
 const profileBody = z.object({ nickname: z.string().optional(), avatar: z.unknown().optional() });
 
 export async function meRoutes(app: FastifyInstance) {
-  app.get("/api/me", async (request) => loadMe(app.db, requireUser(request).id));
+  app.get("/api/me", async (request) => {
+    const id = requireUser(request).id;
+    await settleCrew(app.db, id).catch((e) => request.log.warn(e, "crew reward"));
+    return loadMe(app.db, id);
+  });
+
+  // Where the player stopped on the map, so their phone and their laptop agree (the newest wins).
+  app.put("/api/me/position", { config: { rateLimit: { max: 60 * app.config.ACTION_RATE_SCALE, timeWindow: "1 minute" } } }, async (request) => {
+    const user = requireUser(request);
+    const { x, y } = z.object({ x: z.number().finite().min(-1000).max(30_000), y: z.number().finite().min(-6000).max(20_000) }).parse(request.body);
+    const lastPos = { x: Math.round(x), y: Math.round(y), at: new Date().toISOString() };
+    await app.db.update(profiles).set({ lastPos }).where(eq(profiles.userId, user.id));
+    return lastPos;
+  });
 
   app.patch("/api/me/profile", async (request) => {
     const user = requireUser(request);
@@ -44,7 +61,7 @@ export async function meRoutes(app: FastifyInstance) {
     }
     if (body.avatar !== undefined) {
       if (!isValidAvatar(body.avatar)) throw badRequest("invalid_avatar", "Choose avatar options from the list.");
-      set.avatar = body.avatar;
+      set.avatar = cleanAvatar(body.avatar);
     }
     if (Object.keys(set).length) {
       try {

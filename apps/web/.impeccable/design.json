@@ -1,0 +1,609 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T16:00:29+00:00",
+  "title": "Design System: Naija Hustle City",
+  "extensions": {
+    "colorMeta": {
+      "midnight-navy": {
+        "role": "neutral",
+        "displayName": "Midnight Navy",
+        "canonical": "#0a0f24",
+        "tonalRamp": [
+          "#0d1430",
+          "#182558",
+          "#233580",
+          "#3149b0",
+          "#4f68ce",
+          "#7f91dc",
+          "#b7c1eb",
+          "#e7eaf8"
+        ]
+      },
+      "navy-panel": {
+        "role": "neutral",
+        "displayName": "Navy Panel",
+        "canonical": "#121835",
+        "tonalRamp": [
+          "#10152e",
+          "#1c2654",
+          "#29377a",
+          "#394ca8",
+          "#576ac6",
+          "#8593d6",
+          "#bac2e8",
+          "#e8ebf7"
+        ]
+      },
+      "navy-well": {
+        "role": "neutral",
+        "displayName": "Navy Well",
+        "canonical": "#182042",
+        "tonalRamp": [
+          "#10162d",
+          "#1e2852",
+          "#2c3a78",
+          "#3c50a5",
+          "#5a6ec3",
+          "#8796d3",
+          "#bcc4e7",
+          "#e9ebf7"
+        ]
+      },
+      "shell-indigo": {
+        "role": "neutral",
+        "displayName": "Shell Indigo",
+        "canonical": "#1e2a5e",
+        "tonalRamp": [
+          "#0f152e",
+          "#1b2655",
+          "#27377c",
+          "#364caa",
+          "#556bc9",
+          "#8393d8",
+          "#b9c2e9",
+          "#e8ebf8"
+        ]
+      },
+      "shell-ink": {
+        "role": "neutral",
+        "displayName": "Shell Ink",
+        "canonical": "#e9ecfb",
+        "tonalRamp": [
+          "#091034",
+          "#111e5f",
+          "#192c8a",
+          "#233cbe",
+          "#415bdc",
+          "#7588e6",
+          "#b1bcf1",
+          "#e5e9fa"
+        ]
+      },
+      "street-light": {
+        "role": "neutral",
+        "displayName": "Street Light",
+        "canonical": "#f1f4ff",
+        "tonalRamp": [
+          "#000d3d",
+          "#001870",
+          "#0023a3",
+          "#0030e0",
+          "#1f4fff",
+          "#5c7fff",
+          "#a3b7ff",
+          "#e0e7ff"
+        ]
+      },
+      "haze": {
+        "role": "neutral",
+        "displayName": "Haze",
+        "canonical": "#9aa6c8",
+        "tonalRamp": [
+          "#161a28",
+          "#283049",
+          "#3a466a",
+          "#4f6091",
+          "#6e7fb0",
+          "#95a2c5",
+          "#c4cbdf",
+          "#ebeef4"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#27325c",
+        "tonalRamp": [
+          "#12172b",
+          "#212b4f",
+          "#313e73",
+          "#43569e",
+          "#6174bc",
+          "#8c9ace",
+          "#bfc6e4",
+          "#eaecf6"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#34406f",
+        "tonalRamp": [
+          "#14182a",
+          "#242c4c",
+          "#34406f",
+          "#485899",
+          "#6677b7",
+          "#909ccb",
+          "#c0c7e2",
+          "#eaecf5"
+        ]
+      },
+      "arcade-gold": {
+        "role": "primary",
+        "displayName": "Arcade Gold",
+        "canonical": "#ffc72c",
+        "tonalRamp": [
+          "#3d2d00",
+          "#705200",
+          "#a37800",
+          "#e0a500",
+          "#ffc31f",
+          "#ffd45c",
+          "#ffe7a3",
+          "#fff7e0"
+        ]
+      },
+      "arcade-gold-pressed": {
+        "role": "primary",
+        "displayName": "Arcade Gold Pressed",
+        "canonical": "#e6b020",
+        "tonalRamp": [
+          "#372a06",
+          "#654c0b",
+          "#936f10",
+          "#ca9917",
+          "#e8b835",
+          "#efcb6c",
+          "#f6e2ac",
+          "#fcf5e3"
+        ]
+      },
+      "gold-ink": {
+        "role": "primary",
+        "displayName": "Gold Ink",
+        "canonical": "#0a0f24",
+        "tonalRamp": [
+          "#0d1430",
+          "#182558",
+          "#233580",
+          "#3149b0",
+          "#4f68ce",
+          "#7f91dc",
+          "#b7c1eb",
+          "#e7eaf8"
+        ]
+      },
+      "ankara-red": {
+        "role": "tertiary",
+        "displayName": "Ankara Red",
+        "canonical": "#df382b",
+        "tonalRamp": [
+          "#350b08",
+          "#61150f",
+          "#8e1e15",
+          "#c3291d",
+          "#e2483c",
+          "#ea7a71",
+          "#f3b4af",
+          "#fbe6e4"
+        ]
+      },
+      "naija-green": {
+        "role": "secondary",
+        "displayName": "Naija Green",
+        "canonical": "#00a859",
+        "tonalRamp": [
+          "#003d20",
+          "#00703b",
+          "#00a356",
+          "#00e077",
+          "#1fff95",
+          "#5cffb2",
+          "#a3ffd4",
+          "#e0fff1"
+        ]
+      },
+      "ok-mint": {
+        "role": "neutral",
+        "displayName": "Ok Mint",
+        "canonical": "#4ade80",
+        "tonalRamp": [
+          "#093419",
+          "#115f2e",
+          "#198a42",
+          "#23be5b",
+          "#41dc7a",
+          "#75e69e",
+          "#b1f1c9",
+          "#e5faed"
+        ]
+      },
+      "danger-coral": {
+        "role": "neutral",
+        "displayName": "Danger Coral",
+        "canonical": "#ff8f80",
+        "tonalRamp": [
+          "#3d0700",
+          "#700d00",
+          "#a31300",
+          "#e01b00",
+          "#ff391f",
+          "#ff6f5c",
+          "#ffaea3",
+          "#ffe4e0"
+        ]
+      },
+      "map-night": {
+        "role": "neutral",
+        "displayName": "Map Night",
+        "canonical": "#1a2350",
+        "tonalRamp": [
+          "#0f142e",
+          "#1c2555",
+          "#28367b",
+          "#374aa9",
+          "#5669c8",
+          "#8492d7",
+          "#bac2e8",
+          "#e8ebf7"
+        ]
+      },
+      "map-night-edge": {
+        "role": "neutral",
+        "displayName": "Map Night Edge",
+        "canonical": "#0d1333",
+        "tonalRamp": [
+          "#0c1231",
+          "#172159",
+          "#213082",
+          "#2e43b3",
+          "#4c61d1",
+          "#7d8cde",
+          "#b6beec",
+          "#e7e9f9"
+        ]
+      },
+      "map-road": {
+        "role": "neutral",
+        "displayName": "Map Road",
+        "canonical": "#232c5a",
+        "tonalRamp": [
+          "#11162c",
+          "#1f2751",
+          "#2e3976",
+          "#3f4fa2",
+          "#5d6ec0",
+          "#8995d1",
+          "#bdc4e5",
+          "#e9ebf6"
+        ]
+      },
+      "map-lane": {
+        "role": "neutral",
+        "displayName": "Map Lane",
+        "canonical": "#3d4886",
+        "tonalRamp": [
+          "#13172a",
+          "#23294d",
+          "#333c70",
+          "#46539a",
+          "#6571b9",
+          "#8f98cc",
+          "#c0c5e2",
+          "#eaecf5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Uppercase brand lockup on the welcome card; Hustle in gold."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles (Junction 101, Find a business) and place names."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings; the welcome form heading."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "Rail and section titles; quest titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Reading text, tabular figures site-wide."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Hints, notes, directory detail."
+      },
+      "cta": {
+        "displayName": "Call to Action",
+        "purpose": "Uppercase heavy CTA buttons only."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tracked field labels, table heads, tags, stages."
+      },
+      "selvedge": {
+        "displayName": "Selvedge",
+        "purpose": "The truth strip."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient",
+        "value": "0 1px 2px rgb(0 0 0 / 40%), 0 14px 32px -12px rgb(0 0 0 / 65%)",
+        "purpose": "Raised frames, plates, selected segmented tab."
+      },
+      {
+        "name": "gold-glow",
+        "value": "0 10px 28px -8px rgb(255 199 44 / 45%)",
+        "purpose": "Primary/go buttons and ready quest plates."
+      },
+      {
+        "name": "ready-ring",
+        "value": "0 0 0 1.5px #ffc72c, 0 10px 28px -8px rgb(255 199 44 / 45%)",
+        "purpose": "Ready quest bolt."
+      },
+      {
+        "name": "brand-card",
+        "value": "0 30px 60px -20px rgb(0 0 0 / 70%)",
+        "purpose": "Welcome brand card over the cloth."
+      },
+      {
+        "name": "art-drop",
+        "value": "drop-shadow(0 10px 18px rgb(0 0 0 / 55%))",
+        "purpose": "Place art on place headers."
+      },
+      {
+        "name": "logo-glow",
+        "value": "drop-shadow(0 8px 16px rgb(255 199 44 / 35%))",
+        "purpose": "Logo on welcome and shell."
+      },
+      {
+        "name": "map-hover-glow",
+        "value": "drop-shadow(0 0 14px rgb(255 199 44 / 45%))",
+        "purpose": "Map building art on hover/focus."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 3px solid #ffc72c; outline-offset: 2px",
+        "purpose": "Universal focus."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Press, map lift, quest reveal, toast entry."
+      },
+      {
+        "name": "press",
+        "value": "transform 0.15s ease-out; translateY(1px)",
+        "purpose": "Button press."
+      },
+      {
+        "name": "map-lift",
+        "value": "transform 0.25s ease-out; translateY(-4px)",
+        "purpose": "Map building on hover/focus."
+      },
+      {
+        "name": "timebar",
+        "value": "transform 1s linear",
+        "purpose": "Exact-time bar countdown."
+      },
+      {
+        "name": "toast-in",
+        "value": "0.4s ease-out, rise 12px + fade",
+        "purpose": "Toast entry."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "durations to 0.01ms",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "559px (max)"
+      },
+      {
+        "name": "lg",
+        "value": "900px (min)"
+      }
+    ],
+    "pins": {
+      "userPinned": [
+        "Outfit (self-hosted @fontsource-variable/outfit)",
+        "dark-first midnight navy ground",
+        "Stitch logo and isometric art set"
+      ],
+      "source": "Google Stitch 'Lagos Street Arcade', owner-approved 2026-10-11"
+    },
+    "artSet": {
+      "path": "public/art/*.webp",
+      "provenance": "public/art/*.webp.json",
+      "files": [
+        "logo",
+        "market-square",
+        "work-hub",
+        "hangout",
+        "city-park",
+        "danfo-park",
+        "signpost",
+        "street-scene"
+      ],
+      "rule": "Raster isometric art from the owner's Stitch export, each with a provenance sidecar; no inline-SVG illustration."
+    },
+    "prints": {
+      "source": "src/prints.ts",
+      "tiles": {
+        "market": "concentric circles, indigo on gold with red centres (welcome cloth, Market Square)",
+        "work": "stepped green bricks with gold ticks on indigo (Work Hub)",
+        "hangout": "gold fans and indigo dots on red (The Hangout)"
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one gold action per region, with the soft gold glow.",
+      "html": "<button class=\"ds-btn-primary\">Serve for 1,200</button>",
+      "css": ".ds-btn-primary{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 18px;border-radius:999px;border:1px solid var(--yellow,#ffc72c);background:var(--yellow,#ffc72c);color:var(--yellow-ink,#0a0f24);font-size:16px;font-weight:650;cursor:pointer;box-shadow:0 10px 28px -8px rgb(255 199 44 / 45%);transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn-primary:hover{background:var(--yellow-hover,#e6b020);border-color:var(--yellow-hover,#e6b020)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}.ds-btn-primary:disabled{background:#182042;border-color:#27325c;color:#9aa6c8;box-shadow:none;cursor:not-allowed}"
+    },
+    {
+      "name": "Call to Action (XL)",
+      "kind": "button",
+      "refersTo": "button-cta-xl",
+      "description": "Full-width welcome submit: heavy uppercase gold.",
+      "html": "<button class=\"ds-btn-cta\">Start hustling in Junction 101 <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M12 5l7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn-cta{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:10px 18px;border-radius:18px;border:1px solid #ffc72c;background:#ffc72c;color:#0a0f24;font-size:17px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;cursor:pointer;box-shadow:0 10px 28px -8px rgb(255 199 44 / 45%);transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn-cta:hover{background:#e6b020;border-color:#e6b020;transform:translateY(-1px)}.ds-btn-cta:active{transform:translateY(1px)}.ds-btn-cta:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default navy pill for every non-primary action.",
+      "html": "<button class=\"ds-btn\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg> Find a business</button>",
+      "css": ".ds-btn{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 18px;border-radius:999px;border:1px solid #34406f;background:#121835;color:#f1f4ff;font-size:16px;font-weight:650;cursor:pointer;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:#182042}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Welcome Input Well",
+      "kind": "input",
+      "refersTo": "input-well",
+      "description": "Uppercase tracked label over a deep navy well; gold focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Nickname</span><span class=\"ds-well\"><span class=\"ds-prefix\">@</span><input class=\"ds-input\" placeholder=\"lagos_baller\"></span></label>",
+      "css": ".ds-field{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:grid;gap:6px;color:#f1f4ff}.ds-field-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c9d1ea}.ds-well{position:relative;display:flex;align-items:center}.ds-prefix{position:absolute;left:14px;color:#9aa6c8;font-weight:700}.ds-input{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;width:100%;min-height:50px;padding:10px 12px 10px 34px;border-radius:14px;border:1px solid #27325c;background:#182042;color:#f1f4ff;font-size:16px;font-weight:500}.ds-input::placeholder{color:#9aa6c8;font-weight:400}.ds-input:focus-visible{outline:2px solid #ffc72c;outline-offset:0;border-color:transparent}"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "segmented-selected",
+      "description": "Pill track; the selected tab fills gold.",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">My shop</button><button role=\"tab\" aria-selected=\"false\">Real businesses</button></div>",
+      "css": ".ds-seg{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:inline-grid;grid-auto-flow:column;gap:4px;padding:4px;border-radius:999px;background:#182042}.ds-seg button{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;border:0;background:transparent;border-radius:999px;padding:8px 16px;min-height:40px;font-size:16px;font-weight:650;color:#9aa6c8;cursor:pointer}.ds-seg button:hover{color:#f1f4ff}.ds-seg button[aria-selected=true]{background:#ffc72c;color:#0a0f24;box-shadow:0 1px 2px rgb(0 0 0 / 40%),0 14px 32px -12px rgb(0 0 0 / 65%)}.ds-seg button:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Category Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Navy pill filter; pressed fills gold.",
+      "html": "<span class=\"ds-chips\"><button class=\"ds-chip\" aria-pressed=\"true\">Food</button><button class=\"ds-chip\" aria-pressed=\"false\">Fashion</button></span>",
+      "css": ".ds-chips{display:inline-flex;gap:8px}.ds-chip{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:inline-flex;align-items:center;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid #34406f;background:#121835;color:#f1f4ff;font-size:13px;font-weight:600;cursor:pointer}.ds-chip:hover{background:#182042}.ds-chip[aria-pressed=true]{background:#ffc72c;border-color:#ffc72c;color:#0a0f24}.ds-chip:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Shell Bar with Coin Balance",
+      "kind": "nav",
+      "refersTo": "shellbar",
+      "description": "Sticky indigo bar: lockup, gold coin pill (no currency symbol), ghost sign-out.",
+      "html": "<header class=\"ds-shell\"><span class=\"ds-lockup\">Naija <span>Hustle City</span></span><span class=\"ds-balance\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"6\"/><path d=\"M18.1 10.4A6 6 0 1 1 10.4 18\"/></svg>2,000 <small>City Coins</small></span><button class=\"ds-shell-btn\">Sign out</button></header>",
+      "css": ".ds-shell{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1e2a5e;color:#e9ecfb}.ds-lockup{flex:1;font-weight:850;font-size:20px;text-transform:uppercase;letter-spacing:.01em}.ds-lockup span{color:#ffc72c}.ds-balance{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#ffc72c;color:#0a0f24;font-weight:750;font-variant-numeric:tabular-nums}.ds-balance small{font-weight:500;font-size:13px}.ds-shell-btn{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;min-height:36px;padding:6px 10px;border-radius:999px;border:1px solid rgb(233 236 251 / 30%);background:transparent;color:#e9ecfb;font-size:16px;cursor:pointer}.ds-shell-btn:hover{background:rgb(255 255 255 / 10%)}.ds-shell-btn:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Selvedge Truth Strip",
+      "kind": "custom",
+      "refersTo": "selvedge",
+      "description": "Gold-on-navy uppercase strip printing the surface's one rule.",
+      "html": "<div class=\"ds-selvedge\"><span>City Coins are game money — no cash value</span><span aria-hidden=\"true\"><i></i>City Coins are game money — no cash value</span></div>",
+      "css": ".ds-selvedge{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:flex;gap:28px;overflow:hidden;white-space:nowrap;padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#0a0f24;color:#ffc72c}.ds-selvedge span{flex:none}.ds-selvedge i{display:inline-block;width:6px;height:6px;background:currentColor;transform:rotate(45deg) translateY(-2px);margin-right:22px;opacity:.7}"
+    },
+    {
+      "name": "Ready Quest Bolt",
+      "kind": "card",
+      "refersTo": "place-plate",
+      "description": "Quest item; when ready it rises onto navy ringed in gold with the glow.",
+      "html": "<div class=\"ds-bolt\"><div class=\"ds-bolt-row\"><strong>Serve 3 customers</strong><span class=\"ds-reward\">+150</span></div><div class=\"ds-bar\"><span></span></div><div class=\"ds-bolt-row\"><span>3 / 3</span><button class=\"ds-claim\">Claim</button></div></div>",
+      "css": ".ds-bolt{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:grid;gap:8px;padding:10px 12px;border-radius:10px;background:#121835;color:#f1f4ff;box-shadow:0 0 0 1.5px #ffc72c,0 10px 28px -8px rgb(255 199 44 / 45%);max-width:320px;font-variant-numeric:tabular-nums}.ds-bolt-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}.ds-reward{color:#ffc72c;font-weight:750}.ds-bar{height:8px;border-radius:4px;background:#182042;overflow:hidden}.ds-bar span{display:block;height:100%;background:#00a859}.ds-claim{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;min-height:38px;padding:6px 14px;border-radius:999px;border:1px solid #ffc72c;background:#ffc72c;color:#0a0f24;font-size:14px;font-weight:650;cursor:pointer;box-shadow:0 10px 28px -8px rgb(255 199 44 / 45%)}.ds-claim:hover{background:#e6b020}.ds-claim:focus-visible{outline:3px solid #ffc72c;outline-offset:2px}"
+    },
+    {
+      "name": "Exact-Time Bar",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Countdown whose bar length is exactly the time left.",
+      "html": "<div class=\"ds-time\"><div class=\"ds-time-row\"><span>New quests at midnight (Lagos)</span><span>4h 12m left</span></div><div class=\"ds-time-track\"><div class=\"ds-time-fill\"></div></div></div>",
+      "css": ".ds-time{font-family:\"Outfit Variable\",\"Outfit\",system-ui,sans-serif;display:grid;gap:4px;max-width:320px;color:#9aa6c8;font-size:12px;font-variant-numeric:tabular-nums}.ds-time-row{display:flex;justify-content:space-between;gap:12px}.ds-time-track{height:6px;border-radius:3px;background:#182042;overflow:hidden}.ds-time-fill{height:100%;width:100%;background:#ffc72c;border-radius:3px;transform:scaleX(.175);transform-origin:left center}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Lagos Street Arcade",
+    "overview": "Junction 101 is a Lagos street at night seen as an arcade: midnight navy ground, gold light pooling under lamps and on the one thing you should press, danfo yellow and Ankara cloth as the city's own colour. The look is user-pinned: the owner designed the welcome and sign-in in Google Stitch (\"Lagos Street Arcade\") and approved its palette, Outfit, the logo and the isometric building art. That pin supersedes the earlier Wax-Print Selvedge world for type, palette and imagery. Dark is the product's own look, not a theme setting; there is no light mode to fall back to.\n\nThe arcade is a game skin over a working shop and a real merchant directory, so it stays legible and operational. Sections sit flat on the navy ground divided by hairlines; only the city itself (the map frame, place headers, the welcome brand card) is raised. Three pieces carry over from the previous world and still define it: the market wax-print circle repeat as cloth (welcome panel, place headers), the selvedge truth strip that prints each surface's one plain rule, and exact-time bars. Players wear DiceBear Personas avatars.\n\nThe world refuses the fintech white-card default and the generic neon-cyber game skin. Gold glows softly; nothing is neon, nothing is chrome.",
+    "keyCharacteristics": [
+      "Midnight navy ground with two navy panel steps; gold is the one action and the coin colour.",
+      "Outfit throughout, heavy and uppercase for calls to action and the brand lockup; tabular figures everywhere.",
+      "Raster isometric Lagos art from Stitch on a 2:1 isometric road ground; name plates on every place.",
+      "Pill-shaped controls; plates and frames with moderate rounding.",
+      "A selvedge strip on every surface stating its one rule (gold on navy; solid gold band on the mobile welcome).",
+      "Coins are game money: shown as a number with a coin icon and the words \"City Coins\", never with a currency symbol."
+    ],
+    "rules": [
+      {
+        "name": "The One Gold Rule",
+        "body": "Gold marks what to press and what you earn. One gold-filled action per region; everything else is a navy pill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Coins Are Not Cash Rule",
+        "body": "Coin amounts show a number, a coin icon, and \"City Coins\" where space allows; never ₦, $ or any currency symbol in UI chrome. Naira (₦) appears only on real merchant prices in the directory.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dark-First Rule",
+        "body": "Navy is the product's ground by the owner's pin. Do not add a light theme or white cards.",
+        "section": "colors"
+      },
+      {
+        "name": "The Shout Only to Act Rule",
+        "body": "Heavy uppercase belongs to the brand lockup, calls to action, labels and the selvedge. Headings stay sentence case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number is set with tabular figures and right-aligned in tables.",
+        "section": "typography"
+      },
+      {
+        "name": "The Light Not Lift Rule",
+        "body": "Gold glows; navy casts shadow. A gold element never gets a black drop shadow, and a navy panel never glows.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Card Soup Rule",
+        "body": "Lists and sections sit on the ground divided by hairlines. Only the city's own pieces are framed.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep midnight navy as the ground and Outfit as the only face; both are owner-pinned.",
+      "**Do** use arcade gold for exactly one primary action per region and for coins; text on gold is gold ink.",
+      "**Do** give every new surface a selvedge strip that states its one plain rule.",
+      "**Do** show coin amounts as a tabular number with the coin icon and \"City Coins\"; keep ₦ for real merchant prices only.",
+      "**Do** add new places and scenery as raster isometric art from the Stitch set, shipped as WebP with a provenance sidecar, sharing the 2:1 projection of the map ground.",
+      "**Do** use exact-time bars wherever something resets or expires.",
+      "**Do** give every map place a name plate and a real button role."
+    ],
+    "donts": [
+      "**Don't** put a currency symbol on coins anywhere in UI chrome.",
+      "**Don't** draw illustration in inline SVG; place, building and scene art is raster from the Stitch set. Inline SVG is for map ground geometry, the wax-print tiles and icons only.",
+      "**Don't** add a light theme, white cards or neon-cyber effects; gold glows softly and nothing else glows.",
+      "**Don't** set headings in uppercase; uppercase is for the lockup, calls to action, labels and the selvedge.",
+      "**Don't** wrap content sections in cards; divide them with hairlines."
+    ]
+  }
+}

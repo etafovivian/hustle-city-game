@@ -1,0 +1,2 @@
+Hair pieces generated for Naija Hustle City by apps/web/scripts/blender/hair.py (Blender 5.2, headless),
+fitted to the Quaternius Universal Animation Library mannequin (CC0). Original work for this project.

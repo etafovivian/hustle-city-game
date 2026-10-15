@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Naija Hustle City</title>
+    <meta name="description" content="A Lagos you can play: drive, walk, eat amala, buy land and learn real skills, with a real marketplace inside." />
+    <meta property="og:title" content="Naija Hustle City" />
+    <meta property="og:description" content="A Lagos you can play, with a real marketplace inside. Come build it with us." />
+    <meta property="og:image" content="/pitch/junction.webp" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --ink: #0a0f24;
+        --sheet: #121835;
+        --sheet-2: #182042;
+        --rule: #27325c;
+        --text: #f1f4ff;
+        --muted: #9aa6c8;
+        --yellow: #ffc72c;
+        --green: #00a859;
+        --red: #df382b;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: var(--ink); color: var(--text); font: 17px/1.55 "Outfit", system-ui, sans-serif; }
+      a { color: inherit; }
+      img { display: block; max-width: 100%; height: auto; }
+      .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+      .selvedge { height: 8px; background: repeating-linear-gradient(90deg, var(--yellow) 0 22px, var(--green) 22px 44px, var(--red) 44px 66px, #1e2a5e 66px 88px); }
+
+      header { padding: 56px 0 28px; }
+      .kicker { color: var(--yellow); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px; }
+      h1 { font-size: clamp(40px, 8vw, 80px); line-height: 0.95; margin: 10px 0 16px; font-weight: 900; }
+      h1 span { color: var(--yellow); }
+      .lead { font-size: clamp(18px, 2.4vw, 22px); color: #d6dcf3; max-width: 720px; margin: 0 0 26px; }
+      .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+      .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 999px; font-weight: 800; text-decoration: none; border: 1.5px solid var(--rule); }
+      .btn.go { background: var(--yellow); color: var(--ink); border-color: var(--yellow); box-shadow: 0 10px 28px -8px rgb(255 199 44 / 55%); }
+      .btn:hover { filter: brightness(1.08); }
+      .hero-shot { margin-top: 34px; border-radius: 22px; overflow: hidden; border: 1px solid var(--rule); box-shadow: 0 30px 60px -30px rgb(0 0 0 / 80%); }
+
+      section { padding: 56px 0; border-top: 1px solid var(--rule); }
+      h2 { font-size: clamp(28px, 4.4vw, 40px); line-height: 1.1; margin: 0 0 10px; font-weight: 900; }
+      .sub { color: var(--muted); margin: 0 0 28px; max-width: 760px; }
+
+      .grid { display: grid; gap: 18px; }
+      .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      @media (max-width: 900px) { .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 640px) { .g3, .g2 { grid-template-columns: 1fr; } }
+      .card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 18px; padding: 20px; }
+      .card h3 { margin: 0 0 6px; font-size: 20px; }
+      .card p { margin: 0; color: #c6cde6; }
+      .tag { display: inline-block; margin-bottom: 8px; padding: 2px 10px; border-radius: 999px; background: var(--sheet-2); color: var(--yellow); font-size: 12px; font-weight: 800; }
+
+      figure { margin: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; }
+      figure img { width: 100%; }
+      figcaption { padding: 12px 16px 16px; color: #c6cde6; font-size: 15px; }
+      figcaption strong { color: var(--text); }
+      .shots-tall { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      @media (max-width: 760px) { .shots-tall { grid-template-columns: 1fr; } }
+      .shots-tall img { aspect-ratio: 0.92; object-fit: cover; object-position: top; }
+
+      .money li { margin-bottom: 10px; }
+      ul.clean { list-style: none; padding: 0; margin: 0; }
+      ul.clean li { padding: 12px 0; border-top: 1px solid var(--rule); }
+      ul.clean li:first-child { border-top: 0; }
+      .num { color: var(--yellow); font-weight: 800; }
+
+      .cta-band { text-align: center; padding: 64px 0 72px; }
+      .cta-band p { color: var(--muted); max-width: 620px; margin: 0 auto 24px; }
+      footer { padding: 24px 0 40px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--rule); }
+
+      @media (max-width: 560px) {
+        header { padding-top: 36px; }
+        section { padding: 40px 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="selvedge" aria-hidden="true"></div>
+    <header class="wrap">
+      <div class="kicker">Naija Hustle City · early build</div>
+      <h1>A Lagos you can <span>play</span>.</h1>
+      <p class="lead">
+        Danfos round the roundabout, suya at night, owambe on Saturday, land in Lekki. A city game with a real
+        marketplace inside: the shops, artisans and schools you meet in the game are real ones you can use.
+      </p>
+      <div class="ctas">
+        <a class="btn go" href="/">Play it now</a>
+        <a class="btn" href="#tour">Take the tour</a>
+        <a class="btn" href="#join">How you can help</a>
+      </div>
+      <div class="hero-shot"><img src="/pitch/junction.webp" width="1400" height="860" alt="Junction 101: the roundabout with its fountain, danfos, kekes and BRT on the roads, people on the zebra crossings, shops and stalls on every corner." /></div>
+    </header>
+
+    <section id="tour">
+      <div class="wrap">
+        <h2>Walk around the city</h2>
+        <p class="sub">Nine areas, each with its own feel, laid out on real Lagos patterns: main roads, side streets, closes and plots.</p>
+        <div class="grid g2">
+          <figure>
+            <img src="/pitch/night.webp" width="1400" height="860" loading="lazy" alt="Junction 101 at night with street lamps and lit windows." />
+            <figcaption><strong>Lagos time.</strong> The city follows the real clock in Lagos, so it's morning, rush hour or night when it is in Lagos. Lamps come on, windows light up.</figcaption>
+          </figure>
+          <figure>
+            <img src="/pitch/lekki.webp" width="1400" height="860" loading="lazy" alt="Lekki Gardens: detached houses with pools along streets by the sea." />
+            <figcaption><strong>Lekki Gardens.</strong> Detached houses, pools and quiet closes by the Atlantic. The most valuable land in the game.</figcaption>
+          </figure>
+          <figure>
+            <img src="/pitch/port.webp" width="1400" height="860" loading="lazy" alt="Apapa Port: container yards, quay cranes, two cargo ships and tugboats." />
+            <figcaption><strong>Apapa Port.</strong> Container yards, quay cranes, ships at the quay and tugs in the harbour.</figcaption>
+          </figure>
+          <figure>
+            <img src="/pitch/airport.webp" width="1400" height="860" loading="lazy" alt="Airport Ridge with the hospital, houses and a billboard." />
+            <figcaption><strong>Airport Ridge.</strong> Runway, jets at the gates, the general hospital and billboards real businesses can rent.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Go inside and do things</h2>
+        <p class="sub">
+          25 places to enter, from Mama Nkechi's buka to the courtroom. Each room has people in it eating, dancing,
+          serving and talking. Every place has a free thing to do, paid activities, and a big "flex" for players with
+          money to show.
+        </p>
+        <div class="grid shots-tall">
+          <figure>
+            <img src="/pitch/activities.webp" width="780" height="900" loading="lazy" alt="Mama Nkechi's Buka card: activities with prices, time and what they give, and a gold flex option." />
+            <figcaption><strong>Activities</strong> show their price, how long they take and what they give (+Food, +Fun, +Respect).</figcaption>
+          </figure>
+          <figure>
+            <img src="/pitch/lounge.webp" width="840" height="860" loading="lazy" alt="Skyline Lounge at night: a rooftop club room with a DJ and guests." />
+            <figcaption><strong>Opening hours.</strong> Skyline Lounge opens at 10 pm, suya is an evening thing, the bank shuts at 5.</figcaption>
+          </figure>
+          <figure>
+            <img src="/pitch/land.webp" width="840" height="860" loading="lazy" alt="Land for sale list: plots in Island Heights with sizes and prices." />
+            <figcaption><strong>Land for sale.</strong> Every plot has an id, size, frontage and price. Players can share a plot or join the waiting list.</figcaption>
+          </figure>
+        </div>
+        <figure style="margin-top: 18px">
+          <img src="/pitch/rooms.webp" width="1400" height="1145" loading="lazy" alt="Nine room interiors: radio studio, golf lounge, courtroom, hospital, library, police station, snooker spot, stadium changing room and viewing centre." />
+          <figcaption>Radio station, golf club, court, hospital, library, police station, snooker spot, stadium and viewing centre.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>What's already built</h2>
+        <div class="grid g3">
+          <div class="card"><span class="tag">Play</span><h3>Your own shop</h3><p>Every player runs a market shop: stock it, price it, decorate it, and sell to customers who walk in.</p></div>
+          <div class="card"><span class="tag">Real</span><h3>A real marketplace</h3><p>"Find a business" points players to real artisans and shops, with quote requests that go to the business.</p></div>
+          <div class="card"><span class="tag">Learn</span><h3>Hustle Academy</h3><p>Tech courses with server-checked lessons and quizzes, and a free certificate anyone can verify online. Run with Lampnet Institute of Technology.</p></div>
+          <div class="card"><span class="tag">Ads</span><h3>Billboards</h3><p>Real businesses book boards around the map. Banners are reviewed before they go up, and views are counted for the advertiser.</p></div>
+          <div class="card"><span class="tag">City</span><h3>Life on the streets</h3><p>Traffic that goes round the roundabout, people who use the pavements and zebra crossings, and day and night on Lagos time.</p></div>
+          <div class="card"><span class="tag">Share</span><h3>Made to share</h3><p>Links open on an area or a plot, certificates share to WhatsApp, LinkedIn and X, and every plot has a permanent id.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap grid g2">
+        <div>
+          <h2>How it pays</h2>
+          <p class="sub">Free to play. Money comes from businesses, learners and players who want more.</p>
+        </div>
+        <ul class="clean money">
+          <li><span class="num">Billboards.</span> Real businesses rent boards on the map, from ₦25,000 a week.</li>
+          <li><span class="num">Hustle Academy.</span> Free virtual certificate; printed certificate ₦5,000; professional training (Microsoft, AWS, DevOps, DevSecOps) ₦500,000–₦800,000 through Lampnet.</li>
+          <li><span class="num">Sponsored places and courses.</span> A bank, a telco or a school can have its own building and course in the city.</li>
+          <li><span class="num">Land.</span> Plots in prime areas, with a waiting list already open in the game.</li>
+          <li><span class="num">Marketplace leads.</span> Artisans and shops get customers from players; featured listings come later.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>What's next</h2>
+        <div class="grid g3">
+          <div class="card"><h3>Getting around</h3><p>Walk free or take a keke, danfo, okada or cab, with fares, rush hour and the odd "area boys" stop on the way.</p></div>
+          <div class="card"><h3>Needs and moods</h3><p>Hunger, energy and fun that the places in town fill, with Naija moods like "belle full".</p></div>
+          <div class="card"><h3>Jobs and housing</h3><p>Work shifts at the places you visit, and move up from face-me-I-face-you to a Lekki duplex.</p></div>
+          <div class="card"><h3>See each other</h3><p>Who's at a place right now, chat at venues, and friends' shops on the map.</p></div>
+          <div class="card"><h3>More cities</h3><p>Abuja and Port Harcourt, reached by flight or night bus.</p></div>
+          <div class="card"><h3>Owning land</h3><p>Build on your plot, rent it out, and see your name on the map.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="join">
+      <div class="wrap">
+        <h2>Where you come in</h2>
+        <p class="sub">It's an early build made by a small team. We're looking for people who want to build something very Lagos with us.</p>
+        <div class="grid g2">
+          <div class="card"><h3>Artists</h3><p>Buildings, rooms, people and vehicles in the game's isometric style (we use Google Stitch and Blender).</p></div>
+          <div class="card"><h3>Developers</h3><p>React and TypeScript for the city, Node and Postgres for the economy, marketplace and Academy.</p></div>
+          <div class="card"><h3>Lagos storytellers</h3><p>Places, characters, slang and events that make it feel like home.</p></div>
+          <div class="card"><h3>Partnerships</h3><p>Businesses for billboards and sponsored places, schools and trainers for the Academy.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta-band wrap">
+      <h2>Go and have a look</h2>
+      <p>Sign up, pick your look, and walk to Junction 101. Then tell whoever sent you this link what you'd add.</p>
+      <a class="btn go" href="/">Play Naija Hustle City</a>
+    </div>
+    <footer>
+      <div class="wrap">Naija Hustle City is an early test build. Names of places and people in the game are made up.</div>
+    </footer>
+  </body>
+</html>

@@ -1,15 +1,20 @@
 // Quest progress is advanced only by server-side game events (FR02).
 
-import { questProgress, profiles } from "@hc/db";
+import { partnerBonds, playerPets, playerPlots, questProgress, profiles } from "@hc/db";
 import {
   INTRO_QUEST,
+  LIFE_QUESTS,
+  LIFE_QUESTS_BY_KEY,
+  lifeQuestFor,
+  type LifeSituation,
+  type QuestDefinition,
   QUESTS_BY_KEY,
   dailyQuestsFor,
   dayKey,
   type GameEvent,
   type QuestBoard,
 } from "@hc/shared";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { postCoins } from "../../lib/coins.js";
 import { lockProfile, type Tx } from "../../lib/db.js";
 import { AppError, notFound } from "../../lib/errors.js";
@@ -24,7 +29,8 @@ interface Tracked {
 }
 
 function trackedFor(day: string, introClaimed: boolean): Tracked[] {
-  const daily = dailyQuestsFor(day).map((q) => ({ day, questKey: q.key, event: q.event, distinct: !!q.distinct }));
+  // Every life quest is tracked (cheap), so whichever one is yours today counts from the start.
+  const daily = [...dailyQuestsFor(day), ...LIFE_QUESTS].map((q) => ({ day, questKey: q.key, event: q.event, distinct: !!q.distinct }));
   const intro = introClaimed
     ? []
     : INTRO_QUEST.steps.map((s) => ({ day: INTRO_DAY, questKey: s.event, event: s.event, distinct: s.distinct }));
@@ -71,6 +77,14 @@ export async function recordEvents(tx: Tx, userId: string, events: GameEvent[], 
   }
 }
 
+/** What someone has, for their life quest: a pet, someone to date (friends or closer), a house of their own. */
+async function lifeOf(tx: Tx, userId: string): Promise<LifeSituation> {
+  const [pet] = await tx.select({ k: playerPets.kind }).from(playerPets).where(eq(playerPets.userId, userId));
+  const [bond] = await tx.select({ s: partnerBonds.stage }).from(partnerBonds).where(and(eq(partnerBonds.userId, userId), ne(partnerBonds.stage, "met")));
+  const [plot] = await tx.select({ d: playerPlots.design }).from(playerPlots).where(and(eq(playerPlots.userId, userId), eq(playerPlots.isHome, true)));
+  return { pet: !!pet, date: !!bond, house: !!plot?.d };
+}
+
 export async function questBoard(tx: Tx, userId: string, now: Date, timeZone: string): Promise<QuestBoard> {
   const day = dayKey(now, timeZone);
   const [profile] = await tx.select().from(profiles).where(eq(profiles.userId, userId));
@@ -81,22 +95,24 @@ export async function questBoard(tx: Tx, userId: string, now: Date, timeZone: st
     .from(questProgress)
     .where(and(eq(questProgress.userId, userId), inArray(questProgress.day, [day, INTRO_DAY])));
   const find = (d: string, k: string) => rows.find((r) => r.day === d && r.questKey === k);
+  const view = (q: QuestDefinition) => {
+    const r = find(day, q.key);
+    return {
+      key: q.key,
+      title: q.title,
+      description: q.description,
+      target: q.target,
+      progress: Math.min(q.target, r?.progress ?? 0),
+      rewardCoins: q.rewardCoins,
+      rewardXp: q.rewardXp,
+      claimed: !!r?.claimedAt,
+    };
+  };
 
   return {
     day,
-    daily: dailyQuestsFor(day).map((q) => {
-      const r = find(day, q.key);
-      return {
-        key: q.key,
-        title: q.title,
-        description: q.description,
-        target: q.target,
-        progress: Math.min(q.target, r?.progress ?? 0),
-        rewardCoins: q.rewardCoins,
-        rewardXp: q.rewardXp,
-        claimed: !!r?.claimedAt,
-      };
-    }),
+    daily: dailyQuestsFor(day).map(view),
+    life: view(lifeQuestFor(day, await lifeOf(tx, userId))),
     intro: {
       title: INTRO_QUEST.title,
       description: INTRO_QUEST.description,
@@ -135,8 +151,10 @@ export async function claimQuest(tx: Tx, userId: string, questKey: string, now: 
   }
 
   const day = dayKey(now, timeZone);
-  const quest = QUESTS_BY_KEY.get(questKey);
-  if (!quest || !dailyQuestsFor(day).some((q) => q.key === questKey)) throw notFound("Quest");
+  const life = LIFE_QUESTS_BY_KEY.get(questKey);
+  const quest = life ?? QUESTS_BY_KEY.get(questKey);
+  const today = life ? lifeQuestFor(day, await lifeOf(tx, userId)).key === questKey : dailyQuestsFor(day).some((q) => q.key === questKey);
+  if (!quest || !today) throw notFound("Quest");
 
   const [row] = await tx
     .select()

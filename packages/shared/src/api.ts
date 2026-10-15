@@ -15,6 +15,10 @@ export interface Me {
   /** City Coins — game currency, no cash value. */
   coins: number;
   xp: number;
+  hustle: string;
+  dream: string;
+  /** Where they last stopped on the map (any device); null before their first trip. */
+  lastPos: { x: number; y: number; at: string } | null;
 }
 
 export interface QuestView {
@@ -37,6 +41,8 @@ export interface IntroStepView {
 export interface QuestBoard {
   day: string;
   daily: QuestView[];
+  /** Your own quest of the day, from your life (a pet, a date, a party, someone new). */
+  life: QuestView;
   intro: {
     title: string;
     description: string;
@@ -83,7 +89,13 @@ export interface BusinessSummary {
   pickupAddress: string | null;
   description: string;
   isMock: boolean;
+  /** Checked by the Hustle City team (phone, and registration for bigger businesses). */
+  verified: boolean;
+  /** The business's WhatsApp / phone, shown only because the owner chose to list it. */
+  contactPhone: string | null;
   products: ProductSummary[];
+  /** Reviews from completed quote requests only. */
+  rating: { average: number; count: number } | null;
 }
 
 export interface ProductSummary {
@@ -93,6 +105,43 @@ export interface ProductSummary {
   priceKobo: number;
   stockStatus: "in_stock" | "low_stock" | "out_of_stock";
   photoUrl: string | null;
+}
+
+export interface DecorPlacementView {
+  id: string;
+  itemKey: string;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export interface DecorView {
+  floor: { cols: number; rows: number };
+  placements: DecorPlacementView[];
+  appeal: number;
+  /** Demand boost from appeal, e.g. 0.12 = +12%. */
+  boost: number;
+}
+
+/** A player's shop shown on the city map. */
+export interface NeighbourShop {
+  shopId: string;
+  shopName: string;
+  nickname: string;
+  hustle: string;
+  appeal: number;
+  isMe: boolean;
+}
+
+/** Another player's shop as a visitor sees it: no balances, takings or exact stock counts. */
+export interface ShopVisit {
+  shopId: string;
+  shopName: string;
+  nickname: string;
+  hustle: string;
+  isMe: boolean;
+  decor: DecorView;
+  prices: { itemKey: string; name: string; price: number; inStock: boolean }[];
 }
 
 export interface ApiError {
