@@ -24,6 +24,7 @@ import { LoveApp } from "./Love.js";
 import { MusicApp } from "./Music.js";
 import { BooksApp } from "./Books.js";
 import { PetsApp } from "./Pets.js";
+import { AdminStats } from "./AdminStats.js";
 import { PartiesNow } from "./Party.js";
 import { AdminFeedback, ReportProblem } from "./ReportProblem.js";
 import { Quests } from "./Quests.js";
@@ -241,6 +242,7 @@ export function Phone({
           {app === "garage" && <Garage notify={notify} onChanged={onChanged} />}
           {app === "admin" && isAdmin && (
             <div className="stack">
+              <AdminStats />
               <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
               <AdminSponsors notify={notify} />

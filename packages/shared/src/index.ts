@@ -42,3 +42,4 @@ export * from "./partners.js";
 export * from "./party.js";
 export * from "./books.js";
 export * from "./pets.js";
+export * from "./stats.js";
