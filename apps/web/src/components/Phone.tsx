@@ -25,6 +25,7 @@ import { MusicApp } from "./Music.js";
 import { BooksApp } from "./Books.js";
 import { PetsApp } from "./Pets.js";
 import { AdminStats } from "./AdminStats.js";
+import { AdminTesters, TesterCard } from "./Testers.js";
 import { PartiesNow } from "./Party.js";
 import { AdminFeedback, ReportProblem } from "./ReportProblem.js";
 import { Quests } from "./Quests.js";
@@ -189,7 +190,12 @@ export function Phone({
             </div>
           )}
           {app === "hustle" && <HustleBoard notify={notify} onChanged={onChanged} />}
-          {app === "report" && <ReportProblem notify={notify} onDone={() => setApp("home")} />}
+          {app === "report" && (
+            <div className="stack">
+              <TesterCard />
+              <ReportProblem notify={notify} onDone={() => setApp("home")} />
+            </div>
+          )}
           {app === "account" && <ChangePassword email={email} notify={notify} />}
           {app === "quests" && board && <Quests board={board} onBoard={onBoard} onChanged={onChanged} notify={notify} />}
           {app === "standings" && <Hangout onViewed={onChanged} />}
@@ -243,6 +249,7 @@ export function Phone({
           {app === "admin" && isAdmin && (
             <div className="stack">
               <AdminStats />
+              <AdminTesters notify={notify} />
               <AdminAcademy notify={notify} />
               <AdminAds notify={notify} />
               <AdminSponsors notify={notify} />

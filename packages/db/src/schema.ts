@@ -1205,3 +1205,26 @@ export const playerPets = pgTable("player_pets", {
   cared: jsonb("cared").notNull().default({}),
   adoptedAt: timestamp("adopted_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Each Lagos day a player was in the game (from their map position reports): counts days played for the beta. */
+export const playerDays = pgTable(
+  "player_days",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
+/** A beta tester's reward tier (joined | active | founding) and the coins paid out for it so far. */
+export const testerRewards = pgTable("tester_rewards", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tier: text("tier").notNull(),
+  earnedAt: timestamp("earned_at", { withTimezone: true }).notNull().defaultNow(),
+  paid: integer("paid").notNull().default(0),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+});

@@ -30,6 +30,7 @@ import { partyRoutes } from "./modules/game/party.js";
 import { bookRoutes } from "./modules/game/books.js";
 import { petRoutes } from "./modules/game/pets.js";
 import { statsRoutes } from "./modules/stats.js";
+import { testerRoutes } from "./modules/testers.js";
 import { jobsBoardRoutes } from "./modules/jobsboard.js";
 import { huntRoutes } from "./modules/game/hunt.js";
 import { gameRoutes } from "./modules/game/routes.js";
@@ -123,6 +124,7 @@ export async function buildServer(config: Config, options: { logger?: boolean } 
   await app.register(bookRoutes);
   await app.register(petRoutes);
   await app.register(statsRoutes);
+  await app.register(testerRoutes);
   await app.register(huntRoutes);
 
   return app;

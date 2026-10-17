@@ -1188,3 +1188,15 @@ body:has(.mini-player) .firstday, body:has(.mini-player) .firstday-pill { bottom
 .stats-table th { text-align: left; font-weight: 700; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--rule-strong); }
 .stats-table td { padding: 4px 6px; border-bottom: 1px solid var(--rule); }
 .stats-table tr.muted td { color: var(--muted); }
+
+/* Beta tester rewards */
+.tester-badge { display: block; font-weight: 800; color: #5eead4; }
+.tester-badge.tester-active { color: #c4b5fd; }
+.tester-badge.tester-founding { color: #f2c14e; }
+.tester-card .tester-badge, .tester-admin .tester-badge { display: inline; }
+.tester-card { padding: 12px 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, #f2c14e 55%, transparent); background: color-mix(in srgb, #f2c14e 8%, transparent); }
+.tester-tiers, .tester-admin { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tester-tiers li { display: grid; gap: 1px; opacity: 0.75; }
+.tester-tiers li.got { opacity: 1; }
+.tester-tiers li.got > span:first-child { color: #86efac; }
+.tester-admin li { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }

@@ -3,7 +3,7 @@
 // last report. Nothing here is stored except the coins and needs a drink moves.
 
 import { contacts, directMessages, gameLedgerEntries, playerItems, profiles } from "@hc/db";
-import { CHIEF_TITLE, NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type ContactView, type DmThread, type PresenceReply, type PresencePlayer } from "@hc/shared";
+import { CHIEF_TITLE, NEED_GAIN, chatProblem, dayKey, fillNeeds, type AvatarConfig, type ChatMessage, type ContactView, type DmThread, type PresenceReply, type PresencePlayer, type TesterTier } from "@hc/shared";
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -13,6 +13,7 @@ import { lockProfile } from "../lib/db.js";
 import { AppError, notFound } from "../lib/errors.js";
 import { requireUser } from "../plugins/auth.js";
 import { loadNeeds, saveNeeds } from "./game/needs.js";
+import { markPlayed, testerTierOf } from "./testers.js";
 
 const ONLINE_MS = 60_000;
 /** A drink costs this, and each pair can share a few a day. */
@@ -30,6 +31,7 @@ interface Seen {
   at: number;
   /** A chieftaincy title from the palace (shown on their card). */
   title?: string;
+  tester?: TesterTier;
 }
 interface Ping {
   id: string;
@@ -77,13 +79,19 @@ export function setTitle(userId: string, title: string) {
   if (s) s.title = title;
 }
 
+/** A player's tester badge changed: show it from their next report on. */
+export function setTester(userId: string, tier: TesterTier | null) {
+  const s = seen.get(userId);
+  if (s) s.tester = tier ?? undefined;
+}
+
 export async function presenceRoutes(app: FastifyInstance) {
   const tz = app.config.GAME_TIMEZONE;
 
   const online = (now: number) => [...seen.values()].filter((s) => now - s.at < ONLINE_MS);
   const byNick = (nick: string, now: number) => online(now).find((s) => s.nickname.toLowerCase() === nick.toLowerCase());
   const near = (a: Seen, b: Seen) => (a.place && a.place === b.place) || Math.hypot(a.x - b.x, a.y - b.y) < NEAR;
-  const view = (s: Seen): PresencePlayer => ({ nickname: s.nickname, avatar: s.avatar, x: Math.round(s.x), y: Math.round(s.y), place: s.place, ...(s.title ? { title: s.title } : {}) });
+  const view = (s: Seen): PresencePlayer => ({ nickname: s.nickname, avatar: s.avatar, x: Math.round(s.x), y: Math.round(s.y), place: s.place, ...(s.title ? { title: s.title } : {}), ...(s.tester ? { tester: s.tester } : {}) });
   const push = (userId: string, p: Omit<Ping, "id" | "at">) => {
     const list = inbox.get(userId) ?? [];
     list.push({ ...p, id: randomUUID(), at: Date.now() });
@@ -108,8 +116,13 @@ export async function presenceRoutes(app: FastifyInstance) {
       const [p] = await app.db.select({ nickname: profiles.nickname, hidden: profiles.nicknameHidden, avatar: profiles.avatar }).from(profiles).where(eq(profiles.userId, user.id));
       if (!p) throw notFound("Profile");
       const [chief] = await app.db.select({ item: playerItems.item }).from(playerItems).where(and(eq(playerItems.userId, user.id), eq(playerItems.item, CHIEF_TITLE.item)));
-      me = { userId: user.id, nickname: p.hidden ? "player" : p.nickname, avatar: p.avatar as AvatarConfig, x: b.x, y: b.y, place: null, at: now, ...(chief ? { title: CHIEF_TITLE.label } : {}) };
+      const tester = await testerTierOf(app.db, user.id);
+      me = { userId: user.id, nickname: p.hidden ? "player" : p.nickname, avatar: p.avatar as AvatarConfig, x: b.x, y: b.y, place: null, at: now, ...(chief ? { title: CHIEF_TITLE.label } : {}), ...(tester ? { tester } : {}) };
     }
+    // A day in the game counts toward beta tester rewards (once a day; never blocks the reply).
+    void markPlayed(app.db, user.id, tz)
+      .then((tier) => tier && setTester(user.id, tier))
+      .catch((e) => request.log.warn(e, "tester day"));
     Object.assign(me, { x: b.x, y: b.y, place: b.place ?? null, at: now });
     seen.set(user.id, me);
     // Forget people who left long ago.

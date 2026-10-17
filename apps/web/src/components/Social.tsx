@@ -14,6 +14,7 @@ import { HomeRooms } from "./Home.js";
 import type { PlayerAction } from "./Interior.js";
 import { useLayerSheet, walkSheetName } from "./spriteComposer.js";
 import { walkerSheet, walkerSize } from "./walkers.js";
+import { TesterBadge } from "./Testers.js";
 
 const WALK = walkerSize(70);
 /** Price of a drink for a friend (matches the server). */
@@ -137,6 +138,7 @@ export function PlayerCard({
           <div>
             <h2>@{player.nickname}</h2>
             {player.title && <span className="small chief-title">👑 Chief, {player.title}</span>}
+            {player.tester && <TesterBadge tier={player.tester} />}
             <span className="small muted">
               <span className="online-dot" aria-hidden="true" /> Online · {placeName(player.place)}
             </span>

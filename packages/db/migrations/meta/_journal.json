@@ -246,6 +246,13 @@
       "when": 1792006409688,
       "tag": "0034_pets",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792102989232,
+      "tag": "0035_tester_rewards",
+      "breakpoints": true
     }
   ]
 }

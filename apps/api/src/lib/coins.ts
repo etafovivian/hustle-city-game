@@ -41,6 +41,7 @@ export type CoinKind =
   | "love"
   | "party"
   | "pet"
+  | "tester_reward"
   | "admin_adjustment";
 
 export interface PostingResult {

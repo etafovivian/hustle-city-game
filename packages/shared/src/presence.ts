@@ -1,3 +1,4 @@
+import type { TesterTier } from "./testers.js";
 // Presence: other players online right now and where they are (so friends can meet up).
 import type { AvatarConfig } from "./profile.js";
 
@@ -10,6 +11,8 @@ export interface PresencePlayer {
   place: string | null;
   /** A chieftaincy title from the palace, to show off on their card. */
   title?: string;
+  /** Their beta tester badge, if they've earned one. */
+  tester?: TesterTier;
 }
 
 export interface PresencePing {
