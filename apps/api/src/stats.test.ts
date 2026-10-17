@@ -42,4 +42,18 @@ describe("beta stats", () => {
     expect(s.pets).toEqual({ dog_local: 1 });
     expect(s.love).toEqual({ met: 1 });
   });
+
+  it("list every player for admins", async () => {
+    const admin = await registerPlayer(app, "players_lead");
+    const a = await registerPlayer(app, "players_a");
+    await sql`update users set roles = array['player','admin'] where id = ${admin.id}`;
+    expect((await a.call("GET", "/api/admin/players")).statusCode).toBe(403);
+    await sql`insert into player_days (user_id, day) values (${a.id}, '2026-10-01'), (${a.id}, '2026-10-02')`;
+    const rows = (await admin.call("GET", "/api/admin/players")).json();
+    expect(rows.map((r: { nickname: string }) => r.nickname).sort()).toEqual(["players_a", "players_lead"]);
+    const row = rows.find((r: { nickname: string }) => r.nickname === "players_a");
+    expect(row).toMatchObject({ days: 2, lastDay: "2026-10-02", plots: 0, home: null, tester: null, reports: 0, status: "active" });
+    expect(typeof row.coins).toBe("number");
+    expect(row.email).toContain("@");
+  });
 });

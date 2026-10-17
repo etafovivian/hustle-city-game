@@ -1,7 +1,7 @@
 // Beta stats for admins (see @hc/shared stats.ts): read-only counts over existing tables, in Lagos days. Active on a
 // day = earned or spent coins (not the sign-up grant) or made quest progress that day. Admins are left out.
 
-import { dayKey, type StatsView } from "@hc/shared";
+import { dayKey, type AdminPlayerRow, type StatsView } from "@hc/shared";
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../plugins/auth.js";
@@ -91,5 +91,23 @@ export async function statsRoutes(app: FastifyInstance) {
       pets: Object.fromEntries(pets.map((x) => [x.kind, x.n])),
       reports: r!,
     };
+  });
+
+  // Everyone who has signed up, newest first: who they are, how much they play and how far they've got.
+  app.get("/api/admin/players", async (request): Promise<AdminPlayerRow[]> => {
+    requireRole(request, "admin");
+    return (await app.db.execute(sql`
+      select u.id as "userId", p.nickname, u.email, u.roles, u.status,
+        to_char(u.created_at at time zone ${tz}, 'YYYY-MM-DD HH24:MI') as joined,
+        (select max(day) from player_days d where d.user_id = u.id) as "lastDay",
+        (select count(*) from player_days d where d.user_id = u.id)::int as days,
+        p.xp, p.coin_balance::float8 as coins, p.hustle,
+        (select count(*) from player_plots pl where pl.user_id = u.id)::int as plots,
+        (select pl.design from player_plots pl where pl.user_id = u.id and pl.is_home limit 1) as home,
+        (select t.tier from tester_rewards t where t.user_id = u.id) as tester,
+        (select count(*) from feedback f where f.user_id = u.id and f.kind <> 'error')::int as reports
+      from users u join profiles p on p.user_id = u.id
+      order by u.created_at desc
+      limit 1000`)) as unknown as AdminPlayerRow[];
   });
 }

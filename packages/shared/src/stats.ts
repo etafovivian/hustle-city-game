@@ -15,3 +15,24 @@ export interface StatsView {
   pets: Record<string, number>;
   reports: { newBugs: number; newIdeas: number; errors7d: number };
 }
+
+/** Phone → Admin → Players: everyone who has signed up (admins too, marked). */
+export interface AdminPlayerRow {
+  userId: string;
+  nickname: string;
+  email: string;
+  roles: string[];
+  status: string;
+  joined: string;
+  /** Last Lagos day they were in the game, and how many days they've played. */
+  lastDay: string | null;
+  days: number;
+  xp: number;
+  coins: number;
+  hustle: string;
+  /** Plots they own, and the design of their home if they've built one. */
+  plots: number;
+  home: string | null;
+  tester: string | null;
+  reports: number;
+}
