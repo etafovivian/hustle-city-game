@@ -267,7 +267,9 @@ export function VenueCard({
   const liveEvent = eventAt(base.key, new Date());
   const actions = venueActions(venue);
   /** The activity playing now: the room plays for its seconds, then the result shows. */
-  const [running, setRunning] = useState<{ action: VenueAction; started: number; gained: number } | null>(null);
+  const [running, setRunning] = useState<{ action: VenueAction; started: number; gained: number; again?: string | null } | null>(null);
+  /** What the last free activity gave, shown on its row once the countdown ends. */
+  const [freeDone, setFreeDone] = useState<{ key: string; text: string } | null>(null);
   const [left, setLeft] = useState(0);
 
   useEffect(() => {
@@ -278,7 +280,12 @@ export function VenueCard({
       if (remain > 0) return;
       window.clearInterval(id);
       const vibes = running.action.gives.map((g) => `+${VIBE_LABEL[g]}`).join(" ");
-      if (running.action.key !== "shift") notify(running.gained ? `+${running.gained} XP ${vibes} at ${venue.name}` : `${vibes} at ${venue.name}`);
+      if (running.action.kind === "free") {
+        const mins = running.again ? Math.max(1, Math.ceil((new Date(running.again).getTime() - Date.now()) / 60_000)) : 0;
+        const text = mins ? `Done · you felt this here already, the lift counts again in ${mins} min` : `Done · ${vibes}`;
+        setFreeDone({ key: running.action.key, text });
+        notify(mins ? `${running.action.label}: done (lift again in ${mins} min)` : `${running.action.label}: ${vibes}`);
+      } else if (running.action.key !== "shift") notify(running.gained ? `+${running.gained} XP ${vibes} at ${venue.name}` : `${vibes} at ${venue.name}`);
       setRunning(null);
     };
     const id = window.setInterval(tick, 200);
@@ -314,12 +321,17 @@ export function VenueCard({
 
   const act = async (a: VenueAction) => {
     setError(null);
+    setFreeDone(null);
     setMe(actionFor(a));
     if (a.kind === "free") {
       // Free: no coins or XP, but it lifts the place's needs a little (once an hour per place).
-      const r = await api<{ filled: boolean }>("POST", `/api/game/venues/${venue.key}/free`).catch(() => ({ filled: false }));
+      const r = await api<{ filled: boolean; again?: string | null }>("POST", `/api/game/venues/${venue.key}/free`).catch((e: Error) => {
+        setError(e.message);
+        return null;
+      });
+      if (!r) return setMe("stand");
       if (r.filled) onChanged();
-      setRunning({ action: a, started: Date.now(), gained: 0 });
+      setRunning({ action: a, started: Date.now(), gained: 0, again: r.again ?? null });
       return;
     }
     setBusy(a.key);
@@ -446,6 +458,11 @@ export function VenueCard({
                       </span>
                     ))}
                   </span>
+                  {freeDone?.key === a.key && !playing && (
+                    <span className="notice small">
+                      <CheckCircle2 size={15} aria-hidden="true" /> {freeDone.text}
+                    </span>
+                  )}
                   {playing && (
                     <span className="act-progress" role="progressbar" aria-valuemin={0} aria-valuemax={a.seconds} aria-valuenow={Math.round(a.seconds - left)}>
                       <span style={{ width: `${(100 * (a.seconds - left)) / a.seconds}%` }} />

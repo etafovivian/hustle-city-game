@@ -83,5 +83,6 @@ export async function doFree(ctx: ShopCtx, venueKey: string) {
   const event = eventAt(venue.key, now);
   const filled = fresh ? fillNeeds(needs, [...free.gives, ...(event?.gives ?? [])], NEED_GAIN.free + (event ? EVENT_NEED_BONUS : 0)) : needs;
   await saveNeeds(tx, userId, filled, now, fresh ? { ...freeAt, [venue.key]: now.toISOString() } : freeAt);
-  return { filled: fresh, ...needsView(filled) };
+  // Not fresh: you did it here within the hour; say when the lift counts again.
+  return { filled: fresh, again: fresh ? null : new Date(last + FREE_COOLDOWN_MS).toISOString(), ...needsView(filled) };
 }
