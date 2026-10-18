@@ -15,3 +15,5 @@ coverage/
 # Impeccable review captures (regenerated per review round)
 apps/web/.impeccable/review/
 .impeccable/questions/
+CLAUDE.md
+.claude/
