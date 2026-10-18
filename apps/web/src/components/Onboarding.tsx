@@ -8,6 +8,9 @@ import {
   HUSTLES,
   checkNickname,
   checkShopName,
+  emailSuggestion,
+  passwordProblem,
+  PASSWORD_MIN,
   type AvatarConfig,
   type Me,
   CREW,
@@ -49,11 +52,11 @@ type Step = (typeof STEPS)[number];
 
 const HUSTLE_ICON: Record<string, LucideIcon> = { trader: Store, chop: UtensilsCrossed, gadget: Smartphone, artisan: Hammer };
 
-/** Rough strength: length and variety. The server only requires 10+ characters. */
+/** Rough strength: length and variety. The server only asks for PASSWORD_MIN+ characters (and not a common one). */
 function strength(pw: string): 0 | 1 | 2 | 3 | 4 {
   if (!pw) return 0;
-  let score = pw.length >= 10 ? 2 : 1;
-  if (pw.length >= 14) score++;
+  let score = pw.length >= PASSWORD_MIN ? 2 : 1;
+  if (pw.length >= 10) score++;
   if (/[^A-Za-z]/.test(pw) && /[A-Za-z]/.test(pw)) score++;
   return Math.min(4, score) as 0 | 1 | 2 | 3 | 4;
 }
@@ -91,7 +94,7 @@ function ChoiceCard({
   );
 }
 
-export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => void; onBrowse: () => void }) {
+export function Onboarding({ onSignedIn, onBrowse, onSignIn }: { onSignedIn: (me: Me) => void; onBrowse: () => void; onSignIn?: () => void }) {
   const [step, setStep] = useState<Step>("Look");
   const [nickname, setNickname] = useState("");
   const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR);
@@ -101,8 +104,9 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
   const [shopTouched, setShopTouched] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [reveal, setReveal] = useState(false);
+  // The password shows as you type (fewer typos, no second box); the eye hides it.
+  const [reveal, setReveal] = useState(true);
+  const [emailTaken, setEmailTaken] = useState(false);
   const [adult, setAdult] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -125,9 +129,9 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
     }
     if (step === "Shop") return !shopCheck ? "Name your shop." : !shopCheck.ok ? shopCheck.reason : null;
     if (step === "Account") {
-      if (!email.includes("@")) return "Enter your email.";
-      if (password.length < 10) return "Use a password of at least 10 characters.";
-      if (password !== confirm) return "The two passwords don't match. Type the same password in both boxes.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter your email, like ayo@gmail.com.";
+      const pw = passwordProblem(password, nickname);
+      if (pw) return pw;
       if (!adult) return "Tick to confirm you're 18 or older. Naija Hustle City is for adults.";
     }
     return null;
@@ -156,14 +160,22 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
     const problem = stepError();
     setError(problem);
     if (problem) return;
+    if (step === "Look") {
+      // Check the nickname is free now, not after every other step.
+      setBusy(true);
+      const free = await api<{ ok: boolean; reason?: string }>("GET", `/api/auth/nickname/${encodeURIComponent(nickname)}`).catch(() => ({ ok: true }) as { ok: boolean; reason?: string });
+      setBusy(false);
+      if (!free.ok) return setError(free.reason ?? "That nickname is taken. Try another.");
+    }
     if (step !== "Account") {
       setStep(STEPS[index + 1]!);
       return;
     }
+    setEmailTaken(false);
     setBusy(true);
     try {
       const me = await api<Me>("POST", "/api/auth/register", {
-        email,
+        email: email.trim(),
         password,
         nickname,
         avatar,
@@ -178,6 +190,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
       setError((e as Error).message);
       // Send people back to the step their problem belongs to.
       const msg = (e as Error).message.toLowerCase();
+      if (msg.includes("already exists")) setEmailTaken(true);
       if (msg.includes("nickname")) setStep("Look");
       else if (msg.includes("shop")) setStep("Shop");
     } finally {
@@ -339,8 +352,14 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
             <label className="field">
               <span className="field-label">Email</span>
               <span className="input-wrap">
-                <input className="input" type="email" autoComplete="email" placeholder="e.g. ayo@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" spellCheck={false} placeholder="e.g. ayo@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </span>
+              {emailSuggestion(email) && (
+                <button type="button" className="link-btn small" style={{ justifySelf: "start" }} onClick={() => setEmail(emailSuggestion(email)!)}>
+                  Did you mean <strong>{emailSuggestion(email)}</strong>?
+                </button>
+              )}
+              <span className="hint">You'll sign in with this or your nickname.</span>
             </label>
             <label className="field">
               <span className="field-label">Password</span>
@@ -361,21 +380,7 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
                   <i key={i} data-on={i <= strength(password) ? (strength(password) >= 3 ? "1" : "2") : "0"} />
                 ))}
               </span>
-              <span className="hint">At least 10 characters{password ? ` · ${STRENGTH_LABEL[strength(password)]}` : ""}.</span>
-            </label>
-            <label className="field">
-              <span className="field-label">Type it again</span>
-              <span className="input-wrap">
-                <input
-                  className="input has-reveal"
-                  type={reveal ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  aria-invalid={confirm.length > 0 && confirm !== password}
-                />
-              </span>
-              {confirm.length > 0 && confirm !== password && <span className="hint warn">Doesn't match yet.</span>}
+              <span className="hint">At least {PASSWORD_MIN} characters{password ? ` · ${STRENGTH_LABEL[strength(password)]}` : ""}. Easy for you to remember, hard for others to guess.</span>
             </label>
             <label className="check">
               <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
@@ -387,6 +392,14 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
         {error && (
           <p className="alert" role="alert">
             <AlertCircle size={18} aria-hidden="true" /> {error}
+            {emailTaken && onSignIn && (
+              <>
+                {" "}
+                <button type="button" className="link-btn" onClick={onSignIn}>
+                  Sign in instead
+                </button>
+              </>
+            )}
           </p>
         )}
       </div>
@@ -396,6 +409,19 @@ export function Onboarding({ onSignedIn, onBrowse }: { onSignedIn: (me: Me) => v
           {busy ? "One moment…" : step === "Account" ? "Start hustling" : "Continue"}
           {!busy && <ArrowRight size={20} aria-hidden="true" />}
         </button>
+        {(step === "Hustle" || step === "Dream" || step === "Shop") && (
+          <p className="guest-line">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep("Account");
+              }}
+            >
+              Skip the rest: choose for me
+            </button>
+          </p>
+        )}
         {step === "Look" && (
           <p className="guest-line">
             Not ready to open shop? <button type="button" onClick={onBrowse}>Browse merchants as guest</button>

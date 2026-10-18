@@ -1,4 +1,5 @@
 // Password screens: a field with show/hide, setting a new password from a reset link, and changing it in the Phone.
+import { passwordProblem } from "@hc/shared";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "../api.js";
@@ -40,7 +41,8 @@ export function PasswordField({
 
 /** Shared rules for a new password and its confirmation. */
 export function newPasswordProblem(password: string, confirm: string): string | null {
-  if (password.length < 10) return "Use a password of at least 10 characters.";
+  const problem = passwordProblem(password);
+  if (problem) return problem;
   if (password !== confirm) return "The two passwords don't match.";
   return null;
 }
@@ -76,7 +78,7 @@ export function ResetPassword({ token, onDone }: { token: string; onDone: (msg: 
         </span>
         <h1 style={{ fontSize: 26 }}>Choose a new password</h1>
         <p className="small muted">This link works once. You'll be signed out on every device, then you can sign in with the new password.</p>
-        <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" hint="At least 10 characters." />
+        <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" hint="At least 6 characters." />
         <PasswordField label="Type it again" value={confirm} onChange={setConfirm} autoComplete="new-password" />
         {error && (
           <p className="alert" role="alert">
@@ -129,7 +131,7 @@ export function ChangePassword({ email, notify }: { email: string; notify: (msg:
       {/* Lets password managers pair the new password with this account. */}
       <input type="email" autoComplete="username" value={email} readOnly hidden />
       <PasswordField label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
-      <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" hint="At least 10 characters. Other devices get signed out." />
+      <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" hint="At least 6 characters. Other devices get signed out." />
       <PasswordField label="Type the new one again" value={confirm} onChange={setConfirm} autoComplete="new-password" />
       {error && (
         <p className="alert" role="alert">

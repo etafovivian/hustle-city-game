@@ -38,7 +38,7 @@ export async function feedbackRoutes(app: FastifyInstance) {
 
   app.get("/api/admin/feedback", async (request) => {
     requireRole(request, "admin");
-    const q = z.object({ kind: z.enum(["bug", "idea", "other", "error", "all"]).default("all"), status: z.enum(["new", "seen", "fixed", "all"]).default("new") }).parse(request.query);
+    const q = z.object({ kind: z.enum(["bug", "idea", "other", "error", "reset", "all"]).default("all"), status: z.enum(["new", "seen", "fixed", "all"]).default("new") }).parse(request.query);
     const where = and(q.kind === "all" ? undefined : eq(feedback.kind, q.kind), q.status === "all" ? undefined : eq(feedback.status, q.status));
     const rows = await app.db.select().from(feedback).where(where).orderBy(desc(feedback.lastAt)).limit(200);
     const ids = [...new Set(rows.map((r) => r.userId).filter((x): x is string => !!x))];

@@ -84,7 +84,7 @@ export function AdminFeedback({ notify }: { notify: (m: string) => void }) {
       <h2 style={{ fontSize: 20 }}>Beta reports and errors</h2>
       <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
         <select className="input" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind">
-          {["all", "bug", "idea", "other", "error"].map((k) => (
+          {["all", "bug", "idea", "other", "error", "reset"].map((k) => (
             <option key={k}>{k}</option>
           ))}
         </select>
@@ -98,7 +98,7 @@ export function AdminFeedback({ notify }: { notify: (m: string) => void }) {
       {rows?.map((r) => (
         <div key={r.id} className="quote-card">
           <strong className="small">
-            {r.kind === "error" ? "⚠️" : r.kind === "bug" ? "🐞" : r.kind === "idea" ? "💡" : "💬"} {r.message}
+            {r.kind === "error" ? "⚠️ " : r.kind === "bug" ? "🐞 " : r.kind === "idea" ? "💡 " : r.kind === "reset" ? "" : "💬 "}{r.message}
           </strong>
           <span className="tiny muted">
             {r.nickname ? `@${r.nickname}` : "signed out"} · {when(r.lastAt)}

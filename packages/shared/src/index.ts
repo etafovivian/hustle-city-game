@@ -44,3 +44,4 @@ export * from "./books.js";
 export * from "./pets.js";
 export * from "./stats.js";
 export * from "./testers.js";
+export * from "./auth.js";

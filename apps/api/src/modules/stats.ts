@@ -105,7 +105,7 @@ export async function statsRoutes(app: FastifyInstance) {
         (select count(*) from player_plots pl where pl.user_id = u.id)::int as plots,
         (select pl.design from player_plots pl where pl.user_id = u.id and pl.is_home limit 1) as home,
         (select t.tier from tester_rewards t where t.user_id = u.id) as tester,
-        (select count(*) from feedback f where f.user_id = u.id and f.kind <> 'error')::int as reports
+        (select count(*) from feedback f where f.user_id = u.id and f.kind in ('bug', 'idea', 'other'))::int as reports
       from users u join profiles p on p.user_id = u.id
       order by u.created_at desc
       limit 1000`)) as unknown as AdminPlayerRow[];

@@ -25,6 +25,7 @@ function Tabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
 export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: Me) => void; onBrowse: () => void; notice?: string | null }) {
   const [mode, setMode] = useState<Mode>(notice ? "login" : "register");
   const [forgot, setForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -42,6 +43,17 @@ export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: 
       setError((err as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const askReset = async () => {
+    setError(null);
+    if (email.trim().length < 3) return setError("Type your email or nickname above first.");
+    try {
+      const r = await api<{ message: string }>("POST", "/api/auth/forgot", { who: email.trim() });
+      setForgotSent(r.message);
+    } catch (err) {
+      setError((err as Error).message);
     }
   };
 
@@ -117,7 +129,7 @@ export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: 
               <div className="form-tabs form-tabs-always">
                 <Tabs mode={mode} setMode={setMode} />
               </div>
-              <Onboarding onSignedIn={onSignedIn} onBrowse={onBrowse} />
+              <Onboarding onSignedIn={onSignedIn} onBrowse={onBrowse} onSignIn={() => setMode("login")} />
             </div>
           </section>
         ) : (
@@ -135,9 +147,9 @@ export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: 
             </div>
 
             <label className="field">
-              <span className="field-label">Email</span>
+              <span className="field-label">Email or nickname</span>
               <span className="input-wrap">
-                <input className="input" type="email" autoComplete="email" placeholder="e.g. ayo@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input className="input" type="text" autoComplete="username" autoCapitalize="off" spellCheck={false} placeholder="e.g. ayo@gmail.com or Ayo_Hustler" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </span>
             </label>
 
@@ -172,11 +184,19 @@ export function AuthScreen({ onSignedIn, onBrowse, notice }: { onSignedIn: (me: 
             <button type="button" className="link-btn small" onClick={() => setForgot((f) => !f)} aria-expanded={forgot}>
               Forgot your password?
             </button>
-            {forgot && (
-              <p className="small muted forgot-note">
-                During the private beta, ask the Naija Hustle City team for a reset link. It opens a page where you choose a new password. Reset by email comes before public launch.
-              </p>
-            )}
+            {forgot &&
+              (forgotSent ? (
+                <p className="notice small forgot-note" role="status">
+                  {forgotSent}
+                </p>
+              ) : (
+                <div className="stack forgot-note" style={{ gap: 6 }}>
+                  <p className="small muted">Type your email or nickname above, then ask for a reset. The team sends you a link where you choose a new password.</p>
+                  <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => void askReset()}>
+                    Ask for a reset link
+                  </button>
+                </div>
+              ))}
 
             <button className="btn primary block cta cta-xl" type="submit" disabled={busy}>
               {busy ? "One moment…" : "Sign in"}

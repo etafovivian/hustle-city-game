@@ -13,6 +13,36 @@ const SORTS: [Sort, string][] = [
   ["coins", "Coins"],
 ];
 
+/** Make a one-time reset link for a player, to send them on WhatsApp or email. */
+function ResetLink({ email }: { email: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const make = async () => {
+    try {
+      const r = await api<{ url: string }>("POST", "/api/admin/reset-link", { email });
+      setLink(r.url);
+      await navigator.clipboard?.writeText(r.url).catch(() => undefined);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <div className="stack" style={{ gap: 4, gridColumn: "1 / -1" }}>
+      {link ? (
+        <>
+          <span className="tiny">Copied. Send this to them (it works once):</span>
+          <input className="input" readOnly value={link} onFocus={(e) => e.currentTarget.select()} aria-label="Reset link" />
+        </>
+      ) : (
+        <button type="button" className="btn sm" style={{ justifySelf: "start" }} onClick={() => void make()}>
+          🔑 Make a password reset link
+        </button>
+      )}
+      {error && <span className="tiny alert">{error}</span>}
+    </div>
+  );
+}
+
 export function AdminPlayers() {
   const [rows, setRows] = useState<AdminPlayerRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +123,7 @@ export function AdminPlayers() {
                   <dd>{r.reports}</dd>
                   <dt>Roles</dt>
                   <dd>{r.roles.join(", ")}</dd>
+                  <ResetLink email={r.email} />
                 </dl>
               )}
             </li>

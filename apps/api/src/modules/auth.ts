@@ -1,5 +1,5 @@
-import { auditEvents, hashPassword, issueResetLink, profiles, useResetLink, users, verifyPassword } from "@hc/db";
-import { DEFAULT_AVATAR, DREAMS_BY_KEY, HUSTLES_BY_KEY, checkNickname, checkShopName, cleanAvatar, isValidAvatar } from "@hc/shared";
+import { auditEvents, feedback, hashPassword, issueResetLink, profiles, useResetLink, users, verifyPassword } from "@hc/db";
+import { DEFAULT_AVATAR, DREAMS_BY_KEY, HUSTLES_BY_KEY, checkNickname, checkShopName, cleanAvatar, isValidAvatar, passwordProblem } from "@hc/shared";
 import type { FastifyInstance } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -12,7 +12,7 @@ import { joinCrew } from "./crew.js";
 
 const registerBody = z.object({
   email: z.email().max(254),
-  password: z.string().min(10).max(200),
+  password: z.string().max(200),
   nickname: z.string(),
   avatar: z.unknown().optional(),
   hustle: z.string().optional(),
@@ -23,9 +23,13 @@ const registerBody = z.object({
   confirmAdult: z.literal(true, { error: "Hustle City is for adults aged 18 and over." }),
 });
 
+/** `email` may also be the player's nickname. */
 const loginBody = z.object({ email: z.string().max(254), password: z.string().max(200) });
 
-const newPassword = z.string().min(10, "Use a password of at least 10 characters.").max(200);
+const newPassword = z.string().superRefine((p, ctx) => {
+  const problem = passwordProblem(p);
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});
 const changeBody = z.object({ currentPassword: z.string().max(200), newPassword });
 const resetBody = z.object({ token: z.string().min(20).max(100), newPassword });
 const resetLinkBody = z.object({ email: z.string().max(254) });
@@ -49,6 +53,8 @@ export async function authRoutes(app: FastifyInstance) {
     const shopName = (body.shopName ?? `${body.nickname}'s Shop`).trim();
     const shopCheck = checkShopName(shopName);
     if (!shopCheck.ok) throw badRequest("invalid_shop_name", shopCheck.reason);
+    const pwProblem = passwordProblem(body.password, body.nickname);
+    if (pwProblem) throw badRequest("weak_password", pwProblem);
 
     const passwordHash = await hashPassword(body.password);
     const now = new Date();
@@ -79,14 +85,46 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.code(201).send(await loadMe(app.db, userId));
   });
 
+  /** A player by email, or by nickname when there's no @ in it. */
+  const findUser = (who: string) =>
+    who.includes("@")
+      ? app.db.select().from(users).where(sql`lower(${users.email}) = lower(${who})`)
+      : app.db
+          .select({ id: users.id, email: users.email, passwordHash: users.passwordHash, status: users.status })
+          .from(users)
+          .innerJoin(profiles, eq(profiles.userId, users.id))
+          .where(sql`lower(${profiles.nickname}) = lower(${who})`);
+
+  // Sign-up: is this nickname free? (So people hear it on the first step, not after filling everything in.)
+  app.get<{ Params: { nickname: string } }>("/api/auth/nickname/:nickname", authLimit, async (request) => {
+    const nickname = request.params.nickname.slice(0, 40);
+    const check = checkNickname(nickname);
+    if (!check.ok) return { ok: false, reason: check.reason };
+    const [taken] = await app.db.select({ id: profiles.userId }).from(profiles).where(sql`lower(${profiles.nickname}) = lower(${nickname})`);
+    return taken ? { ok: false, reason: "That nickname is taken. Try another." } : { ok: true };
+  });
+
+  // Forgot password: the request shows up for the team in Phone → Admin, who send a reset link. Always the same
+  // answer, so it never tells anyone whether an account exists.
+  app.post("/api/auth/forgot", authLimit, async (request, reply) => {
+    const { who } = z.object({ who: z.string().trim().min(3).max(254) }).parse(request.body);
+    const [user] = await findUser(who.replace(/^@/, ""));
+    if (user) {
+      const [recent] = await app.db
+        .select({ id: feedback.id })
+        .from(feedback)
+        .where(sql`${feedback.userId} = ${user.id} and ${feedback.kind} = 'reset' and ${feedback.createdAt} > now() - interval '1 hour'`);
+      if (!recent) await app.db.insert(feedback).values({ userId: user.id, kind: "reset", message: `🔑 Asked for a password reset from the sign-in page (${user.email}).`, context: {} });
+    }
+    return reply.code(202).send({ message: "Got it. The team will send you a reset link (usually on WhatsApp or email) soon." });
+  });
+
   app.post("/api/auth/login", authLimit, async (request, reply) => {
     const body = loginBody.parse(request.body);
-    const [user] = await app.db
-      .select()
-      .from(users)
-      .where(sql`lower(${users.email}) = lower(${body.email.trim()})`);
+    const who = body.email.trim().replace(/^@/, "");
+    const [user] = await findUser(who);
     const ok = await verifyPassword(body.password, user?.passwordHash ?? (await DUMMY_HASH));
-    if (!user || !ok) throw new AppError(401, "invalid_credentials", "Email or password is incorrect.");
+    if (!user || !ok) throw new AppError(401, "invalid_credentials", "That email or nickname and password don't match. Check them, or tap \"Forgot your password?\".");
     if (user.status !== "active") throw new AppError(403, "account_suspended", "This account is suspended.");
 
     await startSession(app, reply, user.id);
