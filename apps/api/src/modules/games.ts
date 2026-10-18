@@ -28,7 +28,7 @@ interface Table {
   state: TableState;
   /** Snooker: the table before the last shot, and the shot, so every phone can animate it. */
   before: PoolState | null;
-  last: { angle: number; power: number } | null;
+  last: { angle: number; power: number; spin: number } | null;
   updated: number;
 }
 const START: Record<TableGame, () => TableState> = { ayo: ayoStart, snooker: poolStart, chess: chessStart };
@@ -244,11 +244,11 @@ export async function playRoutes(app: FastifyInstance) {
   // Snooker: the server plays each shot with the shared physics and decides.
   app.post<{ Params: { id: string } }>("/api/games/snooker/:id/shot", async (request) => {
     const user = requireUser(request);
-    const { angle, power } = z.object({ angle: z.number().finite().min(-10).max(10), power: z.number().min(0).max(1) }).parse(request.body);
+    const { angle, power, spin } = z.object({ angle: z.number().finite().min(-10).max(10), power: z.number().min(0).max(1), spin: z.number().min(-1).max(1).default(0) }).parse(request.body);
     const t = myTable(request.params.id, user.id, "snooker");
     t.before = t.state as PoolState;
-    t.last = { angle, power };
-    t.state = poolShoot(t.state as PoolState, angle, power);
+    t.last = { angle, power, spin };
+    t.state = poolShoot(t.state as PoolState, angle, power, spin);
     t.updated = Date.now();
     await prize(t);
     return view(t, user.id);

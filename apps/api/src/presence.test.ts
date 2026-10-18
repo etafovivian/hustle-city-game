@@ -87,7 +87,7 @@ describe("ayo", () => {
     expect((await b.call("POST", `/api/games/snooker/${g.id}/shot`, { angle: 0, power: 1 })).statusCode).toBe(409);
     const after = (await a.call("POST", `/api/games/snooker/${g.id}/shot`, { angle: 0, power: 1 })).json();
     expect(after.state.shots).toBe(1);
-    expect(after.last).toEqual({ angle: 0, power: 1 });
+    expect(after.last).toEqual({ angle: 0, power: 1, spin: 0 });
   });
 
   it("sets a chess table at the snooker spot: one sits and waits, another joins, a third watches", async () => {

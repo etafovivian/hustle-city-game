@@ -46,6 +46,42 @@ function sow(s: AyoState, pit: number): AyoState {
   return { ...s, pits, stores, turn: p === 0 ? 1 : 0 };
 }
 
+/** How a move plays out, seed by seed (for the board to animate): each pit a seed drops into, in order, and the
+ * pits captured afterwards (in the order they're taken; empty when there's no capture or a grand slam). */
+export function ayoTrace(s: AyoState, pit: number): { drops: number[]; captured: { pit: number; seeds: number }[] } {
+  const pits = [...s.pits];
+  let seeds = pits[pit]!;
+  pits[pit] = 0;
+  const drops: number[] = [];
+  let i = pit;
+  while (seeds > 0) {
+    i = (i + 1) % 12;
+    if (i === pit) continue;
+    pits[i]!++;
+    drops.push(i);
+    seeds--;
+  }
+  const p = s.turn;
+  const captured: { pit: number; seeds: number }[] = [];
+  let j = i;
+  while (!own(p, j) && (pits[j] === 2 || pits[j] === 3)) {
+    captured.push({ pit: j, seeds: pits[j]! });
+    pits[j] = 0;
+    j = (j + 11) % 12;
+  }
+  const oppEmpty = pits.every((n, k) => own(p, k) || n === 0);
+  return { drops, captured: captured.length && oppEmpty ? [] : captured };
+}
+
+/** The pit that turned `before` into `after` (a move by `before.turn`), or null if none does. */
+export function ayoFindMove(before: AyoState, after: AyoState): number | null {
+  for (const m of ayoMoves(before)) {
+    const x = ayoPlay(before, m);
+    if (x.stores[0] === after.stores[0] && x.stores[1] === after.stores[1] && x.pits.every((n, k) => n === after.pits[k])) return m;
+  }
+  return null;
+}
+
 const oppHasSeeds = (s: AyoState, p: 0 | 1) => s.pits.some((n, k) => !own(p, k) && n > 0);
 
 export function ayoMoves(s: AyoState): number[] {

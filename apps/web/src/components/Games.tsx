@@ -1,61 +1,34 @@
 // Phone → Games: Ayo against the computer or a friend (live), and snooker (see Snooker.tsx).
-import { AYO_WIN, AYO_WINS_PER_DAY, ayoBest, ayoMoves, ayoPlay, ayoStart, type AyoState, type TableGame } from "@hc/shared";
+import { AYO_WIN, AYO_WINS_PER_DAY, ayoBest, ayoFindMove, ayoPlay, ayoStart, type AyoState, type TableGame } from "@hc/shared";
 import { ArrowLeft, Bot, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { AyoBoard, useAyoPlayback } from "./AyoBoard.js";
 import { ChessLive, ChessVsComputer } from "./Chess.js";
 import { Snooker } from "./Snooker.js";
-
-/** The board: player 1's row on top (right to left), player 0's below (left to right), stores at the sides. */
-function AyoBoard({ s, me, onPick, names, watching = false }: { s: AyoState; me: 0 | 1; onPick: (pit: number) => void; names: [string, string]; watching?: boolean }) {
-  const legal = !watching && s.turn === me && !s.over ? ayoMoves(s) : [];
-  // Show your own row at the bottom.
-  const bottom = me === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11];
-  const top = me === 0 ? [11, 10, 9, 8, 7, 6] : [5, 4, 3, 2, 1, 0];
-  const pit = (i: number) => (
-    <button key={i} type="button" className={`ayo-pit ${legal.includes(i) ? "legal" : ""}`} disabled={!legal.includes(i)} onClick={() => onPick(i)} aria-label={`Pit with ${s.pits[i]} seeds`}>
-      <span className="ayo-seeds" aria-hidden="true">
-        {Array.from({ length: Math.min(s.pits[i]!, 12) }, (_, k) => (
-          <i key={k} />
-        ))}
-      </span>
-      <b>{s.pits[i]}</b>
-    </button>
-  );
-  const other = me === 0 ? 1 : 0;
-  return (
-    <div className="ayo">
-      <div className="ayo-store">
-        <span className="tiny">{names[other]}</span>
-        <b>{s.stores[other]}</b>
-      </div>
-      <div className="ayo-rows">
-        <div className="ayo-row">{top.map(pit)}</div>
-        <div className="ayo-row">{bottom.map(pit)}</div>
-      </div>
-      <div className="ayo-store mine">
-        <span className="tiny">{names[me]}</span>
-        <b>{s.stores[me]}</b>
-      </div>
-    </div>
-  );
-}
 
 const status = (s: AyoState, me: 0 | 1, names: [string, string]) =>
   s.over ? (s.winner === null ? "Draw!" : s.winner === me ? "You won! 🎉" : `${names[s.winner]} won.`) : s.turn === me ? "Your turn: tap one of your pits." : `Waiting for ${names[s.turn]}…`;
 
 export function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => void; onChanged: () => void }) {
   const [s, setS] = useState(ayoStart);
+  const pb = useAyoPlayback(s);
   const moves = useRef<number[]>([]);
   const [done, setDone] = useState(false);
-  const pick = (p: number) => {
-    moves.current.push(p);
-    setS(ayoPlay(s, p));
+  const move = async (from: AyoState, p: number) => {
+    const next = ayoPlay(from, p);
+    await pb.play(from, p, next);
+    setS(next);
   };
-  // The computer replies after a beat (same moves the server replays).
+  const pick = (p: number) => {
+    if (pb.busy.current || s.turn !== 0) return;
+    moves.current.push(p);
+    void move(s, p);
+  };
+  // The computer thinks for a beat, then sows its move the same way (the server replays the same moves).
   useEffect(() => {
     if (s.over || s.turn !== 1) return;
-    const t = window.setTimeout(() => setS(ayoPlay(s, ayoBest(s, 3))), 700);
+    const t = window.setTimeout(() => void move(s, ayoBest(s, 3)), 650);
     return () => window.clearTimeout(t);
   }, [s]);
   useEffect(() => {
@@ -71,8 +44,8 @@ export function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => vo
   }, [s.over]);
   return (
     <div className="stack">
-      <AyoBoard s={s} me={0} onPick={pick} names={["You", "Baba Ayo (computer)"]} />
-      <p className="small">{status(s, 0, ["You", "Baba Ayo"])}</p>
+      <AyoBoard s={s} pb={pb} me={0} onPick={pick} names={["You", "Baba Ayo"]} />
+      <p className="small ayo-status">{status(s, 0, ["You", "Baba Ayo"])}</p>
       {s.over && (
         <button
           type="button"
@@ -80,7 +53,9 @@ export function AyoVsComputer({ notify, onChanged }: { notify: (m: string) => vo
           onClick={() => {
             moves.current = [];
             setDone(false);
-            setS(ayoStart());
+            const fresh = ayoStart();
+            pb.show(fresh);
+            setS(fresh);
           }}
         >
           Play again
@@ -101,20 +76,39 @@ interface LiveView {
 export function AyoLive({ id }: { id: string }) {
   const [g, setG] = useState<LiveView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const shownState = useRef<AyoState | null>(null);
+  const pb = useAyoPlayback(ayoStart());
+  /** Move the board to a new state: sow the move seed by seed when we can tell which pit it was. */
+  const follow = async (next: LiveView) => {
+    const prev = shownState.current;
+    shownState.current = next.state;
+    const m = prev && !prev.over ? ayoFindMove(prev, next.state) : null;
+    if (prev && m !== null) await pb.play(prev, m, next.state);
+    else pb.show(next.state);
+    setG(next);
+  };
   useEffect(() => {
-    const load = () =>
+    const load = () => {
+      if (pb.busy.current) return;
       api<LiveView>("GET", `/api/games/ayo/${id}`)
-        .then(setG)
+        .then((v) => {
+          if (pb.busy.current) return;
+          const cur = shownState.current;
+          if (!cur || JSON.stringify(cur) !== JSON.stringify(v.state)) void follow(v);
+          else setG(v);
+        })
         .catch((e: Error) => setError(e.message));
-    void load();
-    const t = window.setInterval(() => void load(), 1500);
+    };
+    load();
+    const t = window.setInterval(load, 1500);
     return () => window.clearInterval(t);
   }, [id]);
   if (error) return <p className="alert small">{error}</p>;
   if (!g) return <p className="small muted">Loading the board…</p>;
   const pick = async (p: number) => {
+    if (pb.busy.current) return;
     try {
-      setG(await api<LiveView>("POST", `/api/games/ayo/${id}/move`, { pit: p }));
+      void follow(await api<LiveView>("POST", `/api/games/ayo/${id}/move`, { pit: p }));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -122,8 +116,8 @@ export function AyoLive({ id }: { id: string }) {
   const names = g.names.map((n) => (n ? `@${n}` : "…")) as [string, string];
   return (
     <div className="stack">
-      <AyoBoard s={g.state} me={g.you ?? 0} watching={g.you === null} onPick={(p) => void pick(p)} names={names} />
-      <p className="small">{g.waiting ? "Waiting for someone to sit down…" : g.you === null ? (g.state.over ? (g.state.winner === null ? "Draw!" : `${names[g.state.winner]} won.`) : `Watching: ${names[g.state.turn]} to play.`) : status(g.state, g.you, names)}</p>
+      <AyoBoard s={g.state} pb={pb} me={g.you ?? 0} watching={g.you === null} onPick={(p) => void pick(p)} names={names} />
+      <p className="small ayo-status">{g.waiting ? "Waiting for someone to sit down…" : g.you === null ? (g.state.over ? (g.state.winner === null ? "Draw!" : `${names[g.state.winner]} won.`) : `Watching: ${names[g.state.turn]} to play.`) : status(g.state, g.you, names)}</p>
     </div>
   );
 }
